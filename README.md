@@ -53,3 +53,7 @@ Documentation baseline only. No application code, dependency installation, datab
 8. Every answer must be explainable by its sources, time range, and freshness.
 9. A plugin may extend capability but may not bypass platform security.
 10. A green model response is not proof of a correct business answer.
+
+## Phase 0 audit status
+
+The documentation baseline has undergone a critical product/UX/architecture/infrastructure review. Read `docs/26-audit-report-phase-0.md` and `docs/25-development-readiness.md` before coding. The readiness document is a stop/go gate: unresolved contracts must be locked or explicitly approved as time-boxed pilot assumptions.

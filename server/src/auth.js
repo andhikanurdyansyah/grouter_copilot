@@ -4,6 +4,7 @@
  */
 
 import { betterAuth } from 'better-auth';
+import { dash } from '@better-auth/infra';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,9 @@ const dbFile = process.env.AUTH_DB_FILE || path.join(__dirname, '..', 'data', 'a
 
 export const auth = betterAuth({
   database: new Database(dbFile),
+  plugins: [
+    dash(), // Better Auth dashboard/analytics (requires BETTER_AUTH_API_KEY)
+  ],
   emailAndPassword: {
     enabled: true,
   },

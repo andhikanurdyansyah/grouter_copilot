@@ -14,3 +14,4 @@ server/data/
 server/*.sqlite
 server/*.sqlite-shm
 server/*.sqlite-wal
+/logs/

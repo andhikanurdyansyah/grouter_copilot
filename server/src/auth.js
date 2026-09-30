@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFile = process.env.AUTH_DB_FILE || path.join(__dirname, '..', 'data', 'auth.sqlite');
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || undefined,
   database: new Database(dbFile),
   plugins: [
     dash(), // Better Auth dashboard/analytics (requires BETTER_AUTH_API_KEY)

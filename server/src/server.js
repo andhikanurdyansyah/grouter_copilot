@@ -25,6 +25,7 @@ import { KlikQris } from './klikqris.js';
 import { PaymentService } from './paymentService.js';
 import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
+import { AccountService } from './accountService.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,7 @@ export function createCopilotServer({
   const usage = new UsageResolver({ fetchImpl: fetch, ...(checkUsageUrl ? { checkUsageUrl } : {}) });
   const klikqris = new KlikQris({ fetchImpl: fetch });
   const payment = new PaymentService({ klikqris, licenseService: service, store });
+  const accounts = new AccountService({ store });
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -58,6 +60,22 @@ export function createCopilotServer({
     // Better Auth: hand off all /api/auth/* routes.
     if (url.pathname.startsWith('/api/auth')) {
       return authHandler(req, res);
+    }
+
+    // /api/me — authenticated account + licenses (uses Better Auth session).
+    if (req.method === 'GET' && url.pathname === '/api/me') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) {
+          return sendJson(res, 401, { error: 'unauthenticated' });
+        }
+        const account = accounts.ensureAccount(session.user);
+        const licenses = store.licensesByAccount(account.id).map(sanitizeLicense);
+        return sendJson(res, 200, {
+          account: { id: account.id, name: account.name, email: account.email },
+          licenses,
+        });
+      })();
     }
 
     if (req.method === 'GET' && url.pathname === '/') {

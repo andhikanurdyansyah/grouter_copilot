@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gRouter Copilot — Embedded AI untuk aplikasi Anda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0B0B10;
+      --surface: #16161C;
+      --surface-2: #1E1E25;
+      --border: #1E293B;
+      --foreground: #F8FAFC;
+      --muted-fg: #94A3B8;
+      --accent: #3B82F6;
+      --accent-soft: rgba(59,130,246,0.14);
+      --success: #22C55E;
+      --radius: 8px;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--foreground); font-family: var(--font-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header.nav { border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(11,11,16,0.9); backdrop-filter: blur(8px); z-index: 10; }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { font-family: var(--font-display); font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 10px; color: var(--foreground); }
+    .brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 13px; }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a { color: var(--muted-fg); font-size: 14px; }
+    .nav-links a:hover { color: var(--foreground); text-decoration: none; }
+
+    .hero { padding: 80px 0 56px; }
+    .hero h1 { font-family: var(--font-display); font-size: 44px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; max-width: 720px; }
+    .hero p.lead { color: var(--muted-fg); font-size: 18px; max-width: 620px; margin-top: 16px; }
+    .hero .accent { color: var(--accent); }
+    .cta-row { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; border: 1px solid transparent; transition: transform 160ms ease, background 180ms ease; color: #fff; }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--accent); }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-ghost { background: transparent; border-color: var(--border); color: var(--foreground); }
+    .btn-ghost:hover { background: var(--muted); }
+
+    .codeblock { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; font-family: var(--font-mono); font-size: 14px; overflow-x: auto; margin-top: 28px; }
+    .codeblock .c { color: var(--muted-fg); }
+    .codeblock .k { color: var(--accent); }
+
+    section { padding: 48px 0; }
+    section h2 { font-family: var(--font-display); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    section .sub { color: var(--muted-fg); margin-bottom: 28px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .card h3 { font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+    .card p { color: var(--muted-fg); font-size: 14px; }
+
+    .step { display: flex; gap: 16px; margin-bottom: 20px; }
+    .step-num { width: 28px; height: 28px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-family: var(--font-display); font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { color: var(--muted-fg); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .mono { font-family: var(--font-mono); font-size: 13px; }
+
+    footer { border-top: 1px solid var(--border); padding: 32px 0; color: var(--muted-fg); font-size: 13px; }
+
+    @media (max-width: 800px) {
+      .hero h1 { font-size: 32px; }
+      .grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/"><span class="brand-mark">G</span> gRouter Copilot</a>
+      <nav class="nav-links">
+        <a href="#how-it-works">Cara Kerja</a>
+        <a href="#integration">Integrasi</a>
+        <a href="#pricing">Harga</a>
+        <a href="#license">License</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Embedded AI copilot untuk <span class="accent">aplikasi yang sudah ada</span>.</h1>
+      <p class="lead">Tambahkan chatbot cerdas yang membaca data aplikasi Anda (CRM, POS, HRIS) lewat satu command. AI berjalan di atas gRouter.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#integration">Mulai Integrasi</a>
+        <a class="btn btn-ghost" href="#license">Lihat License</a>
+      </div>
+      <div class="codeblock"><span class="c"># satu command, chatbot hidup</span>
+<span class="k">npx @grouter/copilot install</span></div>
+    </div>
+
+    <section id="how-it-works">
+      <h2>Cara Kerja</h2>
+      <p class="sub">Plugin in-process di aplikasi Anda. Data tetap di tempat Anda.</p>
+      <div class="grid">
+        <div class="card"><h3>1. Developer-defined skills</h3><p>Expose data aplikasi lewat fungsi <span class="mono">run()</span>. Hanya data yang Anda izinkan yang bisa dibaca chatbot.</p></div>
+        <div class="card"><h3>2. Read-only default</h3><p>Search, summary, analisis, rekomendasi. Mutasi data = gate terpisah dengan konfirmasi.</p></div>
+        <div class="card"><h3>3. gRouter sebagai AI</h3><p>Satu API key gRouter di belakang license. Tanpa provider key di app Anda.</p></div>
+      </div>
+    </section>
+
+    <section id="integration">
+      <h2>Integrasi</h2>
+      <p class="sub">Flow lengkap dari register sampai chatbot jalan.</p>
+      <div class="step"><div class="step-num">1</div><div><strong>Register</strong> — buat akun di dashboard Copilot.</div></div>
+      <div class="step"><div class="step-num">2</div><div><strong>Purchase license</strong> — pilih paket quota, terima <span class="mono">LICENSE KEY</span>.</div></div>
+      <div class="step"><div class="step-num">3</div><div><strong>Install</strong> — <span class="mono">npx @grouter/copilot install</span>, masukkan license key (bukan api key).</div></div>
+      <div class="step"><div class="step-num">4</div><div><strong>Definisikan skill</strong> — expose data aplikasi, mount widget.</div></div>
+    </section>
+
+    <section id="pricing">
+      <h2>Harga</h2>
+      <p class="sub">Hipotesis paket (final saat launch).</p>
+      <table>
+        <thead><tr><th>Tier</th><th>Isi</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Free core</td><td>install + skills read-only + 1 key</td><td>adopsi &amp; proof-of-value</td></tr>
+          <tr><td class="mono">Pro</td><td>advanced skills, observasi, multi-model</td><td>aplikasi bisnis</td></tr>
+          <tr><td class="mono">Enterprise</td><td>mutating skills (gated), SLA, kustomisasi</td><td>enterprise</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="license">
+      <h2>License Model</h2>
+      <p class="sub">Satu credential untuk customer: <span class="mono">LICENSE KEY</span>. Api key gRouter di-resolve server-side.</p>
+      <div class="grid">
+        <div class="card"><h3>Run lock</h3><p>Tanpa license valid (Ed25519), runtime menolak jalan.</p></div>
+        <div class="card"><h3>Provider lock</h3><p>Terkunci ke gRouter. Hanya menerima API key gRouter.</p></div>
+        <div class="card"><h3>Hybrid validation</h3><p>Offline signature + heartbeat best-effort. App tetap jalan walau license server down.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="container">gRouter Copilot — plugin berlisensi. gRouter (port 20128) adalah supplier AI, tidak disentuh.</div>
+  </footer>
+</body>
+</html>

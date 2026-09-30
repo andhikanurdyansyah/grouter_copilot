@@ -19,7 +19,7 @@ export class LicenseService {
     this.audience = audience;
   }
 
-  issue({ customer, features = ['core'], expiresInDays = 365, notBefore } = {}) {
+  issue({ customer, features = ['core'], expiresInDays = 365, notBefore, grouterApiKey = null } = {}) {
     const id = nextId('lic');
     const expiresAt = notBefore
       ? null
@@ -41,11 +41,34 @@ export class LicenseService {
       revokedAt: null,
       installIds: [],
       lastSeenAt: null,
+      grouterApiKey: grouterApiKey ?? null, // bound gRouter api key (secret, server-side)
       // NOTE: raw token is returned to the operator ONCE at issue time; not persisted.
     };
 
     this.store.addLicense(record);
     return { record, token };
+  }
+
+  /**
+   * Bind a gRouter api key to a license (admin action). The api key is NEVER
+   * embedded in the license token; it is resolved server-side only.
+   */
+  bindApiKey(id, grouterApiKey) {
+    const l = this.store.getLicense(id);
+    if (!l) return null;
+    l.grouterApiKey = grouterApiKey;
+    this.store._save();
+    return l;
+  }
+
+  /**
+   * Resolve the gRouter api key for a license (used by the plugin during
+   * install via the key-handoff endpoint). Returns null if not bound.
+   */
+  resolveApiKey(id) {
+    const l = this.store.getLicense(id);
+    if (!l || l.revokedAt) return null;
+    return l.grouterApiKey ?? null;
   }
 
   revoke(id) {

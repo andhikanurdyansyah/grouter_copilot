@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JsonStore } from './store.js';
 import { LicenseService } from './licenseService.js';
+import { UsageResolver } from './usageResolver.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +31,8 @@ export function createCopilotServer({
   privateKeyPem = null,
   publicKeyPem = null,
   adminToken = process.env.ADMIN_TOKEN || null,
+  checkUsageUrl = process.env.GROUTER_CHECK_USAGE_URL || undefined,
+  fetch = globalThis.fetch,
 } = {}) {
   // Generate a keypair if not provided (ephemeral for local dev; production must persist).
   let keys = { privateKeyPem, publicKeyPem };
@@ -39,6 +42,7 @@ export function createCopilotServer({
 
   const store = new JsonStore(dataFile);
   const service = new LicenseService({ store, privateKeyPem: keys.privateKeyPem });
+  const usage = new UsageResolver({ fetchImpl: fetch, ...(checkUsageUrl ? { checkUsageUrl } : {}) });
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -46,6 +50,10 @@ export function createCopilotServer({
 
     if (req.method === 'GET' && url.pathname === '/') {
       return sendHtml(res, 200, renderDashboardHtml(service));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/landing') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8'));
     }
 
     if (req.method === 'GET' && url.pathname === '/api/stats') {
@@ -64,8 +72,41 @@ export function createCopilotServer({
           customer: body.customer,
           features: body.features,
           expiresInDays: body.expiresInDays,
+          grouterApiKey: body.grouterApiKey ?? null,
         });
         return sendJson(res, 201, { license: sanitizeLicense(record), token });
+      });
+    }
+
+    // Bind a gRouter api key to a license (admin).
+    if (req.method === 'POST' && /^\/api\/licenses\/([^/]+)\/bind$/.test(url.pathname)) {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      const id = url.pathname.split('/')[3];
+      return readBody(req).then((body) => {
+        const bound = service.bindApiKey(id, body.grouterApiKey);
+        if (!bound) return sendJson(res, 404, { error: 'not found' });
+        return sendJson(res, 200, { license: sanitizeLicense(bound), bound: true });
+      });
+    }
+
+    // Key handoff: plugin exchanges a valid license for the bound gRouter api key.
+    // This returns the api key (server-side handoff over TLS); it must NOT be
+    // exposed to a browser. In production this is called by the CLI/installer.
+    if (req.method === 'POST' && url.pathname === '/api/resolve') {
+      return readBody(req).then((body) => {
+        const result = service.validate(body.token, keys.publicKeyPem);
+        if (result.status !== 'valid') {
+          return sendJson(res, 403, { error: result.error ?? 'invalid license' });
+        }
+        const lic = service.list().find((l) => l.id === result.payload.lic);
+        if (lic?.revokedAt) {
+          return sendJson(res, 403, { error: 'license revoked' });
+        }
+        const apiKey = service.resolveApiKey(result.payload.lic);
+        if (!apiKey) {
+          return sendJson(res, 404, { error: 'no api key bound to this license' });
+        }
+        return sendJson(res, 200, { apiKey, baseUrl: body.baseUrl ?? null });
       });
     }
 
@@ -98,10 +139,30 @@ export function createCopilotServer({
       });
     }
 
+    // Usage endpoint (admin): fetch gRouter /check-usage for each license with a
+    // bound api key. Read-only consumption of gRouter.
+    if (req.method === 'GET' && url.pathname === '/api/usage') {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      return (async () => {
+        const licenses = service.list();
+        const results = [];
+        for (const l of licenses) {
+          if (!l.grouterApiKey) continue;
+          try {
+            const data = await usage.fetchUsage(l.id, l.grouterApiKey);
+            results.push({ licenseId: l.id, customer: l.customer, usage: data });
+          } catch {
+            results.push({ licenseId: l.id, customer: l.customer, usage: null });
+          }
+        }
+        return sendJson(res, 200, { usage: results });
+      })();
+    }
+
     return sendJson(res, 404, { error: 'not found' });
   });
 
-  return { server, store, service, keys, listen: () => new Promise((r) => server.listen(port, r)) };
+  return { server, store, service, usage, keys, listen: () => new Promise((r) => server.listen(port, r)) };
 }
 
 function sanitizeLicense(l) {

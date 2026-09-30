@@ -23,6 +23,9 @@
     .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; gap: 16px; flex-wrap: wrap; }
     .page-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
     .page-sub { color: var(--grx-ink-dim); font-size: 14px; margin-top: 4px; }
+    .account { display: flex; align-items: center; gap: 12px; }
+    .account .name { font-weight: 600; font-size: 14px; }
+    .account .email { color: var(--grx-ink-dim); font-size: 12px; }
     .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #22d3ee, #0891b2); display: grid; place-items: center; font-weight: 700; color: #04141a; font-size: 14px; }
 
     .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
@@ -37,6 +40,25 @@
     .panel-body { padding: 10px 22px 20px; }
 
     .license-key { font-family: var(--font-mono); font-size: 13px; background: var(--grx-gun); border: 1px solid var(--grx-steel-hi); border-radius: var(--r); padding: 14px; word-break: break-all; color: var(--grx-cyan); }
+
+    /* Package picker */
+    .pkg-grid { display: grid; gap: 12px; }
+    .pkg { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border: 1px solid var(--grx-steel-hi); border-radius: var(--r); background: var(--grx-gun); cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease; text-align: left; width: 100%; color: inherit; font-family: var(--font-body); }
+    .pkg:hover { border-color: rgba(34,211,238,0.5); box-shadow: 0 0 20px rgba(34,211,238,0.1); }
+    .pkg .pkg-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+    .pkg .pkg-meta { color: var(--grx-ink-dim); font-size: 13px; margin-top: 2px; }
+    .pkg .pkg-price { font-family: var(--font-mono); font-size: 14px; color: var(--grx-cyan); white-space: nowrap; }
+
+    /* QR view */
+    .qr-wrap { display: none; text-align: center; padding: 8px 0 4px; }
+    .qr-wrap.open { display: block; }
+    .qr-wrap img { width: 240px; height: 240px; max-width: 100%; border-radius: var(--r); border: 1px solid var(--grx-steel-hi); background: #fff; padding: 8px; }
+    .qr-order { font-family: var(--font-mono); font-size: 12px; color: var(--grx-ink-dim); margin-top: 14px; }
+    .qr-amount { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .qr-note { color: var(--grx-ink-dim); font-size: 13px; line-height: 1.6; margin-top: 14px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+
+    .status-loading { color: var(--grx-ink-dim); padding: 40px 20px; text-align: center; }
 
     @media (max-width: 900px) {
       .shell { flex-direction: column; }
@@ -63,7 +85,13 @@
             <div class="page-title">Overview</div>
             <div class="page-sub">Kelola license dan pantau usage Anda</div>
           </div>
-          <div class="avatar" id="avatar">U</div>
+          <div class="account">
+            <div style="text-align:right">
+              <div class="name" id="accountName">Memuat…</div>
+              <div class="email" id="accountEmail"></div>
+            </div>
+            <div class="avatar" id="avatar">U</div>
+          </div>
         </div>
 
         <div class="stat-grid">
@@ -75,10 +103,13 @@
         <div class="metal-panel panel" id="licenses" style="margin-bottom:28px">
           <div class="panel-head">
             <span class="panel-title">License Anda</span>
-            <button class="btn btn-primary" style="padding:8px 16px;min-height:36px">Purchase License</button>
+            <button class="btn btn-primary" style="padding:8px 16px;min-height:36px" id="purchaseBtn">Purchase License</button>
           </div>
           <div class="panel-body">
-            <div class="license-key" id="licenseKey">Belum ada license. Purchase untuk mulai.</div>
+            <table>
+              <thead><tr><th>Customer</th><th>Installs</th><th>Status</th><th>Expires</th></tr></thead>
+              <tbody id="licenseRows"><tr><td colspan="4" class="status-loading">Memuat license…</td></tr></tbody>
+            </table>
           </div>
         </div>
 
@@ -95,10 +126,226 @@
     </div>
   </div>
 
+  <!-- Purchase modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div id="pickerView">
+        <h3 style="margin-bottom:6px">Pilih Paket</h3>
+        <p style="color:var(--grx-ink-dim);font-size:13px;margin-bottom:18px">Setelah pembayaran terkonfirmasi, license otomatis aktif di akun Anda.</p>
+        <div class="pkg-grid" id="pkgGrid"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="closePicker" style="flex:1">Batal</button>
+        </div>
+        <p id="pkgError" class="chip-err" style="display:none;font-size:13px;margin-top:12px"></p>
+      </div>
+
+      <div id="qrView" class="qr-wrap">
+        <h3 style="margin-bottom:4px">Scan untuk Bayar</h3>
+        <p class="qr-order" id="qrOrderId"></p>
+        <img id="qrImage" alt="QR pembayaran" />
+        <div class="qr-amount" id="qrAmount"></div>
+        <div style="margin-top:10px"><span class="badge expired" id="qrStatus">PENDING</span></div>
+        <p class="qr-note" id="qrNote">Setelah pembayaran dikonfirmasi, license akan otomatis terbit. Klik <strong>Refresh</strong> untuk melihat license baru Anda.</p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="refreshBtn" style="flex:1">Refresh</button>
+          <button class="btn btn-ghost" id="closeQr" style="flex:1">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Customer dashboard — data would come from authenticated /api/me endpoints.
-    // Static skeleton for now; wiring after auth + license-per-user model is defined.
-    document.getElementById('avatar').textContent = 'U';
+    (function () {
+      'use strict';
+
+      var PACKAGES = [
+        { key: 'basic', name: 'Basic', tokens: '5M tokens', amount: 99000 },
+        { key: 'pro', name: 'Pro', tokens: '15M tokens', amount: 249000 },
+        { key: 'enterprise', name: 'Enterprise', tokens: '50M tokens', amount: 749000 }
+      ];
+
+      var state = { account: null };
+      var els = {
+        accountName: document.getElementById('accountName'),
+        accountEmail: document.getElementById('accountEmail'),
+        avatar: document.getElementById('avatar'),
+        statLicenses: document.getElementById('statLicenses'),
+        statInstalls: document.getElementById('statInstalls'),
+        licenseRows: document.getElementById('licenseRows'),
+        modal: document.getElementById('modal'),
+        picker: document.getElementById('pickerView'),
+        qrView: document.getElementById('qrView'),
+        pkgGrid: document.getElementById('pkgGrid'),
+        pkgError: document.getElementById('pkgError'),
+        qrImage: document.getElementById('qrImage'),
+        qrOrderId: document.getElementById('qrOrderId'),
+        qrAmount: document.getElementById('qrAmount'),
+        qrStatus: document.getElementById('qrStatus')
+      };
+
+      function rupiah(n) {
+        return 'Rp ' + Number(n).toLocaleString('id-ID');
+      }
+
+      function fmtDate(ms) {
+        if (!ms) return '—';
+        try { return new Date(Number(ms)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+        catch (e) { return '—'; }
+      }
+
+      function initials(name) {
+        if (!name) return 'U';
+        var parts = String(name).trim().split(/\s+/);
+        var first = parts[0] ? parts[0][0] : 'U';
+        var last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+        return (first + last).toUpperCase();
+      }
+
+      function licenseStatus(l) {
+        if (l.revokedAt) return 'revoked';
+        if (l.expiresAt && Number(l.expiresAt) < Date.now()) return 'expired';
+        return 'active';
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      async function loadMe() {
+        var res;
+        try {
+          res = await fetch('/api/me', { credentials: 'same-origin' });
+        } catch (e) {
+          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data. Coba refresh halaman.</td></tr>';
+          return;
+        }
+        if (res.status === 401) { location.href = '/register'; return; }
+        if (!res.ok) {
+          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data (' + res.status + ').</td></tr>';
+          return;
+        }
+        var data = await res.json();
+        state.account = data.account || null;
+        render(data);
+      }
+
+      function render(data) {
+        var account = data.account || {};
+        var licenses = Array.isArray(data.licenses) ? data.licenses : [];
+
+        els.accountName.textContent = account.name || '—';
+        els.accountEmail.textContent = account.email || '';
+        els.avatar.textContent = initials(account.name);
+
+        var active = licenses.filter(function (l) { return licenseStatus(l) === 'active'; });
+        var installs = licenses.reduce(function (sum, l) { return sum + (Number(l.installCount) || 0); }, 0);
+        els.statLicenses.textContent = String(active.length);
+        els.statInstalls.textContent = String(installs);
+
+        if (!licenses.length) {
+          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Belum ada license. Purchase untuk mulai.</td></tr>';
+          return;
+        }
+
+        els.licenseRows.innerHTML = licenses.map(function (l) {
+          var st = licenseStatus(l);
+          return '<tr>' +
+            '<td>' + escapeHtml(l.customer || l.id) + '</td>' +
+            '<td>' + (Number(l.installCount) || 0) + '</td>' +
+            '<td><span class="badge ' + st + '">' + st + '</span></td>' +
+            '<td>' + fmtDate(l.expiresAt) + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      function renderPackages() {
+        els.pkgGrid.innerHTML = PACKAGES.map(function (p, i) {
+          return '<button class="pkg" data-idx="' + i + '">' +
+            '<span><span class="pkg-name">' + escapeHtml(p.name) + '</span>' +
+            '<span class="pkg-meta">' + escapeHtml(p.tokens) + '</span></span>' +
+            '<span class="pkg-price">' + rupiah(p.amount) + '</span>' +
+          '</button>';
+        }).join('');
+
+        Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('.pkg'), function (btn) {
+          btn.addEventListener('click', function () {
+            var p = PACKAGES[Number(btn.getAttribute('data-idx'))];
+            if (p) createOrder(p);
+          });
+        });
+      }
+
+      function openModal() {
+        els.pkgError.style.display = 'none';
+        els.picker.style.display = 'block';
+        els.qrView.classList.remove('open');
+        els.modal.classList.add('open');
+      }
+
+      function closeModal() {
+        els.modal.classList.remove('open');
+      }
+
+      async function createOrder(pkg) {
+        if (!state.account || !state.account.id) {
+          els.pkgError.textContent = 'Akun belum termuat. Refresh halaman lalu coba lagi.';
+          els.pkgError.style.display = 'block';
+          return;
+        }
+        els.pkgError.style.display = 'none';
+        Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('.pkg'), function (b) { b.disabled = true; });
+
+        var res, data;
+        try {
+          res = await fetch('/api/orders', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              accountId: state.account.id,
+              packageKey: pkg.key,
+              amount: pkg.amount,
+              description: 'gRouter Copilot ' + pkg.name + ' (' + pkg.tokens + ')'
+            })
+          });
+          data = await res.json();
+        } catch (e) {
+          els.pkgError.textContent = 'Gagal membuat order. Coba lagi.';
+          els.pkgError.style.display = 'block';
+          Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('.pkg'), function (b) { b.disabled = false; });
+          return;
+        }
+
+        Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('.pkg'), function (b) { b.disabled = false; });
+
+        if (!res.ok || !data || !data.qr) {
+          els.pkgError.textContent = (data && data.error) ? data.error : 'Gagal membuat order (' + res.status + ').';
+          els.pkgError.style.display = 'block';
+          return;
+        }
+
+        els.qrImage.src = data.qr.qrImage || data.qr.qrUrl || '';
+        els.qrOrderId.textContent = 'Order: ' + (data.order ? data.order.id : '-');
+        els.qrAmount.textContent = rupiah(data.order ? data.order.amount : pkg.amount);
+        els.qrStatus.textContent = (data.order && data.order.status) ? data.order.status : 'PENDING';
+        els.picker.style.display = 'none';
+        els.qrView.classList.add('open');
+      }
+
+      document.getElementById('purchaseBtn').addEventListener('click', openModal);
+      document.getElementById('closePicker').addEventListener('click', closeModal);
+      document.getElementById('closeQr').addEventListener('click', closeModal);
+      document.getElementById('refreshBtn').addEventListener('click', function () {
+        closeModal();
+        loadMe();
+      });
+      els.modal.addEventListener('click', function (e) { if (e.target === els.modal) closeModal(); });
+
+      renderPackages();
+      loadMe();
+    })();
   </script>
 </body>
 </html>

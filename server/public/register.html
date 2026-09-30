@@ -34,6 +34,17 @@
     .fine { color: var(--grx-ink-faint); font-size: 12px; margin-top: 18px; line-height: 1.5; }
     .fine a { color: var(--grx-cyan); }
 
+    .auth-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.35);
+      color: var(--grx-err);
+      border-radius: var(--r);
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .auth-error[hidden] { display: none; }
+
     @media (max-width: 860px) {
       .auth-wrap { grid-template-columns: 1fr; }
       .auth-right { display: none; }
@@ -50,30 +61,51 @@
         <p class="sub">Satu akun untuk manage license, purchase, dan monitor usage.</p>
 
         <div class="auth-form">
-          <a class="btn btn-google" href="/api/auth/google" style="width:100%">
+          <a class="btn btn-google" href="#" id="googleBtn" aria-disabled="true" style="width:100%">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Lanjut dengan Google
           </a>
 
           <div class="or-divider">atau dengan email</div>
 
-          <div class="field">
-            <label>Nama</label>
-            <input id="name" placeholder="Nama Anda" />
-          </div>
-          <div class="field">
-            <label>Email</label>
-            <input id="email" type="email" placeholder="you@company.com" />
-          </div>
-          <div class="field">
-            <label>Password</label>
-            <input id="password" type="password" placeholder="••••••••" />
-          </div>
-          <button class="btn btn-primary" id="registerBtn" style="width:100%">Buat Akun</button>
+          <div id="authError" class="auth-error" role="alert" hidden></div>
 
-          <div class="fine">
-            Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>. Sudah punya akun? <a href="/login">Masuk</a>.
-          </div>
+          <!-- Sign-up form -->
+          <form id="signupForm" novalidate>
+            <div class="field">
+              <label for="suName">Nama</label>
+              <input id="suName" name="name" autocomplete="name" placeholder="Nama Anda" />
+            </div>
+            <div class="field">
+              <label for="suEmail">Email</label>
+              <input id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" />
+            </div>
+            <div class="field">
+              <label for="suPassword">Password</label>
+              <input id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" />
+            </div>
+            <button class="btn btn-primary" type="submit" id="registerBtn" style="width:100%">Buat Akun</button>
+            <div class="fine">
+              Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>. Sudah punya akun?
+              <a href="#signin" id="toSignin">Masuk</a>.
+            </div>
+          </form>
+
+          <!-- Sign-in form -->
+          <form id="signinForm" novalidate hidden>
+            <div class="field">
+              <label for="siEmail">Email</label>
+              <input id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" />
+            </div>
+            <div class="field">
+              <label for="siPassword">Password</label>
+              <input id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+            </div>
+            <button class="btn btn-primary" type="submit" id="loginBtn" style="width:100%">Masuk</button>
+            <div class="fine">
+              Belum punya akun? <a href="#signup" id="toSignup">Buat Akun</a>.
+            </div>
+          </form>
         </div>
       </div>
 
@@ -88,19 +120,98 @@
   </div>
 
   <script>
-    document.getElementById('registerBtn').onclick = async () => {
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      if (!name || !email || !password) { alert('Semua field wajib diisi.'); return; }
-      const res = await fetch('/api/auth/register', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+    (function () {
+      var signupForm = document.getElementById('signupForm');
+      var signinForm = document.getElementById('signinForm');
+      var errorBox = document.getElementById('authError');
+
+      function showError(msg) {
+        errorBox.textContent = msg || 'Terjadi kesalahan. Coba lagi.';
+        errorBox.hidden = false;
+      }
+      function clearError() {
+        errorBox.textContent = '';
+        errorBox.hidden = true;
+      }
+
+      // Clear any visible error banner
+      function resetForm() {
+        clearError();
+      }
+
+      function toggleForm(mode) {
+        resetForm();
+        if (mode === 'signin') {
+          signupForm.hidden = true;
+          signinForm.hidden = false;
+          document.querySelector('.auth-left h1').textContent = 'Masuk ke akun Anda';
+          document.querySelector('.auth-left .sub').textContent = 'Kelola license, purchase, dan monitor usage Anda.';
+        } else {
+          signupForm.hidden = false;
+          signinForm.hidden = true;
+          document.querySelector('.auth-left h1').textContent = 'Buat akun Anda';
+          document.querySelector('.auth-left .sub').textContent = 'Satu akun untuk manage license, purchase, dan monitor usage.';
+        }
+      }
+
+      document.getElementById('toSignin').addEventListener('click', function (e) { e.preventDefault(); toggleForm('signin'); });
+      document.getElementById('toSignup').addEventListener('click', function (e) { e.preventDefault(); toggleForm('signup'); });
+      // Google OAuth not wired yet — don't let the link navigate/error
+      document.getElementById('googleBtn').addEventListener('click', function (e) { e.preventDefault(); });
+
+      function parseError(data) {
+        if (!data) return null;
+        if (typeof data === 'string') return data;
+        return data.message || data.error || (data.errors && data.errors[0] && data.errors[0].message) || null;
+      }
+
+      async function submitAuth(url, payload, btn) {
+        clearError();
+        var label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Memproses...';
+        try {
+          var res = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+          });
+          var data = null;
+          try { data = await res.json(); } catch (e) { data = null; }
+          if (res.ok) {
+            location.href = '/user';
+            return;
+          }
+          showError(parseError(data) || ('Gagal (' + res.status + '). Silakan coba lagi.'));
+        } catch (e) {
+          showError('Tidak dapat menghubungi server. Periksa koneksi Anda.');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = label;
+        }
+      }
+
+      signupForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = document.getElementById('suName').value.trim();
+        var email = document.getElementById('suEmail').value.trim();
+        var password = document.getElementById('suPassword').value;
+        if (!name || !email || !password) { showError('Semua field wajib diisi.'); return; }
+        submitAuth('/api/auth/sign-up/email', { name: name, email: email, password: password }, document.getElementById('registerBtn'));
       });
-      const data = await res.json();
-      if (res.ok) { location.href = '/user'; }
-      else { alert(data.error || 'Registration failed'); }
-    };
+
+      signinForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = document.getElementById('siEmail').value.trim();
+        var password = document.getElementById('siPassword').value;
+        if (!email || !password) { showError('Email dan password wajib diisi.'); return; }
+        submitAuth('/api/auth/sign-in/email', { email: email, password: password }, document.getElementById('loginBtn'));
+      });
+
+      // Deep link: #signin opens login form
+      if (location.hash === '#signin') { toggleForm('signin'); }
+    })();
   </script>
 </body>
 </html>

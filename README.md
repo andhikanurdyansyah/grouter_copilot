@@ -139,4 +139,3 @@ src/widget/CopilotChat.jsx → React widget
 bin/grouter-copilot.js  → CLI init
 examples/crm/           → sample skill
 ```
-

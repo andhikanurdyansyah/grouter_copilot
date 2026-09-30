@@ -10,6 +10,7 @@
 - gRouter existing = supplier AI (API key + model). HANYA read-only (consume `/api/check-usage`).
 - Repo: `https://github.com/andhikanurdyansyah/grouter_copilot` (branch `main`).
 - Workspace: `C:/gRouter_copilot`.
+- Memory ini file manual (`MEMORY.md`), TIDAK auto-load. Dibaca manual tiap mulai kerja.
 
 ## Keputusan kunci (lihat docs/15-decision-log.md)
 
@@ -68,6 +69,7 @@ Copilot backend (terpisah dari gRouter)
 - Google OAuth backend (client ID, redirect, token exchange, session) — PENDING.
 - Auto-provisioning api key gRouter (butuh kontrak endpoint gRouter).
 - KlikQRIS payment integration — client DIBANGUN (`server/src/klikqris.js`), TAPI akun sandbox belum aktif (401 "Account Inactive").
+- Account + license model (D-017) — DIBANGUN: store `accounts` + `accountId` di license.
 - Customer dashboard data wiring (butuh auth + license-per-user).
 
 ## KlikQRIS (dibangun, menunggu aktivasi akun)

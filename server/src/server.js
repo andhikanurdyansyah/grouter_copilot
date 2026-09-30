@@ -95,6 +95,7 @@ export function createCopilotServer({
       return readBody(req).then((body) => {
         const { record, token } = service.issue({
           customer: body.customer,
+          accountId: body.accountId ?? null,
           features: body.features,
           expiresInDays: body.expiresInDays,
           grouterApiKey: body.grouterApiKey ?? null,
@@ -194,6 +195,7 @@ function sanitizeLicense(l) {
   return {
     id: l.id,
     customer: l.customer,
+    accountId: l.accountId ?? null,
     features: l.features,
     createdAt: l.createdAt,
     expiresAt: l.expiresAt,

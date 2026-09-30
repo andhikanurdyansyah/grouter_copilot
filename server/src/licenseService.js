@@ -19,7 +19,7 @@ export class LicenseService {
     this.audience = audience;
   }
 
-  issue({ customer, features = ['core'], expiresInDays = 365, notBefore, grouterApiKey = null } = {}) {
+  issue({ customer, accountId = null, features = ['core'], expiresInDays = 365, notBefore, grouterApiKey = null } = {}) {
     const id = nextId('lic');
     const expiresAt = notBefore
       ? null
@@ -35,6 +35,7 @@ export class LicenseService {
     const record = {
       id,
       customer,
+      accountId: accountId ?? null,
       features,
       createdAt: Date.now(),
       expiresAt: expiresAt ? expiresAt * 1000 : null,

@@ -8,7 +8,8 @@
  *
  * Storage shape:
  * {
- *   licenses: [{ id, customer, features[], expiresAt, revokedAt, createdAt, installIds:Set }],
+ *   accounts: [{ id, name, email, createdAt }],
+ *   licenses: [{ id, customer, accountId, features[], expiresAt, revokedAt, createdAt, installIds, grouterApiKey }],
  *   heartbeats: [{ licenseId, installId, at, baseUrl }],
  * }
  */
@@ -25,13 +26,17 @@ export class JsonStore {
 
   _load() {
     if (!existsSync(this.filePath)) {
-      return { licenses: [], heartbeats: [] };
+      return { accounts: [], licenses: [], heartbeats: [] };
     }
     try {
       const parsed = JSON.parse(readFileSync(this.filePath, 'utf8'));
-      return { licenses: parsed.licenses ?? [], heartbeats: parsed.heartbeats ?? [] };
+      return {
+        accounts: parsed.accounts ?? [],
+        licenses: parsed.licenses ?? [],
+        heartbeats: parsed.heartbeats ?? [],
+      };
     } catch {
-      return { licenses: [], heartbeats: [] };
+      return { accounts: [], licenses: [], heartbeats: [] };
     }
   }
 
@@ -48,6 +53,30 @@ export class JsonStore {
 
   getLicense(id) {
     return this.data.licenses.find((l) => l.id === id) ?? null;
+  }
+
+  // --- accounts (D-017: 1 account = N licenses) ---
+
+  listAccounts() {
+    return this.data.accounts;
+  }
+
+  getAccount(id) {
+    return this.data.accounts.find((a) => a.id === id) ?? null;
+  }
+
+  getAccountByEmail(email) {
+    return this.data.accounts.find((a) => a.email === email) ?? null;
+  }
+
+  addAccount(account) {
+    this.data.accounts.push(account);
+    this._save();
+    return account;
+  }
+
+  licensesByAccount(accountId) {
+    return this.data.licenses.filter((l) => l.accountId === accountId);
   }
 
   addLicense(license) {

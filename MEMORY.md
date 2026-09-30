@@ -67,5 +67,14 @@ Copilot backend (terpisah dari gRouter)
 
 - Google OAuth backend (client ID, redirect, token exchange, session) — PENDING.
 - Auto-provisioning api key gRouter (butuh kontrak endpoint gRouter).
-- KlikQRIS payment integration (butuh API key + merchant ID + mode sandbox).
+- KlikQRIS payment integration — client DIBANGUN (`server/src/klikqris.js`), TAPI akun sandbox belum aktif (401 "Account Inactive").
 - Customer dashboard data wiring (butuh auth + license-per-user).
+
+## KlikQRIS (dibangun, menunggu aktivasi akun)
+
+- Client: `server/src/klikqris.js` (createQris, checkStatus, verifyWebhookSignature, pollUntilSettled).
+- Endpoint: `POST https://klikqris.com/api/qris/create`, `GET /api/qris/status/{order_id}`.
+- Header: `x-api-key` + `id_merchant`.
+- Kredensial di `server/.env` (gitignored, JANGAN commit).
+- Status live: KlikQRIS balas 401 "Invalid API Key or Account Inactive" — akun/key perlu diaktifkan di dashboard.
+- Kontrak: `docs/26-klikqris-contract.md`.

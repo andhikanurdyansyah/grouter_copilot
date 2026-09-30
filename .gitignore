@@ -10,5 +10,7 @@ dist/
 build/
 coverage/
 .tmp/
-package-lock.json
 server/data/
+server/*.sqlite
+server/*.sqlite-shm
+server/*.sqlite-wal

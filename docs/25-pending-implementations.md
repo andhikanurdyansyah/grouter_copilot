@@ -2,23 +2,21 @@
 
 > Things explicitly deferred or pending. Each has a reason, a blocker, and what to do when it becomes active.
 
-## P-001 — Google OAuth backend
+## P-001 — Google OAuth provider
 
-**Status:** PENDING (UI done, backend not built).
+**Status:** PARTIAL — auth (Better Auth email/password) built; Google OAuth provider PENDING.
 
 **What exists:**
-- Registration page (`/register`) with "Lanjut dengan Google" button (official multi-color G).
-- Endpoint placeholder `/api/auth/google`.
+- Better Auth wired (email/password sign-up + sign-in working, tested live).
+- Registration page (`/register`) with "Lanjut dengan Google" button.
 
 **What's missing:**
-- Google OAuth client ID + secret.
-- OAuth redirect + token exchange (authorization code flow).
-- Session creation (JWT or cookie).
-- Account persistence + link to licenses.
+- Google OAuth `clientId` + `clientSecret`.
+- `socialProviders.google` config in `server/src/auth.js`.
 
-**Blocker:** needs Google Cloud OAuth client credentials + session-model decision.
+**Blocker:** needs Google Cloud OAuth client credentials.
 
-**Unblock when:** user provides Google OAuth client ID + decides session model (JWT vs cookie).
+**Unblock when:** user provides Google OAuth client ID + secret. Add `socialProviders` to `auth.js` and re-run migration.
 
 ---
 

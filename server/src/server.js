@@ -23,9 +23,12 @@ import { LicenseService } from './licenseService.js';
 import { UsageResolver } from './usageResolver.js';
 import { KlikQris } from './klikqris.js';
 import { PaymentService } from './paymentService.js';
+import { auth } from './auth.js';
+import { toNodeHandler } from 'better-auth/node';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const authHandler = toNodeHandler(auth.handler);
 
 export function createCopilotServer({
   port = 4600,
@@ -51,6 +54,11 @@ export function createCopilotServer({
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
     const route = `${req.method} ${url.pathname}`;
+
+    // Better Auth: hand off all /api/auth/* routes.
+    if (url.pathname.startsWith('/api/auth')) {
+      return authHandler(req, res);
+    }
 
     if (req.method === 'GET' && url.pathname === '/') {
       return sendHtml(res, 200, renderDashboardHtml(service));

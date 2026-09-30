@@ -21,7 +21,7 @@
 - Auto-provisioning api key DEFERRED (D-016).
 - 1 akun = banyak license (D-017).
 - Payment = KlikQRIS (D-018).
-- Google OAuth = PENDING (D-019).
+- Google OAuth = PENDING provider (D-019). Auth = Better Auth email/password (DONE).
 
 ## Arsitektur
 

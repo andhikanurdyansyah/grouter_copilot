@@ -12,5 +12,9 @@
   "license": "UNLICENSED",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.6",
+    "better-sqlite3": "^13.0.3"
   }
 }

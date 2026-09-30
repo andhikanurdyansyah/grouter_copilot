@@ -1,10 +1,17 @@
 /**
  * Better Auth instance for gRouter Copilot.
- * Email/password now; Google OAuth is a deferred provider (docs/25-pending).
+ *
+ * - Email/password: enabled.
+ * - Google OAuth: enabled ONLY when GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET are set.
+ * - dash(): dashboard/analytics plugin (requires BETTER_AUTH_API_KEY).
  *
  * NOTE: frontend (copilot.grouter.id, port 4601) and backend (be.grouter.id,
  * port 4600) are DIFFERENT origins → trustedOrigins is REQUIRED or Better Auth
- * rejects requests with 403 INVALID_ORIGIN. See Better Auth docs (trustedOrigins).
+ * rejects requests with 403 INVALID_ORIGIN.
+ *
+ * NOTE: this server sits behind Cloudflare Tunnel + the frontend proxy, so the
+ * real client IP arrives via cf-connecting-ip / x-forwarded-for. Without
+ * ipAddressHeaders, Better Auth rate limiting falls back to one shared bucket.
  */
 
 import { betterAuth } from 'better-auth';
@@ -29,6 +36,19 @@ const trustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Google OAuth is only active when both credentials are present.
+const googleClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const googleClientSecret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
+const socialProviders = (googleClientId && googleClientSecret)
+  ? {
+      google: {
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        prompt: 'select_account',
+      },
+    }
+  : undefined;
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || undefined,
   trustedOrigins,
@@ -38,8 +58,14 @@ export const auth = betterAuth({
   ],
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
   },
-  // NOTE: Google OAuth provider is PENDING (needs clientId/clientSecret).
-  // Add here when credentials are available:
-  // socialProviders: { google: { clientId, clientSecret } },
+  ...(socialProviders ? { socialProviders } : {}),
+  advanced: {
+    // Behind Cloudflare Tunnel + frontend proxy: resolve the real client IP so
+    // rate limiting keys on the actual client, not one shared bucket.
+    ipAddress: {
+      ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for', 'x-real-ip'],
+    },
+  },
 });

@@ -112,10 +112,12 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && url.pathname === '/api/stats') {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       return sendJson(res, 200, service.stats());
     }
 
     if (req.method === 'GET' && url.pathname === '/api/licenses') {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       const list = service.list().map(sanitizeLicense);
       return sendJson(res, 200, { licenses: list });
     }
@@ -215,6 +217,27 @@ export function createCopilotServer({
       })();
     }
 
+    // Public config: which auth providers are enabled (for the frontend UI).
+    if (req.method === 'GET' && url.pathname === '/api/config') {
+      const googleEnabled = Boolean(
+        (process.env.GOOGLE_CLIENT_ID || '').trim() && (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+      );
+      return sendJson(res, 200, {
+        providers: { google: googleEnabled },
+        basePath: '/api/auth',
+      });
+    }
+
+    // Admin: manually settle an order (ops/testing; same verified path as webhook).
+    if (req.method === 'POST' && /^\/api\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      const orderId = url.pathname.split('/')[3];
+      return payment.settlePaid(orderId).then(({ order, license }) => {
+        if (!order) return sendJson(res, 404, { error: 'order not found' });
+        return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
+      });
+    }
+
     // Create a payment order (customer checkout). Returns KlikQRIS QR.
     if (req.method === 'POST' && url.pathname === '/api/orders') {
       return readBody(req).then((body) => {
@@ -235,17 +258,35 @@ export function createCopilotServer({
     }
 
     // KlikQRIS webhook callback. Marks order paid and issues a license.
+    // SECURITY: the webhook body is NOT trusted for the PAID decision — we
+    // re-verify the order status against KlikQRIS (source of truth) before
+    // settling, so a forged {status:"PAID"} request cannot issue a license.
     if (req.method === 'POST' && url.pathname === '/api/payment/klikqris/webhook') {
-      return readBody(req).then((body) => {
+      return readBody(req).then(async (body) => {
         const orderId = body?.order_id ?? body?.data?.order_id ?? null;
-        const status = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
+        const claimed = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
         if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
-        if (status === 'PAID') {
-          return payment.settlePaid(orderId).then(({ order, license }) => {
-            return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
-          });
+
+        // Ignore non-terminal / non-paid claims outright.
+        if (claimed !== 'PAID') {
+          return sendJson(res, 200, { ok: true, ignored: claimed || 'unknown' });
         }
-        return sendJson(res, 200, { ok: true, ignored: status });
+
+        // Verify against KlikQRIS before issuing anything.
+        let verifiedStatus = null;
+        try {
+          const status = await klikqris.checkStatus(orderId);
+          verifiedStatus = String(status.status || '').toUpperCase();
+        } catch (err) {
+          return sendJson(res, 502, { error: 'unable to verify payment status' });
+        }
+        if (verifiedStatus !== 'PAID') {
+          return sendJson(res, 200, { ok: true, ignored: `unverified:${verifiedStatus || 'unknown'}` });
+        }
+
+        const { order, license } = await payment.settlePaid(orderId);
+        if (!order) return sendJson(res, 404, { error: 'order not found' });
+        return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
       });
     }
 

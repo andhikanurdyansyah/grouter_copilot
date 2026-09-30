@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — gRouter Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/grx.css" />
+  <style>
+    .shell { display: flex; min-height: 100dvh; position: relative; z-index: 1; }
+    .sidebar { width: 248px; flex-shrink: 0; border-right: 1px solid rgba(34,211,238,0.1); padding: 22px 14px; background: rgba(13,17,23,0.6); display: flex; flex-direction: column; gap: 4px; }
+    .brand { font-family: var(--font-display); font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 10px; padding: 6px 10px 22px; color: var(--grx-ink); }
+    .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #22d3ee, #0891b2); display: grid; place-items: center; font-weight: 700; color: #04141a; font-size: 14px; box-shadow: 0 0 16px rgba(34,211,238,0.4); }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r); color: var(--grx-ink-dim); font-size: 14px; text-decoration: none; border: 1px solid transparent; transition: all 0.18s ease; }
+    .nav-item:hover { background: rgba(34,211,238,0.05); color: var(--grx-ink); }
+    .nav-item.active { background: rgba(34,211,238,0.1); color: var(--grx-cyan); border-color: rgba(34,211,238,0.25); }
+    .nav-item .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--grx-ink-faint); }
+    .nav-item.active .dot { background: var(--grx-cyan); box-shadow: 0 0 8px rgba(34,211,238,0.7); }
+
+    .main { flex: 1; min-width: 0; padding: 32px 40px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; gap: 16px; flex-wrap: wrap; }
+    .page-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .page-sub { color: var(--grx-ink-dim); font-size: 14px; margin-top: 4px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #22d3ee, #0891b2); display: grid; place-items: center; font-weight: 700; color: #04141a; font-size: 14px; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
+    .stat-card { padding: 22px; }
+    .stat-label { color: var(--grx-ink-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; font-family: var(--font-mono); }
+    .stat-value { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-top: 10px; }
+    .stat-value.cyan { color: var(--grx-cyan); }
+
+    .panel { overflow: hidden; }
+    .panel-head { padding: 18px 22px; border-bottom: 1px solid rgba(34,211,238,0.08); display: flex; align-items: center; justify-content: space-between; }
+    .panel-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+    .panel-body { padding: 10px 22px 20px; }
+
+    .license-key { font-family: var(--font-mono); font-size: 13px; background: var(--grx-gun); border: 1px solid var(--grx-steel-hi); border-radius: var(--r); padding: 14px; word-break: break-all; color: var(--grx-cyan); }
+
+    @media (max-width: 900px) {
+      .shell { flex-direction: column; }
+      .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid rgba(34,211,238,0.1); }
+      .main { padding: 20px; }
+      .stat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grx-surface">
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">G</span> Copilot</div>
+        <a class="nav-item active" href="/user"><span class="dot"></span> Overview</a>
+        <a class="nav-item" href="#licenses"><span class="dot"></span> Licenses</a>
+        <a class="nav-item" href="#usage"><span class="dot"></span> Usage</a>
+        <a class="nav-item" href="#integration"><span class="dot"></span> Integration</a>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Overview</div>
+            <div class="page-sub">Kelola license dan pantau usage Anda</div>
+          </div>
+          <div class="avatar" id="avatar">U</div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="metal-panel stat-card"><div class="stat-label">Active licenses</div><div class="stat-value cyan" id="statLicenses">0</div></div>
+          <div class="metal-panel stat-card"><div class="stat-label">Installs</div><div class="stat-value" id="statInstalls">0</div></div>
+          <div class="metal-panel stat-card"><div class="stat-label">Tokens used</div><div class="stat-value" id="statTokens">—</div></div>
+        </div>
+
+        <div class="metal-panel panel" id="licenses" style="margin-bottom:28px">
+          <div class="panel-head">
+            <span class="panel-title">License Anda</span>
+            <button class="btn btn-primary" style="padding:8px 16px;min-height:36px">Purchase License</button>
+          </div>
+          <div class="panel-body">
+            <div class="license-key" id="licenseKey">Belum ada license. Purchase untuk mulai.</div>
+          </div>
+        </div>
+
+        <div class="metal-panel panel" id="usage">
+          <div class="panel-head"><span class="panel-title">Usage &amp; Quota</span></div>
+          <div class="panel-body">
+            <table>
+              <thead><tr><th>Package</th><th>Tokens</th><th>Limit</th><th>Usage</th><th>Expires</th></tr></thead>
+              <tbody id="usageRows"><tr><td colspan="5" class="empty">Belum ada data usage.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Customer dashboard — data would come from authenticated /api/me endpoints.
+    // Static skeleton for now; wiring after auth + license-per-user model is defined.
+    document.getElementById('avatar').textContent = 'U';
+  </script>
+</body>
+</html>

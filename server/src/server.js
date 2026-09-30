@@ -56,6 +56,31 @@ export function createCopilotServer({
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8'));
     }
 
+    if (req.method === 'GET' && url.pathname === '/register') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'register.html'), 'utf8'));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/login') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'register.html'), 'utf8'));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/user') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'user-dashboard.html'), 'utf8'));
+    }
+
+    // Static assets (css)
+    if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
+      const file = path.join(__dirname, '..', 'public', url.pathname);
+      try {
+        const content = readFileSync(file, 'utf8');
+        const type = file.endsWith('.css') ? 'text/css; charset=utf-8' : 'application/octet-stream';
+        res.writeHead(200, { 'content-type': type });
+        return res.end(content);
+      } catch {
+        return sendJson(res, 404, { error: 'not found' });
+      }
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/stats') {
       return sendJson(res, 200, service.stats());
     }

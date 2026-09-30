@@ -3,128 +3,220 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register — gRouter Copilot</title>
+  <title>Daftar — gRouter Copilot</title>
+  <meta name="description" content="Buat akun atau masuk ke gRouter Copilot untuk mengelola license, purchase, dan usage." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
   <style>
-    .auth-wrap { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; position: relative; z-index: 1; }
-    .auth-left { padding: 48px 56px; display: flex; flex-direction: column; justify-content: center; }
-    .auth-left .brand { font-family: var(--font-display); font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 10px; color: var(--grx-ink); text-decoration: none; margin-bottom: 40px; }
-    .auth-left h1 { font-size: 34px; letter-spacing: -0.02em; margin-bottom: 10px; }
-    .auth-left .sub { color: var(--grx-ink-dim); margin-bottom: 30px; }
-    .auth-form { max-width: 400px; }
-
-    .auth-right {
-      background: linear-gradient(160deg, #0d1117 0%, #12171e 40%, #0d1419 100%);
-      border-left: 1px solid rgba(34,211,238,0.1);
+    /* Page-local layout only — references grx.css v2 tokens, no new palette/variables. */
+    .auth-shell {
+      position: relative; z-index: 1;
+      min-height: 100dvh;
       display: flex; align-items: center; justify-content: center;
-      padding: 48px;
+      padding: var(--sp-8) var(--sp-6);
     }
-    .auth-visual { text-align: center; max-width: 360px; }
-    .auth-visual .ring { width: 120px; height: 120px; margin: 0 auto 28px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(34,211,238,0.2), rgba(34,211,238,0.02)); border: 1px solid rgba(34,211,238,0.25); display: grid; place-items: center; box-shadow: 0 0 60px rgba(34,211,238,0.15); }
-    .auth-visual .ring .g { font-family: var(--font-display); font-weight: 700; font-size: 40px; color: var(--grx-cyan); }
-    .auth-visual h3 { font-size: 18px; margin-bottom: 8px; }
-    .auth-visual p { color: var(--grx-ink-dim); font-size: 14px; line-height: 1.6; }
+    .auth-grid {
+      width: 100%; max-width: 1000px;
+      display: grid; grid-template-columns: 1.05fr 0.95fr;
+      gap: var(--sp-6); align-items: stretch;
+    }
 
-    .or-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; color: var(--grx-ink-faint); font-size: 12px; }
-    .or-divider::before, .or-divider::after { content: ""; flex: 1; height: 1px; background: rgba(34,211,238,0.1); }
+    /* Brand / value panel */
+    .auth-brand .panel {
+      height: 100%;
+      display: flex; flex-direction: column; gap: var(--sp-5);
+      padding: var(--sp-8);
+    }
+    .auth-brand .brand { padding: 0; margin-bottom: var(--sp-2); font-size: 15px; }
+    .auth-brand h1 { font-size: clamp(1.55rem, 1.1rem + 1.5vw, 2.35rem); margin: var(--sp-3) 0 var(--sp-3); }
+    .auth-points { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-2); }
+    .auth-points li { display: flex; align-items: flex-start; gap: var(--sp-3); font-size: 13.5px; color: var(--grx-ink-dim); line-height: 1.5; }
+    .auth-points svg { flex-shrink: 0; margin-top: 3px; width: 15px; height: 15px; }
+    .auth-foot { margin-top: auto; }
 
-    .fine { color: var(--grx-ink-faint); font-size: 12px; margin-top: 18px; line-height: 1.5; }
-    .fine a { color: var(--grx-cyan); }
+    /* Form panel */
+    .auth-panel .panel { padding: var(--sp-8); }
+    .auth-head { margin-bottom: var(--sp-5); }
+    .auth-head h2 { margin-bottom: var(--sp-2); }
+
+    .auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0; }
+    .auth-or .divider { flex: 1; }
+    .auth-or-label { font-size: 12px; color: var(--grx-ink-faint); white-space: nowrap; }
 
     .auth-error {
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.35);
+      display: flex; align-items: flex-start; gap: var(--sp-2);
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.35);
       color: var(--grx-err);
-      border-radius: var(--r);
-      padding: 10px 14px;
-      font-size: 13px;
-      margin-bottom: 16px;
+      border-radius: var(--r-sm);
+      padding: 10px 12px; font-size: 13px; line-height: 1.5;
+      margin-bottom: var(--sp-4);
     }
     .auth-error[hidden] { display: none; }
 
+    .auth-fine { color: var(--grx-ink-faint); font-size: 12.5px; line-height: 1.6; margin-top: var(--sp-4); }
+    .auth-fine a { color: var(--grx-cyan); text-decoration: none; }
+    .auth-fine a:hover { text-decoration: underline; }
+
+    .auth-switch { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-top: var(--sp-4); font-size: 13px; color: var(--grx-ink-dim); }
+    .auth-switch a { color: var(--grx-cyan); font-weight: 600; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+
     @media (max-width: 860px) {
-      .auth-wrap { grid-template-columns: 1fr; }
-      .auth-right { display: none; }
-      .auth-left { padding: 32px 24px; }
+      .auth-shell { align-items: flex-start; padding: var(--sp-5) var(--sp-5); }
+      .auth-grid { grid-template-columns: 1fr; max-width: 540px; gap: var(--sp-4); }
+      .auth-brand .panel { padding: var(--sp-5); gap: var(--sp-3); }
+      .auth-panel .panel { padding: var(--sp-5); }
+      .auth-brand h1 { margin: var(--sp-2) 0; }
+      .auth-points { display: none; }
+      .auth-foot { display: none; }
+    }
+    @media (max-width: 480px) {
+      .auth-shell { padding: var(--sp-4) var(--sp-3); }
+      .auth-brand .panel { padding: var(--sp-4); }
+      .auth-panel .panel { padding: var(--sp-4); }
+      .auth-brand h1 { font-size: 1.35rem; }
+      .auth-brand .lead { font-size: 13.5px; }
     }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#authPanel">Lewati ke formulir</a>
+
   <div class="grx-surface">
-    <div class="auth-wrap">
-      <div class="auth-left">
-        <a class="brand" href="/landing"><span class="brand-mark" style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#22d3ee,#0891b2);display:grid;place-items:center;font-weight:700;color:#04141a;font-size:14px;box-shadow:0 0 16px rgba(34,211,238,0.4)">G</span> gRouter Copilot</a>
-        <h1>Buat akun Anda</h1>
-        <p class="sub">Satu akun untuk manage license, purchase, dan monitor usage.</p>
+    <main class="auth-shell">
+      <div class="auth-grid">
 
-        <div class="auth-form">
-          <a class="btn btn-google" href="#" id="googleBtn" aria-disabled="true" style="width:100%">
-            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Lanjut dengan Google
-          </a>
+        <!-- Brand / value panel -->
+        <section class="metal-panel auth-brand reveal" aria-label="Tentang gRouter Copilot">
+          <div class="panel">
+            <a class="brand" href="/landing">
+              <span class="brand-mark">G</span> gRouter Copilot
+            </a>
 
-          <div class="or-divider">atau dengan email</div>
+            <div class="auth-value">
+              <span class="eyebrow">Enterprise AI</span>
+              <h1 class="chrome-text">Copilot di atas data Anda sendiri</h1>
+              <p class="lead">Satu akun untuk mengelola license, purchase, dan memantau usage. Terkontrol, ter-audit, dan berjalan di infrastruktur AI gRouter.</p>
 
-          <div id="authError" class="auth-error" role="alert" hidden></div>
+              <ul class="auth-points">
+                <li>
+                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>License terpusat untuk semua tim dan workspace.</span>
+                </li>
+                <li>
+                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Monitoring usage real-time dengan audit trail.</span>
+                </li>
+                <li>
+                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Pembelian dan upgrade yang transparan.</span>
+                </li>
+              </ul>
+            </div>
 
-          <!-- Sign-up form -->
-          <form id="signupForm" novalidate>
-            <div class="field">
-              <label for="suName">Nama</label>
-              <input id="suName" name="name" autocomplete="name" placeholder="Nama Anda" />
-            </div>
-            <div class="field">
-              <label for="suEmail">Email</label>
-              <input id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" />
-            </div>
-            <div class="field">
-              <label for="suPassword">Password</label>
-              <input id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" />
-            </div>
-            <button class="btn btn-primary" type="submit" id="registerBtn" style="width:100%">Buat Akun</button>
-            <div class="fine">
-              Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>. Sudah punya akun?
-              <a href="#signin" id="toSignin">Masuk</a>.
-            </div>
-          </form>
+            <span class="mono-label auth-foot">gRouter Copilot — Enterprise</span>
+          </div>
+        </section>
 
-          <!-- Sign-in form -->
-          <form id="signinForm" novalidate hidden>
-            <div class="field">
-              <label for="siEmail">Email</label>
-              <input id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" />
+        <!-- Auth form panel -->
+        <section class="metal-panel auth-panel reveal-2" id="authPanel" tabindex="-1" aria-labelledby="authTitle">
+          <div class="panel">
+            <header class="auth-head">
+              <span class="mono-label">Akun</span>
+              <h2 id="authTitle">Buat akun Anda</h2>
+              <p class="sub" id="authSub">Satu akun untuk manage license, purchase, dan monitor usage.</p>
+            </header>
+
+            <!-- Google social block — hidden until /api/config confirms providers.google -->
+            <div id="socialBlock" class="stack" hidden>
+              <a class="btn btn-google btn-block" href="#" id="googleBtn" role="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                <span id="googleLabel">Lanjut dengan Google</span>
+              </a>
+
+              <div class="auth-or" id="authOr" aria-hidden="true">
+                <span class="divider"></span>
+                <span class="auth-or-label">atau dengan email</span>
+                <span class="divider"></span>
+              </div>
             </div>
-            <div class="field">
-              <label for="siPassword">Password</label>
-              <input id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" />
-            </div>
-            <button class="btn btn-primary" type="submit" id="loginBtn" style="width:100%">Masuk</button>
-            <div class="fine">
-              Belum punya akun? <a href="#signup" id="toSignup">Buat Akun</a>.
-            </div>
-          </form>
-        </div>
+
+            <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+
+            <!-- Sign-up form -->
+            <form id="signupForm" novalidate aria-labelledby="authTitle">
+              <div class="field">
+                <label for="suName">Nama</label>
+                <input id="suName" name="name" type="text" autocomplete="name" placeholder="Nama Anda" required aria-required="true" />
+              </div>
+              <div class="field">
+                <label for="suEmail">Email</label>
+                <input id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
+              </div>
+              <div class="field">
+                <label for="suPassword">Password</label>
+                <input id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" minlength="8" required aria-required="true" aria-describedby="suPasswordHint" />
+                <p class="hint" id="suPasswordHint">Minimal 8 karakter.</p>
+              </div>
+              <button class="btn btn-primary btn-block" type="submit" id="registerBtn">Buat Akun</button>
+              <p class="auth-fine">
+                Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>.
+              </p>
+              <p class="auth-switch">
+                Sudah punya akun? <a href="#signin" id="toSignin">Masuk</a>
+              </p>
+            </form>
+
+            <!-- Sign-in form -->
+            <form id="signinForm" novalidate hidden aria-labelledby="authTitle">
+              <div class="field">
+                <label for="siEmail">Email</label>
+                <input id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
+              </div>
+              <div class="field">
+                <label for="siPassword">Password</label>
+                <input id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required aria-required="true" />
+              </div>
+              <button class="btn btn-primary btn-block" type="submit" id="loginBtn">Masuk</button>
+              <p class="auth-switch">
+                Belum punya akun? <a href="#signup" id="toSignup">Buat Akun</a>
+              </p>
+            </form>
+          </div>
+        </section>
+
       </div>
-
-      <div class="auth-right">
-        <div class="auth-visual">
-          <div class="ring"><span class="g">G</span></div>
-          <h3>Embedded AI untuk bisnis Anda</h3>
-          <p>Copilot yang membaca data aplikasi Anda sendiri. Terkontrol, ter-audit, dan berjalan di atas infrastruktur AI gRouter.</p>
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
 
   <script>
     (function () {
+      'use strict';
+
       var signupForm = document.getElementById('signupForm');
       var signinForm = document.getElementById('signinForm');
       var errorBox = document.getElementById('authError');
+      var titleEl = document.getElementById('authTitle');
+      var subEl = document.getElementById('authSub');
+      var socialBlock = document.getElementById('socialBlock');
+      var googleBtn = document.getElementById('googleBtn');
+      var googleLabel = document.getElementById('googleLabel');
 
+      var SIGNUP_COPY = {
+        title: 'Buat akun Anda',
+        sub: 'Satu akun untuk manage license, purchase, dan monitor usage.',
+        doc: 'Daftar — gRouter Copilot',
+      };
+      var SIGNIN_COPY = {
+        title: 'Masuk ke akun Anda',
+        sub: 'Kelola license, purchase, dan monitor usage Anda.',
+        doc: 'Masuk — gRouter Copilot',
+      };
+
+      /* ---------- Error banner ---------- */
       function showError(msg) {
         errorBox.textContent = msg || 'Terjadi kesalahan. Coba lagi.';
         errorBox.hidden = false;
@@ -134,37 +226,37 @@
         errorBox.hidden = true;
       }
 
-      // Clear any visible error banner
-      function resetForm() {
-        clearError();
-      }
-
-      function toggleForm(mode) {
-        resetForm();
-        if (mode === 'signin') {
-          signupForm.hidden = true;
-          signinForm.hidden = false;
-          document.querySelector('.auth-left h1').textContent = 'Masuk ke akun Anda';
-          document.querySelector('.auth-left .sub').textContent = 'Kelola license, purchase, dan monitor usage Anda.';
-        } else {
-          signupForm.hidden = false;
-          signinForm.hidden = true;
-          document.querySelector('.auth-left h1').textContent = 'Buat akun Anda';
-          document.querySelector('.auth-left .sub').textContent = 'Satu akun untuk manage license, purchase, dan monitor usage.';
-        }
-      }
-
-      document.getElementById('toSignin').addEventListener('click', function (e) { e.preventDefault(); toggleForm('signin'); });
-      document.getElementById('toSignup').addEventListener('click', function (e) { e.preventDefault(); toggleForm('signup'); });
-      // Google OAuth not wired yet — don't let the link navigate/error
-      document.getElementById('googleBtn').addEventListener('click', function (e) { e.preventDefault(); });
-
       function parseError(data) {
         if (!data) return null;
         if (typeof data === 'string') return data;
         return data.message || data.error || (data.errors && data.errors[0] && data.errors[0].message) || null;
       }
 
+      /* ---------- Sign-up / sign-in toggle ---------- */
+      function toggleForm(mode) {
+        clearError();
+        var isSignin = mode === 'signin';
+        signupForm.hidden = isSignin;
+        signinForm.hidden = !isSignin;
+        var copy = isSignin ? SIGNIN_COPY : SIGNUP_COPY;
+        titleEl.textContent = copy.title;
+        subEl.textContent = copy.sub;
+        document.title = copy.doc;
+        try {
+          history.replaceState(null, '', isSignin ? '#signin' : '#signup');
+        } catch (e) { /* ignore */ }
+      }
+
+      document.getElementById('toSignin').addEventListener('click', function (e) {
+        e.preventDefault();
+        toggleForm('signin');
+      });
+      document.getElementById('toSignup').addEventListener('click', function (e) {
+        e.preventDefault();
+        toggleForm('signup');
+      });
+
+      /* ---------- Email submit (sign-up / sign-in) ---------- */
       async function submitAuth(url, payload, btn) {
         clearError();
         var label = btn.textContent;
@@ -209,8 +301,62 @@
         submitAuth('/api/auth/sign-in/email', { email: email, password: password }, document.getElementById('loginBtn'));
       });
 
-      // Deep link: #signin opens login form
-      if (location.hash === '#signin') { toggleForm('signin'); }
+      /* ---------- Google social sign-in ---------- */
+      function setGoogleBusy(busy) {
+        if (busy) {
+          googleBtn.setAttribute('aria-disabled', 'true');
+          googleLabel.textContent = 'Menghubungkan...';
+        } else {
+          googleBtn.removeAttribute('aria-disabled');
+          googleLabel.textContent = 'Lanjut dengan Google';
+        }
+      }
+
+      googleBtn.addEventListener('click', async function (e) {
+        e.preventDefault();
+        clearError();
+        setGoogleBusy(true);
+        try {
+          var res = await fetch('/api/auth/sign-in/social', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ provider: 'google', callbackURL: location.origin + '/user' }),
+            credentials: 'same-origin',
+          });
+          var data = null;
+          try { data = await res.json(); } catch (err) { data = null; }
+          if (res.ok && data && (data.url || data.redirect)) {
+            window.location.href = data.url || data.redirect;
+            return;
+          }
+          showError(parseError(data) || ('Google tidak tersedia (' + res.status + ').'));
+        } catch (err) {
+          showError('Tidak dapat menghubungi server. Periksa koneksi Anda.');
+        } finally {
+          setGoogleBusy(false);
+        }
+      });
+
+      /* Google is only shown when the backend actually has credentials. */
+      function googleEnabled(cfg) {
+        return !!(cfg && cfg.providers && cfg.providers.google === true);
+      }
+
+      fetch('/api/config', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (cfg) {
+          socialBlock.hidden = !googleEnabled(cfg);
+        })
+        .catch(function () {
+          socialBlock.hidden = true; /* treat fetch failure as disabled */
+        });
+
+      /* ---------- Deep link: #signin / ?mode=signin ---------- */
+      var wantsSignin = location.hash === '#signin';
+      try {
+        if (!wantsSignin && new URLSearchParams(location.search).get('mode') === 'signin') wantsSignin = true;
+      } catch (e) { /* ignore */ }
+      toggleForm(wantsSignin ? 'signin' : 'signup');
     })();
   </script>
 </body>

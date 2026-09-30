@@ -3,240 +3,966 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>gRouter Copilot Console</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <title>gRouter Copilot — Admin Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
   <style>
-    .shell { display: flex; min-height: 100dvh; position: relative; z-index: 1; }
-    .sidebar { width: 248px; flex-shrink: 0; border-right: 1px solid rgba(34,211,238,0.1); padding: 22px 14px; background: rgba(13,17,23,0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 4px; }
-    .brand { font-family: var(--font-display); font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 10px; padding: 6px 10px 22px; color: var(--grx-ink); }
-    .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #22d3ee, #0891b2); display: grid; place-items: center; font-weight: 700; color: #04141a; font-size: 14px; box-shadow: 0 0 16px rgba(34,211,238,0.4); }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r); color: var(--grx-ink-dim); font-size: 14px; text-decoration: none; border: 1px solid transparent; transition: all 0.18s ease; }
-    .nav-item:hover { background: rgba(34,211,238,0.05); color: var(--grx-ink); }
-    .nav-item.active { background: rgba(34,211,238,0.1); color: var(--grx-cyan); border-color: rgba(34,211,238,0.25); }
-    .nav-item .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--grx-ink-faint); }
-    .nav-item.active .dot { background: var(--grx-cyan); box-shadow: 0 0 8px rgba(34,211,238,0.7); }
+    /* ---- page-local glue only (design tokens/classes come from grx.css) ---- */
+    body.no-scroll { overflow: hidden; }
 
-    .main { flex: 1; min-width: 0; padding: 32px 40px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; gap: 16px; flex-wrap: wrap; }
-    .page-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
-    .page-sub { color: var(--grx-ink-dim); font-size: 14px; margin-top: 4px; }
+    /* Admin gate */
+    .auth-wrap { min-height: 100dvh; display: grid; place-items: center; padding: var(--sp-5); position: relative; z-index: 1; }
+    .auth-card { width: 100%; max-width: 400px; }
+    .auth-card .panel-head { margin-bottom: var(--sp-4); }
 
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
-    .stat-card { padding: 22px; }
-    .stat-label { color: var(--grx-ink-dim); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; font-family: var(--font-mono); }
-    .stat-value { font-family: var(--font-display); font-size: 34px; font-weight: 700; margin-top: 10px; letter-spacing: -0.02em; }
-    .stat-value.cyan { color: var(--grx-cyan); } .stat-value.ok { color: var(--grx-ok); } .stat-value.warn { color: var(--grx-warn); }
+    /* console hidden until authenticated */
+    #console { display: none; }
+    #console.ready { display: block; }
 
-    .panel { overflow: hidden; }
-    .panel-head { padding: 18px 22px; border-bottom: 1px solid rgba(34,211,238,0.08); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .panel-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
-    .panel-body { padding: 8px 22px; }
+    /* view switching */
+    .view { display: none; animation: grxRise 0.28s var(--ease) both; }
+    .view.active { display: block; }
 
-    @media (max-width: 900px) {
-      .shell { flex-direction: column; }
-      .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid rgba(34,211,238,0.1); }
-      .brand { padding-bottom: 0; }
-      .main { padding: 20px; }
-      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    /* mobile sidebar scrim */
+    .scrim { display: none; }
+    @media (max-width: 860px) {
+      .scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(3,4,7,0.6); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity 0.25s var(--ease); }
+      .scrim.show { opacity: 1; pointer-events: auto; }
     }
-    @media (max-width: 560px) {
-      .stat-grid { grid-template-columns: 1fr; }
-      .topbar { flex-direction: column; align-items: flex-start; }
-    }
+
+    /* chart box */
+    .chart-box { width: 100%; }
+    .chart-box .empty { padding: var(--sp-8) var(--sp-4); }
+
+    /* compact table action cluster */
+    .row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    td.nowrap, th.nowrap { white-space: nowrap; }
+
+    /* topbar identity */
+    .identity { display: inline-flex; align-items: center; gap: 10px; }
+    .identity .who { line-height: 1.15; text-align: right; }
+    .identity .who .n { font-size: 13px; font-weight: 600; }
+    .identity .who .r { font-size: 11px; color: var(--grx-ink-faint); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+    @media (max-width: 640px) { .identity .who { display: none; } }
+
+    #appStatus { min-height: 0; }
+    .quota-cell { min-width: 132px; }
   </style>
 </head>
 <body>
-  <div class="grx-surface">
+  <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
+  <!-- ============================ ADMIN GATE ============================ -->
+  <div class="grx-surface" id="gate">
+    <main class="auth-wrap">
+      <section class="metal-panel panel auth-card" aria-labelledby="gateTitle">
+        <div class="panel-head" style="margin-bottom:var(--sp-4)">
+          <div class="row" style="gap:10px">
+            <span class="brand-mark" aria-hidden="true">G</span>
+            <div>
+              <div class="panel-title" id="gateTitle">Masuk sebagai Admin</div>
+              <div class="mono-label">Admin Console</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <p class="page-sub" style="margin-bottom:var(--sp-5)">
+            Console ini terlindungi. Masukkan admin token (nilai <span class="mono">ADMIN_TOKEN</span>)
+            untuk mengakses statistik, lisensi, dan quota. Token disimpan hanya untuk sesi tab ini.
+          </p>
+          <form id="gateForm" novalidate>
+            <div class="field">
+              <label for="adminTokenInput">Admin token</label>
+              <input id="adminTokenInput" name="adminToken" type="password" autocomplete="current-password"
+                     placeholder="••••••••••••" spellcheck="false" required aria-describedby="gateHint" />
+              <div class="hint" id="gateHint">Tidak pernah dikirim ke mana pun selain server ini.</div>
+            </div>
+            <div id="gateError" class="field" style="display:none" role="alert">
+              <span class="chip-err" id="gateErrorText"></span>
+            </div>
+            <button class="btn btn-primary btn-block" type="submit" id="gateSubmit">
+              Masuk
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================ CONSOLE ============================ -->
+  <div class="grx-surface" id="console">
+    <div class="scrim" id="scrim" hidden></div>
     <div class="shell">
-      <aside class="sidebar">
-        <div class="brand"><span class="brand-mark">G</span> Copilot Console</div>
-        <a class="nav-item active" href="/"><span class="dot"></span> Overview</a>
-        <a class="nav-item" href="#licenses"><span class="dot"></span> Licenses</a>
-        <a class="nav-item" href="#usage"><span class="dot"></span> Usage &amp; Quota</a>
+      <aside class="sidebar" id="sidebar" aria-label="Navigasi admin">
+        <a class="brand" href="#overview" data-view-link="overview">
+          <span class="brand-mark" aria-hidden="true">G</span> Copilot Admin
+        </a>
+
+        <nav style="display:flex;flex-direction:column;gap:2px" aria-label="Bagian console">
+          <button class="nav-item active" type="button" data-view="overview" aria-current="page">
+            <span class="dot" aria-hidden="true"></span> Overview
+          </button>
+          <button class="nav-item" type="button" data-view="licenses">
+            <span class="dot" aria-hidden="true"></span> Licenses
+          </button>
+          <button class="nav-item" type="button" data-view="usage">
+            <span class="dot" aria-hidden="true"></span> Usage &amp; Quota
+          </button>
+        </nav>
+
+        <div style="margin-top:auto;padding-top:var(--sp-4)">
+          <div class="divider" style="margin-bottom:var(--sp-4)"></div>
+          <div class="mono-label" style="padding:0 11px var(--sp-3)">Sesi</div>
+          <button class="nav-item" type="button" id="logoutBtn">
+            <span class="dot" aria-hidden="true"></span> Keluar (hapus token)
+          </button>
+        </div>
       </aside>
 
-      <main class="main">
-        <div class="topbar">
-          <div>
-            <div class="page-title">Overview</div>
-            <div class="page-sub">Monitor lisensi, install, dan quota plugin gRouter Copilot</div>
+      <main class="main" id="main-content">
+        <header class="topbar">
+          <div class="row" style="gap:var(--sp-3)">
+            <button class="nav-toggle" type="button" id="navToggle"
+                    aria-label="Buka navigasi" aria-expanded="false" aria-controls="sidebar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </button>
+            <div>
+              <h1 class="page-title" id="pageTitle">Overview</h1>
+              <p class="page-sub" id="pageSub">Monitor lisensi, install, dan quota plugin gRouter Copilot.</p>
+            </div>
           </div>
-          <button class="btn btn-primary" id="issueBtn">+ Issue License</button>
-        </div>
+          <div class="row" style="gap:var(--sp-3)">
+            <button class="btn btn-ghost btn-sm" type="button" id="refreshBtn" aria-label="Muat ulang data">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+              <span class="hide-sm">Refresh</span>
+            </button>
+            <button class="btn btn-primary btn-sm" type="button" id="issueBtn">
+              <span aria-hidden="true">+</span> Issue License
+            </button>
+            <div class="identity">
+              <div class="who">
+                <div class="n">Admin</div>
+                <div class="r" id="whoRole">authed</div>
+              </div>
+              <div class="avatar" title="Admin" aria-hidden="true">A</div>
+            </div>
+          </div>
+        </header>
 
-        <div class="stat-grid" id="statGrid"></div>
+        <div id="appStatus" aria-live="polite" class="sr-only"></div>
 
-        <div class="metal-panel panel" id="licenses" style="margin-bottom:28px">
-          <div class="panel-head">
-            <span class="panel-title">Licenses</span>
-            <span class="mono-label"># of installs tracked</span>
-          </div>
-          <div class="panel-body">
-            <table>
-              <thead><tr><th>Customer</th><th>License ID</th><th>Installs</th><th>Status</th><th>Expires</th><th></th></tr></thead>
-              <tbody id="licenseRows"></tbody>
-            </table>
-            <div class="empty" id="emptyState" style="display:none">Belum ada license.</div>
-          </div>
-        </div>
+        <!-- ===================== OVERVIEW ===================== -->
+        <section class="view active" id="view-overview" aria-labelledby="ovHeading" tabindex="-1">
+          <h2 class="sr-only" id="ovHeading">Overview</h2>
 
-        <div class="metal-panel panel" id="usage">
-          <div class="panel-head">
-            <span class="panel-title">Usage &amp; Quota</span>
-            <button class="btn btn-ghost" id="refreshUsage" style="padding:8px 14px;min-height:36px">Refresh</button>
+          <div class="grid grid-4" id="statGrid" aria-busy="true" style="margin-bottom:var(--sp-5)">
+            <div class="metal-panel stat-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="height:28px;width:42%;margin-top:6px"></div></div>
+            <div class="metal-panel stat-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="height:28px;width:42%;margin-top:6px"></div></div>
+            <div class="metal-panel stat-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="height:28px;width:42%;margin-top:6px"></div></div>
+            <div class="metal-panel stat-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="height:28px;width:42%;margin-top:6px"></div></div>
           </div>
-          <div class="panel-body">
-            <table>
-              <thead><tr><th>Customer</th><th>Tokens</th><th>Limit</th><th>Usage</th><th>Status</th></tr></thead>
-              <tbody id="usageRows"></tbody>
-            </table>
-            <div class="empty" id="usageEmpty" style="display:none">Belum ada license dengan api key bound.</div>
+
+          <div class="metal-panel panel" style="margin-bottom:var(--sp-5)">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Distribusi Status Lisensi</div>
+                <div class="mono-label">dari data lisensi aktual</div>
+              </div>
+              <div class="legend" id="chartLegend" aria-hidden="true">
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-ok)"></span> Active</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-warn)"></span> Expired</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-err)"></span> Revoked</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="chart-head">
+                <div>
+                  <div class="chart-value" id="chartTotal">—</div>
+                  <div class="mono-label">total licenses</div>
+                </div>
+                <div class="mono-label" id="chartMeta"></div>
+              </div>
+              <div class="chart-box" id="chartBox">
+                <div class="skeleton" style="height:200px;border-radius:var(--r)"></div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <!-- ===================== LICENSES ===================== -->
+        <section class="view" id="view-licenses" aria-labelledby="licHeading" tabindex="-1">
+          <h2 class="sr-only" id="licHeading">Licenses</h2>
+          <div class="metal-panel panel" id="licenses">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Licenses</div>
+                <div class="mono-label" id="licCount">—</div>
+              </div>
+              <div class="row" style="gap:var(--sp-2)">
+                <button class="btn btn-ghost btn-sm" type="button" id="refreshLic">Refresh</button>
+                <button class="btn btn-primary btn-sm" type="button" id="issueBtn2">+ Issue</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Daftar lisensi gRouter Copilot</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Customer</th>
+                      <th scope="col">License ID</th>
+                      <th scope="col">Installs</th>
+                      <th scope="col">Status</th>
+                      <th scope="col" class="hide-sm">Expires</th>
+                      <th scope="col" class="hide-sm">Last seen</th>
+                      <th scope="col"><span class="sr-only">Aksi</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="licenseRows"></tbody>
+                </table>
+              </div>
+              <div class="status-loading" id="licLoading">Memuat lisensi…</div>
+              <div class="empty" id="licEmpty" style="display:none">Belum ada license. Gunakan “Issue License” untuk membuat yang pertama.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== USAGE ===================== -->
+        <section class="view" id="view-usage" aria-labelledby="usageHeading" tabindex="-1">
+          <h2 class="sr-only" id="usageHeading">Usage &amp; Quota</h2>
+          <div class="metal-panel panel" id="usage">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Usage &amp; Quota</div>
+                <div class="mono-label">via gRouter /check-usage</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" id="refreshUsage">Refresh</button>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Pemakaian token dan quota per lisensi</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Customer</th>
+                      <th scope="col">Tokens</th>
+                      <th scope="col" class="hide-sm">Limit</th>
+                      <th scope="col">Usage</th>
+                      <th scope="col" class="hide-sm">Daily</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageRows"></tbody>
+                </table>
+              </div>
+              <div class="status-loading" id="usageLoading">Memuat usage…</div>
+              <div class="empty" id="usageEmpty" style="display:none">Belum ada license dengan api key bound.</div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
+  </div>
 
-    <div class="modal-backdrop" id="modalBackdrop">
-      <div class="modal">
-        <div class="mono-label" style="margin-bottom:10px">Issue License</div>
+  <!-- ============================ ISSUE MODAL ============================ -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="issueTitle">
+    <div class="modal">
+      <div class="panel-head">
+        <div class="panel-title" id="issueTitle">Issue License</div>
+        <button class="modal-close" type="button" id="cancelX" aria-label="Tutup">&times;</button>
+      </div>
+
+      <div id="issueForm">
         <div class="field">
-          <label>Customer</label>
-          <input id="customer" placeholder="Acme CRM" />
-        </div>
-        <div class="field">
-          <label>Features (comma separated)</label>
-          <input id="features" value="core" />
-        </div>
-        <div class="field">
-          <label>gRouter API key (opsional — bind)</label>
-          <input id="grouterApiKey" placeholder="gRouter-..." />
+          <label for="customer">Customer</label>
+          <input id="customer" name="customer" placeholder="Acme CRM" autocomplete="organization" />
         </div>
         <div class="field">
-          <label>Expires in days</label>
-          <input id="expiresInDays" type="number" value="365" />
+          <label for="accountId">Account ID <span class="hint" style="display:inline">(opsional)</span></label>
+          <input id="accountId" name="accountId" placeholder="acc_..." autocomplete="off" />
         </div>
-        <div class="field" id="tokenField" style="display:none">
-          <label>License token (copy now — shown once)</label>
-          <div class="license-token" id="tokenOut" style="background:var(--grx-gun);border:1px solid var(--grx-steel-hi);border-radius:var(--r);padding:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--grx-cyan);margin-top:6px"></div>
+        <div class="field">
+          <label for="features">Features (comma separated)</label>
+          <input id="features" name="features" value="core" autocomplete="off" />
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
-          <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
-          <button class="btn btn-primary" id="confirmIssue">Issue</button>
+        <div class="field">
+          <label for="grouterApiKey">gRouter API key (opsional — bind)</label>
+          <input id="grouterApiKey" name="grouterApiKey" placeholder="gRouter-..." autocomplete="off" spellcheck="false" />
         </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="expiresInDays">Expires in days</label>
+          <input id="expiresInDays" name="expiresInDays" type="number" min="1" value="365" inputmode="numeric" />
+        </div>
+      </div>
+
+      <div id="tokenBlock" style="display:none">
+        <div class="field" style="margin-bottom:0">
+          <label for="tokenOut">License token (copy now — shown once)</label>
+          <div class="license-token mono" id="tokenOut" tabindex="0"
+               style="background:var(--grx-gun);border:1px solid var(--grx-steel-hi);border-radius:var(--r-sm);padding:12px;font-size:12px;word-break:break-all;color:var(--grx-cyan);margin-top:6px"></div>
+          <div class="hint">Token hanya ditampilkan sekali. Simpan sebelum menutup dialog.</div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="justify-content:flex-end">
+        <button class="btn btn-ghost" type="button" id="cancelBtn">Tutup</button>
+        <button class="btn btn-subtle" type="button" id="copyTokenBtn" style="display:none">Copy token</button>
+        <button class="btn btn-primary" type="button" id="confirmIssue">Issue</button>
       </div>
     </div>
   </div>
 
+  <!-- ============================ BIND MODAL ============================ -->
+  <div class="modal-backdrop" id="bindBackdrop" role="dialog" aria-modal="true" aria-labelledby="bindTitle">
+    <div class="modal">
+      <div class="panel-head">
+        <div class="panel-title" id="bindTitle">Bind gRouter API key</div>
+        <button class="modal-close" type="button" id="cancelBindX" aria-label="Tutup">&times;</button>
+      </div>
+      <p class="page-sub" style="margin-bottom:var(--sp-4)">License <span class="mono" id="bindLicenseId">—</span></p>
+      <div class="field">
+        <label for="bindKeyInput">gRouter API key</label>
+        <input id="bindKeyInput" placeholder="gRouter-..." autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="modal-actions" style="justify-content:flex-end">
+        <button class="btn btn-ghost" type="button" id="cancelBind">Batal</button>
+        <button class="btn btn-primary" type="button" id="confirmBind">Bind</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ TOASTS ============================ -->
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+
   <script>
-    const STATS = __STATS_JSON__;
-    const LICENSES = __LICENSES_JSON__;
+  (function () {
+    'use strict';
 
-    function fmtDate(ts) { if (!ts) return '—'; return new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
-    function statusOf(l) { if (l.revokedAt) return 'revoked'; if (l.expiresAt && l.expiresAt < Date.now()) return 'expired'; return 'active'; }
-    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    /* ------------------------------------------------------------------
+       State + helpers
+    ------------------------------------------------------------------ */
+    var TOKEN_KEY = 'adminToken';
+    var token = '';
+    try { token = sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) { token = ''; }
 
-    function renderStats() {
-      const grid = document.getElementById('statGrid');
-      const items = [
-        { label: 'Total licenses', value: STATS.totalLicenses, cls: '' },
-        { label: 'Active', value: STATS.activeLicenses, cls: 'ok' },
-        { label: 'Revoked', value: STATS.revokedLicenses, cls: 'warn' },
-        { label: 'Total installs', value: STATS.totalInstalls, cls: 'cyan' },
-      ];
-      grid.innerHTML = items.map(it =>
-        `<div class="metal-panel stat-card"><div class="stat-label">${it.label}</div><div class="stat-value ${it.cls}">${it.value}</div></div>`
-      ).join('');
+    var VIEW_META = {
+      overview: { title: 'Overview', sub: 'Monitor lisensi, install, dan quota plugin gRouter Copilot.', heading: 'Overview' },
+      licenses: { title: 'Licenses', sub: 'Terbitkan, bind, dan revoke lisensi pelanggan.', heading: 'Licenses' },
+      usage:    { title: 'Usage & Quota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Quota' }
+    };
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function fmtDate(ts) {
+      if (!ts) return '—';
+      try { return new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+      catch (e) { return '—'; }
+    }
+    function fmtNum(n) {
+      if (n === null || n === undefined || n === '') return '—';
+      var v = Number(n);
+      if (!isFinite(v)) return '—';
+      try { return v.toLocaleString('id-ID'); } catch (e) { return String(v); }
+    }
+    function fmtRelative(ts) {
+      if (!ts) return '—';
+      var diff = Date.now() - new Date(ts).getTime();
+      if (!isFinite(diff)) return '—';
+      var m = Math.round(diff / 60000);
+      if (m < 1) return 'baru saja';
+      if (m < 60) return m + ' mnt lalu';
+      var h = Math.round(m / 60);
+      if (h < 24) return h + ' jam lalu';
+      var d = Math.round(h / 24);
+      if (d < 30) return d + ' hari lalu';
+      return fmtDate(ts);
     }
 
-    function renderLicenses() {
-      const rows = document.getElementById('licenseRows');
-      if (!LICENSES.length) { document.getElementById('emptyState').style.display = 'block'; return; }
-      document.getElementById('emptyState').style.display = 'none';
-      rows.innerHTML = LICENSES.map(l => {
-        const st = statusOf(l);
-        return `<tr>
-          <td>${escapeHtml(l.customer)}</td>
-          <td class="mono">${escapeHtml(l.id)}</td>
-          <td>${l.installCount}</td>
-          <td><span class="badge ${st}">${st}</span></td>
-          <td>${fmtDate(l.expiresAt)}</td>
-          <td>${st === 'active' ? `<button class="btn btn-danger" style="padding:6px 12px;min-height:32px" onclick="revoke('${l.id}')">Revoke</button>` : ''}</td>
-        </tr>`;
+    /* ------------------------------------------------------------------
+       Toast + live region
+    ------------------------------------------------------------------ */
+    function toast(msg, kind) {
+      var region = $('toastRegion');
+      var el = document.createElement('div');
+      el.className = 'toast ' + (kind === 'err' ? 'err' : 'ok');
+      el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+      el.appendChild(document.createTextNode(msg));
+      region.appendChild(el);
+      setTimeout(function () {
+        el.style.transition = 'opacity .3s ease, transform .3s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+      }, kind === 'err' ? 5200 : 3200);
+    }
+    function setStatus(msg) {
+      var s = $('appStatus');
+      s.textContent = '';
+      // re-announce identical strings
+      setTimeout(function () { s.textContent = msg; }, 20);
+    }
+
+    /* ------------------------------------------------------------------
+       Auth API wrapper  —  ALWAYS carries the Bearer token.
+       Any 401 clears the token and re-opens the gate.
+    ------------------------------------------------------------------ */
+    function apiFetch(path, opts) {
+      opts = opts || {};
+      var headers = Object.assign(
+        { 'content-type': 'application/json' },
+        opts.headers || {}
+      );
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+
+      return fetch(path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body,
+        credentials: 'same-origin',
+        cache: 'no-store'
+      }).then(function (res) {
+        if (res.status === 401) {
+          clearToken();
+          showGate('Sesi berakhir atau token tidak valid. Masuk kembali.');
+          var err = new Error('unauthorized');
+          err.status = 401;
+          throw err;
+        }
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) {
+            var e = new Error((data && data.error) || ('HTTP ' + res.status));
+            e.status = res.status;
+            e.data = data;
+            throw e;
+          }
+          return data;
+        });
+      });
+    }
+
+    /* ------------------------------------------------------------------
+       Gate
+    ------------------------------------------------------------------ */
+    function setToken(t) {
+      token = t;
+      try { sessionStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+    }
+    function clearToken() {
+      token = '';
+      try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    }
+    function showGate(msg) {
+      $('console').classList.remove('ready');
+      $('gate').style.display = '';
+      var ge = $('gateError');
+      if (msg) { $('gateErrorText').textContent = msg; ge.style.display = 'block'; }
+      else { ge.style.display = 'none'; }
+      var input = $('adminTokenInput');
+      if (input) { input.value = ''; try { input.focus(); } catch (e) {} }
+      setStatus(msg || 'Perlu autentikasi admin.');
+    }
+    function showConsole() {
+      $('gate').style.display = 'none';
+      $('console').classList.add('ready');
+      $('whoRole').textContent = 'authed';
+    }
+
+    $('gateForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var val = ($('adminTokenInput').value || '').trim();
+      if (!val) { $('gateError').style.display = 'block'; $('gateErrorText').textContent = 'Token tidak boleh kosong.'; return; }
+      var btn = $('gateSubmit');
+      btn.disabled = true;
+      var prev = btn.textContent;
+      btn.textContent = 'Memverifikasi…';
+      $('gateError').style.display = 'none';
+      setToken(val);
+      // Verify against a real admin endpoint before revealing the console.
+      apiFetch('/api/stats').then(function () {
+        btn.disabled = false; btn.textContent = prev;
+        showConsole();
+        return loadAll();
+      }).then(function () {
+        toast('Masuk sebagai admin.', 'ok');
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = prev;
+        if (err && err.status === 401) { /* apiFetch already showed gate */ }
+        else { showGate('Gagal memuat data: ' + ((err && err.message) || 'error')); }
+      });
+    });
+
+    $('logoutBtn').addEventListener('click', function () {
+      clearToken();
+      showGate('Anda telah keluar.');
+      toast('Token dihapus.', 'ok');
+    });
+
+    /* ------------------------------------------------------------------
+       Nav (view switching + mobile off-canvas)
+    ------------------------------------------------------------------ */
+    function activateView(name) {
+      var views = document.querySelectorAll('.view');
+      for (var i = 0; i < views.length; i++) views[i].classList.remove('active');
+      var target = $('view-' + name);
+      if (target) target.classList.add('active');
+
+      var navs = document.querySelectorAll('.nav-item[data-view]');
+      for (var j = 0; j < navs.length; j++) {
+        var on = navs[j].getAttribute('data-view') === name;
+        navs[j].classList.toggle('active', on);
+        if (on) navs[j].setAttribute('aria-current', 'page');
+        else navs[j].removeAttribute('aria-current');
+      }
+
+      var meta = VIEW_META[name] || VIEW_META.overview;
+      $('pageTitle').textContent = meta.title;
+      $('pageSub').textContent = meta.sub;
+      document.title = 'gRouter Copilot — ' + meta.heading;
+      closeSidebar();
+    }
+
+    var navToggle = $('navToggle');
+    function closeSidebar() {
+      $('sidebar').classList.remove('open');
+      $('scrim').classList.remove('show');
+      $('scrim').hidden = true;
+      navToggle.setAttribute('aria-expanded', 'false');
+      navToggle.setAttribute('aria-label', 'Buka navigasi');
+      document.body.classList.remove('no-scroll');
+    }
+    navToggle.addEventListener('click', function () {
+      var open = !$('sidebar').classList.contains('open');
+      $('sidebar').classList.toggle('open', open);
+      $('scrim').classList.toggle('show', open);
+      $('scrim').hidden = !open;
+      navToggle.setAttribute('aria-expanded', String(open));
+      navToggle.setAttribute('aria-label', open ? 'Tutup navigasi' : 'Buka navigasi');
+      document.body.classList.toggle('no-scroll', open);
+      if (open) { try { $('sidebar').querySelector('.nav-item').focus(); } catch (e) {} }
+    });
+    $('scrim').addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { closeSidebar(); closeModal(); closeBindModal(); }
+    });
+
+    document.querySelectorAll('.nav-item[data-view]').forEach(function (btn) {
+      btn.addEventListener('click', function () { activateView(btn.getAttribute('data-view')); });
+    });
+
+    /* ------------------------------------------------------------------
+       STATS
+    ------------------------------------------------------------------ */
+    function renderSkeletons() {
+      $('statGrid').setAttribute('aria-busy', 'true');
+      $('licLoading').style.display = 'block';
+      $('usageLoading').style.display = 'block';
+    }
+
+    function renderStats(s) {
+      s = s || {};
+      var items = [
+        { label: 'Total licenses', value: s.totalLicenses, cls: '' },
+        { label: 'Active', value: s.activeLicenses, cls: 'ok' },
+        { label: 'Revoked', value: s.revokedLicenses, cls: 'warn' },
+        { label: 'Total installs', value: s.totalInstalls, cls: 'cyan' }
+      ];
+      var total = Number(s.totalLicenses) || 0;
+      var html = items.map(function (it) {
+        var delta = '';
+        if (it.label === 'Active' && total > 0) {
+          delta = '<span class="stat-delta up">' + Math.round((Number(s.activeLicenses || 0) / total) * 100) + '% dari total</span>';
+        } else if (it.label === 'Total licenses') {
+          delta = '<span class="stat-delta">' + fmtNum(s.totalHeartbeats) + ' heartbeat</span>';
+        } else if (it.label === 'Total installs') {
+          delta = '<span class="stat-delta">per install unik</span>';
+        }
+        return '<div class="metal-panel stat-card">' +
+                 '<div class="stat-label">' + escapeHtml(it.label) + '</div>' +
+                 '<div class="stat-value' + (it.cls ? ' ' + it.cls : '') + '">' + fmtNum(it.value) + '</div>' +
+                 delta +
+               '</div>';
+      }).join('');
+      var grid = $('statGrid');
+      grid.innerHTML = html;
+      grid.setAttribute('aria-busy', 'false');
+    }
+
+    /* ------------------------------------------------------------------
+       CHART — "Distribusi Status Lisensi" (bar), built ONLY from live
+       licenses data. If there are no licenses, an honest empty state is
+       rendered instead of a fabricated chart.
+    ------------------------------------------------------------------ */
+    function statusTally(licenses) {
+      var t = { active: 0, expired: 0, revoked: 0 };
+      licenses.forEach(function (l) { t[statusOf(l)] = (t[statusOf(l)] || 0) + 1; });
+      return t;
+    }
+    function statusOf(l) {
+      if (l.revokedAt) return 'revoked';
+      if (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now()) return 'expired';
+      return 'active';
+    }
+
+    function renderChart(licenses) {
+      var box = $('chartBox');
+      var tally = statusTally(licenses);
+      var bars = [
+        { key: 'active',  label: 'Active',  value: tally.active,  color: '#34d399' },
+        { key: 'expired', label: 'Expired', value: tally.expired, color: '#fbbf24' },
+        { key: 'revoked', label: 'Revoked', value: tally.revoked, color: '#f87171' }
+      ];
+      var totalLicenses = licenses.length;
+      $('chartTotal').textContent = fmtNum(totalLicenses);
+
+      var bound = licenses.filter(function (l) { return l && l.grouterApiKey !== undefined ? !!l.grouterApiKey : false; }).length;
+      $('chartMeta').textContent = totalLicenses
+        ? (tally.active + ' active · ' + tally.expired + ' expired · ' + tally.revoked + ' revoked')
+        : 'belum ada data';
+
+      if (!totalLicenses) {
+        box.innerHTML = '<div class="empty" role="img" aria-label="Belum ada lisensi untuk digambarkan">' +
+          'Belum ada lisensi — grafik distribusi status muncul setelah license pertama diterbitkan.</div>';
+        $('chartLegend').style.opacity = '0.4';
+        return;
+      }
+      $('chartLegend').style.opacity = '1';
+
+      // ---- geometry (viewBox coordinates) ----
+      var W = 720, H = 260;
+      var padL = 46, padR = 18, padT = 18, padB = 40;
+      var plotW = W - padL - padR;
+      var plotH = H - padT - padB;
+      var maxVal = Math.max(bars[0].value, bars[1].value, bars[2].value, 1);
+      // round the axis top to a friendly step
+      var step = Math.max(1, Math.ceil(maxVal / 4));
+      var axisTop = step * 4;
+
+      var yFor = function (v) { return padT + plotH - (v / axisTop) * plotH; };
+      var xFor = function (i) { var slot = plotW / bars.length; return padL + slot * i + slot / 2; };
+      var barW = Math.min(74, (plotW / bars.length) * 0.5);
+
+      var svg = [];
+      svg.push('<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H +
+               '" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="chartTitle chartDesc">');
+      svg.push('<title id="chartTitle">Distribusi status lisensi gRouter Copilot</title>');
+      svg.push('<desc id="chartDesc">' + tally.active + ' active, ' + tally.expired + ' expired, ' +
+               tally.revoked + ' revoked dari total ' + totalLicenses + ' lisensi.</desc>');
+      svg.push('<defs>');
+      svg.push('  <linearGradient id="grxCyanArea" x1="0" y1="0" x2="0" y2="1">' +
+               '<stop offset="0%" stop-color="#67e8f9" stop-opacity="0.95"/>' +
+               '<stop offset="100%" stop-color="#0891b2" stop-opacity="0.55"/></linearGradient>');
+      svg.push('  <linearGradient id="grxBarActive" x1="0" y1="0" x2="0" y2="1">' +
+               '<stop offset="0%" stop-color="#6ee7b7"/><stop offset="100%" stop-color="#059669"/></linearGradient>');
+      svg.push('  <linearGradient id="grxBarExpired" x1="0" y1="0" x2="0" y2="1">' +
+               '<stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#b45309"/></linearGradient>');
+      svg.push('  <linearGradient id="grxBarRevoked" x1="0" y1="0" x2="0" y2="1">' +
+               '<stop offset="0%" stop-color="#fca5a5"/><stop offset="100%" stop-color="#b91c1c"/></linearGradient>');
+      svg.push('</defs>');
+
+      // gridlines + y axis labels
+      for (var g = 0; g <= 4; g++) {
+        var val = step * g;
+        var y = yFor(val);
+        svg.push('<line class="grid-line" x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '"/>');
+        svg.push('<text class="axis-label" x="' + (padL - 10) + '" y="' + (y + 3.5).toFixed(1) + '" text-anchor="end">' + val + '</text>');
+      }
+      // baseline
+      svg.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) +
+               '" stroke="rgba(34,211,238,0.28)" stroke-width="1"/>');
+
+      var gradFor = { active: 'grxBarActive', expired: 'grxBarExpired', revoked: 'grxBarRevoked' };
+
+      bars.forEach(function (b, i) {
+        var cx = xFor(i);
+        var h = (b.value / axisTop) * plotH;
+        var y = padT + plotH - h;
+        var x = cx - barW / 2;
+        if (h > 0.5) {
+          svg.push('<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) +
+                   '" rx="5" fill="url(#' + gradFor[b.key] + ')"><title>' + escapeHtml(b.label + ': ' + b.value) + '</title></rect>');
+        }
+        // value on top
+        svg.push('<text class="axis-label" x="' + cx.toFixed(1) + '" y="' + (y - 7).toFixed(1) +
+                 '" text-anchor="middle" fill="var(--grx-ink-dim)" font-size="11">' + b.value + '</text>');
+        // x label
+        svg.push('<text class="axis-label" x="' + cx.toFixed(1) + '" y="' + (H - 14) +
+                 '" text-anchor="middle">' + escapeHtml(b.label) + '</text>');
+      });
+
+      svg.push('</svg>');
+      box.innerHTML = svg.join('');
+    }
+
+    /* ------------------------------------------------------------------
+       LICENSES
+    ------------------------------------------------------------------ */
+    var lastLicenses = [];
+
+    function renderLicenses(list) {
+      lastLicenses = list || [];
+      var body = $('licenseRows');
+      var empty = $('licEmpty');
+      $('licLoading').style.display = 'none';
+      $('licCount').textContent = lastLicenses.length ? (lastLicenses.length + ' lisensi') : 'belum ada lisensi';
+
+      if (!lastLicenses.length) {
+        body.innerHTML = '';
+        empty.style.display = 'block';
+        renderChart([]);
+        return;
+      }
+      empty.style.display = 'none';
+      body.innerHTML = lastLicenses.map(function (l) {
+        var st = statusOf(l);
+        var actions = '';
+        if (st === 'active') {
+          actions += '<button class="btn btn-subtle btn-sm" type="button" data-act="bind" data-id="' + escapeHtml(l.id) + '">Bind key</button>';
+          actions += '<button class="btn btn-danger btn-sm" type="button" data-act="revoke" data-id="' + escapeHtml(l.id) + '">Revoke</button>';
+        } else {
+          actions += '<span class="mono-label">—</span>';
+        }
+        return '<tr>' +
+          '<td>' + escapeHtml(l.customer || '—') + '</td>' +
+          '<td class="mono">' + escapeHtml(l.id) + '</td>' +
+          '<td class="mono">' + fmtNum(l.installCount || 0) + '</td>' +
+          '<td><span class="badge ' + st + '">' + st + '</span></td>' +
+          '<td class="nowrap hide-sm">' + fmtDate(l.expiresAt) + '</td>' +
+          '<td class="nowrap hide-sm">' + fmtRelative(l.lastSeenAt) + '</td>' +
+          '<td class="nowrap"><span class="row-actions">' + actions + '</span></td>' +
+        '</tr>';
+      }).join('');
+      renderChart(lastLicenses);
+    }
+
+    // event delegation for row actions
+    $('licenseRows').addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('button[data-act]') : null;
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      if (btn.getAttribute('data-act') === 'revoke') revokeLicense(id, btn);
+      else openBindModal(id);
+    });
+
+    /* ------------------------------------------------------------------
+       USAGE
+    ------------------------------------------------------------------ */
+    function renderUsage(list) {
+      var body = $('usageRows');
+      var empty = $('usageEmpty');
+      $('usageLoading').style.display = 'none';
+      list = list || [];
+      if (!list.length) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      body.innerHTML = list.map(function (u) {
+        var g = u.usage;
+        var tokens = (g && g.usage && g.usage.tokens != null) ? g.usage.tokens : 0;
+        var limit = (g && g.usage && g.usage.limit != null) ? g.usage.limit : null;
+        var pct = (g && g.usage && g.usage.percentage != null) ? Number(g.usage.percentage) : null;
+        var st = (g && g.status) ? String(g.status) : (g ? 'unknown' : 'unavailable');
+        var cls = st === 'active' ? 'active' : (g ? 'pending' : 'neutral');
+        var fill = pct == null ? 0 : Math.max(0, Math.min(100, pct));
+        var fillCls = fill >= 90 ? ' err' : (fill >= 70 ? ' warn' : '');
+        var daily = g && g.daily
+          ? (fmtNum(g.daily.used) + ' / ' + fmtNum(g.daily.effectiveLimit != null ? g.daily.effectiveLimit : g.daily.limit))
+          : '—';
+        return '<tr>' +
+          '<td>' + escapeHtml(u.customer || '—') + '</td>' +
+          '<td class="mono">' + fmtNum(tokens) + '</td>' +
+          '<td class="mono hide-sm">' + (limit == null ? '—' : fmtNum(limit)) + '</td>' +
+          '<td class="quota-cell">' +
+            '<div class="row" style="gap:8px;justify-content:space-between;margin-bottom:4px">' +
+              '<span class="mono chip-cyan" style="font-size:12px">' + (pct == null ? '—' : escapeHtml(pct) + '%') + '</span>' +
+            '</div>' +
+            '<div class="bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"' +
+              (pct == null ? '' : ' aria-valuenow="' + fill + '"') +
+              ' aria-label="Quota terpakai ' + escapeHtml(u.customer || '') + '">' +
+              '<div class="bar-fill' + fillCls + '" style="width:' + fill + '%"></div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="mono hide-sm">' + daily + '</td>' +
+          '<td><span class="badge ' + cls + '">' + escapeHtml(st) + '</span></td>' +
+        '</tr>';
       }).join('');
     }
 
-    async function revoke(id) {
-      if (!confirm('Revoke license ' + id + '?')) return;
-      const res = await fetch('/api/licenses/' + id + '/revoke', { method: 'POST' });
-      if (res.ok) location.reload(); else alert('Revoke failed');
+    /* ------------------------------------------------------------------
+       Loaders
+    ------------------------------------------------------------------ */
+    function loadStats() {
+      return apiFetch('/api/stats').then(function (data) { renderStats(data); });
+    }
+    function loadLicenses() {
+      return apiFetch('/api/licenses').then(function (data) { renderLicenses((data && data.licenses) || []); });
+    }
+    function loadUsage() {
+      return apiFetch('/api/usage').then(function (data) { renderUsage((data && data.usage) || []); });
+    }
+    function loadAll() {
+      renderSkeletons();
+      return Promise.all([
+        loadStats().catch(function (e) { if (e.status !== 401) toast('Stats gagal: ' + e.message, 'err'); }),
+        loadLicenses().catch(function (e) { if (e.status !== 401) toast('Licenses gagal: ' + e.message, 'err'); }),
+        loadUsage().catch(function (e) { if (e.status !== 401) toast('Usage gagal: ' + e.message, 'err'); })
+      ]);
     }
 
-    async function loadUsage() {
-      const body = document.getElementById('usageRows');
-      const empty = document.getElementById('usageEmpty');
-      try {
-        const res = await fetch('/api/usage');
-        const data = await res.json();
-        const list = data.usage || [];
-        if (!list.length) { empty.style.display = 'block'; body.innerHTML = ''; return; }
-        empty.style.display = 'none';
-        body.innerHTML = list.map(u => {
-          const g = u.usage;
-          const pct = g?.usage?.percentage ?? null;
-          const st = g?.status ?? 'unknown';
-          return `<tr>
-            <td>${escapeHtml(u.customer)}</td>
-            <td class="mono">${g?.usage?.tokens ?? 0}</td>
-            <td class="mono">${g?.usage?.limit ?? '—'}</td>
-            <td>${pct !== null ? `<span class="chip-cyan">${pct}%</span>` : '—'}</td>
-            <td><span class="badge ${st === 'active' ? 'active' : 'expired'}">${escapeHtml(st)}</span></td>
-          </tr>`;
-        }).join('');
-      } catch {
-        empty.style.display = 'block'; body.innerHTML = '';
-      }
-    }
-
-    // Issue modal
-    const modal = document.getElementById('modalBackdrop');
-    document.getElementById('issueBtn').onclick = () => {
-      document.getElementById('tokenField').style.display = 'none';
-      document.getElementById('customer').value = '';
-      document.getElementById('features').value = 'core';
-      document.getElementById('grouterApiKey').value = '';
-      document.getElementById('expiresInDays').value = '365';
+    /* ------------------------------------------------------------------
+       Issue modal
+    ------------------------------------------------------------------ */
+    var modal = $('modalBackdrop');
+    function openIssueModal() {
+      $('issueForm').style.display = '';
+      $('tokenBlock').style.display = 'none';
+      $('copyTokenBtn').style.display = 'none';
+      $('confirmIssue').textContent = 'Issue';
+      $('confirmIssue').disabled = false;
+      $('customer').value = '';
+      $('accountId').value = '';
+      $('features').value = 'core';
+      $('grouterApiKey').value = '';
+      $('expiresInDays').value = '365';
       modal.classList.add('open');
-    };
-    document.getElementById('cancelBtn').onclick = () => modal.classList.remove('open');
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+      setTimeout(function () { try { $('customer').focus(); } catch (e) {} }, 30);
+    }
+    function closeModal() { modal.classList.remove('open'); }
 
-    document.getElementById('confirmIssue').onclick = async () => {
-      const customer = document.getElementById('customer').value.trim();
-      if (!customer) { alert('Customer required'); return; }
-      const features = document.getElementById('features').value.split(',').map(s => s.trim()).filter(Boolean);
-      const grouterApiKey = document.getElementById('grouterApiKey').value.trim() || null;
-      const expiresInDays = parseInt(document.getElementById('expiresInDays').value, 10) || 365;
-      const res = await fetch('/api/licenses', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ customer, features, expiresInDays, grouterApiKey }),
+    $('issueBtn').addEventListener('click', openIssueModal);
+    $('issueBtn2').addEventListener('click', openIssueModal);
+    $('cancelBtn').addEventListener('click', closeModal);
+    $('cancelX').addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+    $('copyTokenBtn').addEventListener('click', function () {
+      var t = $('tokenOut').textContent || '';
+      var done = function () { toast('Token disalin.', 'ok'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(done, function () { toast('Gagal menyalin.', 'err'); });
+      } else {
+        var r = document.createRange(); r.selectNodeContents($('tokenOut'));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        toast('Token terpilih — tekan Ctrl/Cmd+C.', 'ok');
+      }
+    });
+
+    $('confirmIssue').addEventListener('click', function () {
+      var customer = ($('customer').value || '').trim();
+      if (!customer) { toast('Customer wajib diisi.', 'err'); try { $('customer').focus(); } catch (e) {} return; }
+      var payload = {
+        customer: customer,
+        accountId: ($('accountId').value || '').trim() || null,
+        features: ($('features').value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+        expiresInDays: parseInt($('expiresInDays').value, 10) || 365,
+        grouterApiKey: ($('grouterApiKey').value || '').trim() || null
+      };
+      var btn = $('confirmIssue');
+      btn.disabled = true; btn.textContent = 'Issuing…';
+      apiFetch('/api/licenses', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function (data) {
+          btn.disabled = false;
+          if (data && data.token) {
+            $('issueForm').style.display = 'none';
+            $('tokenBlock').style.display = 'block';
+            $('tokenOut').textContent = data.token;
+            $('copyTokenBtn').style.display = '';
+            btn.textContent = 'Selesai';
+            setStatus('License diterbitkan. Token ditampilkan sekali.');
+            toast('License diterbitkan untuk ' + customer + '.', 'ok');
+            return loadAll();
+          }
+          btn.textContent = 'Issue';
+          toast('Issue gagal: ' + ((data && data.error) || 'unknown'), 'err');
+        })
+        .catch(function (err) {
+          btn.disabled = false; btn.textContent = 'Issue';
+          if (err.status !== 401) toast('Issue gagal: ' + err.message, 'err');
+        });
+    });
+
+    /* ------------------------------------------------------------------
+       Revoke
+    ------------------------------------------------------------------ */
+    function revokeLicense(id, btn) {
+      if (!window.confirm('Revoke license ' + id + '? Lisensi tidak dapat diaktifkan kembali.')) return;
+      if (btn) { btn.disabled = true; }
+      apiFetch('/api/licenses/' + encodeURIComponent(id) + '/revoke', { method: 'POST', body: '{}' })
+        .then(function () {
+          setStatus('License ' + id + ' direvokasi.');
+          toast('License direvokasi.', 'ok');
+          return loadLicenses();
+        })
+        .catch(function (err) {
+          if (btn) btn.disabled = false;
+          if (err.status !== 401) toast('Revoke gagal: ' + err.message, 'err');
+        });
+    }
+
+    /* ------------------------------------------------------------------
+       Bind modal
+    ------------------------------------------------------------------ */
+    var bindBackdrop = $('bindBackdrop');
+    var bindTargetId = null;
+    function openBindModal(id) {
+      bindTargetId = id;
+      $('bindLicenseId').textContent = id;
+      $('bindKeyInput').value = '';
+      bindBackdrop.classList.add('open');
+      setTimeout(function () { try { $('bindKeyInput').focus(); } catch (e) {} }, 30);
+    }
+    function closeBindModal() { bindBackdrop.classList.remove('open'); bindTargetId = null; }
+    $('cancelBind').addEventListener('click', closeBindModal);
+    $('cancelBindX').addEventListener('click', closeBindModal);
+    bindBackdrop.addEventListener('click', function (e) { if (e.target === bindBackdrop) closeBindModal(); });
+
+    $('confirmBind').addEventListener('click', function () {
+      var key = ($('bindKeyInput').value || '').trim();
+      if (!key) { toast('API key wajib diisi.', 'err'); return; }
+      if (!bindTargetId) return;
+      var btn = $('confirmBind');
+      btn.disabled = true; btn.textContent = 'Binding…';
+      apiFetch('/api/licenses/' + encodeURIComponent(bindTargetId) + '/bind', {
+        method: 'POST', body: JSON.stringify({ grouterApiKey: key })
+      }).then(function () {
+        btn.disabled = false; btn.textContent = 'Bind';
+        closeBindModal();
+        setStatus('API key ter-bind ke ' + bindTargetId + '.');
+        toast('API key ter-bind.', 'ok');
+        return loadLicenses();
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = 'Bind';
+        if (err.status !== 401) toast('Bind gagal: ' + err.message, 'err');
       });
-      const data = await res.json();
-      if (data.token) {
-        document.getElementById('tokenOut').textContent = data.token;
-        document.getElementById('tokenField').style.display = 'block';
-        document.getElementById('confirmIssue').textContent = 'Done';
-        setTimeout(() => location.reload(), 4000);
-      } else alert('Issue failed: ' + (data.error || 'unknown'));
-    };
+    });
 
-    document.getElementById('refreshUsage').onclick = loadUsage;
+    /* ------------------------------------------------------------------
+       Refresh controls
+    ------------------------------------------------------------------ */
+    $('refreshBtn').addEventListener('click', function () { loadAll().then(function () { toast('Data diperbarui.', 'ok'); }); });
+    $('refreshLic').addEventListener('click', function () { loadLicenses().then(function () { toast('Licenses diperbarui.', 'ok'); }); });
+    $('refreshUsage').addEventListener('click', function () { loadUsage().then(function () { toast('Usage diperbarui.', 'ok'); }); });
 
-    renderStats();
-    renderLicenses();
-    loadUsage();
+    /* ------------------------------------------------------------------
+       Boot
+    ------------------------------------------------------------------ */
+    if (token) {
+      showConsole();
+      loadAll().then(function () {
+        toast('Data dimuat.', 'ok');
+      }).catch(function () { /* 401 handled inside apiFetch */ });
+    } else {
+      showGate('');
+    }
+  })();
   </script>
 </body>
 </html>

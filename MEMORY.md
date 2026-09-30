@@ -25,6 +25,12 @@
 
 ## Arsitektur
 
+- **Frontend** port 4601 → `copilot.grouter.id` (landing, register, user dashboard, admin; proxy `/api/*` ke backend).
+- **Backend** port 4600 → `be.grouter.id` (auth Better Auth, `/api/me`, license, order, webhook, usage).
+- pm2 kelola keduanya (`server/ecosystem.config.cjs`): `copilot-backend` + `copilot-frontend`.
+- Boot startup: Startup folder user → `gRouter_Copilot.vbs` → `pm2 resurrect`.
+- Detail: `docs/27-deployment-architecture.md`.
+
 ```text
 Plugin (in-process, Node.js/Next.js)
   → skill (developer-defined) → data app

@@ -1,20 +1,19 @@
 # KlikQRIS API Contract
 
-> Payment provider for gRouter Copilot. Verified against sandbox on 2026-09-30.
+> Payment provider for gRouter Copilot. **Verified against LIVE sandbox 2026-10-01.**
 
-## Credentials
+## Credentials (env, never committed)
 
-- `KLIKQRIS_API_KEY` — API key from dashboard.
+- `KLIKQRIS_API_KEY` — API key.
 - `KLIKQRIS_MERCHANT_ID` — merchant ID.
 - `KLIKQRIS_MODE` — `sandbox` or `production`.
 
-## Base URL
+## Base URL (per mode)
 
 ```
-https://klikqris.com
+sandbox:    https://klikqris.com/api/sandbox
+production: https://klikqris.com/api
 ```
-
-(Note: the reference repo's `api.klikqris.com` does NOT resolve; the live base is `https://klikqris.com`. The working path is `/api/qris/...`.)
 
 ## Auth headers (all requests)
 
@@ -29,27 +28,45 @@ Content-Type: application/json
 ### Create QRIS
 
 ```
-POST /api/qris/create
+POST {base}/qris/create
 { "order_id": "...", "amount": 10000, "id_merchant": "...", "keterangan": "..." }
 ```
 
-Response:
+Response (verified):
 ```json
-{ "status": true, "data": { "order_id": "...", "amount": 10000, "qris_image": "...", "qris_data": "...", "expired_at": "..." } }
+{
+  "status": true,
+  "message": "Transaction Created Successfully",
+  "data": {
+    "order_id": "copilot-test-001",
+    "nama_toko": "GetMarket",
+    "amount": "10000.00",
+    "amount_uniq": "825.00",
+    "total_amount": "10825.00",
+    "status": "PENDING",
+    "qris_url": "https://klikqris.com/storage/sandbox/sandbox_sample.png",
+    "qris_image": "data:image/png;base64,...",
+    "expired_at": "2026-10-01 02:55:45",
+    "paid_at": null,
+    "signature": "SANDBOX_SIG_...",
+    "expired_menit": "60"
+  }
+}
 ```
 
 ### Check status
 
 ```
-GET /api/qris/status/{order_id}
+GET {base}/qris/status/{order_id}
 ```
 
-Response:
-```json
-{ "status": true, "data": { "payment_status": "paid" } }
-```
+Response: same envelope; `data.status` = `PENDING` | `PAID` | `EXPIRED` (possibly `FAILED`).
 
-`payment_status`: `pending` | `paid` | `expired` | `failed`.
+## Webhook
+
+KlikQRIS sends a webhook to a configured **callback URL** on status change.
+Expected payload contains `order_id` + `status`. Our endpoint:
+`POST /api/payment/klikqris/webhook`.
 
 ## Error envelope
 
@@ -57,25 +74,20 @@ Response:
 { "status": false, "message": "..." }
 ```
 
-Common error: `"Unauthorized: Invalid API Key or Account Inactive"` (HTTP 401) — means the sandbox/production key is not yet activated in the dashboard, or the account is inactive.
+401 + "Invalid API Key or Account Inactive" = wrong mode base URL, wrong key, or inactive account.
 
-## Webhook signature
-
-HMAC-SHA256 over the sorted JSON payload using the API key (verify against official docs at activation).
-
-## Flow
+## Flow (implemented)
 
 ```text
-customer pilih paket
-  → create_qris(order_id, amount) → QR
-  → customer scan bayar
-  → poll check_status (10s) or webhook
-  → payment_status "paid" → issue license
-  → expired/failed → cancel order
+POST /api/orders {accountId, packageKey, amount}
+  → KlikQRIS create → order PENDING (QR returned)
+customer pays
+  → webhook POST /api/payment/klikqris/webhook {order_id, status: PAID}
+  → settlePaid → issue license (bound to accountId)
 ```
 
-## Safety
+## Notes
 
-- API key NEVER in frontend, never committed (`.env`, gitignored).
-- Poll lightly (avoid aggressive auto-poll to prevent key blocking).
-- Prefer webhook when available; poll as fallback.
+- Callback URL must be reachable (Cloudflare Tunnel → localhost:4600).
+- Server reads `.env` via `server/src/loadEnv.js` (zero-dependency).
+- API key NEVER in frontend, never committed.

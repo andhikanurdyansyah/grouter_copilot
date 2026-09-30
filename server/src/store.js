@@ -26,17 +26,18 @@ export class JsonStore {
 
   _load() {
     if (!existsSync(this.filePath)) {
-      return { accounts: [], licenses: [], heartbeats: [] };
+      return { accounts: [], licenses: [], orders: [], heartbeats: [] };
     }
     try {
       const parsed = JSON.parse(readFileSync(this.filePath, 'utf8'));
       return {
         accounts: parsed.accounts ?? [],
         licenses: parsed.licenses ?? [],
+        orders: parsed.orders ?? [],
         heartbeats: parsed.heartbeats ?? [],
       };
     } catch {
-      return { accounts: [], licenses: [], heartbeats: [] };
+      return { accounts: [], licenses: [], orders: [], heartbeats: [] };
     }
   }
 
@@ -77,6 +78,22 @@ export class JsonStore {
 
   licensesByAccount(accountId) {
     return this.data.licenses.filter((l) => l.accountId === accountId);
+  }
+
+  // --- orders (payment flow) ---
+
+  listOrders() {
+    return this.data.orders;
+  }
+
+  getOrder(id) {
+    return this.data.orders.find((o) => o.id === id) ?? null;
+  }
+
+  addOrder(order) {
+    this.data.orders.push(order);
+    this._save();
+    return order;
   }
 
   addLicense(license) {

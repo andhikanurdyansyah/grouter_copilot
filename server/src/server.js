@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { JsonStore } from './store.js';
 import { LicenseService } from './licenseService.js';
 import { UsageResolver } from './usageResolver.js';
+import { KlikQris } from './klikqris.js';
+import { PaymentService } from './paymentService.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -43,6 +45,8 @@ export function createCopilotServer({
   const store = new JsonStore(dataFile);
   const service = new LicenseService({ store, privateKeyPem: keys.privateKeyPem });
   const usage = new UsageResolver({ fetchImpl: fetch, ...(checkUsageUrl ? { checkUsageUrl } : {}) });
+  const klikqris = new KlikQris({ fetchImpl: fetch });
+  const payment = new PaymentService({ klikqris, licenseService: service, store });
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -185,10 +189,44 @@ export function createCopilotServer({
       })();
     }
 
+    // Create a payment order (customer checkout). Returns KlikQRIS QR.
+    if (req.method === 'POST' && url.pathname === '/api/orders') {
+      return readBody(req).then((body) => {
+        if (!body.accountId || !body.amount) {
+          return sendJson(res, 400, { error: 'accountId and amount are required' });
+        }
+        return payment.createOrder({
+          accountId: body.accountId,
+          packageKey: body.packageKey ?? 'default',
+          amount: body.amount,
+          description: body.description ?? '',
+        }).then(({ order, qr }) => {
+          return sendJson(res, 201, { order, qr: { qrUrl: qr.qrUrl, qrImage: qr.qrImage, expiredAt: qr.expiredAt } });
+        }).catch((err) => {
+          return sendJson(res, err.code === 'AUTH_FAILED' ? 502 : 500, { error: err.message });
+        });
+      });
+    }
+
+    // KlikQRIS webhook callback. Marks order paid and issues a license.
+    if (req.method === 'POST' && url.pathname === '/api/payment/klikqris/webhook') {
+      return readBody(req).then((body) => {
+        const orderId = body?.order_id ?? body?.data?.order_id ?? null;
+        const status = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
+        if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
+        if (status === 'PAID') {
+          return payment.settlePaid(orderId).then(({ order, license }) => {
+            return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
+          });
+        }
+        return sendJson(res, 200, { ok: true, ignored: status });
+      });
+    }
+
     return sendJson(res, 404, { error: 'not found' });
   });
 
-  return { server, store, service, usage, keys, listen: () => new Promise((r) => server.listen(port, r)) };
+  return { server, store, service, usage, keys, payment, listen: () => new Promise((r) => server.listen(port, r)) };
 }
 
 function sanitizeLicense(l) {

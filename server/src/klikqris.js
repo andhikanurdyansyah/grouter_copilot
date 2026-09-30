@@ -1,22 +1,24 @@
 /**
  * KlikQRIS payment client — QRIS payment gateway for gRouter Copilot.
  *
- * Verified endpoints (2026-09-30):
- *   POST https://klikqris.com/api/qris/create      (headers: x-api-key, id_merchant)
- *   GET  https://klikqris.com/api/qris/status/{order_id}  (headers: x-api-key, id_merchant)
+ * Verified against LIVE sandbox (2026-10-01). Base URL depends on mode:
+ *   sandbox:    https://klikqris.com/api/sandbox
+ *   production: https://klikqris.com/api
  *
- * Response envelope: { status: true|false, message, data: {...} }
- *   create → data: { qris_image, qris_data, amount, expired_at, order_id, ... }
- *   status → data: { payment_status: "pending"|"paid"|"expired"|"failed", ... }
+ * Endpoints:
+ *   POST {base}/qris/create             → create QRIS
+ *   GET  {base}/qris/status/{order_id}  → check status
  *
- * Credentials come from env (never committed):
- *   KLIKQRIS_API_KEY, KLIKQRIS_MERCHANT_ID, KLIKQRIS_MODE=sandbox|production
+ * Auth headers (all requests): x-api-key, id_merchant.
  *
- * Sandbox note: the account/key must be activated in the KlikQRIS dashboard.
- * An inactive account returns: { status:false, message:"Unauthorized: Invalid API Key or Account Inactive" }.
+ * Verified response envelope (sandbox):
+ *   { status: true, message: "...", data: { order_id, nama_toko, amount, amount_uniq,
+ *     total_amount, status: "PENDING"|"PAID"|..., qris_url, qris_image, expired_at,
+ *     paid_at, signature, keterangan, ... } }
+ *
+ * Status is `data.status` (NOT `payment_status`). The `signature` field is a
+ * transaction signature returned by KlikQRIS (not a webhook HMAC header).
  */
-
-import crypto from 'node:crypto';
 
 export const KLIKQRIS_BASE_URL = 'https://klikqris.com';
 
@@ -34,18 +36,23 @@ export class KlikQris {
     apiKey = process.env.KLIKQRIS_API_KEY,
     merchantId = process.env.KLIKQRIS_MERCHANT_ID,
     mode = process.env.KLIKQRIS_MODE || 'sandbox',
-    baseUrl = KLIKQRIS_BASE_URL,
     fetchImpl = globalThis.fetch,
   } = {}) {
     this.apiKey = apiKey;
     this.merchantId = merchantId;
     this.mode = mode;
-    this.baseUrl = baseUrl;
     this.fetch = fetchImpl;
   }
 
   get configured() {
     return Boolean(this.apiKey && this.merchantId);
+  }
+
+  /** Base path per mode. */
+  get baseUrl() {
+    return this.mode === 'production'
+      ? `${KLIKQRIS_BASE_URL}/api`
+      : `${KLIKQRIS_BASE_URL}/api/sandbox`;
   }
 
   _headers() {
@@ -57,104 +64,85 @@ export class KlikQris {
     };
   }
 
-  /**
-   * Create a QRIS payment.
-   * @param {{orderId:string, amount:number, description?:string}} opts
-   * @returns {Promise<object>} { orderId, amount, qrData, qrImage, expiredAt }
-   */
-  async createQris({ orderId, amount, description = '' }) {
+  async _request(method, path, body) {
     if (!this.configured) {
       throw new KlikQrisError('KlikQRIS is not configured.', { code: 'NOT_CONFIGURED' });
     }
-    const payload = {
-      order_id: orderId,
-      amount: Math.round(Number(amount)),
-      id_merchant: String(this.merchantId),
-      keterangan: description,
-    };
     let res;
     try {
-      res = await this.fetch(`${this.baseUrl}/api/qris/create`, {
-        method: 'POST',
+      res = await this.fetch(`${this.baseUrl}${path}`, {
+        method,
         headers: this._headers(),
-        body: JSON.stringify(payload),
+        ...(body ? { body: JSON.stringify(body) } : {}),
       });
     } catch (err) {
       throw new KlikQrisError('Unable to reach KlikQRIS.', { code: 'NETWORK', cause: err });
     }
 
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) {
-      throw new KlikQrisError(data.message || 'Invalid API key or account inactive.', { code: 'AUTH_FAILED' });
-    }
-    if (data.status === false || data.status === true) {
-      if (data.status === false) {
-        throw new KlikQrisError(data.message || 'KlikQRIS error.', { code: 'REQUEST_FAILED' });
+    if (data.status === false) {
+      const msg = data.message || 'KlikQRIS error.';
+      if (res.status === 401 || /invalid api key|unauthorized|inactive/i.test(msg)) {
+        throw new KlikQrisError(msg, { code: 'AUTH_FAILED' });
       }
-    } else if (!res.ok) {
-      throw new KlikQrisError(`KlikQRIS HTTP ${res.status}.`, { code: 'HTTP_ERROR' });
+      throw new KlikQrisError(msg, { code: 'REQUEST_FAILED' });
     }
+    return data;
+  }
 
+  /**
+   * Create a QRIS payment.
+   * @param {{orderId:string, amount:number, description?:string}} opts
+   * @returns {Promise<object>} normalized { orderId, amount, totalAmount, status, qrUrl, qrImage, expiredAt, signature }
+   */
+  async createQris({ orderId, amount, description = '' }) {
+    const data = await this._request('POST', '/qris/create', {
+      order_id: orderId,
+      amount: Math.round(Number(amount)),
+      id_merchant: String(this.merchantId),
+      keterangan: description,
+    });
     const d = data.data ?? {};
     return {
       orderId: d.order_id ?? orderId,
-      amount: d.amount ?? payload.amount,
-      qrData: d.qris_data ?? d.qris_image ?? null,
+      amount: d.amount ?? null,
+      totalAmount: d.total_amount ?? null,
+      status: d.status ?? 'PENDING',
+      qrUrl: d.qris_url ?? null,
       qrImage: d.qris_image ?? null,
       expiredAt: d.expired_at ?? null,
+      signature: d.signature ?? null,
     };
   }
 
   /**
    * Check payment status.
-   * @returns {Promise<{orderId:string, paymentStatus:string, raw:object}>}
+   * @returns {Promise<{orderId:string, status:string, paidAt:string|null, raw:object}>}
    */
   async checkStatus(orderId) {
-    if (!this.configured) {
-      throw new KlikQrisError('KlikQRIS is not configured.', { code: 'NOT_CONFIGURED' });
-    }
-    let res;
-    try {
-      res = await this.fetch(`${this.baseUrl}/api/qris/status/${encodeURIComponent(orderId)}`, {
-        method: 'GET',
-        headers: this._headers(),
-      });
-    } catch (err) {
-      throw new KlikQrisError('Unable to reach KlikQRIS.', { code: 'NETWORK', cause: err });
-    }
-
-    const data = await res.json().catch(() => ({}));
-    const paymentStatus = data?.data?.payment_status ?? 'unknown';
-    return { orderId, paymentStatus, raw: data };
-  }
-
-  /**
-   * Verify a webhook signature.
-   * KlikQRIS signs with HMAC-SHA256 over the sorted JSON payload using the api key.
-   * (Confirmed against the reference client; verify against official docs at activation.)
-   */
-  verifyWebhookSignature(payload, signature) {
-    if (!this.apiKey || !signature) return false;
-    const canonical = JSON.stringify(payload, Object.keys(payload ?? {}).sort());
-    const expected = crypto.createHmac('sha256', this.apiKey).update(canonical).digest('hex');
-    const a = Buffer.from(expected);
-    const b = Buffer.from(String(signature));
-    if (a.length !== b.length) return false;
-    return crypto.timingSafeEqual(a, b);
+    const data = await this._request('GET', `/qris/status/${encodeURIComponent(orderId)}`);
+    const d = data.data ?? {};
+    return {
+      orderId: d.order_id ?? orderId,
+      status: d.status ?? 'UNKNOWN',
+      paidAt: d.paid_at ?? null,
+      raw: d,
+    };
   }
 }
 
 /**
- * Poll a QRIS order until paid/expired/failed or timeout.
- * @returns {Promise<{paymentStatus:string}>}
+ * Poll a QRIS order until a terminal status or timeout.
+ * KlikQRIS statuses: PENDING → PAID / EXPIRED / (FAILED).
+ * @returns {Promise<{status:string}>}
  */
 export async function pollUntilSettled(klikqris, orderId, { intervalMs = 10000, timeoutMs = 15 * 60_000 } = {}) {
   const start = Date.now();
-  const terminal = new Set(['paid', 'expired', 'failed']);
+  const terminal = new Set(['PAID', 'EXPIRED', 'FAILED']);
   while (Date.now() - start < timeoutMs) {
-    const { paymentStatus } = await klikqris.checkStatus(orderId);
-    if (terminal.has(paymentStatus)) return { paymentStatus };
+    const { status } = await klikqris.checkStatus(orderId);
+    if (terminal.has(status)) return { status };
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  return { paymentStatus: 'timeout' };
+  return { status: 'TIMEOUT' };
 }

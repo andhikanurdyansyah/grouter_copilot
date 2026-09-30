@@ -4,6 +4,9 @@
  */
 
 import { createCopilotServer } from './server.js';
+import { loadEnv } from './loadEnv.js';
+
+loadEnv(); // load .env (zero-dependency) before reading config
 
 const port = parseInt(process.env.PORT ?? '4600', 10);
 const { server, keys } = createCopilotServer({ port });

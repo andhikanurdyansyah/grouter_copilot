@@ -90,3 +90,53 @@ skills/                → skill functions
 4. Key gRouter tidak pernah sampai ke browser.
 5. Aplikasi customer tetap source of truth — Copilot tidak menyimpan data central.
 6. gRouter adalah supplier AI, dipanggil lewat adapter yang stabil.
+
+## Quickstart (Node.js / Next.js)
+
+```bash
+# 1. install
+npm install @grouter/copilot
+
+# 2. scaffold
+npx grouter-copilot init
+
+# 3. isi key gRouter (server-only)
+#    edit .env → GROUTER_API_KEY=sk-...
+
+# 4. mount widget di UI Anda
+#    import { CopilotChat } from "@grouter/copilot/widget";
+#    <CopilotChat userId={user.id} />
+
+# 5. definisikan skill (baca data app)
+#    edit skills/example.js → expose data lewat run()
+```
+
+### API (non-React / headless)
+
+```js
+import { createCopilot } from '@grouter/copilot';
+
+const { runtime } = await createCopilot({ configPath: './copilot.config.js' });
+const result = await runtime.chat({ message: 'ringkas sales', userId: 'u42', args: { period: '7d' } });
+console.log(result.answer);
+```
+
+## Pengembangan (repo ini)
+
+```bash
+npm test          # node --test, tanpa dependency install
+```
+
+Struktur:
+
+```text
+src/index.js            → public API (createCopilot)
+src/config.js           → config loader
+src/skills/             → registry + validator
+src/runtime/            → chat orchestrator + context builder
+src/adapter/grouter.js  → gRouter adapter + FakeSupplier (test)
+src/widget/CopilotChat.jsx → React widget
+bin/grouter-copilot.js  → CLI init
+examples/crm/           → sample skill
+```
+

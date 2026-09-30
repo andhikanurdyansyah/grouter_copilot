@@ -1,0 +1,46 @@
+{
+  "name": "@grouter/copilot",
+  "version": "0.1.0",
+  "description": "Drop-in AI copilot plugin for existing apps. Install with one command, expose data via skills, chat over your gRouter API key.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./widget": "./src/widget/CopilotChat.jsx",
+    "./config": "./src/config.js",
+    "./skills": "./src/skills/registry.js"
+  },
+  "bin": {
+    "grouter-copilot": "./bin/grouter-copilot.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "grouter",
+    "copilot",
+    "ai",
+    "chatbot",
+    "plugin",
+    "skills",
+    "nextjs",
+    "node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}

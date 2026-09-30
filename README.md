@@ -2,7 +2,7 @@
 
 > Drop-in AI copilot untuk aplikasi yang sudah ada. Install lewat satu command, expose data lewat skills, chatbot-nya menjawab pakai AI gRouter.
 
-**gRouter Copilot adalah plugin/module — bukan platform SaaS.** Dia di-install ke dalam aplikasi customer (CRM, POS, HRIS, dan seterusnya), menambahkan chatbot + skills yang membaca data aplikasi itu sendiri, dan AI-nya berjalan di atas **API key gRouter**.
+**gRouter Copilot adalah plugin/module berlisensi (bukan open-source).** Dia di-install ke dalam aplikasi customer (CRM, POS, HRIS, dan seterusnya), menambahkan chatbot + skills yang membaca data aplikasi itu sendiri, dan AI-nya berjalan di atas **API key gRouter**. Runtime menolak jalan tanpa license valid, dan hanya menerima API key gRouter.
 
 ## Cara kerja dalam satu kalimat
 
@@ -90,6 +90,23 @@ skills/                → skill functions
 4. Key gRouter tidak pernah sampai ke browser.
 5. Aplikasi customer tetap source of truth — Copilot tidak menyimpan data central.
 6. gRouter adalah supplier AI, dipanggil lewat adapter yang stabil.
+
+## Lisensi (lock)
+
+```text
+npx @grouter/copilot install
+  --base-url       https://api.grouter.io      (gRouter AI endpoint)
+  --api-key        sk-...                      (gRouter key)
+  --license        <signed-token>              (issued license)
+  --license-server https://license.grouter.io  (revoke + count)
+```
+
+- License = Ed25519-signed token, diverifikasi offline (public key di plugin, private key di license server).
+- Tanpa license valid, runtime menolak (`SCOPE_DENIED`).
+- Terkunci ke gRouter: hanya menerima base-url + API key gRouter.
+- Backend Copilot (license server + admin dashboard) terpisah dari gRouter; gRouter (port 20128) TIDAK disentuh.
+
+Lihat `docs/21-licensing-distribution.md` dan `docs/15-decision-log.md`.
 
 ## Quickstart (Node.js / Next.js)
 

@@ -9,6 +9,8 @@ export { SkillRegistry } from './skills/registry.js';
 export { validateSkill, validateArgs } from './skills/validator.js';
 export { CopilotRuntime } from './runtime/chat.js';
 export { buildContext, redact } from './runtime/context.js';
+export { validateLicense, mintLicense, generateKeyPair, LicenseStatus } from './license/validate.js';
+export { LicenseGate, DEFAULT_PUBLIC_KEY, LICENSE_AUDIENCE } from './license/gate.js';
 
 import { loadCopilotConfig } from './config.js';
 import { GrouterAdapter } from './adapter/grouter.js';

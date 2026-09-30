@@ -127,13 +127,15 @@ export async function copilotHandler(req, res) {
 }
 `;
 
-function runInit() {
+function runInit(opts = {}, { silent = false } = {}) {
   const framework = detectFramework();
   const results = [];
 
-  console.log(`✔ Detected ${framework.label}`);
-  if (framework.name === 'next') {
-    console.log(framework.appRouter ? '  App Router layout' : '  Pages Router layout');
+  if (!silent) {
+    console.log(`✔ Detected ${framework.label}`);
+    if (framework.name === 'next') {
+      console.log(framework.appRouter ? '  App Router layout' : '  Pages Router layout');
+    }
   }
 
   results.push(writeIfMissing('copilot.config.js', CONFIG_TEMPLATE));
@@ -151,47 +153,116 @@ function runInit() {
     results.push(writeIfMissing('src/copilot-route.js', ROUTE_EXPRESS_TEMPLATE));
   }
 
-  const envResult = writeEnv();
+  const envResult = writeEnv(opts);
   if (envResult) results.push(envResult);
 
-  console.log('');
-  for (const r of results) {
-    console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
+  if (!silent) {
+    console.log('');
+    for (const r of results) {
+      console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
+    }
+    console.log('');
+    console.log('Next:');
+    console.log('  1. Set GROUTER_API_KEY in .env');
+    console.log('  2. Mount <CopilotChat /> in your UI');
+    console.log('  3. Edit skills/example.js to expose your data');
   }
-  console.log('');
-  console.log('Next:');
-  console.log('  1. Set GROUTER_API_KEY in .env');
-  console.log('  2. Mount <CopilotChat /> in your UI');
-  console.log('  3. Edit skills/example.js to expose your data');
+
+  return results;
 }
 
-function writeEnv() {
+function writeEnv(opts = {}) {
   const rel = '.env';
   const full = path.join(cwd, rel);
+  const lines = [];
+  if (opts.baseUrl) lines.push(`GROUTER_BASE_URL=${opts.baseUrl}`);
+  if (opts.apiKey) lines.push(`GROUTER_API_KEY=${opts.apiKey}`);
+  if (opts.license) lines.push(`GROUTER_LICENSE=${opts.license}`);
+  if (opts.licenseServerUrl) lines.push(`GROUTER_LICENSE_SERVER=${opts.licenseServerUrl}`);
+  if (lines.length === 0) return null;
+
   if (existsSync(full)) {
-    const content = readFileSync(full, 'utf8');
-    if (!content.includes('GROUTER_API_KEY')) {
-      appendFileSync(full, '\nGROUTER_API_KEY=\n', 'utf8');
+    const existing = readFileSync(full, 'utf8');
+    const added = lines.filter((l) => !existing.includes(l.split('=')[0]));
+    if (added.length) {
+      appendFileSync(full, '\n' + added.join('\n') + '\n', 'utf8');
       return { rel, skipped: false };
     }
     return null;
   }
-  writeFileSync(full, 'GROUTER_API_KEY=\n', 'utf8');
+  writeFileSync(full, lines.join('\n') + '\n', 'utf8');
   return { rel, skipped: false };
+}
+
+function parseFlags(argv) {
+  const opts = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const next = argv[i + 1];
+    if (a === '--base-url' || a === '--baseUrl') opts.baseUrl = next;
+    else if (a === '--api-key' || a === '--apiKey') opts.apiKey = next;
+    else if (a === '--license') opts.license = next;
+    else if (a === '--license-server' || a === '--licenseServer') opts.licenseServerUrl = next;
+  }
+  return opts;
 }
 
 function main() {
   const cmd = process.argv[2];
+  const argv = process.argv.slice(3);
+
   if (!cmd || cmd === 'init') {
-    runInit();
+    runInit(parseFlags(argv));
+    return;
+  }
+  if (cmd === 'install') {
+    runInstall(parseFlags(argv));
     return;
   }
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
-    console.log('Usage: grouter-copilot init');
+    console.log('Usage:');
+    console.log('  grouter-copilot init [--base-url <url> --api-key <key> --license <license>]');
+    console.log('  grouter-copilot install [--base-url <url> --api-key <key> --license <license>]');
     return;
   }
   console.error(`Unknown command: ${cmd}`);
   process.exit(1);
+}
+
+/**
+ * Install mode: scaffold + write credentials (base url, api key, license) to .env.
+ * License is mandatory; without it, Copilot will refuse to run.
+ */
+function runInstall(opts = {}) {
+  const results = runInit(opts, { silent: true });
+
+  const missing = [];
+  if (!opts.baseUrl) missing.push('--base-url');
+  if (!opts.apiKey) missing.push('--api-key');
+  if (!opts.license) missing.push('--license');
+  if (!opts.licenseServerUrl) missing.push('--license-server');
+
+  console.log('gRouter Copilot — install');
+  console.log('');
+  for (const r of results) {
+    console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
+  }
+
+  if (missing.length) {
+    console.log('');
+    console.log('Missing (will be stored in .env):');
+    for (const m of missing) console.log(`  ${m}`);
+    console.log('');
+    console.log('Example:');
+    console.log('  npx grouter-copilot install --base-url https://api.grouter.io --api-key sk-... --license <license-token> --license-server https://license.grouter.io');
+    process.exit(1);
+  }
+
+  const envResult = writeEnv(opts);
+  if (envResult) console.log(`✔ Saved credentials to ${envResult.rel}`);
+
+  console.log('');
+  console.log('Done. Mount <CopilotChat /> in your UI and define skills to expose data.');
 }
 
 main();

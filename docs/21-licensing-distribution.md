@@ -2,49 +2,76 @@
 
 ## Model
 
-gRouter Copilot is **license-based, not open-source**. The plugin is installed via npm, but refuses to run without a valid license, and is locked to the gRouter AI service.
+gRouter Copilot is **license-based, not open-source**. Customer holds ONE credential: a **license key**. The gRouter api key is bundled behind the license and resolved server-side.
+
+## Customer flow
+
+```text
+Landing (copilot.grouter.id) → Register → Dashboard → Purchase license (quota) → LICENSE KEY → install
+```
 
 ## Two locks
 
 ### Lock 1 — Run lock (license)
 
-- License = Ed25519-signed token (JWT-style).
-- Plugin embeds only the PUBLIC key; license server holds the PRIVATE key.
-- Verification is offline: a valid license proves it was issued by us and cannot be forged client-side.
-- Without a valid license, Copilot throws `SCOPE_DENIED` and refuses to serve chat.
+- License = Ed25519-signed token. Plugin verifies offline.
+- Without a valid license, Copilot throws `SCOPE_DENIED`.
 
 ### Lock 2 — Provider lock (gRouter only)
 
-- Base URL + API key are fixed to gRouter at install time.
-- The adapter does not accept arbitrary provider keys or URLs.
+- Base URL + API key fixed to gRouter, resolved from the license (server-side).
+
+## License token vs api key (critical separation)
+
+| | License token (customer holds) | gRouter api key (secret) |
+|---|---|---|
+| Contents | entitlement: licenseId, quota, features | raw credential |
+| Stored | customer `.env` | Copilot backend (secret) |
+| Embedded in token? | — | **NEVER** |
+
+The token is **signed (integrity), not encrypted** — its payload is readable. Embedding the api key would expose it to anyone who decodes the token.
+
+## Api key resolution (Option A: key handoff)
+
+```text
+plugin install
+  → send license key (TLS)
+  → backend validate signature + quota
+  → backend return bound gRouter api key
+  → plugin write to customer .env (server-only)
+  → plugin calls gRouter directly
+```
+
+- Customer never types an api key.
+- App keeps working if license server is down (consistent with hybrid offline design).
 
 ## Install flow
 
 ```text
 npx @grouter/copilot install
-  --base-url      https://api.grouter.io        (gRouter AI endpoint)
-  --api-key       sk-...                        (gRouter key)
-  --license       <signed-token>                (issued license)
-  --license-server https://license.grouter.io    (revoke/count)
+  → prompt: LICENSE KEY
+  → (server-side) resolve api key
+  → write .env
+  → done
 ```
 
-Stored in `.env` (server-only). The widget/browser never receives the API key or license.
+## Usage / quota
 
-## License server (Copilot backend)
+Copilot dashboard consumes gRouter `/check-usage` (read-only) per license, cache + aggregate, render quota consumption.
 
-A separate service from gRouter (port 20128 is untouched). Responsibilities:
+## Auto-provisioning (DEFERRED)
 
-- mint license (on purchase/entitlement);
-- revoke license;
-- validate heartbeat / count active installs;
-- report to admin dashboard.
+Do not wire "purchase license → auto-generate gRouter api key" yet. Admin maps license → existing gRouter api key manually until the gRouter provisioning contract is clear.
 
 ## Admin dashboard
 
-Purpose: see how many customers/installs use gRouter Copilot, manage licenses (issue/revoke), and observe usage.
+- license list + install count;
+- issue/revoke license;
+- per-license usage/quota (from gRouter `/check-usage`).
 
-## Design decisions to confirm
+## Design decisions locked
 
-1. **Validation mode** — offline-only vs hybrid (offline + best-effort online heartbeat). Recommended: hybrid so apps keep working if the license server is briefly down, while still enabling revocation + counting.
-2. **Install lock scope** — runtime gate on a public npm package (installable but refuses to run) vs a private npm registry (can't install at all). Recommended: runtime gate first, private registry later if needed.
-3. **Dashboard MVP scope** — license list + install count first, then per-project telemetry, revocation, and billing.
+1. Validation: hybrid (offline + best-effort online).
+2. Install lock: runtime gate (public package, refuses to run without license).
+3. Api key delivery: Option A (handoff), not Option B (proxy).
+4. Auto-provisioning: deferred.

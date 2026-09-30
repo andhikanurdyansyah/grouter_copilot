@@ -93,20 +93,25 @@ skills/                → skill functions
 
 ## Lisensi (lock)
 
+Customer flow:
+
+```text
+Landing (copilot.grouter.id) → Register → Dashboard → Purchase license (quota) → LICENSE KEY → install
+```
+
 ```text
 npx @grouter/copilot install
-  --base-url       https://api.grouter.io      (gRouter AI endpoint)
-  --api-key        sk-...                      (gRouter key)
-  --license        <signed-token>              (issued license)
-  --license-server https://license.grouter.io  (revoke + count)
+  --license <license-key>   ← satu-satunya credential customer (BUKAN api key)
 ```
 
 - License = Ed25519-signed token, diverifikasi offline (public key di plugin, private key di license server).
 - Tanpa license valid, runtime menolak (`SCOPE_DENIED`).
+- **Api key gRouter di-resolve server-side dari license** (key handoff), tidak pernah di-embed di token, tidak pernah diketik manual oleh customer.
 - Terkunci ke gRouter: hanya menerima base-url + API key gRouter.
 - Backend Copilot (license server + admin dashboard) terpisah dari gRouter; gRouter (port 20128) TIDAK disentuh.
+- **Auto-provisioning api key DEFERRED** — admin map license → api key manual sampai flow jelas.
 
-Lihat `docs/21-licensing-distribution.md` dan `docs/15-decision-log.md`.
+Lihat `docs/22-customer-flow.md`, `docs/21-licensing-distribution.md`, dan `docs/15-decision-log.md`.
 
 ## Copilot backend (license server + admin dashboard)
 

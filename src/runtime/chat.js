@@ -14,10 +14,20 @@ function nextRequestId() {
 }
 
 export class CopilotRuntime {
-  constructor({ config, adapter, registry } = {}) {
+  constructor({ config, adapter, registry, licenseGate } = {}) {
     this.config = config;
     this.adapter = adapter;
     this.registry = registry ?? new SkillRegistry({ skills: config?.skills ?? [] });
+    this.licenseGate = licenseGate ?? null;
+  }
+
+  /**
+   * Enforce license (if a gate is provided). Throws before any data access.
+   */
+  _enforceLicense() {
+    if (!this.licenseGate) return; // gate optional (tests / open build)
+    const token = process.env.GROUTER_LICENSE;
+    this.licenseGate.enforce(token);
   }
 
   /**
@@ -29,6 +39,7 @@ export class CopilotRuntime {
     const requestId = nextRequestId();
     try {
       validateChatRequest(req);
+      this._enforceLicense();
 
       const skillName = this.registry.resolve(req.skillHint, req.message);
 
@@ -84,6 +95,7 @@ export class CopilotRuntime {
     const requestId = nextRequestId();
     try {
       validateChatRequest(req);
+      this._enforceLicense();
       yield { type: 'run.started', requestId };
 
       const skillName = this.registry.resolve(req.skillHint, req.message);

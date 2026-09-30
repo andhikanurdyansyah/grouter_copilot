@@ -4,7 +4,7 @@
 
 Bangun plugin secara vertikal & minimal: satu bahasa (Node.js/Next.js), satu alur install → skill → chat → gRouter. Baru perluas setelah protokol skill stabil.
 
-## Phase 0 — Core plugin (Node.js)
+## Phase 0 — Core plugin (Node.js) — DONE
 
 **Outcome:** `npx @grouter/copilot init` menghasilkan working chatbot.
 
@@ -17,7 +17,29 @@ Bangun plugin secara vertikal & minimal: satu bahasa (Node.js/Next.js), satu alu
 - widget `CopilotChat`.
 - `.env` handling (`GROUTER_API_KEY`).
 
-**Gate:** install → tulis 1 skill → chat bekerja, key tidak bocor, test contract lulus.
+**Gate:** install → tulis 1 skill → chat bekerja, key tidak bocor, test contract lulus. ✅
+
+## Phase 0b — License & install — DONE
+
+**Outcome:** produk terkunci license, install interaktif.
+
+- CLI `install` (base-url + api-key + license + license-server).
+- License module: Ed25519 signed token, offline validation.
+- License gate: runtime menolak tanpa license valid.
+- Provider lock: hanya terima API key gRouter.
+
+**Gate:** install → tanpa license ditolak, license valid lolos. ✅
+
+## Phase 0c — Copilot backend (license server + dashboard) — DONE
+
+**Outcome:** bisa manage license + hitung install.
+
+- License server (mint/revoke/validate/heartbeat).
+- JSON store (zero dependency).
+- Admin dashboard (gRouter design system).
+- Heartbeat endpoint untuk counting + revocation.
+
+**Gate:** issue → plugin validasi → heartbeat tercatat → revoke blokir. ✅
 
 ## Phase 1 — Skill & chat quality
 
@@ -67,12 +89,16 @@ Bangun plugin secara vertikal & minimal: satu bahasa (Node.js/Next.js), satu alu
 
 - mutating skills (write/update) dengan confirmation + audit;
 - auto-discovery terbatas (helper, bukan default);
-- optional Copilot backend (telemetry/provisioning) — hanya jika dibutuhkan.
+- per-project telemetry dashboard;
+- billing integrasi;
+- private npm registry.
 
 ## Dependency order
 
 ```text
-CLI init → config → skill registry → runtime chat → gRouter adapter → widget → quality → Next.js → observability → multi-bahasa → advanced
+CLI init → config → skill registry → runtime chat → gRouter adapter → widget
+→ license + install → Copilot backend (license server + dashboard)
+→ quality → Next.js → observability → multi-bahasa → advanced
 ```
 
 ## Release rules

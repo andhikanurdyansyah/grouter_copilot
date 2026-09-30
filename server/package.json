@@ -1,0 +1,16 @@
+{
+  "name": "@grouter/copilot-server",
+  "version": "0.1.0",
+  "description": "gRouter Copilot license server + admin dashboard (separate from gRouter).",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  }
+}

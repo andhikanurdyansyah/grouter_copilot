@@ -108,6 +108,25 @@ npx @grouter/copilot install
 
 Lihat `docs/21-licensing-distribution.md` dan `docs/15-decision-log.md`.
 
+## Copilot backend (license server + admin dashboard)
+
+Terpisah dari gRouter (port 20128 TIDAK disentuh). Jalankan:
+
+```bash
+cd server
+node src/index.js          # http://localhost:4600  (admin dashboard)
+```
+
+```text
+GET  /api/stats           → total license, active, install
+GET  /api/licenses        → daftar license (tanpa raw token)
+POST /api/licenses        → issue license (kembalikan token SEKALI)
+POST /api/licenses/:id/revoke
+POST /api/heartbeat       → plugin phone-home (counting + revoke)
+```
+
+Lihat `server/README.md` untuk detail.
+
 ## Quickstart (Node.js / Next.js)
 
 ```bash

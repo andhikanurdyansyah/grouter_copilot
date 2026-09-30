@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gRouter Copilot Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0B0B10;
+      --surface: #16161C;
+      --surface-2: #1E1E25;
+      --muted: #23232B;
+      --border: #1E293B;
+      --foreground: #F8FAFC;
+      --muted-fg: #94A3B8;
+      --accent: #3B82F6;
+      --accent-soft: rgba(59,130,246,0.14);
+      --destructive: #EF4444;
+      --success: #22C55E;
+      --warning: #F59E0B;
+      --radius: 8px;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--foreground);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    .shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      padding: 4px 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: var(--accent);
+      display: grid; place-items: center;
+      font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 13px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      color: var(--muted-fg);
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 180ms ease, color 180ms ease;
+    }
+    .nav-item:hover { background: var(--muted); color: var(--foreground); }
+    .nav-item.active { background: var(--accent-soft); color: var(--foreground); border-color: rgba(59,130,246,0.25); }
+    .nav-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-fg); }
+    .nav-item.active .dot { background: var(--accent); }
+
+    .main { flex: 1; min-width: 0; padding: 32px 40px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .page-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+    .page-sub { color: var(--muted-fg); font-size: 14px; margin-top: 4px; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .stat-label { color: var(--muted-fg); font-size: 13px; letter-spacing: 0.02em; }
+    .stat-value { font-family: var(--font-display); font-size: 32px; font-weight: 700; margin-top: 8px; letter-spacing: -0.02em; }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.good { color: var(--success); }
+    .stat-value.warn { color: var(--warning); }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+    .panel-body { padding: 8px 20px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-family: var(--font-body); font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform 160ms ease, background 180ms ease, border-color 180ms ease;
+      color: #fff;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--accent); }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-ghost { background: transparent; border-color: var(--border); color: var(--foreground); }
+    .btn-ghost:hover { background: var(--muted); }
+    .btn-danger { background: transparent; border-color: rgba(239,68,68,0.4); color: var(--destructive); }
+    .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { color: var(--muted-fg); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'Fira Code', ui-monospace, monospace; font-size: 13px; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .badge.active { background: rgba(34,197,94,0.12); color: var(--success); }
+    .badge.revoked { background: rgba(239,68,68,0.12); color: var(--destructive); }
+    .badge.expired { background: rgba(245,158,11,0.12); color: var(--warning); }
+
+    .empty { text-align: center; padding: 48px 20px; color: var(--muted-fg); }
+
+    /* Issue modal */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(4,4,8,0.7); backdrop-filter: blur(4px);
+      z-index: 50; align-items: center; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 440px; max-width: calc(100vw - 32px);
+    }
+    .modal h2 { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: var(--muted-fg); margin-bottom: 6px; }
+    .field input, .field textarea {
+      width: 100%; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--foreground);
+      font-family: var(--font-body); font-size: 14px;
+    }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .license-token {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px;
+      font-family: 'Fira Code', monospace; font-size: 12px;
+      word-break: break-all; color: var(--accent); margin-top: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .shell { flex-direction: column; }
+      .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); }
+      .brand { padding-bottom: 0; }
+      .main { padding: 20px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">G</span> Copilot Console</div>
+      <a class="nav-item active" href="/"><span class="dot"></span> Overview</a>
+      <a class="nav-item" href="/#licenses"><span class="dot"></span> Licenses</a>
+      <a class="nav-item" href="/#activity"><span class="dot"></span> Activity</a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Overview</div>
+          <div class="page-sub">Monitor lisensi dan installasi plugin gRouter Copilot</div>
+        </div>
+        <button class="btn btn-primary" id="issueBtn">+ Issue License</button>
+      </div>
+
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div class="panel" id="licenses">
+        <div class="panel-head">
+          <span class="panel-title">Licenses</span>
+          <span class="mono" style="color:var(--muted-fg)"># of installs tracked</span>
+        </div>
+        <div class="panel-body">
+          <table>
+            <thead>
+              <tr><th>Customer</th><th>License ID</th><th>Installs</th><th>Status</th><th>Expires</th><th></th></tr>
+            </thead>
+            <tbody id="licenseRows"></tbody>
+          </table>
+          <div class="empty" id="emptyState" style="display:none">Belum ada license.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2>Issue License</h2>
+      <div class="field">
+        <label>Customer</label>
+        <input id="customer" placeholder="Acme CRM" />
+      </div>
+      <div class="field">
+        <label>Features (comma separated)</label>
+        <input id="features" value="core" />
+      </div>
+      <div class="field">
+        <label>Expires in days</label>
+        <input id="expiresInDays" type="number" value="365" />
+      </div>
+      <div class="field" id="tokenField" style="display:none">
+        <label>License token (copy now — shown once)</label>
+        <div class="license-token" id="tokenOut"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="confirmIssue">Issue</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STATS = __STATS_JSON__;
+    const LICENSES = __LICENSES_JSON__;
+
+    function fmtDate(ts) {
+      if (!ts) return '—';
+      return new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function statusOf(l) {
+      if (l.revokedAt) return 'revoked';
+      if (l.expiresAt && l.expiresAt < Date.now()) return 'expired';
+      return 'active';
+    }
+
+    function renderStats() {
+      const grid = document.getElementById('statGrid');
+      grid.innerHTML = '';
+      const items = [
+        { label: 'Total licenses', value: STATS.totalLicenses, cls: '' },
+        { label: 'Active', value: STATS.activeLicenses, cls: 'good' },
+        { label: 'Revoked', value: STATS.revokedLicenses, cls: 'warn' },
+        { label: 'Total installs', value: STATS.totalInstalls, cls: 'accent' },
+      ];
+      for (const it of items) {
+        const el = document.createElement('div');
+        el.className = 'stat-card';
+        el.innerHTML = `<div class="stat-label">${it.label}</div><div class="stat-value ${it.cls}">${it.value}</div>`;
+        grid.appendChild(el);
+      }
+    }
+
+    function renderLicenses() {
+      const rows = document.getElementById('licenseRows');
+      rows.innerHTML = '';
+      if (!LICENSES.length) { document.getElementById('emptyState').style.display = 'block'; return; }
+      document.getElementById('emptyState').style.display = 'none';
+      for (const l of LICENSES) {
+        const st = statusOf(l);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(l.customer)}</td>
+          <td class="mono">${escapeHtml(l.id)}</td>
+          <td>${l.installCount}</td>
+          <td><span class="badge ${st}">${st}</span></td>
+          <td>${fmtDate(l.expiresAt)}</td>
+          <td>${st === 'active' ? `<button class="btn btn-danger" onclick="revoke('${l.id}')">Revoke</button>` : ''}</td>
+        `;
+        rows.appendChild(tr);
+      }
+    }
+
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    async function revoke(id) {
+      if (!confirm('Revoke license ' + id + '?')) return;
+      const res = await fetch('/api/licenses/' + id + '/revoke', { method: 'POST' });
+      if (res.ok) location.reload();
+      else alert('Revoke failed');
+    }
+
+    // Issue modal
+    const modal = document.getElementById('modalBackdrop');
+    document.getElementById('issueBtn').onclick = () => {
+      document.getElementById('tokenField').style.display = 'none';
+      document.getElementById('customer').value = '';
+      document.getElementById('features').value = 'core';
+      document.getElementById('expiresInDays').value = '365';
+      modal.classList.add('open');
+    };
+    document.getElementById('cancelBtn').onclick = () => modal.classList.remove('open');
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+
+    document.getElementById('confirmIssue').onclick = async () => {
+      const customer = document.getElementById('customer').value.trim();
+      if (!customer) { alert('Customer required'); return; }
+      const features = document.getElementById('features').value.split(',').map(s => s.trim()).filter(Boolean);
+      const expiresInDays = parseInt(document.getElementById('expiresInDays').value, 10) || 365;
+      const res = await fetch('/api/licenses', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer, features, expiresInDays }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        document.getElementById('tokenOut').textContent = data.token;
+        document.getElementById('tokenField').style.display = 'block';
+        document.getElementById('confirmIssue').textContent = 'Done';
+        setTimeout(() => location.reload(), 4000);
+      } else {
+        alert('Issue failed: ' + (data.error || 'unknown'));
+      }
+    };
+
+    renderStats();
+    renderLicenses();
+  </script>
+</body>
+</html>

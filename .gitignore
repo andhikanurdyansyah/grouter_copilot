@@ -11,3 +11,4 @@ build/
 coverage/
 .tmp/
 package-lock.json
+server/data/

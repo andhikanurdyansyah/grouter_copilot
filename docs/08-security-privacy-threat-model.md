@@ -1,65 +1,56 @@
-# Security, Privacy, and Threat Model
+# Security, Privacy & Threat Model — gRouter Copilot
 
-## Security objectives
+## 1. Security objectives
 
-1. Prevent cross-tenant data access.
-2. Prevent unauthorized scope expansion.
-3. Prevent secret exposure to browser, model, logs, and support staff.
-4. Make every sensitive operation attributable and revocable.
-5. Preserve customer control over retention and deletion.
+1. Key gRouter tidak pernah ke browser.
+2. Skill adalah satu-satunya pintu akses data.
+3. Prompt injection tidak bisa memanggil skill/aksi di luar izin.
+4. Data sensitif tidak bocor lewat context/log/error.
+5. Developer mengontrol scope data per skill.
 
-## Threats and controls
+## 2. Threats & controls
 
 | Threat | Control |
 |---|---|
-| Tenant ID substitution | derive tenant from credential and server session; enforce repository predicates |
-| Prompt injection in CRM notes | treat retrieved text as untrusted; separate policy from data; tool allowlist |
-| Role spoofing | signed identity exchange or server-side lookup; never trust browser roles |
-| Credential leakage | secret vault/encryption, write-only display, redaction, rotation |
-| Over-broad connector | allowlisted resources/fields, bounded query plans, review gate |
-| Data exfiltration through answer | output policy, sensitive-field masking, source scope checks |
-| Replay webhook | signature, timestamp window, event ID deduplication |
-| Malicious plugin | signed manifest, permission review, sandbox/remote isolation, revocation |
-| Denial of service | quotas, concurrency limits, body limits, timeouts, circuit breakers |
-| Training-data contamination | provenance, versioned indexing, deletion propagation, evaluation |
-| Operator overreach | least privilege, audit, break-glass access with reason and expiry |
+| Key gRouter bocor ke client | key hanya di server env; adapter server-only; test bundle scan |
+| Prompt injection dari data aplikasi | data = untrusted content; policy/prompt terpisah; skill allowlist |
+| Skill dipanggil di luar izin | registry allowlist; hanya skill terdaftar yang run |
+| Data berlebih masuk context | limit row/byte/token; field filtering di `run()` |
+| Error bocorkan secret | redaction; error taxonomy aman |
+| Skill mutasi tanpa izin | v1 read-only; mutasi = gate + confirmation + audit |
+| SSRF / akses DB liar | tidak ada auto-URL/SQL; akses data hanya di `run()` |
+| Replay request | session id + request id; (mutasi: idempotency) |
 
-## Data classification
+## 3. Data classification (untuk developer)
 
-- Public: documentation intentionally published.
-- Internal: configuration and operational metadata.
-- Confidential: business records and conversation content.
-- Restricted: credentials, access tokens, payroll, health, government IDs, payment details.
+- **Restricted:** credential, token, key, password, PII sensitif → JANGAN di-return `run()`.
+- **Confidential:** business record → boleh, tapi scoped per user.
+- **Public/internal:** bebas.
 
-Restricted data is disabled by default and requires an explicit enterprise policy and field masking.
+Plugin menyediakan panduan + lint helper agar developer tidak mengekspos restricted field.
 
-## Authorization layers
+## 4. Authorization model
 
-1. Credential authenticates project/environment.
-2. Subject authenticates end user.
-3. Role grants skill/resource permission.
-4. Scope policy filters records and fields.
-5. Skill contract limits tools.
-6. Output guard prevents prohibited disclosure.
+v1 sederhana:
 
-Authorization must be evaluated before retrieval; prompt instructions are never an authorization mechanism.
+1. `userId` dari request (developer resolve di runtime);
+2. skill menerima `user`, developer scope data di `run()`;
+3. tidak ada RBAC global — scope adalah tanggung jawab developer + plugin enforce read-only.
 
-## Privacy requirements
+Ke depan (gated): role/attribute map, signed identity.
 
-- State purpose and data categories at connector setup.
-- Minimize retained content.
-- Support deletion requests and deletion propagation to indexes/caches.
-- Provide export of configuration, audit, and customer-owned content where applicable.
-- Record source and retention policy for each index.
-- Separate operational metadata from content access.
+## 5. Privacy
 
-## Security acceptance tests
+- Copilot stateless; tidak menyimpan data customer central.
+- Session history (bila ada) lokal ke app, sesuai policy app.
+- Tidak ada telemetry yang mengirim data aplikasi ke Copilot (v1 self-contained).
+- Developer bertanggung jawab atas PII masking di `run()`.
 
-- cross-tenant ID substitution fails;
-- revoked token fails immediately or within documented cache TTL;
-- prompt injection cannot invoke undeclared connector/action;
-- secret does not appear in logs, traces, sources, or answer;
-- deletion removes content from retrieval path;
-- webhook replay is rejected;
-- browser bundle contains no server credential;
-- support role cannot read content without approved break-glass event.
+## 6. Security acceptance tests
+
+- bundle browser TIDAK mengandung `GROUTER_API_KEY` atau nilainya;
+- prompt injection tidak memanggil skill tak terdaftar / tak terotorisasi;
+- skill read-only tidak mengubah data;
+- error tidak mengekspos key/stack/provider;
+- data restricted tidak masuk context;
+- request tanpa userId ditolak (bila skill butuh user scope).

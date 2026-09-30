@@ -1,78 +1,79 @@
-# API and Protocol
+# API & Protocol — gRouter Copilot
 
-## Compatibility policy
+## 1. Dua kontrak
 
-- Public protocol uses semantic versions.
-- Additive response fields are allowed.
-- Removing or changing field meaning requires a major version.
-- Clients must ignore unknown fields.
-- Error codes are stable identifiers; messages are not machine contracts.
-- Every request returns an opaque `requestId`.
+### Kontrak A: UI → Runtime (internal app)
 
-## Canonical chat request
+```text
+POST /api/copilot/chat
+{ "message": "ringkas order bulan ini", "userId": "u42", "sessionId": "s1" }
 
-```json
-{
-  "protocolVersion": "1.0",
-  "projectId": "proj_123",
-  "environment": "production",
-  "sessionId": "sess_123",
-  "message": {"role": "user", "content": "Ringkas penjualan minggu ini"},
-  "subject": {
-    "id": "crm:user:42",
-    "roles": ["sales_manager"],
-    "attributes": {"branchId": "branch-7"}
-  },
-  "skillHint": "sales-summary",
-  "locale": "id-ID"
-}
+→ SSE stream:
+  run.started
+  retrieval.status   (skill mana, sumber)
+  answer.delta
+  source.added
+  run.completed | run.blocked | run.failed | run.cancelled
+  usage.final
 ```
 
-The server must derive authorization from the trusted integration context. Client-supplied roles are never trusted without signature or server-side validation.
+### Kontrak B: Runtime → gRouter (adapter)
 
-## Canonical answer
+```text
+adapter.complete({ model, messages, stream, limits })
+→ { answer, usage, status }
+
+adapter.stream({ model, messages, limits }, onDelta)
+→ stream events + final usage
+```
+
+## 2. Chat response envelope
 
 ```json
 {
   "requestId": "req_123",
   "status": "complete",
   "answer": "...",
-  "sources": [
-    {"label": "Sales report", "retrievedAt": "2026-09-29T10:00:00Z", "freshness": "current"}
-  ],
-  "limitations": [],
-  "usage": {"inputTokens": 0, "outputTokens": 0},
-  "model": {"catalogId": "grouter-model"}
+  "sources": [{"label": "Sales (7d)", "retrievedAt": "..."}],
+  "usage": {"inputTokens": 0, "outputTokens": 0}
 }
 ```
 
-Do not return provider identity, internal connection IDs, raw upstream model IDs, connector credentials, raw SQL, or hidden chain-of-thought.
+`complete` = plan selesai, bukan jaminan jawaban benar. `partial`/`stale`/`blocked`/`error` punya arti eksplisit.
 
-## Endpoint families
+## 3. Skill call contract
 
-- `POST /v1/projects` — create project.
-- `POST /v1/environments` — create environment.
-- `POST /v1/connectors` — register connector.
-- `POST /v1/connectors/{id}/test` — bounded non-mutating test.
-- `POST /v1/skills/{id}/validate` — validate binding.
-- `POST /v1/chat` — non-streaming chat.
-- `POST /v1/chat/stream` — SSE chat.
-- `POST /v1/events` — signed application event ingestion.
-- `GET /v1/usage` — scoped usage.
-- `GET /v1/audit-events` — authorized audit search.
-- `POST /v1/credentials/{id}/revoke` — revoke credential.
-- `POST /v1/data-deletion-requests` — request deletion.
+Skill dipanggil dengan:
 
-## Error taxonomy
+```js
+run({ ...validatedArgs, user }, context)
+```
 
-`AUTH_REQUIRED`, `FORBIDDEN_SCOPE`, `TENANT_MISMATCH`, `CONNECTOR_UNAVAILABLE`, `CONNECTOR_PARTIAL`, `SKILL_DISABLED`, `QUOTA_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `TIMEOUT`, `CLIENT_CANCELLED`, `POLICY_BLOCKED`, `INVALID_REQUEST`, `INTERNAL_ERROR`.
+return value jadi context model. Skill tidak menerima raw prompt/instruction dari user sebagai logic.
 
-## Streaming events
+## 4. gRouter adapter boundary
 
-SSE event types: `run.started`, `retrieval.status`, `answer.delta`, `source.added`, `run.completed`, `run.blocked`, `run.failed`, `run.cancelled`, `usage.final`.
+Adapter expose HANYA:
 
-Events are ordered per request, carry request ID, and are safe to replay only when the client supplies a deduplication key.
+- model catalog identifier;
+- messages/context;
+- stream events;
+- usage;
+- status;
+- safe error.
 
-## Authentication
+Adapter **tidak** expose: provider, connection, combo, fallback, raw upstream model ID, atau internal routing gRouter.
 
-Server SDKs use environment-specific server credentials. Browser integrations use short-lived, origin-bound client tokens or a customer-issued session exchange. Never embed the gRouter supplier credential in browser code.
+## 5. Versioning
+
+- Skill contract dan chat protocol pakai semver.
+- Adapter men-target satu versi public gRouter API; perubahan = major bump adapter.
+- Additive response field = minor; remove/change meaning = major.
+
+## 6. Error handling
+
+Error selalu: stable code + requestId + retryable + safe message. Tidak ada stack trace, key, raw supplier error, atau SQL.
+
+## 7. Contract tests
+
+Test parity: skill contract sama di semua bahasa (saat multi-bahasa). Test stream disconnect, cancel, timeout, gRouter down, duplicate event.

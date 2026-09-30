@@ -2,34 +2,29 @@
 
 ## Purpose
 
-## User-facing description
+## Description (untuk intent matching)
 
-## Supported domains
+## Parameters (JSON Schema)
 
-## Required resources
+## Read-only
 
-## Required permissions
+`true` (v1). Bila butuh mutasi → gate terpisah.
 
-## Input schema
+## run() implementation
 
-## Output schema
+```js
+async run(args, ctx) {
+  // scope per user: ctx.user / args.user
+  // return hanya field yang diperlukan
+}
+```
 
-## Read/write classification
-
-Read-only / action.
-
-## Scope behavior
-
-## Freshness requirement
+## Sources & freshness
 
 ## Limits
 
-Rows, bytes, tokens, time, concurrency.
+## Refusal / partial behavior
 
-## Refusal and partial-data behavior
+## Evaluation fixtures
 
-## Evaluation cases
-
-## Audit events
-
-## Rollout and kill switch
+## Rollout & disable

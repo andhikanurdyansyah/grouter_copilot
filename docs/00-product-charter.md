@@ -1,62 +1,61 @@
-# Product Charter
+# Product Charter — gRouter Copilot (Plugin)
 
 ## 1. Product thesis
 
-Businesses already have valuable data in CRM, POS, HRIS, ERP, and internal systems, but users cannot easily turn that data into decisions. gRouter Copilot is an embedded AI platform that gives each application a context-aware assistant without forcing the application owner to build model routing, retrieval, skill execution, permission propagation, streaming UI, or AI governance from scratch.
+Developer aplikasi bisnis ingin menambah AI ke aplikasi yang sudah jalan tanpa membangun infrastruktur model, retrieval, streaming, atau governance sendiri. gRouter Copilot adalah **plugin/module npm** yang memberi aplikasi itu sebuah AI copilot di atas data-nya sendiri, dengan gRouter sebagai supplier model.
 
 ## 2. Product definition
 
-**gRouter Copilot is not a feature of the existing gRouter.** It is a separate product, codebase, deployment, tenant system, and commercial offering. It consumes an approved AI API/token contract from the existing gRouter as an upstream model service.
+gRouter Copilot adalah **package yang di-install ke aplikasi customer**, bukan platform SaaS. Ia:
 
-## 3. Problem statement
+- di-install lewat satu command (`npx @grouter/copilot init`);
+- menambahkan chatbot UI + runtime;
+- membaca data aplikasi lewat **developer-defined skills**;
+- memakai **API key gRouter** yang tersimpan di `.env` customer (self-contained);
+- tidak menyimpan data aplikasi di server Copilot manapun.
 
-Application vendors need an AI capability that:
+## 3. Problem
 
-- installs into different technology stacks;
-- understands application-specific data and terminology;
-- respects the logged-in user's permissions;
-- supports summaries, search, analysis, and recommendations;
-- can be governed, audited, and disabled;
-- does not lock the vendor to one LLM provider;
-- can launch with low integration effort.
+Aplikasi bisnis (CRM, POS, HRIS) sudah punya data berharga, tapi user kesulitan mengubahnya jadi jawaban/insight. Vendor aplikasi tidak mau:
 
-## 4. Strategic wedge
+- membangun infrastruktur LLM sendiri;
+- menyimpan banyak provider API key;
+- mengurus streaming, retry, fallback, billing;
+- mengekspos data mentah ke model tanpa kontrol.
 
-The wedge is not “a generic chatbot.” The wedge is **trusted, application-embedded intelligence with an integration contract**. The defensible asset is the combination of connector protocol, permission-aware context, reusable domain skills, evaluation data, and low-friction deployment.
+## 4. Wedge (differentiator)
 
-## 5. Product boundaries
+Wedge bukan "chatbot generik". Wedge adalah **skill layer yang developer-definable**: developer mengekspos data secara eksplisit, chatbot menjawab dari data itu, dengan satu key gRouter sebagai satu-satunya dependency AI.
 
-### In scope
+## 5. Boundaries
 
-- Independent Copilot control plane and runtime.
-- SDKs, REST protocol, web components, and plugin system.
-- Connectors for customer APIs, events, documents, and approved read-only data sources.
-- Read-only skills: search, summary, analytics, recommendation, document Q&A.
-- Tenant, project, environment, user, role, scope, audit, usage, and credential management.
-- Adapter to the existing gRouter AI API/token service.
-- Embedded chat, headless API, and framework-neutral integration.
+### In scope (v0.1)
 
-### Explicitly out of scope for MVP
+- npm package `@grouter/copilot` untuk Node.js/Next.js;
+- `init` command: deteksi framework, generate config/skills/route/widget;
+- developer-defined skills (read-only);
+- embedded chatbot UI + runtime route;
+- adapter ke gRouter API (streaming, error, usage);
+- self-contained: key di `.env`.
 
-- Modifying or embedding code into the existing gRouter.
-- Automatic unrestricted database discovery.
-- Autonomous agents with broad action authority.
-- Payroll, payment, refund, deletion, or other high-impact mutations.
-- Fine-tuning as a prerequisite.
-- Supporting every programming language with a native SDK on day one.
-- Replacing a customer's system of record.
-- Making business decisions without human review.
+### Out of scope (v0.1)
+
+- backend Copilot / control plane / tenant management;
+- auto-scan penuh seluruh database;
+- mutating skills (tulis/hapus/update data);
+- fine-tuning;
+- native SDK untuk semua bahasa (Java/Python menyusul setelah protokol stabil);
+- marketplace plugin publik.
 
 ## 6. Product principles
 
-- **Trust before magic:** visible sources, freshness, and scope beat impressive but unverifiable answers.
-- **Least privilege:** retrieve only what the user and skill need.
-- **Progressive capability:** read first, propose second, act only with explicit controls.
-- **Protocol over implementation:** SDKs are adapters; the protocol is canonical.
-- **Failure honesty:** stale, partial, unavailable, and inferred states are explicit.
-- **Reversible rollout:** every connector and skill can be disabled independently.
-- **No silent cross-tenant context:** tenant identity is mandatory on every request.
+- **Self-contained:** key & config di app customer.
+- **Developer-defined scope:** data diekspos eksplisit, bukan auto-baca.
+- **Read-only first:** baca dulu, mutasi belakangan dengan kontrol.
+- **Key isolation:** key gRouter server-only.
+- **App = source of truth:** Copilot stateless, tidak simpan data central.
+- **Protocol over magic:** skill contract jelas, bukan reflection SQL.
 
 ## 7. Success thesis
 
-A successful first release lets an application vendor install Copilot, define a safe data scope, enable two useful read-only skills, and get a trustworthy answer in production without exposing provider credentials or changing the vendor's source-of-truth database.
+v0.1 sukses ketika seorang developer Node.js/Next.js bisa `npx @grouter/copilot init`, menulis 1 skill, dan mendapatkan jawaban chatbot yang bersumber dari data aplikasinya — tanpa key gRouter bocor ke browser dan tanpa backend Copilot.

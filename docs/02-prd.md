@@ -1,111 +1,90 @@
-# Product Requirements Document
+# Product Requirements Document — gRouter Copilot
 
 ## 1. Goal
 
-Build an independent embedded AI platform for business applications. The first product release must prove safe installation, scoped retrieval, useful read-only skills, and reliable consumption of the existing gRouter API.
+Bangun plugin npm `@grouter/copilot` (Node.js/Next.js) yang menambah AI copilot ke aplikasi yang sudah ada, self-contained, dengan developer-defined skills dan AI dari gRouter.
 
 ## 2. Personas
 
-- **Platform owner:** integrates SDK and maintains connector.
-- **Organization admin:** configures project, scope, skills, users, retention, and credentials.
-- **Application user:** chats and receives answers based on permitted data.
-- **Reviewer/auditor:** inspects sources, actions, usage, and access history.
-- **Copilot operator:** monitors runtime health without seeing unnecessary customer content.
+- **Developer/integrator:** install plugin, tulis skills, konfigurasi.
+- **End user aplikasi:** chat, terima jawaban dari data yang diizinkan.
+- **App owner:** memutuskan key gRouter, model, dan scope skills.
 
 ## 3. MVP user journeys
 
-### Journey A: create project
+### Journey A: install
+1. Developer jalankan `npx @grouter/copilot init`.
+2. Plugin detect framework (Next.js App Router / Express / etc), bahasa (TS/JS), package manager.
+3. Plugin generate: `copilot.config.js`, `.env` (placeholder `GROUTER_API_KEY`), `skills/`, API route, widget mount.
+4. Developer isi `GROUTER_API_KEY`.
+5. Developer jalankan app → widget muncul.
 
-1. Admin creates organization.
-2. Admin creates project and environment.
-3. Copilot issues server credential and browser-safe client credential separately.
-4. Admin selects integration method.
-5. Copilot provides generated configuration and a connection test.
+### Journey B: definisikan skill
+1. Developer buat `skills/<name>.js` dengan `name`, `description`, `parameters`, `readOnly`, `run()`.
+2. Skill diregistrasi di `copilot.config.js`.
+3. Plugin validasi schema skill saat boot.
 
-### Journey B: connect application API
+### Journey C: end user chat
+1. User bertanya di widget.
+2. Widget POST ke `/api/copilot/chat` (app sendiri).
+3. Runtime resolve skill, jalankan `run({...args, user})`.
+4. Runtime bangun context + panggil gRouter.
+5. Jawaban stream ke widget + source/status.
 
-1. Admin registers an API base URL or SDK callback.
-2. Admin defines authentication handoff; Copilot never asks for a customer's end-user password.
-3. Admin declares resource schemas and scope predicates.
-4. Copilot performs a non-destructive test with a bounded sample.
-5. Admin approves the connector.
-
-### Journey C: ask a scoped question
-
-1. Application sends user identity, project, environment, session, and message.
-2. Runtime resolves roles and data scope.
-3. Runtime selects an enabled skill.
-4. Connector retrieves bounded data.
-5. Runtime creates a source manifest.
-6. Runtime calls gRouter through the adapter.
-7. UI streams answer, citations/source labels, freshness, and limitations.
-
-### Journey D: configure a skill
-
-1. Admin selects a skill template.
-2. Admin maps data resources.
-3. Admin sets scope, language, tone, token budget, and refresh behavior.
-4. Copilot validates configuration.
-5. Admin tests with synthetic fixture data or a permitted sample.
-6. Skill is enabled only after passing validation.
-
-## 4. MVP capability requirements
+## 4. Capability requirements
 
 | ID | Capability | Acceptance |
 |---|---|---|
-| PR-01 | Organizations/projects/environments | Requests cannot cross environment or tenant boundaries |
-| PR-02 | REST integration | A customer can register and test a bounded connector |
-| PR-03 | Node/Next integration | Chat can be embedded without exposing server credential |
-| PR-04 | Java integration | Spring Boot can send the same canonical protocol |
-| PR-05 | Web Component | Framework-neutral browser integration works |
-| PR-06 | Identity propagation | Runtime receives stable external subject and roles |
-| PR-07 | Scope enforcement | Unauthorized records are excluded before model context |
-| PR-08 | Skills | Search, summary, and recommendation operate read-only |
-| PR-09 | Streaming | Partial output, completion, cancellation, and error are defined |
-| PR-10 | Sources | Answer exposes source labels and freshness where available |
-| PR-11 | Usage | Request, token, latency, status, and project attribution are recorded |
-| PR-12 | Audit | Connector, skill, credential, and access events are queryable |
-| PR-13 | Kill switches | Admin can disable project, connector, skill, and credential |
-| PR-14 | gRouter adapter | Provider internals are not present in Copilot public responses |
-| PR-15 | Data deletion | Admin can request deletion of indexed Copilot data |
+| PR-01 | `init` command | generate scaffold benar sesuai framework |
+| PR-02 | Skill registry | skill valid, terdaftar, bisa dipanggil |
+| PR-03 | Skill execution | `run()` dipanggil dengan arg + user context |
+| PR-04 | Chat route | request valid, error jelas |
+| PR-05 | gRouter adapter | stream, timeout, error, usage terdefinisi |
+| PR-06 | Key isolation | key tidak ada di bundle browser |
+| PR-07 | Read-only | v1 skill tidak bisa mutasi |
+| PR-08 | Widget | streaming, loading/error/empty state |
+| PR-09 | Config | skill, model, prompt, limits bisa diset |
+| PR-10 | Source display | jawaban tampilkan sumber/freshness bila ada |
 
-## 5. Answer contract
+## 5. Skill contract (inti produk)
 
-Every answer has:
+```js
+export default {
+  name: "sales-summary",            // unique
+  description: "Ringkas penjualan", // untuk pemilihan skill
+  parameters: {                     // JSON Schema
+    type: "object",
+    properties: { period: { type: "string", enum: ["7d", "30d"] } },
+    required: ["period"]
+  },
+  readOnly: true,                   // v1 wajib true
+  async run({ period, user }) {     // developer-defined data access
+    return summarizeOrders(period, user.id);
+  }
+};
+```
 
-- `answer`: rendered response;
-- `status`: `complete`, `partial`, `stale`, `blocked`, or `error`;
-- `sources`: safe source labels, not raw secrets or internal IDs;
-- `freshness`: retrieval timestamp and source timestamp when available;
-- `scope`: human-readable scope label;
-- `limitations`: missing data, truncation, or uncertainty;
-- `requestId`: opaque trace identifier.
-
-The answer must not claim an exact result when the connector returned partial, stale, or sampled data.
+`run()` return value jadi context untuk model. Data yang tidak diekspos skill tidak bisa dibaca chatbot.
 
 ## 6. Safety requirements
 
-- Read-only tools are the only default tools.
-- No raw SQL from model output.
-- Connector queries use server-generated plans and bounded parameters.
-- Input from application data is treated as untrusted content and cannot redefine system policy.
-- User-controlled prompts cannot widen scope.
-- Credentials are not sent to the model.
-- Browser clients never receive server gRouter credentials.
+- Key gRouter hanya di server env, tidak di client.
+- Skill adalah satu-satunya pintu akses data; tidak ada auto-SQL.
+- Input user tidak bisa memanggil skill di luar registry.
+- `readOnly` skill tidak boleh mengubah data.
+- Data aplikasi dianggap untrusted content (tidak mengubah policy).
+- Error tidak mengekspos key/stack/provider internals.
 
-## 7. Out-of-scope requirements
+## 7. Out of scope
 
-The following are not MVP acceptance blockers: autonomous write actions, fine-tuning, native SDKs for every language, full data warehouse federation, voice, mobile-native UI, and marketplace monetization.
+Auto-scan seluruh DB, mutating skills, fine-tuning, backend Copilot, multi-bahasa (Java/Python), marketplace publik.
 
-## 8. Product metrics
+## 8. Metrics
 
-- time to first successful answer;
-- integration completion rate;
-- weekly active Copilot users;
-- answer acceptance/feedback rate;
-- grounded-answer rate from evaluation set;
-- unauthorized retrieval test pass rate;
+- time-to-first-install (init → widget muncul);
+- time-to-first-useful-answer;
+- jumlah skill aktif per app;
+- error rate chat;
+- key leakage test pass;
 - p95 first-token latency;
-- connector failure rate;
-- cost per successful answer;
-- disable/revoke recovery time.
+- retensi pemakaian mingguan.

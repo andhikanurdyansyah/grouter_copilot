@@ -1,55 +1,46 @@
-# Commercial Model Hypothesis
+# Commercial Model — gRouter Copilot
 
-## Packaging
+## 1. Positioning
 
-### Starter
-- one project;
-- REST or SDK integration;
-- basic embedded chat;
-- read-only search and summary;
-- bounded usage and standard retention.
+gRouter Copilot dijual sebagai **plugin/module** yang menambah AI copilot ke aplikasi yang sudah ada. gRouter existing = supplier AI (usage). Copilot = nilai integrasi + skill layer.
 
-### Growth
-- multiple environments;
-- custom skills;
-- recommendation and analytics;
-- higher quotas;
-- audit and usage dashboards;
-- multiple connectors.
+## 2. Distribusi
 
-### Enterprise
-- SSO/SCIM;
-- private connector agent;
-- residency and retention controls;
-- extended audit;
-- support SLA;
-- controlled action workflows;
-- procurement/security package.
+- npm registry (`@grouter/copilot`);
+- dokumentasi + contoh (CRM/POS);
+- GitHub + landing page.
 
-## Pricing hypotheses to test
+## 3. Packaging (hypothesis)
 
-- platform fee plus included AI credits;
-- metered usage by normalized tokens or task units;
-- connector/index volume add-on;
-- enterprise annual contract.
+| Tier | Isi |
+|---|---|
+| Free core | install, skills read-only, 1 key gRouter, chat widget |
+| Pro | advanced skills, observasi, multi-model, budget/limits, dukungan |
+| Enterprise | mutating skills (gated), kustomisasi, multi-bahasa, support SLA |
 
-Do not expose raw upstream provider cost as the sole customer price dimension; customers buy capability and governance, not provider internals.
+## 4. Pricing hypotheses (belum final)
 
-## Unit economics questions
+- Free untuk adopsi;
+- Pro: per-app / per-seat subscription;
+- Enterprise: kontrak tahunan;
+- AI usage lewat gRouter (supplier) — terpisah dari nilai Copilot.
 
-- average connector calls per answer;
-- average context size;
-- cache hit rate;
-- gRouter cost per successful task;
-- support cost per integration;
-- churn reduction from Copilot;
-- gross margin at high-usage tenants.
+## 5. Unit economics questions
 
-## Commercial guardrails
+- skill call per answer;
+- context size;
+- cache hit;
+- cost per task (dari gRouter);
+- support cost per install;
+- churn reduction.
 
-- hard quota and soft warning;
-- project-level budget;
-- rate limit and concurrency cap;
-- usage export;
-- no surprise provider pass-through;
-- clear behavior when quota is exhausted.
+## 6. Guardrails
+
+- hard budget + soft warning;
+- rate limit;
+- no surprise pass-through;
+- jelas saat quota habis.
+
+## 7. Monetization timing
+
+Jangan blokir adopsi dengan paywall terlalu awal. Bebaskan install + proof-of-value dulu, monetize di Pro/Enterprise setelah retensi terbukti.

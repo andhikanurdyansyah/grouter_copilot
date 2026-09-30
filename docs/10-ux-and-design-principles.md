@@ -1,69 +1,65 @@
-# UX and Design Principles
+# UX & Design Principles — gRouter Copilot
 
-## Product experience
+## 1. Product experience
 
-Copilot should feel native to the host application, not like a foreign support widget. The host app owns identity and navigation; Copilot owns conversation, source explanation, and AI state.
+Chatbot harus terasa native di aplikasi host, bukan widget asing. Host app memiliki identity & navigasi; Copilot memiliki conversation, source explanation, dan AI state.
 
-## Surfaces
+## 2. Widget surface
 
-1. Embedded launcher and panel.
-2. Full-page assistant.
-3. Headless API for custom UI.
-4. Admin control plane.
-5. Source and freshness detail.
-6. Skill-specific result cards.
+- launcher/panel embedded;
+- panel chat;
+- suggested questions (berdasarkan skill description);
+- source/freshness disclosure;
+- feedback;
+- escape hatch ke UI aplikasi.
 
-## Answer states
+## 3. Answer states
 
-- loading/retrieving;
-- answer streaming;
-- complete;
-- partial data;
-- stale data;
-- blocked by permission;
-- connector unavailable;
-- model unavailable;
-- cancelled;
-- feedback submitted.
+| State | Behavior |
+|---|---|
+| loading/retrieving | tampilkan skill yang dikonsultasi (tanpa fake progress) |
+| streaming | delta teks, layout stabil |
+| complete | jawaban + source/freshness |
+| partial | jelaskan data hilang, hindari klaim absolut |
+| stale | tampilkan last-updated, kualifikasi |
+| blocked | jelaskan batas izin tanpa bocorkan data |
+| unavailable | retry + fallback jujur, bukan jawaban palsu |
+| error | pesan aman, requestId |
 
-Never show an empty response for a blocked or failed run.
+## 4. Trust UX
 
-## Trust UX
+Setiap jawaban non-trivial harus jelas: periode data, source category, freshness, keterbatasan. Jangan sembunyikan scope untuk terlihat "magic". Confidence score tidak dipakai kecuali terkalibrasi.
 
-Every non-trivial answer should make clear:
+## 5. Developer UX (yang paling penting di v1)
 
-- what data period was used;
-- which source categories were consulted;
-- whether results were partial or sampled;
-- when the source was last updated;
-- what Copilot could not access;
-- whether a recommendation is descriptive or prescriptive.
+`npx @grouter/copilot init` harus menghasilkan output yang jelas:
 
-## Admin UX
+```text
+✔ Detected Next.js (App Router)
+✔ Created copilot.config.js
+✔ Created skills/example.js
+✔ Created app/api/copilot/chat/route.js
+✔ Created components/CopilotChat.js
+✔ Added widget mount
+→ Next: isi GROUTER_API_KEY di .env
+```
 
-Configuration must follow a progressive flow:
+Error skill saat boot harus jelas: nama skill, file, alasan validasi gagal.
 
-1. Connect application.
-2. Validate identity.
-3. Choose resources.
-4. Define scope.
-5. Enable a skill.
-6. Test with fixture or permitted data.
-7. Publish to environment.
+## 6. Design system
 
-Do not show “connected” merely because credentials are non-empty; show verified connectivity only after a real bounded probe.
-
-## Accessibility and localization
-
-- keyboard navigation;
-- screen-reader labels;
+- theme-aware (ikuti theme app);
+- keyboard + screen reader;
+- focus restoration;
 - reduced motion;
-- adequate contrast;
-- responsive embedded panel;
-- locale-aware dates and numbers;
-- safe rendering of markdown/HTML;
-- right-to-left readiness in protocol.
+- markdown/HTML aman;
+- locale-aware number/date;
+- touch target ≥ 44px;
+- responsive: desktop/tablet/mobile.
 
-## UX non-goals
+## 7. UX non-goals
 
-Do not force every application to use the same visual design. Do not hide uncertainty to make responses look confident. Do not replace application navigation with an opaque AI-only interface.
+- Jangan ganti navigasi aplikasi dengan AI-only.
+- Jangan sembunyikan ketidakpastian.
+- Jangan label "connected" tanpa probe nyata ke gRouter.
+- Jangan tampilkan provider/model internal gRouter.

@@ -1,55 +1,46 @@
-# Data Governance
+# Data Governance — gRouter Copilot
 
-## Source-of-truth rule
+## 1. Source-of-truth rule
 
-Customer application data remains authoritative. Copilot stores only the minimum required configuration, transient context, audit metadata, usage metadata, and optional indexes explicitly enabled by the customer.
+Aplikasi customer adalah source of truth. gRouter Copilot **stateless** terhadap data aplikasi: tidak menyimpan, meng-cache central, atau meng-index data customer.
 
-## Storage categories
+## 2. Where data lives
 
-| Category | Default treatment |
-|---|---|
-| Configuration | Durable, encrypted where sensitive |
-| Credentials | Vault/encrypted, write-only, rotatable |
-| Chat content | Configurable retention; off by default for long-term storage |
-| Retrieval context | Ephemeral unless indexing is enabled |
-| Structured index | Opt-in, versioned, deletable |
-| Audit metadata | Durable, immutable, redacted |
-| Usage | Durable aggregate and detailed retention policy |
-| Logs/traces | Redacted, short retention |
+| Data | Lokasi | Ket. |
+|---|---|---|
+| Key gRouter | `.env` customer | server-only |
+| Config | `copilot.config.js` customer | di repo app |
+| Skills | `skills/` customer | di repo app |
+| Data aplikasi | DB/service customer | tidak disentuh Copilot |
+| Session history | (optional) lokal app | bila diaktifkan developer |
+| Usage log | (optional) lokal app | bila diaktifkan |
 
-## Freshness
+## 3. Data in flight
 
-Every connector reports freshness. Skills must declare acceptable freshness. If data is stale beyond the skill threshold, the answer says so and may block recommendations that require current data.
+Saat chat, data mengalir:
 
-## Indexing policy
+```text
+DB app → skill.run() → context → gRouter API → jawaban → widget
+```
 
-Index only approved resources and fields. Index jobs are bounded, resumable, observable, and cancellable. Deletion and scope changes create invalidation jobs. A stale index must not silently replace live source data where exactness matters.
+Data hanya lewat di memori/proses; tidak di-persist oleh Copilot.
 
-## Retention defaults
+## 4. Minimization
 
-Initial hypothesis, subject to customer contract:
+- `run()` harus return hanya field yang diperlukan.
+- Plugin enforce limit row/byte/token pada context.
+- Sediakan lint helper untuk deteksi restricted field.
 
-- transient retrieval context: minutes;
-- chat content: customer-configurable, default short retention;
-- operational logs: short retention;
-- audit and billing metadata: longer retention with redaction;
-- indexes: until disabled/deleted or policy expiration.
+## 5. Retention & deletion
 
-Do not hard-code compliance retention before legal/customer requirements are confirmed.
+- Tidak ada retention Copilot (stateless).
+- Session/usage (bila ada) mengikuti policy aplikasi customer, bukan Copilot.
+- Menghapus plugin = menghapus seluruh artefak (config, skills, route, widget).
 
-## Data export and deletion
+## 6. Freshness
 
-Deletion workflow:
+Bila skill return timestamp/freshness, ditampilkan sebagai source metadata. Jawaban tidak boleh mengklaim "real-time" tanpa bukti timestamp dari skill.
 
-1. authenticate authorized admin;
-2. create deletion request with scope;
-3. freeze new indexing for target;
-4. delete primary Copilot records;
-5. invalidate cache and search index;
-6. verify absence from retrieval;
-7. emit completion audit event;
-8. retain only legally required minimal audit evidence.
+## 7. Residency
 
-## Data residency
-
-Residency is a deployment and contract concern. The protocol must carry data location metadata, while the MVP should not promise residency regions that the infrastructure cannot prove.
+Self-contained → data tidak keluar dari infrastruktur customer kecuali ke gRouter API (untuk model). Adapter mencatat endpoint gRouter. Tidak ada klaim residency region di v1.

@@ -1,79 +1,80 @@
-# Solution Architecture
+# Solution Architecture — gRouter Copilot
 
-## 1. Logical architecture
+## 1. Overview
+
+gRouter Copilot adalah **plugin in-process** di aplikasi customer. Tidak ada service Copilot terpisah. Semua berjalan di dalam aplikasi customer, dan satu-satunya panggilan keluar adalah ke gRouter API.
 
 ```text
-[CRM/POS/HRIS/ERP]
-   ├─ SDK / Web Component / REST client
-   └─ Connector API or event adapter
-            ↓
-[Copilot Edge/API]
-   auth · tenant · rate limit · request validation
-            ↓
-[Copilot Runtime]
-   session · policy · skill planner · retrieval planner
-            ↓
-[Connector Gateway] → customer application data
-            ↓
-[Context and Source Builder]
-            ↓
-[gRouter Adapter] → existing gRouter API/token supplier
-            ↓
-[Answer Guard / Stream Gateway]
-            ↓
-[Embedded UI / API client]
+Aplikasi Customer (Node.js/Next.js)
+│
+├── Chat UI (widget)  ── client, TANPA key
+│        │  POST /api/copilot/chat
+│        ▼
+├── Runtime (API route) ── server, pegang GROUTER_API_KEY
+│        │  1. resolve skill
+│        │  2. jalankan skill → data app
+│        │  3. bangun context
+│        ▼
+│   gRouter Adapter ── panggil gRouter API (streaming)
+│
+└── Skills (developer-defined) ── akses DB/service app
 ```
 
-## 2. Planes
+## 2. Komponen
 
-### Control plane
-Configuration and governance: organizations, projects, environments, credentials, connectors, skills, roles, policies, retention, audit queries, usage dashboards.
+### CLI init
+`npx @grouter/copilot init` — deteksi framework, generate scaffold.
 
-### Data plane
-Live chat, retrieval, skill execution, context assembly, model request, streaming, answer guard, usage recording.
+### Config loader
+Baca `copilot.config.js`: daftar skill, model, prompt, limits, opsi gRouter.
 
-### Integration plane
-SDKs, Web Component, REST/OpenAPI, webhooks, connector callbacks, and event ingestion.
+### Skill registry
+Load + validasi semua skill, expose `resolve(intent)`, `run(name, args, ctx)`.
 
-### Operations plane
-Metrics, logs, traces, queues, quotas, incident controls, kill switches, evaluation runs.
+### Runtime chat route
+Endpoint `/api/copilot/chat`: validasi request → resolve skill → jalankan → build context → panggil adapter → stream.
+
+### gRouter adapter
+Satu-satunya titik keluar ke gRouter. Terjemahkan model/catalog, stream, timeout, retry, error, usage. Tidak expose provider internals.
+
+### Widget `CopilotChat`
+React component embeddable; streaming, loading/error/empty; theme-aware.
 
 ## 3. Trust boundaries
 
-1. Browser/application user to customer application.
-2. Customer application to Copilot.
-3. Copilot to customer data source.
-4. Copilot to gRouter supplier.
-5. Copilot operators to customer metadata.
+1. Browser → runtime app (endpoint chat).
+2. Runtime → skills (data app).
+3. Runtime → gRouter (supplier AI).
 
-Never treat customer data as trusted instructions. Never forward connector credentials to gRouter or the model.
+```text
+Key gRouter: HANYA boundary 3 (server).
+Browser TIDAK pernah menyentuh boundary 3 secara langsung.
+```
 
-## 4. Deployment shapes
+## 4. Data flow
 
-- **SaaS control plane + SaaS runtime:** default MVP.
-- **SaaS control plane + customer-side connector agent:** enterprise option.
-- **Private runtime:** future option for residency or regulated customers.
+```text
+User message
+  → widget POST (userId, sessionId, message)
+  → runtime validasi + resolve skill
+  → skill.run({ ...args, user }) → data app
+  → context = { system, data, sources }
+  → adapter.complete(context) → gRouter
+  → stream jawaban + source/status → widget
+```
 
-The protocol must not encode deployment-specific assumptions.
+## 5. Reliability
 
-## 5. Data flow rules
+- skill failure → error state jelas, bukan jawaban palsu;
+- gRouter down → `upstream_unavailable`, retry terbatas;
+- timeout/cancel → propagasi;
+- skill read-only → tidak ada mutasi;
+- no unbounded context → limit row/byte/token.
 
-- Identity and authorization are resolved before retrieval.
-- Scope filters are applied at the connector boundary, not only in prompts.
-- Context is bounded by rows, bytes, tokens, and time.
-- Source metadata is retained separately from model prose.
-- Model output is not written into the customer source of truth by default.
+## 6. Decisions
 
-## 6. Reliability patterns
-
-- bounded retries only for idempotent reads;
-- circuit breakers per connector and per gRouter adapter;
-- cancellation propagation from client to connector and model request;
-- backpressure on streams;
-- dead-letter queue for asynchronous indexing;
-- stale snapshot with visible freshness rather than fabricated live data;
-- per-tenant quotas and concurrency limits.
-
-## 7. Architecture decisions
-
-The canonical protocol is HTTP/JSON with optional SSE streaming. SDKs wrap the protocol. Webhooks are signed and replay-protected. Internal services may use another transport, but it must not leak into the customer contract.
+- In-process plugin, bukan service terpisah.
+- Self-contained config di app customer.
+- Node.js/Next.js pertama.
+- Developer-defined skills sebagai satu-satunya pintu data.
+- gRouter adapter = satu-satunya panggilan keluar.

@@ -1,74 +1,83 @@
-# Master Plan
+# Master Plan — gRouter Copilot
 
-## Delivery strategy
+## Strategy
 
-Build independent vertical slices. Do not start with a universal autonomous agent. Prove the trust boundary and one useful read-only loop first, then add breadth.
+Bangun plugin secara vertikal & minimal: satu bahasa (Node.js/Next.js), satu alur install → skill → chat → gRouter. Baru perluas setelah protokol skill stabil.
 
-## Phase 0 — Product and contract foundation
+## Phase 0 — Core plugin (Node.js)
 
-**Outcome:** frozen product boundary and testable contracts.
+**Outcome:** `npx @grouter/copilot init` menghasilkan working chatbot.
 
-- Create independent repository and CI baseline.
-- Define protocol versioning, tenant model, identity envelope, answer envelope, error taxonomy.
-- Define gRouter adapter as an external dependency with a mock contract for local tests.
-- Establish threat model, data classification, and design-partner agreements.
+- package skeleton + CLI `init`.
+- framework detection (Next.js App Router, Pages Router, Express, plain Node).
+- config loader (`copilot.config.js`).
+- skill registry + validator.
+- runtime chat route.
+- gRouter adapter (fake supplier untuk test).
+- widget `CopilotChat`.
+- `.env` handling (`GROUTER_API_KEY`).
 
-**Gate:** architecture review and security review approve the boundary; no existing gRouter files changed.
+**Gate:** install → tulis 1 skill → chat bekerja, key tidak bocor, test contract lulus.
 
-## Phase 1 — Copilot control plane
+## Phase 1 — Skill & chat quality
 
-**Outcome:** organizations, projects, environments, credentials, connector registry, skill registry, audit, and kill switches.
+**Outcome:** jawaban grounded dan reliable.
 
-**Gate:** tenant isolation tests, credential rotation/revocation tests, audit completeness, no secret in logs.
+- skill selection (berdasarkan deskripsi + intent).
+- source/freshness metadata.
+- error taxonomy (skill fail, gRouter down, scope deny).
+- streaming, cancel, timeout.
+- usage recording (token, latency) lokal.
 
-## Phase 2 — Runtime read-only loop
+**Gate:** evaluation fixtures lulus, error states jelas.
 
-**Outcome:** authenticated request enters Copilot, invokes a bounded connector, calls gRouter adapter, and streams an answer.
+## Phase 2 — Next.js first-class
 
-**Gate:** end-to-end fixture test, cancellation, timeout, partial data, gRouter unavailable, and cross-tenant tests.
+**Outcome:** pengalaman Next.js mulus.
 
-## Phase 3 — Integration surface
+- App Router route handler + streaming.
+- React Server Components aware.
+- TypeScript types.
+- widget theming.
 
-**Outcome:** REST protocol, Node/Next SDK, Web Component, and Java/Spring SDK sample.
+**Gate:** demo CRM + POS sample working di Next.js.
 
-**Gate:** same request and answer contract across all clients; browser credential boundary verified.
+## Phase 3 — Observability & kontrol
 
-## Phase 4 — Skills and vertical starter packs
+**Outcome:** developer bisa lihat & kontrol.
 
-**Outcome:** search, summary, recommendation, and document Q&A; CRM and POS starter mappings.
+- local usage log.
+- skill enable/disable.
+- model & prompt config.
+- budget/limit per request.
 
-**Gate:** evaluation datasets, groundedness threshold, refusal behavior, scope tests, cost budget.
+**Gate:** developer bisa debug skill failure tanpa baca key.
 
-## Phase 5 — Production hardening
+## Phase 4 — Multi-bahasa (Java/Python)
 
-**Outcome:** SLO dashboards, quotas, retries, backpressure, deletion workflow, support runbooks, disaster recovery.
+**Outcome:** protokol skill portabel.
 
-**Gate:** load test, failure injection, recovery rehearsal, privacy review, customer-support rehearsal.
+- core protocol extracted (bahasa-agnostic).
+- Java/Spring SDK.
+- Python SDK.
 
-## Phase 6 — Design partner launch
+**Gate:** skill contract sama di semua bahasa, parity test.
 
-**Outcome:** two different application types in controlled production.
+## Phase 5 — Advanced (optional, gated)
 
-**Gate:** signed acceptance, no unresolved P0/P1 security finding, rollback/disable path demonstrated.
-
-## Phase 7 — Commercial expansion
-
-- Python/PHP/.NET/Go SDKs.
-- Private connector agent.
-- SSO/SCIM.
-- enterprise residency and retention.
-- governed write actions.
-- connector and skill marketplace only after review process exists.
+- mutating skills (write/update) dengan confirmation + audit;
+- auto-discovery terbatas (helper, bukan default);
+- optional Copilot backend (telemetry/provisioning) — hanya jika dibutuhkan.
 
 ## Dependency order
 
 ```text
-Boundary → Protocol → Tenant/Auth → Connector → Scope → Runtime → gRouter Adapter → UI SDKs → Skills → Operations → Commercial launch
+CLI init → config → skill registry → runtime chat → gRouter adapter → widget → quality → Next.js → observability → multi-bahasa → advanced
 ```
 
 ## Release rules
 
-- No production integration with existing gRouter until a separately approved adapter contract exists.
-- No schema migration in a customer application.
-- No feature is “done” from source existence alone; it needs contract tests and an exercised flow.
-- Every phase has a reversible disable path.
+- Semver; breaking change = major.
+- v1 tidak menyentuh gRouter existing.
+- Key gRouter tidak pernah ke client.
+- Setiap skill read-only default sampai gate mutasi terpisah.

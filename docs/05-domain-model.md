@@ -1,53 +1,35 @@
-# Domain Model
+# Domain Model — gRouter Copilot
 
 ## Core entities
 
-- **Organization:** billing and security boundary.
-- **Project:** one integrated application/product.
-- **Environment:** development, staging, or production configuration boundary.
-- **Application:** external system connected to a project.
-- **Installation:** one SDK/plugin installation with status and version.
-- **Credential:** server, client, webhook, or connector credential; secret value is write-only.
-- **External subject:** application user identity mapped to Copilot roles.
-- **Role:** named set of permissions.
-- **Scope policy:** rules limiting resources, records, fields, and time range.
-- **Connector:** configured data access capability.
-- **Resource schema:** safe description of a connector resource.
-- **Skill:** versioned capability with inputs, tools, permissions, and output contract.
-- **Skill binding:** skill enabled for a project/environment with mappings and limits.
-- **Conversation:** user-visible interaction.
-- **Run:** one model/skill execution within a conversation.
-- **Source record:** provenance metadata for retrieved context.
-- **Usage record:** measured request and cost data.
-- **Audit event:** immutable record of security/configuration/runtime activity.
-- **Index job:** asynchronous document or structured-data indexing operation.
-- **Evaluation case:** expected behavior test for a skill and scope.
+- **Skill:** developer-defined function dengan `name`, `description`, `parameters` (JSON Schema), `readOnly`, `run()`.
+- **SkillRegistry:** koleksi skill terdaftar, validasi + resolve.
+- **Config:** `copilot.config.js` — skills, model, prompt, limits, opsi gRouter.
+- **ChatRequest:** `{ message, userId, sessionId, skillHint?, locale? }`.
+- **ChatResponse:** `{ answer, status, sources?, usage?, requestId }`.
+- **SkillRun:** satu eksekusi skill → return data yang jadi context.
+- **gRouterClient (adapter):** wrapper panggilan ke gRouter (complete + stream).
+- **Session:** percakapan berkelanjutan (optional, in-memory/local).
 
-## Required invariants
+## Invariants
 
-- Every data-plane request has `organizationId`, `projectId`, `environmentId`, and external subject.
-- Every connector belongs to exactly one environment.
-- Every skill binding resolves to one immutable skill version.
-- A revoked credential cannot start a new run.
-- A deleted project cannot be addressed by an active client token.
-- Audit events cannot be edited through the product API.
-- Source records cannot contain raw connector credentials.
-- External subject IDs are namespaced by application/project.
+- Setiap skill punya `name` unique dan `readOnly` boolean.
+- `run()` hanya menerima arg tervalidasi + `user` context.
+- Data hanya masuk context lewat `run()` return value.
+- Key gRouter hanya di `gRouterClient` (server).
+- Skill tidak bisa memanggil skill lain secara langsung kecuali diizinkan config.
+- `readOnly: true` dijamin tidak mengubah data (enforced by convention + review; runtime tidak bisa fully guarantee, jadi mutating skills = gate terpisah).
 
-## Lifecycle states
+## Skill lifecycle
 
-### Connector
-`draft → testing → enabled → degraded → disabled → deleted`
+```text
+defined → validated (boot) → registered → resolvable → run → (readOnly) return context
+```
 
-### Skill binding
-`draft → validating → enabled → paused → disabled → deleted`
+## Error taxonomy
 
-### Run
-`queued → retrieving → generating → completed | partial | blocked | failed | cancelled`
+`SKILL_NOT_FOUND`, `SKILL_INVALID_ARGS`, `SKILL_FAILED`, `SCOPE_DENIED`, `UPSTREAM_UNAVAILABLE`, `TIMEOUT`, `CLIENT_CANCELLED`, `INVALID_REQUEST`, `RATE_LIMITED`.
 
-### Credential
-`active → expiring → revoked | expired`
+## Statelessness
 
-## Tenant isolation model
-
-All repository queries require organization and environment predicates. Tests must attempt object-ID substitution, missing tenant headers, role confusion, and revoked credential reuse.
+v1 plugin **stateless** terhadap data aplikasi: tidak menyimpan data customer di manapun. Session history (bila ada) lokal ke app. Tidak ada database Copilot.

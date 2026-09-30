@@ -1,46 +1,46 @@
-# Runbooks
+# Runbooks — gRouter Copilot
 
-## Connector unavailable
+## Install gagal
 
-1. Confirm project/environment and connector status.
-2. Check health and last successful retrieval timestamp.
-3. Stop retries if timeout/circuit breaker is active.
-4. Return partial/stale/unavailable status truthfully.
-5. Notify project admin with safe diagnostics.
-6. Do not request customer credentials again automatically.
+1. Cek framework detection (Next.js vs Express vs plain Node).
+2. Cek package manager & versi Node.
+3. Cek output init (file apa yang gagal dibuat).
+4. Cek konflik file existing (config/route/widget).
+5. Perbaiki scaffold, jangan tumpuk duplikat.
 
-## Upstream gRouter unavailable
+## Skill error saat boot
 
-1. Confirm adapter health and contract status.
-2. Stop unbounded retries.
-3. Preserve request ID and usage state.
-4. Return `UPSTREAM_UNAVAILABLE`.
-5. Activate maintenance response or project-specific disable switch if needed.
-6. Do not modify the existing gRouter as part of Copilot incident handling.
+1. Cek nama skill, file, alasan validasi (name/parameters/readOnly/run).
+2. Pastikan `parameters` valid JSON Schema.
+3. Pastikan `run` adalah function.
+4. Fix → app restart → warn hilang.
 
-## Suspected scope leak
+## Chat error
 
-1. Immediately disable affected connector/project credential.
-2. Preserve redacted audit evidence.
-3. Identify tenant, subject, resource, and time window.
-4. Prevent further retrieval and index jobs.
-5. Notify security owner and affected customer per policy.
-6. Run isolation regression before re-enable.
+1. Cek requestId di log.
+2. Klasifikasi: `SKILL_NOT_FOUND` / `SKILL_FAILED` / `UPSTREAM_UNAVAILABLE` / `TIMEOUT`.
+3. Skill fail → cek `run()` + data akses.
+4. Upstream fail → cek key + endpoint gRouter + retry.
 
-## Credential compromise
+## Key gRouter bocor (suspected)
 
-1. Revoke credential.
-2. Issue replacement only after admin authentication.
-3. Invalidate caches.
-4. Search redacted logs/traces for exposure.
-5. Document blast radius.
-6. Require customer confirmation before re-enable.
+1. Cek bundle browser (scan `GROUTER_API_KEY`).
+2. Pastikan key hanya di server env, bukan `NEXT_PUBLIC_*`.
+3. Revoke key di gRouter.
+4. Rotate key, update `.env`.
+5. Cek log untuk key value; redact.
 
-## Bad skill answer
+## gRouter down
 
-1. Record request ID and skill version.
-2. Check source manifest, scope, freshness, and partial status.
-3. Reproduce with fixture data.
-4. Determine retrieval, prompt, model, or rendering fault.
-5. Disable skill version if systematic.
-6. Add regression evaluation before re-release.
+1. Konfirmasi adapter status.
+2. Stop unbounded retry.
+3. Return `upstream_unavailable`.
+4. Preserve requestId + usage state.
+5. Jangan modifikasi gRouter existing.
+
+## Skill baca data berlebih
+
+1. Audit `run()` return value.
+2. Batasi field yang di-return (hanya yang diperlukan).
+3. Tambah scope `user` di `run()`.
+4. Terapkan limit row/byte/token.

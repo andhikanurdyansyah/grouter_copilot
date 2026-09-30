@@ -1,62 +1,53 @@
-# MVP Backlog
+# MVP Backlog — gRouter Copilot (v0.1)
 
-## EPIC-1 Foundation
+## EPIC-1 Install & scaffold
 
-- Define protocol schemas and version policy.
-- Create independent service skeleton and CI.
-- Define external gRouter adapter interface.
-- Add fake supplier for tests.
+- [ ] CLI `init` command.
+- [ ] Framework detection (Next.js App Router, Pages Router, Express, plain Node).
+- [ ] Generate `copilot.config.js`, `.env`, `skills/`, API route, widget mount.
+- [ ] Install di clean project → widget muncul.
 
-## EPIC-2 Tenancy and identity
+## EPIC-2 Skill system
 
-- Organizations/projects/environments.
-- Server and browser credential separation.
-- Signed subject exchange.
-- RBAC and scope policy evaluator.
-- Revocation and kill switches.
+- [ ] Skill registry + validator (name, description, parameters, readOnly, run).
+- [ ] Skill resolution (skillHint + intent match).
+- [ ] Skill execution dengan arg tervalidasi + user context.
+- [ ] Invalid skill → warn + exclude (tidak crash app).
 
-## EPIC-3 Connector platform
+## EPIC-3 Runtime chat
 
-- REST connector manifest.
-- Schema/resource registration.
-- Bounded query planner.
-- Health/freshness/partial semantics.
-- Signed event ingestion.
+- [ ] `/api/copilot/chat` route.
+- [ ] Request validation (message, userId, sessionId).
+- [ ] Context builder (system + data + sources, limit row/byte/token).
+- [ ] Error taxonomy.
 
-## EPIC-4 Runtime
+## EPIC-4 gRouter adapter
 
-- Chat request validation.
-- Skill selection and permission check.
-- Retrieval and source manifest.
-- gRouter adapter call.
-- Streaming/cancellation/error handling.
-- Usage and audit emission.
+- [ ] `complete()` + `stream()`.
+- [ ] Timeout, retry terbatas, cancel.
+- [ ] Usage (token, latency).
+- [ ] Fake supplier untuk test.
 
-## EPIC-5 Client integrations
+## EPIC-5 Widget
 
-- Node/Next SDK.
-- Web Component.
-- Java/Spring sample and SDK.
-- OpenAPI documentation.
+- [ ] `CopilotChat` React component.
+- [ ] Streaming, loading/error/empty.
+- [ ] Source/freshness display.
+- [ ] Theme-aware.
 
-## EPIC-6 Skills
+## EPIC-6 Config & safety
 
-- Generic search.
-- Generic summary.
-- Time-bounded analytics.
-- Recommendation with explicit limitations.
-- CRM starter pack.
-- POS starter pack.
+- [ ] `copilot.config.js` (skills, model, prompt, limits).
+- [ ] Key server-only + bundle scan test.
+- [ ] Read-only enforcement + mutating gate stub.
 
-## EPIC-7 Operations and launch
+## EPIC-7 Docs & sample
 
-- SLO dashboards.
-- Quotas and budget controls.
-- Security/evaluation suite.
-- Deletion workflow.
-- Runbooks.
-- Design-partner pilot.
+- [ ] README + quickstart.
+- [ ] Sample CRM (orders summary).
+- [ ] Sample POS (sales summary).
+- [ ] Skill authoring guide + template.
 
 ## Prioritization rule
 
-A feature that increases autonomy but does not have a proven authorization, audit, rollback, and evaluation story is lower priority than a feature that increases trust and integration reliability.
+Install → skill → chat → adapter → widget → quality → Next.js polish → observability. Fitur yang menambah autonomi tanpa authorization/audit = prioritas rendah.

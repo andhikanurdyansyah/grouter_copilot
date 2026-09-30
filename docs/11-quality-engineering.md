@@ -1,60 +1,62 @@
-# Quality Engineering Strategy
+# Quality Engineering — gRouter Copilot
 
-## Test layers
+## 1. Test layers
 
 ### Contract tests
-Verify protocol schemas, version compatibility, error codes, SSE ordering, and SDK parity.
+Skill contract (field, schema, readOnly, run), chat protocol, SSE ordering, adapter parity (saat multi-bahasa).
 
 ### Unit tests
-Cover scope evaluation, field masking, skill validation, query bounds, freshness classification, redaction, retry policy, and cost calculation.
+Skill validator, config loader, intent resolver, adapter error mapping, context builder limits, redaction.
 
 ### Integration tests
-Use fake CRM/POS connectors and a fake gRouter adapter. Never require production credentials for CI.
+Fake skill + fake gRouter supplier. Tidak butuh credential real di CI.
 
 ### Security tests
-Attempt tenant substitution, role spoofing, credential reuse, prompt injection, webhook replay, plugin permission bypass, and secret leakage.
+- bundle browser tidak mengandung key;
+- prompt injection tidak panggil skill tak terdaftar;
+- read-only tidak mutasi;
+- error tidak bocorkan secret;
+- restricted field tidak masuk context.
 
 ### Evaluation tests
-Each skill has a dataset with:
-
-- expected answer facts;
-- allowed sources;
-- forbidden disclosures;
-- ambiguity cases;
-- partial data cases;
-- adversarial instructions;
-- cost and latency budget.
+Setiap skill punya fixtures: expected facts, allowed sources, forbidden disclosure, ambiguity, adversarial, partial data, cost/latency budget.
 
 ### Browser tests
-Verify Web Component and custom UI at desktop, tablet, and mobile. Measure page overflow and embedded panel containment; do not rely only on screenshots.
+Widget di desktop/tablet/mobile; overflow, state, streaming render. Jangan hanya screenshot.
 
 ### Load tests
-Measure concurrent streams, connector saturation, gRouter upstream limits, cancellation, quota enforcement, and noisy-neighbor isolation.
+Concurrent stream, timeout, cancel, gRouter limit, context bound.
 
-## Definition of done
+## 2. Definition of done
 
-- acceptance tests pass;
-- no P0/P1 security finding;
-- API contract updated;
-- audit events verified;
-- metrics and alerts exist;
-- failure and disable path tested;
-- documentation updated;
-- migration/rollback impact reviewed;
-- customer-facing copy reviewed;
-- production rollout is reversible.
+- acceptance test pass;
+- security suite pass;
+- skill contract terupdate;
+- error states jelas;
+- docs contoh terupdate;
+- install → chat bekerja di clean project;
+- key tidak bocor;
+- semver dipertimbangkan.
 
-## Release gates
+## 3. Release gates
 
-1. Static/type/syntax checks.
-2. Unit and contract tests.
-3. Security suite.
-4. Evaluation suite.
-5. Integration smoke.
-6. Load/failure evidence for relevant scope.
-7. Deployment dry run.
-8. Canary and rollback rehearsal.
+1. syntax/lint;
+2. unit + contract;
+3. security;
+4. evaluation;
+5. integration smoke (fake supplier);
+6. install test di clean project;
+7. bundle scan (no key);
+8. semver bump.
 
-## Quality metrics
+## 4. Metrics
 
-Track groundedness, refusal correctness, scope violation rate, connector partial rate, p95 latency, error budget consumption, and cost per successful task.
+groundedness, refusal correctness, scope violation rate, error rate, p95 first-token, cost per task.
+
+## 5. CI (local/optional)
+
+- lint + typecheck;
+- unit + security test;
+- fake-supplier e2e;
+- pack + install di clean dir;
+- bundle scan.

@@ -1,76 +1,92 @@
-# Plugin, Connector, and Skill Specification
+# Skill & Connector Specification — gRouter Copilot
 
-## Plugin model
+> Ini dokumen inti produk. Skill adalah cara plugin membaca data aplikasi.
 
-A plugin is a versioned package or remote manifest that extends Copilot through declared capabilities. A plugin cannot bypass platform authentication, tenant checks, scope policy, audit, quotas, or data deletion.
+## 1. Skill definition
 
-Manifest minimum:
-
-```json
-{
-  "name": "crm-sales-pack",
-  "version": "1.0.0",
-  "runtime": "remote",
-  "protocolVersion": "1.0",
-  "permissions": ["customer.read", "deal.read"],
-  "connectors": ["crm-api"],
-  "skills": ["sales-summary"],
-  "dataClasses": ["business"],
-  "supports": {"readOnly": true, "actions": false}
-}
+```js
+// skills/sales.js
+export default {
+  name: "sales-summary",
+  description: "Ringkas total penjualan dalam periode (7d/30d)",
+  parameters: {
+    type: "object",
+    properties: {
+      period: { type: "string", enum: ["7d", "30d"] }
+    },
+    required: ["period"]
+  },
+  readOnly: true,
+  async run({ period, user }, ctx) {
+    // developer-defined: baca DB/service sendiri
+    const rows = await db.orders.aggregate({ period, ownerId: user.id });
+    return { period, total: rows.total, count: rows.count };
+  }
+};
 ```
 
-## Connector contract
+## 2. Skill fields
 
-A connector declares resources and exposes bounded operations:
+| Field | Wajib | Arti |
+|---|---|---|
+| `name` | ✅ | unique identifier |
+| `description` | ✅ | untuk pemilihan skill (intent) |
+| `parameters` | ✅ | JSON Schema input |
+| `readOnly` | ✅ | `true` di v1; mutasi = gate terpisah |
+| `run(args, ctx)` | ✅ | akses data, return context |
 
-- `describe()` — schema and capabilities;
-- `health()` — connectivity and freshness;
-- `query(resource, validatedParameters, subjectContext)` — scoped read;
-- `subscribe(eventTypes)` — optional events;
-- `close()` — release resources.
+Optional: `sources`, `freshness`, `maxRows`, `requiresConfirmation`.
 
-Connector requirements:
+## 3. Skill execution rules
 
-- server-side parameter validation;
-- allowlisted resources and fields;
-- pagination and maximum row/byte limits;
-- timeout and cancellation;
-- source timestamps;
-- partial-result semantics;
-- no arbitrary model-generated URL or SQL;
-- safe error normalization.
+- `run()` hanya dipanggil dengan arg tervalidasi dari `parameters`.
+- `user` context diteruskan agar data di-scope per user.
+- return value jadi context; tidak ada akses data di luar `run()`.
+- skill read-only tidak boleh mengubah data.
+- skill tidak menerima instruksi model sebagai kode/query.
 
-## Skill contract
+## 4. Connector model (data access)
 
-A skill declares:
+Skill adalah satu-satunya connector di v1. Developer menulis akses data di dalam `run()`. Tidak ada auto-refleksi DB di v1.
 
-- name and immutable version;
-- purpose and user-facing description;
-- required connector resources;
-- required permissions;
-- input and output JSON schema;
-- read/write classification;
-- maximum context and execution budget;
-- evaluation suite;
-- refusal conditions;
-- freshness requirement.
+### Auto-discovery terbatas (helper, opsional/phase lanjut)
 
-A skill planner may select a skill, but it may not invent permissions. If required permission is missing, the run is blocked with a safe explanation.
+Sebagai **helper** (bukan default): plugin bisa scan model/route/DB untuk **menyarankan** skill stub yang kemudian developer lengkapi & approve. Auto-discovery tidak boleh otomatis mengekspos data ke model tanpa persetujuan developer.
 
-## Action skill policy
+## 5. Skill selection
 
-Actions are not MVP-default. Future action skills require:
+Runtime memilih skill berdasarkan:
 
-- separate permission namespace;
-- explicit confirmation showing target and effect;
+1. `skillHint` eksplisit dari request (bila ada);
+2. intent matching dari `description` (embedding/keyword/heuristic);
+3. fallback: minta klarifikasi bila ambigu.
+
+Model boleh menyarankan skill, tapi hanya skill terdaftar yang bisa dipanggil.
+
+## 6. Advanced (gated): mutating skills
+
+Mutating skill (`readOnly: false`) membutuhkan:
+
+- permission terpisah;
+- `requiresConfirmation` + tampilan efek;
 - idempotency key;
-- server-side revalidation immediately before mutation;
-- audit event before and after;
-- result readback from source of truth;
-- compensation or rollback story;
-- rate limit and abuse protection.
+- audit log lokal;
+- revalidation sebelum mutasi;
+- readback dari source.
 
-## Marketplace policy
+v0.1 **tidak** mendukung mutating skills.
 
-Do not launch a public marketplace before plugin signing, permission review, provenance, version pinning, revocation, malware scanning, data classification, and support ownership exist. Initial plugins are first-party or manually reviewed.
+## 7. Validation at boot
+
+Saat app start, plugin validasi:
+
+- `name` unik;
+- `parameters` valid JSON Schema;
+- `readOnly` boolean;
+- `run` adalah function.
+
+Skill invalid → warn + exclude (bukan crash seluruh app).
+
+## 8. Template
+
+Lihat `docs/templates/skill-template.md`.

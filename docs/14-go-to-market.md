@@ -1,42 +1,40 @@
-# Go-to-Market Plan
+# Go-to-Market — gRouter Copilot
 
-## Beachhead
+## 1. Beachhead
 
-Recruit design partners in two contrasting domains: one CRM-like application and one POS-like application. This validates that the platform is not accidentally hard-coded to one schema.
+Developer aplikasi bisnis (CRM/POS) yang sudah pakai Node.js/Next.js. Mulai dari 1-2 design partner untuk buktikan nilai.
 
-## Design-partner offer
+## 2. Design-partner offer
 
-- guided integration;
-- fixed pilot scope;
-- read-only skills;
-- weekly feedback;
-- explicit data processing agreement;
-- success criteria agreed before access.
+- guided install;
+- 1-2 skills pertama dibantu;
+- read-only scope;
+- feedback mingguan;
+- success criteria disetujui sebelum akses.
 
-## Sales narrative
+## 3. Sales narrative
 
-“Add a governed AI assistant to your application without building model infrastructure or exposing your users to provider complexity.”
+"Tambahkan AI copilot ke aplikasi kamu dalam satu command, atas data kamu sendiri, tanpa membangun infrastruktur model — pakai key gRouter."
 
-## Adoption funnel
+## 4. Adoption funnel
 
-1. Documentation and sample app.
-2. Project creation.
-3. Connection test.
-4. First scoped answer.
-5. First enabled skill.
-6. End-user activation.
-7. Weekly retained usage.
-8. Upgrade based on value and governance needs.
+1. dokumentasi + sample;
+2. `npx @grouter/copilot init`;
+3. widget muncul;
+4. skill pertama;
+5. jawaban pertama yang berguna;
+6. retensi mingguan;
+7. upgrade Pro/Enterprise.
 
-## Proof points
+## 5. Proof points
 
-- time from account creation to first answer;
-- percentage of answers with valid sources;
-- integration effort in engineer-hours;
-- reduction in manual reporting effort;
-- user feedback and repeat usage;
-- zero scope/security incidents.
+- time-to-first-install;
+- time-to-first-answer;
+- % jawaban bersumber;
+- effort (jam developer);
+- retensi & feedback;
+- zero key leakage.
 
-## Launch risks
+## 6. Launch risks
 
-Do not market “reads all your data” or “fully autonomous employee.” Market scoped, governed intelligence. Overpromising autonomy creates security objections and damages trust.
+Jangan market "baca seluruh data" atau "autonomous agent". Market "skill layer yang developer-kontrol". Overpromise = objection keamanan.

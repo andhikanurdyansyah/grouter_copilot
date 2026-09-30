@@ -1,14 +1,14 @@
-# Plugin Review Checklist
+# Plugin/Skill Review Checklist
 
-- [ ] Manifest declares version, permissions, resources, and data classes.
-- [ ] No undeclared network or filesystem access.
-- [ ] Tenant and scope checks cannot be bypassed.
-- [ ] Secrets are not exposed to model, browser, logs, or plugin output.
-- [ ] Read/write classification is accurate.
-- [ ] Input/output schemas are bounded.
-- [ ] Timeout, cancellation, and retry behavior is safe.
-- [ ] Audit events are emitted.
-- [ ] Deletion and revocation behavior is documented.
-- [ ] Adversarial and cross-tenant tests pass.
-- [ ] Support owner and rollback version are defined.
-- [ ] Manual approval completed before production enablement.
+- [ ] Skill `name` unik.
+- [ ] `description` jelas untuk intent.
+- [ ] `parameters` valid JSON Schema.
+- [ ] `readOnly` akurat.
+- [ ] `run()` tidak return secret/key/PII sensitif.
+- [ ] `run()` scope per user.
+- [ ] Tidak ada auto-SQL/URL dari model.
+- [ ] Error aman (tanpa stack/key/provider).
+- [ ] Limit row/byte/token diterapkan.
+- [ ] Bundle browser tidak mengandung key.
+- [ ] Mutating skill (jika ada) punya confirmation + audit + idempotency.
+- [ ] Test adversarial & scope pass.

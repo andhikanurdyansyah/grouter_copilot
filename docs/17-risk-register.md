@@ -1,14 +1,14 @@
-# Risk Register
+# Risk Register — gRouter Copilot
 
 | ID | Risk | Likelihood | Impact | Mitigation | Trigger |
 |---|---|---:|---:|---|---|
-| R-01 | Scope leak across tenants | Medium | Critical | layered auth, isolation tests, least privilege | any unauthorized retrieval |
-| R-02 | Product becomes generic chatbot with weak value | High | High | vertical starter skills, design partners, source/freshness UX | low repeat usage |
-| R-03 | gRouter supplier contract changes | Medium | High | versioned adapter, contract tests, fallback/maintenance response | upstream contract failure |
-| R-04 | Integration burden too high | High | High | protocol + SDK + samples, measure time-to-first-answer | onboarding abandonment |
-| R-05 | Token cost destroys margin | Medium | High | budgets, caching, bounded context, model policy | cost per task above target |
-| R-06 | Prompt injection causes tool misuse | High | Critical | untrusted-data boundary, tool allowlist, no MVP mutations | adversarial eval failure |
-| R-07 | Data retention conflicts with customer policy | Medium | High | configurable retention, deletion propagation | deletion audit failure |
-| R-08 | Marketplace introduces unsafe plugins | Medium | High | first-party/manual review before marketplace | unreviewed plugin request |
-| R-09 | Overpromised accuracy | High | High | evaluation, citations, partial/stale states | unsupported answer feedback |
-| R-10 | Scope expands into ERP/autonomous agent too early | High | High | phase gates and explicit non-goals | backlog items without proof |
+| R-01 | Key gRouter bocor ke browser | Medium | Critical | server-only, bundle scan test | key di bundle |
+| R-02 | Prompt injection via data app | High | High | untrusted data, skill allowlist, read-only | eval failure |
+| R-03 | Skill baca data berlebih | High | High | developer-defined + limit + lint | scope leak |
+| R-04 | Auto-scan disalahpahami "baca semua" | Medium | High | helper only, butuh approval | auto-expose tanpa izin |
+| R-05 | gRouter down / limit | Medium | Medium | adapter error + retry terbatas | upstream unavailable |
+| R-06 | Adopsi rendah (install sulit) | High | High | init command + docs + sample | abandonment |
+| R-07 | Mutating skill terlalu dini | Medium | High | gate + confirmation + audit | write tanpa izin |
+| R-08 | Protokol skill tidak portabel | Medium | Medium | extract core sebelum multi-bahasa | drift antar bahasa |
+| R-09 | Overpromise "baca seluruh data" | High | High | positioning skill layer terkontrol | objection keamanan |
+| R-10 | Backend Copilot ditambah prematur | Low | Medium | tunda sampai dibutuhkan | complexity creep |

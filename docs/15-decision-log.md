@@ -50,10 +50,35 @@
 ### D-016 — Auto-provisioning DEFERRED
 **Accepted.** Jangan wire auto-generate api key gRouter saat purchase sampai flow + kontrak endpoint gRouter jelas. Untuk sekarang: admin map license → existing api key manual.
 
+### D-017 — 1 akun = banyak license
+**Accepted.** Satu akun customer bisa punya banyak license (multi-project / multi-app). Model: `account 1..N licenses`, setiap license punya entitlement + quota + bound api key sendiri.
+
+### D-018 — Payment = KlikQRIS
+**Accepted.** Payment provider = KlikQRIS (klikqris.com, QRIS). Alur: create QRIS → customer scan bayar → poll/webhook status → paid → issue license. Punya mode sandbox (API Key + Merchant ID).
+
+### D-019 — Google OAuth = PENDING
+**Accepted (pending).** Google OAuth dicatat di doc implementasi sebagai pending. Belum dibangun backend-nya (butuh client ID + redirect + token exchange + session model).
+
 ## Customer flow
 
 ```text
-Landing → Register → Dashboard → Purchase license (quota) → LICENSE KEY → install → chat
+Landing → Register → Dashboard → Purchase license (quota, KlikQRIS) → LICENSE KEY → install → chat
+```
+
+## Account & license model (D-017)
+
+```text
+Account (customer)
+  └── License 1 (app A, quota X, bound gRouter key)
+  └── License 2 (app B, quota Y, bound gRouter key)
+  └── ...
+```
+
+## Payment flow (D-018, KlikQRIS)
+
+```text
+customer pilih paket → create QRIS (KlikQRIS) → customer scan bayar
+→ poll/webhook status paid → issue license → customer terima LICENSE KEY
 ```
 
 ## Api key resolution (Option A)
@@ -69,9 +94,10 @@ Copilot backend consume gRouter `/check-usage` (read-only) per license → tampi
 ## Open questions (lock before building)
 
 - gRouter api key generation endpoint (future auto-provision).
-- gRouter `/check-usage` contract.
-- quota semantics.
-- registration/auth mechanism.
+- KlikQRIS API key + merchant ID (sandbox credential).
+- quota semantics (token-based / request-based).
+- session model (untuk auth: JWT vs cookie).
+- Google OAuth client credential.
 - license server + dashboard deployment shape.
 
 ## Rejected (v1)

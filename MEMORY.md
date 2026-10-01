@@ -6,7 +6,7 @@
 
 ## START DI SINI
 
-- **Baca `docs/handoff-2026-10-01.md` DULU** (status, temuan terbuka, plan I2–I5).
+- **Baca `docs/handoff-2026-10-01.md` DULU** (status, temuan terbuka, plan I3–I5).
 - Docs = source of truth. Beberapa doc MASIH STALE — lihat @section "Docs stale" di bawah.
 
 ## Identitas & boundary
@@ -40,11 +40,22 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
                  → usage resolver (/check-usage) → admin + landing + register + user + settings
 ```
 
-## Settings SSOT (baru)
+## Settings SSOT
 
-- `server/src/settings.js`: `DEFAULT_SETTINGS`, `resolveSettings()`, `validateSettings()`, `maskSettings()`, `publicPlans()`.
+- `server/src/settings.js`: `DEFAULT_SETTINGS`, `resolveSettings()`, `validateSettings()`, `maskSettings()`, `publicPlans()`, `findPlan()`.
 - `store.getSettings()/updateSettings()` → persist di `store.json` (gitignored).
 - Endpoint: publik `GET /api/plans`; admin `GET|PATCH /api/admin/settings` (secret di-mask `••••<last4>`).
+
+## Cost-integrity (A1 — CLOSED, live sejak 2026-10-01, commit `36c99b1`)
+
+- `POST /api/orders`: HANYA terima `packageKey`. Body dengan `amount`/`description` → **400**.
+  Harga + `planName` + `quota` resolve dari plan catalogue (unknown/inactive → 400).
+- `paymentService.createOrder({plan, accountId})`; `settlePaid` resolve
+  `features`/`expiresInDays`/`quota` dari plan catalogue SAAT SETTLE (A3 closed) —
+  fallback ke `license.defaultFeatures`/`defaultExpiresInDays` hanya jika plan sudah dihapus.
+- `licenseService.issue()` terima `quota` → masuk token payload + record.
+- Order record punya `planName` + `quota`; `/success` + dashboard tampilkan dari situ.
+- Browser TIDAK menyimpan harga: dashboard fetch `GET /api/plans` (`loadPlans()`), checkout kirim `packageKey` saja.
 
 ## Kontrak gRouter (read-only, verified live 2026-09-30)
 
@@ -59,10 +70,11 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → **69 pass**.
-- Backend test: `cd server && node --test` → **32 pass**. (Windows: JANGAN `node --test test/`.)
+- Plugin test: `node --test` (root) → **71 pass**.
+- Backend test: `cd server && node --test` → **34 pass** (termasuk `cost-integrity.test.js`). (Windows: JANGAN `node --test test/`.)
 - Run backend: `cd server && node src/index.js` (port 4600). Tanpa npm install (zero dependency).
-- Instance terisolasi: `DATA_FILE=<tmp> PORT=4690 node src/index.js`.
+- Instance terisolasi: `DATA_FILE=<tmp> PORT=4690 node src/index.js` (pakai path `$LOCALAPPDATA/Temp`, bukan `/tmp` MSYS).
+- Test ber-session: set env auth SEBELUM import `server.js` (dynamic import) + copy `server/data/auth.sqlite` ke tmp lalu clear semua row (`foreign_keys=OFF`) — pola di `server/test/cost-integrity.test.js`.
 
 ## Docs stale (JANGAN percaya mentah)
 
@@ -84,12 +96,15 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - **KlikQRIS sandbox tak punya API simulator** — simulasi bayar hanya dari dashboard KlikQRIS (manual 1 klik).
 - **KlikQRIS menandai lunas = `SUCCESS`** (bukan `PAID`) → pakai `isPaidStatus()`/`PAID_STATES`.
 - **Order prod PAID tapi KlikQRIS EXPIRED** (`ord_muoizb2w_al70`, `ord_muojvlen_5xe3`) = sisa admin-settle, bukan bayar nyata.
+- **Custom `assert()` menimpa module `node:assert`** di skrip probe → `assert.deepEqual is not a function`; pakai `JSON.stringify` compare.
+- **Fresh/empty auth.sqlite crash** (`SchemaMismatchError`) → selalu copy schema prod lalu DELETE semua row.
 
 ## Pending / terbuka (ringkas — detail di handoff §4)
 
-- **A1 🔴** harga order dari body (`POST /api/orders`) — blocker go-live.
-- **A2** `PACKAGES` hardcode di `user-dashboard.html`. **A3** features/expiry hardcode. **A4** adapter baseUrl salah (`api.grouter.io`).
-- Hardcode config tersisa: auth thresholds, klikqris URL/poll, usage URL, port, `src/config.js`, POLL_MS.
+- ~~A1~~ ✅ closed (I2, `36c99b1`). ~~A2~~ ✅ closed. ~~A3~~ ✅ closed.
+- **A4** adapter baseUrl salah (`api.grouter.id` → seharusnya `prod.grouter.web.id`) — target I3.
+- Hardcode config tersisa: auth thresholds, klikqris URL/poll, usage URL, port, `src/config.js`, POLL_MS — target I3.
+- I4 = panel Settings admin; I5 = rekonsiliasi docs.
 
 ## KlikQRIS
 

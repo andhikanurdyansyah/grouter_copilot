@@ -100,7 +100,9 @@ test('dashboard HTML renders with placeholders replaced', async () => {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    assert.match(html, /Copilot Console/);
+    // Admin console shell + token gate must render.
+    assert.match(html, /gRouter Copilot/);
+    assert.match(html, /Admin/);
     assert.ok(!html.includes('__STATS_JSON__'));
   } finally {
     server.close();

@@ -1,21 +1,28 @@
 /**
  * Better Auth instance for gRouter Copilot.
  *
+ * Providers:
  * - Email/password: enabled.
  * - Google OAuth: enabled ONLY when GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET are set.
- * - dash(): dashboard/analytics plugin (requires BETTER_AUTH_API_KEY).
+ *
+ * Plugins:
+ * - dash()        — Better Auth Infrastructure dashboard/analytics (BETTER_AUTH_API_KEY).
+ * - sentinel()    — security: credential stuffing, impossible travel, compromised
+ *                   password, email validation, bot/suspicious-IP blocking.
+ * - organization()— multi-tenant orgs (members, roles, invitations, teams).
  *
  * NOTE: frontend (copilot.grouter.id, port 4601) and backend (be.grouter.id,
  * port 4600) are DIFFERENT origins → trustedOrigins is REQUIRED or Better Auth
  * rejects requests with 403 INVALID_ORIGIN.
  *
  * NOTE: this server sits behind Cloudflare Tunnel + the frontend proxy, so the
- * real client IP arrives via cf-connecting-ip / x-forwarded-for. Without
- * ipAddressHeaders, Better Auth rate limiting falls back to one shared bucket.
+ * real client IP arrives via cf-connecting-ip. Without ipAddressHeaders,
+ * Better Auth rate limiting falls back to one shared bucket.
  */
 
 import { betterAuth } from 'better-auth';
-import { dash } from '@better-auth/infra';
+import { organization } from 'better-auth/plugins';
+import { dash, sentinel } from '@better-auth/infra';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,12 +56,40 @@ const socialProviders = (googleClientId && googleClientSecret)
     }
   : undefined;
 
+// Better Auth Infrastructure (dash + sentinel).
+const apiKey = (process.env.BETTER_AUTH_API_KEY || '').trim();
+const apiUrl = (process.env.BETTER_AUTH_API_URL || '').trim() || undefined;
+const kvUrl = (process.env.BETTER_AUTH_KV_URL || '').trim() || undefined;
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || undefined,
   trustedOrigins,
   database: new Database(dbFile),
   plugins: [
-    dash(), // Better Auth dashboard/analytics (requires BETTER_AUTH_API_KEY)
+    dash({
+      ...(apiKey ? { apiKey } : {}),
+      ...(apiUrl ? { apiUrl } : {}),
+      ...(kvUrl ? { kvUrl } : {}),
+      activityTracking: {
+        enabled: true,
+        updateInterval: 300000, // 5 min
+      },
+    }),
+    sentinel({
+      ...(apiKey ? { apiKey } : {}),
+      ...(apiUrl ? { apiUrl } : {}),
+      ...(kvUrl ? { kvUrl } : {}),
+      security: {
+        credentialStuffing: {
+          enabled: true,
+          thresholds: { challenge: 3, block: 5 },
+        },
+        impossibleTravel: { enabled: true, maxSpeedKmh: 1000, action: 'challenge' },
+        compromisedPassword: { enabled: true, action: 'block', minBreachCount: 1 },
+        emailValidation: { enabled: true },
+      },
+    }),
+    organization(),
   ],
   emailAndPassword: {
     enabled: true,

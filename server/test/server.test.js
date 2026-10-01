@@ -6,6 +6,11 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+// The webhook tests inject a fake `fetch`; KlikQris still requires credentials
+// to be "configured", so provide dummy values (never used — fetch is faked).
+process.env.KLIKQRIS_API_KEY ||= 'test-key';
+process.env.KLIKQRIS_MERCHANT_ID ||= 'test-merchant';
+
 function startServer() {
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-server-'));
   const dataFile = path.join(dir, 'store.json');
@@ -156,9 +161,57 @@ test('/api/config advertises payment status (no secrets)', async () => {
     assert.equal(res.status, 200);
     assert.ok(res.json.payment && typeof res.json.payment.enabled === 'boolean');
     assert.ok(['sandbox', 'production'].includes(res.json.payment.mode));
-    // Must never leak gateway credentials.
     const raw = JSON.stringify(res.json);
     assert.ok(!raw.includes('apiKey') && !raw.includes('api_key') && !raw.includes('merchantId'));
+  } finally {
+    server.close();
+  }
+});
+
+test('webhook cannot forge a PAID: unverified order is ignored (no license)', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-forge-'));
+  // Inject a KlikQRIS that reports PENDING — the source of truth says unpaid.
+  const fakeFetch = async () => new Response(
+    JSON.stringify({ status: true, data: { order_id: 'ord_forge', status: 'PENDING' } }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+  const { server } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
+  await new Promise((r) => server.listen(0, r));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: 'ord_forge', status: 'PAID' });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.ok, true);
+    assert.match(String(res.json.ignored), /unverified/i); // forged PAID rejected
+  } finally {
+    server.close();
+  }
+});
+
+test('webhook settles a verified PAID and issues a license (idempotent)', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-paid-'));
+  // KlikQRIS is the source of truth: report the order PAID.
+  const fakeFetch = async () => new Response(
+    JSON.stringify({ status: true, data: { order_id: 'ord_paid', status: 'PAID', paid_at: '2026-10-01 11:27:35' } }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+  const { server, service, store } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
+  // Pre-seed the order (as if a customer had checked out).
+  store.addOrder({ id: 'ord_paid', accountId: 'acc_x', packageKey: 'basic', amount: 99000, status: 'PENDING', createdAt: Date.now() });
+  await new Promise((r) => server.listen(0, r));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const first = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: 'ord_paid', status: 'PAID' });
+    assert.equal(first.status, 200);
+    assert.equal(first.json.ok, true);
+    assert.ok(first.json.licenseId, 'a license must be issued on verified payment');
+    assert.equal(store.getOrder('ord_paid').status, 'PAID');
+
+    // Second delivery of the same webhook must NOT issue a second license.
+    const before = service.list().length;
+    const second = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: 'ord_paid', status: 'PAID' });
+    assert.equal(second.status, 200);
+    assert.equal(service.list().length, before, 'idempotent: no duplicate license');
   } finally {
     server.close();
   }

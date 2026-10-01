@@ -22,6 +22,7 @@
         <a class="nav-item active" href="#overview" aria-current="page"><span class="dot" aria-hidden="true"></span> Overview</a>
         <a class="nav-item" href="#licenses"><span class="dot" aria-hidden="true"></span> Licenses</a>
         <a class="nav-item" href="#trend"><span class="dot" aria-hidden="true"></span> Tren</a>
+        <a class="nav-item" href="#org"><span class="dot" aria-hidden="true"></span> Organisasi</a>
         <a class="nav-item" href="#usage"><span class="dot" aria-hidden="true"></span> Usage</a>
       </nav>
 
@@ -127,6 +128,37 @@
             </div>
           </section>
 
+          <!-- Organisasi (Better Auth organization plugin) -->
+          <section class="metal-panel panel" id="org" aria-labelledby="orgTitle">
+            <div class="panel-head">
+              <div>
+                <span class="panel-title" id="orgTitle">Organisasi</span>
+                <div class="sub">Kelola organisasi &amp; anggota tim Anda.</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="orgCreateBtn" type="button">+ Buat Organisasi</button>
+            </div>
+            <div class="panel-body">
+              <div id="orgForm" hidden>
+                <div class="row wrap" style="gap:12px;align-items:flex-end">
+                  <div class="field" style="flex:1;min-width:180px;margin:0">
+                    <label for="orgName">Nama organisasi</label>
+                    <input id="orgName" type="text" placeholder="mis. PT Contoh Jaya" autocomplete="organization" />
+                  </div>
+                  <div class="field" style="flex:1;min-width:180px;margin:0">
+                    <label for="orgSlug">Slug</label>
+                    <input id="orgSlug" type="text" placeholder="pt-contoh-jaya" autocomplete="off" />
+                  </div>
+                  <button class="btn btn-primary btn-sm" id="orgSubmitBtn" type="button">Buat</button>
+                  <button class="btn btn-ghost btn-sm" id="orgCancelBtn" type="button">Batal</button>
+                </div>
+                <p id="orgError" class="chip-err sub" role="alert" hidden style="margin-top:8px"></p>
+              </div>
+              <div id="orgHost" aria-live="polite">
+                <div class="status-loading">Memuat organisasi…</div>
+              </div>
+            </div>
+          </section>
+
           <!-- Usage & quota -->
           <section class="metal-panel panel" id="usage" aria-labelledby="usageTitle">
             <div class="panel-head">
@@ -201,7 +233,7 @@
         { key: 'enterprise', name: 'Enterprise', tokens: '50M tokens', amount: 749000 }
       ];
 
-      var state = { account: null, licenses: [], filter: 'all', lastFocused: null };
+      var state = { account: null, licenses: [], orgs: [], filter: 'all', lastFocused: null };
 
       var els = {
         sidebar: document.getElementById('sidebar'),
@@ -229,6 +261,11 @@
         qrOrderId: document.getElementById('qrOrderId'),
         qrAmount: document.getElementById('qrAmount'),
         qrStatus: document.getElementById('qrStatus'),
+        orgHost: document.getElementById('orgHost'),
+        orgForm: document.getElementById('orgForm'),
+        orgName: document.getElementById('orgName'),
+        orgSlug: document.getElementById('orgSlug'),
+        orgError: document.getElementById('orgError'),
         toastRegion: document.getElementById('toastRegion')
       };
 
@@ -238,7 +275,11 @@
 
       function fmtDate(ms) {
         if (!ms) return '—';
-        try { return new Date(Number(ms)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+        try {
+          var d = (typeof ms === 'number' || /^\d+$/.test(String(ms))) ? new Date(Number(ms)) : new Date(ms);
+          if (isNaN(d.getTime())) return '—';
+          return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
         catch (e) { return '—'; }
       }
 
@@ -578,6 +619,115 @@
         if (f.length) f[0].focus();
       }
 
+      /* ---------------- organization ---------------- */
+
+      async function authFetch(path, opts) {
+        var o = opts || {};
+        o.credentials = 'same-origin';
+        if (o.body && typeof o.body !== 'string') {
+          o.headers = Object.assign({ 'content-type': 'application/json' }, o.headers || {});
+          o.body = JSON.stringify(o.body);
+        }
+        return fetch(path, o);
+      }
+
+      async function loadOrgs() {
+        var res;
+        try {
+          res = await authFetch('/api/auth/organization/list');
+        } catch (e) {
+          els.orgHost.innerHTML = '<div class="empty">Gagal memuat organisasi.</div>';
+          return;
+        }
+        if (!res.ok) {
+          els.orgHost.innerHTML = '<div class="empty">Gagal memuat organisasi (' + res.status + ').</div>';
+          return;
+        }
+        var orgs = await res.json();
+        state.orgs = Array.isArray(orgs) ? orgs : [];
+        renderOrgs();
+      }
+
+      function renderOrgs() {
+        var orgs = state.orgs || [];
+        if (!orgs.length) {
+          els.orgHost.innerHTML = '<div class="empty">Belum ada organisasi. Buat satu untuk mulai berkolaborasi.</div>';
+          return;
+        }
+        var rows = orgs.map(function (o) {
+          return '<tr>' +
+            '<td>' + escapeHtml(o.name || '—') + '</td>' +
+            '<td class="mono">' + escapeHtml(o.slug || '—') + '</td>' +
+            '<td>' + escapeHtml(fmtDate(o.createdAt)) + '</td>' +
+            '<td><button class="btn btn-ghost btn-sm" type="button" data-org="' + escapeHtml(o.id) + '">Detail</button></td>' +
+            '</tr>';
+        }).join('');
+        els.orgHost.innerHTML =
+          '<div class="table-wrap"><table>' +
+          '<caption class="sr-only">Daftar organisasi Anda</caption>' +
+          '<thead><tr><th scope="col">Nama</th><th scope="col">Slug</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>' +
+          '<div id="orgDetail" style="margin-top:16px"></div>';
+        Array.prototype.forEach.call(els.orgHost.querySelectorAll('[data-org]'), function (b) {
+          b.addEventListener('click', function () { loadOrgDetail(b.getAttribute('data-org')); });
+        });
+      }
+
+      async function loadOrgDetail(orgId) {
+        var host = document.getElementById('orgDetail');
+        if (!host) return;
+        host.innerHTML = '<div class="status-loading">Memuat detail…</div>';
+        var res = await authFetch('/api/auth/organization/get-full-organization?organizationId=' + encodeURIComponent(orgId));
+        if (!res.ok) { host.innerHTML = '<div class="empty">Gagal memuat detail (' + res.status + ').</div>'; return; }
+        var data = await res.json();
+        var members = Array.isArray(data.members) ? data.members : [];
+        var rows = members.map(function (m) {
+          var u = m.user || {};
+          return '<tr><td>' + escapeHtml(u.name || u.email || m.userId) + '</td>' +
+            '<td class="mono">' + escapeHtml(u.email || '—') + '</td>' +
+            '<td><span class="badge ' + (m.role === 'owner' ? 'cyan' : 'neutral') + '">' + escapeHtml(m.role || 'member') + '</span></td></tr>';
+        }).join('');
+        host.innerHTML =
+          '<div class="panel-title" style="margin-bottom:10px">' + escapeHtml(data.name || 'Organisasi') + '</div>' +
+          '<div class="table-wrap"><table>' +
+          '<caption class="sr-only">Anggota organisasi</caption>' +
+          '<thead><tr><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Peran</th></tr></thead>' +
+          '<tbody>' + (rows || '<tr><td colspan="3" class="empty">Belum ada anggota.</td></tr>') + '</tbody></table></div>';
+      }
+
+      async function createOrg() {
+        var name = (els.orgName.value || '').trim();
+        var slug = (els.orgSlug.value || '').trim();
+        els.orgError.hidden = true;
+        if (!name || !slug) {
+          els.orgError.textContent = 'Nama dan slug wajib diisi.';
+          els.orgError.hidden = false;
+          return;
+        }
+        var btn = document.getElementById('orgSubmitBtn');
+        btn.disabled = true; btn.textContent = 'Membuat…';
+        var res, data;
+        try {
+          res = await authFetch('/api/auth/organization/create', { method: 'POST', body: { name: name, slug: slug } });
+          data = await res.json().catch(function () { return {}; });
+        } catch (e) {
+          els.orgError.textContent = 'Gagal menghubungi server.';
+          els.orgError.hidden = false;
+          btn.disabled = false; btn.textContent = 'Buat';
+          return;
+        }
+        btn.disabled = false; btn.textContent = 'Buat';
+        if (!res.ok) {
+          els.orgError.textContent = (data && (data.message || data.error)) || ('Gagal membuat organisasi (' + res.status + ').');
+          els.orgError.hidden = false;
+          return;
+        }
+        els.orgName.value = ''; els.orgSlug.value = '';
+        els.orgForm.hidden = true;
+        toast('Organisasi dibuat.', 'ok');
+        loadOrgs();
+      }
+
       /* ---------------- sidebar toggle ---------------- */
 
       function setSidebar(open) {
@@ -598,6 +748,19 @@
       /* ---------------- events ---------------- */
 
       document.getElementById('purchaseBtn').addEventListener('click', openModal);
+      document.getElementById('orgCreateBtn').addEventListener('click', function () {
+        els.orgForm.hidden = !els.orgForm.hidden;
+        if (!els.orgForm.hidden) els.orgName.focus();
+      });
+      document.getElementById('orgCancelBtn').addEventListener('click', function () {
+        els.orgForm.hidden = true; els.orgError.hidden = true;
+      });
+      document.getElementById('orgSubmitBtn').addEventListener('click', createOrg);
+      els.orgSlug.addEventListener('blur', function () {
+        if (!els.orgSlug.value && els.orgName.value) {
+          els.orgSlug.value = els.orgName.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+        }
+      });
       document.getElementById('closePicker').addEventListener('click', closeModal);
       document.getElementById('closeQr').addEventListener('click', closeModal);
       document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -640,6 +803,7 @@
 
       renderPackages();
       loadMe();
+      loadOrgs();
     })();
   </script>
 </body>

@@ -4,85 +4,96 @@
 > memory gRouter (profile grouter-dev). Fakta gRouter TIDAK boleh tercampur ke sini,
 > dan fakta Copilot TIDAK boleh masuk ke memory gRouter.
 
+## START DI SINI
+
+- **Baca `docs/handoff-2026-10-01.md` DULU** (status, temuan terbuka, plan I2–I5).
+- Docs = source of truth. Beberapa doc MASIH STALE — lihat @section "Docs stale" di bawah.
+
 ## Identitas & boundary
 
 - gRouter Copilot = product BARU, terpisah total dari gRouter existing (port 20128).
 - gRouter existing = supplier AI (API key + model). HANYA read-only (consume `/api/check-usage`).
 - Repo: `https://github.com/andhikanurdyansyah/grouter_copilot` (branch `main`).
-- Workspace: `C:/gRouter_copilot`.
-- Memory ini file manual (`MEMORY.md`), TIDAK auto-load. Dibaca manual tiap mulai kerja.
+- Workspace: `C:/gRouter_copilot`. Memory ini file manual (`MEMORY.md`), TIDAK auto-load.
 
 ## Keputusan kunci (lihat docs/15-decision-log.md)
 
-- Plugin, bukan platform SaaS (D-001).
-- License-based, NOT open-source (D-008).
+- Plugin, bukan platform SaaS (D-001). License-based, NOT open-source (D-008).
 - 1 credential customer = LICENSE KEY; api key gRouter di-resolve server-side (D-014).
-- Api key TIDAK di-embed di token license (D-015).
-- Auto-provisioning api key DEFERRED (D-016).
-- 1 akun = banyak license (D-017).
-- Payment = KlikQRIS (D-018).
-- Google OAuth = PENDING provider (D-019). Auth = Better Auth email/password (DONE).
+- Api key TIDAK di-embed di token license (D-015). Auto-provisioning DEFERRED (D-016).
+- 1 akun = banyak license (D-017). Payment = KlikQRIS (D-018). Google OAuth (D-019).
+- **D-020 — Runtime config SSOT: `DEFAULT_SETTINGS <- env seeds <- store.settings`.**
+  Env = seed saja; admin panel menulis ke store. **Tidak boleh hardcode configurable value.**
+  Cost-integrity: harga order WAJIB resolve server-side dari plan, jangan percaya `body.amount`.
 
-## Arsitektur
+## Arsitektur (AKTUAL — SINGLE origin)
 
-- **Frontend** port 4601 → `copilot.grouter.id` (landing, register, user dashboard, admin; proxy `/api/*` ke backend).
-- **Backend** port 4600 → `be.grouter.id` (auth Better Auth, `/api/me`, license, order, webhook, usage).
-- pm2 kelola keduanya (`server/ecosystem.config.cjs`): `copilot-backend` + `copilot-frontend`.
-- Boot startup: Startup folder user → `gRouter_Copilot.vbs` → `pm2 resurrect`.
-- Detail: `docs/27-deployment-architecture.md`.
+- **Frontend** port 4601 → `copilot.grouter.id` (landing, register, user, admin; proxy `/api/*`).
+- **Backend** port 4600 (TIDAK publik) — auth Better Auth, `/api/me`, orders, webhook, admin.
+- `be.grouter.id` **SUDAH TIDAK DIPAKAI**. pm2: `copilot-backend` + `copilot-frontend`.
+- Boot: Startup folder `.vbs` → `pm2 resurrect`.
 
 ```text
-Plugin (in-process, Node.js/Next.js)
-  → skill (developer-defined) → data app
-  → gRouter adapter → gRouter (read-only)
-  → license gate (offline Ed25519) + heartbeat (best-effort)
-
-Copilot backend (terpisah dari gRouter)
-  → license server (mint/revoke/resolve/handoff)
-  → usage resolver (consume /check-usage)
-  → admin dashboard + landing + register + user dashboard
+Plugin (in-process) → skill → data app → gRouter adapter → gRouter (read-only)
+                 → license gate (offline Ed25519) + heartbeat (best-effort)
+Copilot backend  → license server (mint/revoke/resolve/handoff)
+                 → usage resolver (/check-usage) → admin + landing + register + user + settings
 ```
+
+## Settings SSOT (baru)
+
+- `server/src/settings.js`: `DEFAULT_SETTINGS`, `resolveSettings()`, `validateSettings()`, `maskSettings()`, `publicPlans()`.
+- `store.getSettings()/updateSettings()` → persist di `store.json` (gitignored).
+- Endpoint: publik `GET /api/plans`; admin `GET|PATCH /api/admin/settings` (secret di-mask `••••<last4>`).
 
 ## Kontrak gRouter (read-only, verified live 2026-09-30)
 
 - `GET https://prod.grouter.web.id/api/check-usage?key=<gRouter-api-key>`
-- Key format: `gRouter-...` (bukan `sk-`).
-- Chat: `POST {baseUrl}/v1/chat/completions` (Bearer api key).
+- Key format: `gRouter-...` (bukan `sk-`). Chat: `POST {baseUrl}/v1/chat/completions` (Bearer).
 - baseUrl dari `/check-usage` → `integration.baseUrl` (= `https://prod.grouter.web.id/v1`).
 
 ## Design system (docs/24-design-system.md)
 
-- Cyberpunk metallic (adaptasi gRouter DESIGN.md): cyan `#22d3ee` primary, gunmetal `#07090d`.
-- File: `server/public/assets/grx.css`.
-- Halaman: `/landing`, `/register`(+`/login`), `/user`, `/` (admin).
+- Cyberpunk metallic: cyan `#22d3ee` primary, gunmetal `#07090d`. File: `server/public/assets/grx.css`.
+- Halaman: `/landing`, `/register`(+`/login`), `/user`, `/success`, `/` + `/admin`.
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → 47 pass.
-- Backend test: `cd server && node --test` → 10 pass.
-- Run backend: `cd server && node src/index.js` (port 4600).
-- Tanpa npm install (zero dependency).
+- Plugin test: `node --test` (root) → **69 pass**.
+- Backend test: `cd server && node --test` → **32 pass**. (Windows: JANGAN `node --test test/`.)
+- Run backend: `cd server && node src/index.js` (port 4600). Tanpa npm install (zero dependency).
+- Instance terisolasi: `DATA_FILE=<tmp> PORT=4690 node src/index.js`.
+
+## Docs stale (JANGAN percaya mentah)
+
+- `docs/27` (two-origin/`be.grouter.id`), `docs/28` (webhook/redirect `be.grouter.id`),
+  `docs/26` (status tak sebut `SUCCESS`), `docs/25` (P-001/003/004/005 sudah selesai),
+  `docs/22` (open questions), `docs/00/01/02` ("tanpa backend Copilot").
+- Rekonsiliasi = pekerjaan **I5** di handoff.
 
 ## Standing conventions
 
 - Bahasa Indonesia untuk laporan (7-section: Summary/What Works/What's Broken/Risks/Plan/Files/Validation).
 - JANGAN sentuh gRouter production (port 20128, source, DB, release, watchdog).
-- JANGAN campur fakta ke memory gRouter.
-- Api key gRouter = secret; tidak pernah commit/embed/browser.
+- JANGAN campur fakta ke memory gRouter. Api key gRouter = secret (tak pernah commit/embed/browser).
+- Restart prod non-destruktif: `pm2 restart copilot-backend --update-env`.
 
-## Pending (belum dibangun)
+## Gotcha penting
 
-- Google OAuth backend (client ID, redirect, token exchange, session) — PENDING.
-- Auto-provisioning api key gRouter (butuh kontrak endpoint gRouter).
-- KlikQRIS payment integration — client DIBANGUN (`server/src/klikqris.js`), TAPI akun sandbox belum aktif (401 "Account Inactive").
-- Account + license model (D-017) — DIBANGUN: store `accounts` + `accountId` di license.
-- Customer dashboard data wiring (butuh auth + license-per-user).
+- **Tool output menyanitasi string mirip-secret** (`body.grouterApiKey` bisa tampil `body.g...iKey`) → BUKAN bug; verifikasi `od -c`/`node -e`/probe runtime dulu.
+- **KlikQRIS sandbox tak punya API simulator** — simulasi bayar hanya dari dashboard KlikQRIS (manual 1 klik).
+- **KlikQRIS menandai lunas = `SUCCESS`** (bukan `PAID`) → pakai `isPaidStatus()`/`PAID_STATES`.
+- **Order prod PAID tapi KlikQRIS EXPIRED** (`ord_muoizb2w_al70`, `ord_muojvlen_5xe3`) = sisa admin-settle, bukan bayar nyata.
 
-## KlikQRIS (dibangun, menunggu aktivasi akun)
+## Pending / terbuka (ringkas — detail di handoff §4)
 
-- Client: `server/src/klikqris.js` (createQris, checkStatus, verifyWebhookSignature, pollUntilSettled).
-- Endpoint: `POST https://klikqris.com/api/qris/create`, `GET /api/qris/status/{order_id}`.
-- Header: `x-api-key` + `id_merchant`.
-- Kredensial di `server/.env` (gitignored, JANGAN commit).
-- Status live: KlikQRIS balas 401 "Invalid API Key or Account Inactive" — akun/key perlu diaktifkan di dashboard.
+- **A1 🔴** harga order dari body (`POST /api/orders`) — blocker go-live.
+- **A2** `PACKAGES` hardcode di `user-dashboard.html`. **A3** features/expiry hardcode. **A4** adapter baseUrl salah (`api.grouter.io`).
+- Hardcode config tersisa: auth thresholds, klikqris URL/poll, usage URL, port, `src/config.js`, POLL_MS.
+
+## KlikQRIS
+
+- Client: `server/src/klikqris.js` (createQris, checkStatus, pollUntilSettled, isPaidStatus/PAID_STATES/TERMINAL_STATES).
+- Base mode-aware: sandbox `https://klikqris.com/api/sandbox`, production `.../api`. Header `x-api-key` + `id_merchant`.
+- Kredensial di `server/.env` (gitignored, JANGAN commit). **Mode sekarang: `sandbox`.**
 - Kontrak: `docs/26-klikqris-contract.md`.

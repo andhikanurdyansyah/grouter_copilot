@@ -26,6 +26,9 @@ import { PaymentService } from './paymentService.js';
 import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
 import { AccountService } from './accountService.js';
+import {
+  resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans,
+} from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -234,6 +237,7 @@ export function createCopilotServer({
       const googleEnabled = Boolean(
         (process.env.GOOGLE_CLIENT_ID || '').trim() && (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
       );
+      const eff = resolveSettings(store.getSettings());
       return sendJson(res, 200, {
         providers: { google: googleEnabled },
         basePath: '/api/auth',
@@ -241,6 +245,41 @@ export function createCopilotServer({
           enabled: klikqris.configured,
           mode: klikqris.mode,
         },
+        branding: {
+          productName: eff.branding.productName,
+          publicDomain: eff.branding.publicDomain,
+          currency: eff.branding.currency,
+        },
+      });
+    }
+
+    // Public plan catalogue — safe for the customer UI (no internals/secrets).
+    // Consumed by landing + user dashboard instead of a hardcoded PACKAGES array.
+    if (req.method === 'GET' && url.pathname === '/api/plans') {
+      const eff = resolveSettings(store.getSettings());
+      return sendJson(res, 200, { plans: publicPlans(eff), currency: eff.branding?.currency || 'IDR' });
+    }
+
+    // Admin: read the effective settings (secrets masked, never raw).
+    if (req.method === 'GET' && url.pathname === '/api/admin/settings') {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      const eff = resolveSettings(store.getSettings());
+      return sendJson(res, 200, { settings: maskSettings(eff) });
+    }
+
+    // Admin: patch settings (validated; masked/empty secrets are kept as-is).
+    if (req.method === 'PATCH' && url.pathname === '/api/admin/settings') {
+      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      return readBody(req).then((body) => {
+        try {
+          const clean = stripMaskedSecrets(body);
+          const patch = validateSettings(clean);
+          store.updateSettings(patch);
+          const eff = resolveSettings(store.getSettings());
+          return sendJson(res, 200, { settings: maskSettings(eff) });
+        } catch (err) {
+          return sendJson(res, err.code === 'INVALID_SETTINGS' ? 400 : 500, { error: err.message });
+        }
       });
     }
 
@@ -352,7 +391,11 @@ export function createCopilotServer({
     return sendJson(res, 404, { error: 'not found' });
   });
 
-  return { server, store, service, usage, keys, payment, listen: () => new Promise((r) => server.listen(port, r)) };
+  return {
+    server, store, service, usage, keys, payment, accounts,
+    settings: () => resolveSettings(store.getSettings()),
+    listen: () => new Promise((r) => server.listen(port, r)),
+  };
 }
 
 function sanitizeLicense(l) {

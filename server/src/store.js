@@ -16,6 +16,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
+import { deepMerge } from './settings.js';
 
 export class JsonStore {
   constructor(filePath) {
@@ -25,8 +26,9 @@ export class JsonStore {
   }
 
   _load() {
+    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], settings: {} };
     if (!existsSync(this.filePath)) {
-      return { accounts: [], licenses: [], orders: [], heartbeats: [] };
+      return empty;
     }
     try {
       const parsed = JSON.parse(readFileSync(this.filePath, 'utf8'));
@@ -35,10 +37,29 @@ export class JsonStore {
         licenses: parsed.licenses ?? [],
         orders: parsed.orders ?? [],
         heartbeats: parsed.heartbeats ?? [],
+        // Runtime configuration (SSOT). Resolved against defaults + env seeds
+        // by server/src/settings.js — this is only the persisted override layer.
+        settings: parsed.settings ?? {},
       };
     } catch {
-      return { accounts: [], licenses: [], orders: [], heartbeats: [] };
+      return empty;
     }
+  }
+
+  // --- settings (runtime configuration SSOT) ---
+
+  getSettings() {
+    return this.data.settings ?? {};
+  }
+
+  /**
+   * Deep-merge a partial patch into the persisted settings and save.
+   * @param {object} patch already validated by settings.validateSettings()
+   */
+  updateSettings(patch) {
+    this.data.settings = deepMerge(this.data.settings ?? {}, patch);
+    this._save();
+    return this.data.settings;
   }
 
   _save() {

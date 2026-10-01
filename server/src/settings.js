@@ -54,6 +54,7 @@ export const DEFAULT_SETTINGS = {
     provider: 'klikqris',
     mode: 'sandbox',
     baseUrl: 'https://klikqris.com',
+    klikqrisBaseUrl: 'https://klikqris.com',
     apiKey: '',
     merchantId: '',
     pollIntervalMs: 10000,
@@ -64,7 +65,8 @@ export const DEFAULT_SETTINGS = {
     cacheTtlMs: 60000,
   },
   provider: {
-    baseUrl: 'https://prod.grouter.web.id/v1',
+    // gRouter base WITHOUT the /v1 prefix — the adapter appends /v1/chat/completions.
+    baseUrl: 'https://prod.grouter.web.id',
     timeoutMs: 60000,
   },
   limits: {
@@ -79,7 +81,13 @@ export const DEFAULT_SETTINGS = {
   },
   auth: {
     minPasswordLength: 8,
-    trustedOrigins: [],
+    trustedOrigins: ['https://copilot.grouter.id', 'http://localhost:4601', 'http://127.0.0.1:4601'],
+    sentinel: {
+      credentialStuffing: { challenge: 3, block: 5 },
+      impossibleTravelMaxSpeedKmh: 1000,
+      compromisedPasswordMinBreaches: 1,
+    },
+    activityTrackingIntervalMs: 300000,
   },
 };
 
@@ -131,6 +139,15 @@ export function envSeeds(env = process.env) {
   if (env.KLIKQRIS_MERCHANT_ID) seeds.payment = { ...(seeds.payment || {}), merchantId: env.KLIKQRIS_MERCHANT_ID };
   if (env.GROUTER_CHECK_USAGE_URL) seeds.usage = { checkUsageUrl: env.GROUTER_CHECK_USAGE_URL };
   if (env.GROUTER_BASE_URL) seeds.provider = { baseUrl: env.GROUTER_BASE_URL };
+  if (env.BETTER_AUTH_TRUSTED_ORIGINS) {
+    seeds.auth = {
+      ...(seeds.auth || {}),
+      trustedOrigins: String(env.BETTER_AUTH_TRUSTED_ORIGINS)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+  }
   return seeds;
 }
 
@@ -211,7 +228,7 @@ export function validateSettings(patch) {
     if (pay.provider !== undefined && pay.provider !== 'klikqris') {
       throw fail('payment.provider must be "klikqris".');
     }
-    for (const k of ['apiKey', 'merchantId', 'baseUrl']) {
+    for (const k of ['apiKey', 'merchantId', 'baseUrl', 'klikqrisBaseUrl']) {
       if (pay[k] !== undefined) validStr(pay[k], `payment.${k}`);
     }
     for (const k of ['pollIntervalMs', 'pollTimeoutMs']) {
@@ -227,6 +244,26 @@ export function validateSettings(patch) {
   if (p.usage?.checkUsageUrl !== undefined) validStr(p.usage.checkUsageUrl, 'usage.checkUsageUrl');
   if (p.provider?.baseUrl !== undefined) validStr(p.provider.baseUrl, 'provider.baseUrl');
   if (p.auth?.minPasswordLength !== undefined) assertInt(p.auth.minPasswordLength, 'auth.minPasswordLength', { min: 6 });
+  if (p.auth?.activityTrackingIntervalMs !== undefined) {
+    assertInt(p.auth.activityTrackingIntervalMs, 'auth.activityTrackingIntervalMs', { min: 1000 });
+  }
+  if (p.auth?.trustedOrigins !== undefined) {
+    if (!Array.isArray(p.auth.trustedOrigins) || p.auth.trustedOrigins.some((s) => typeof s !== 'string')) {
+      throw fail('auth.trustedOrigins must be an array of strings.');
+    }
+  }
+  if (p.auth?.sentinel !== undefined) {
+    const s = p.auth.sentinel;
+    if (!isPlainObject(s)) throw fail('auth.sentinel must be an object.');
+    if (s.credentialStuffing !== undefined) {
+      const cs = s.credentialStuffing;
+      if (!isPlainObject(cs) || !Number.isInteger(cs.challenge) || !Number.isInteger(cs.block)) {
+        throw fail('auth.sentinel.credentialStuffing must be { challenge: int, block: int }.');
+      }
+    }
+    if (s.impossibleTravelMaxSpeedKmh !== undefined) assertInt(s.impossibleTravelMaxSpeedKmh, 'auth.sentinel.impossibleTravelMaxSpeedKmh', { min: 1 });
+    if (s.compromisedPasswordMinBreaches !== undefined) assertInt(s.compromisedPasswordMinBreaches, 'auth.sentinel.compromisedPasswordMinBreaches', { min: 1 });
+  }
 
   return p;
 }

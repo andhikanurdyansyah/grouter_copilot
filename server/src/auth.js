@@ -26,21 +26,23 @@ import { dash, sentinel } from '@better-auth/infra';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveSettings } from './settings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbFile = process.env.AUTH_DB_FILE || path.join(__dirname, '..', 'data', 'auth.sqlite');
 
-// Trusted origins: the frontend origin (and local dev origins).
-// BETTER_AUTH_TRUSTED_ORIGINS is a comma-separated override.
-const trustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS
-  || [
-    'https://copilot.grouter.id',
-    'https://be.grouter.id',
-    'http://localhost:4601',
-    'http://127.0.0.1:4601',
-  ].join(','))
-  .split(',')
-  .map((s) => s.trim())
+// Auth configuration comes from the settings SSOT (defaults <- env seeds).
+// The store layer is intentionally NOT read here: this module builds the Better
+// Auth singleton ONCE at boot, so store-level auth changes require a restart
+// (`pm2 restart copilot-backend --update-env`) to take effect. Env vars remain
+// SEEDS (BETTER_AUTH_TRUSTED_ORIGINS etc. keep working as before).
+const effAuth = resolveSettings({}, process.env).auth;
+
+// Trusted origins: resolved from settings defaults (+ BETTER_AUTH_TRUSTED_ORIGINS seed).
+// NOTE: the retired `be.grouter.id` backend origin is deliberately NOT in the
+// default list (single-origin architecture — see docs/handoff §2).
+const trustedOrigins = effAuth.trustedOrigins
+  .map((s) => String(s).trim())
   .filter(Boolean);
 
 // Google OAuth is only active when both credentials are present.
@@ -78,7 +80,7 @@ export const auth = betterAuth({
       ...(kvUrl ? { kvUrl } : {}),
       activityTracking: {
         enabled: true,
-        updateInterval: 300000, // 5 min
+        updateInterval: effAuth.activityTrackingIntervalMs ?? 300000,
       },
     }),
     sentinel({
@@ -88,10 +90,21 @@ export const auth = betterAuth({
       security: {
         credentialStuffing: {
           enabled: true,
-          thresholds: { challenge: 3, block: 5 },
+          thresholds: {
+            challenge: effAuth.sentinel?.credentialStuffing?.challenge ?? 3,
+            block: effAuth.sentinel?.credentialStuffing?.block ?? 5,
+          },
         },
-        impossibleTravel: { enabled: true, maxSpeedKmh: 1000, action: 'challenge' },
-        compromisedPassword: { enabled: true, action: 'block', minBreachCount: 1 },
+        impossibleTravel: {
+          enabled: true,
+          maxSpeedKmh: effAuth.sentinel?.impossibleTravelMaxSpeedKmh ?? 1000,
+          action: 'challenge',
+        },
+        compromisedPassword: {
+          enabled: true,
+          action: 'block',
+          minBreachCount: effAuth.sentinel?.compromisedPasswordMinBreaches ?? 1,
+        },
         emailValidation: { enabled: true },
       },
     }),
@@ -99,7 +112,7 @@ export const auth = betterAuth({
   ],
   emailAndPassword: {
     enabled: true,
-    minPasswordLength: 8,
+    minPasswordLength: effAuth.minPasswordLength ?? 8,
   },
   ...(socialProviders ? { socialProviders } : {}),
   advanced: {

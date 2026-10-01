@@ -50,9 +50,21 @@ export function createCopilotServer({
   }
 
   const store = new JsonStore(dataFile);
+  const effSettings = resolveSettings(store.getSettings());
   const service = new LicenseService({ store, privateKeyPem: keys.privateKeyPem });
-  const usage = new UsageResolver({ fetchImpl: fetch, ...(checkUsageUrl ? { checkUsageUrl } : {}) });
-  const klikqris = new KlikQris({ fetchImpl: fetch });
+  // Settings SSOT (D-020): the usage URL/TTL and the KlikQRIS mode/base URL are
+  // read from the resolved settings (defaults <- env seeds <- store), with the
+  // explicit constructor args (used by tests) winning over everything else.
+  const usage = new UsageResolver({
+    fetchImpl: fetch,
+    checkUsageUrl: checkUsageUrl ?? effSettings.usage.checkUsageUrl,
+    ttlMs: effSettings.usage.cacheTtlMs,
+  });
+  const klikqris = new KlikQris({
+    fetchImpl: fetch,
+    mode: effSettings.payment.mode,
+    baseUrl: effSettings.payment.klikqrisBaseUrl || effSettings.payment.baseUrl,
+  });
   const payment = new PaymentService({ klikqris, licenseService: service, store });
   const accounts = new AccountService({ store });
 
@@ -401,7 +413,7 @@ export function createCopilotServer({
   });
 
   return {
-    server, store, service, usage, keys, payment, accounts,
+    server, store, service, usage, keys, payment, accounts, klikqris,
     settings: () => resolveSettings(store.getSettings()),
     listen: () => new Promise((r) => server.listen(port, r)),
   };

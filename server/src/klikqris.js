@@ -50,11 +50,16 @@ export class KlikQris {
     apiKey = process.env.KLIKQRIS_API_KEY,
     merchantId = process.env.KLIKQRIS_MERCHANT_ID,
     mode = process.env.KLIKQRIS_MODE || 'sandbox',
+    baseUrl = null,
     fetchImpl = globalThis.fetch,
   } = {}) {
     this.apiKey = apiKey;
     this.merchantId = merchantId;
     this.mode = mode;
+    // Settings SSOT (D-020): the deployment can override the KlikQRIS host via
+    // settings (`payment.klikqrisBaseUrl`) — e.g. a proxy or a future region —
+    // while the default stays the mode-derived klikqris.com URL.
+    this.baseUrlOverride = baseUrl || null;
     this.fetch = fetchImpl;
   }
 
@@ -62,8 +67,9 @@ export class KlikQris {
     return Boolean(this.apiKey && this.merchantId);
   }
 
-  /** Base path per mode. */
+  /** Base path per mode (override wins when provided). */
   get baseUrl() {
+    if (this.baseUrlOverride) return this.baseUrlOverride;
     return this.mode === 'production'
       ? `${KLIKQRIS_BASE_URL}/api`
       : `${KLIKQRIS_BASE_URL}/api/sandbox`;

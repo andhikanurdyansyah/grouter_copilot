@@ -13,7 +13,10 @@
 import { CopilotError, ErrorCode } from './errors.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_BASE_URL = process.env.GROUTER_BASE_URL || 'https://api.grouter.io';
+// A4 fix: the gRouter contract base is https://prod.grouter.web.id — the
+// adapter appends `/v1/chat/completions` itself, so the base must NOT include
+// /v1. (The old default `https://api.grouter.io` was never the real contract.)
+const DEFAULT_BASE_URL = process.env.GROUTER_BASE_URL || 'https://prod.grouter.web.id';
 
 export class GrouterAdapter {
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = globalThis.fetch } = {}) {

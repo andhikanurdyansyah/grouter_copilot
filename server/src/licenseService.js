@@ -19,7 +19,7 @@ export class LicenseService {
     this.audience = audience;
   }
 
-  issue({ customer, accountId = null, features = ['core'], expiresInDays = 365, notBefore, grouterApiKey = null } = {}) {
+  issue({ customer, accountId = null, features = ['core'], expiresInDays = 365, quota = null, notBefore, grouterApiKey = null } = {}) {
     const id = nextId('lic');
     const expiresAt = notBefore
       ? null
@@ -27,7 +27,7 @@ export class LicenseService {
 
     const token = mintLicense({
       privateKeyPem: this.privateKeyPem,
-      payload: { aud: this.audience, lic: id, customer, features },
+      payload: { aud: this.audience, lic: id, customer, features, quota },
       notBefore,
       expiresAt: expiresAt ? expiresAt * 1000 : undefined,
     });
@@ -37,6 +37,7 @@ export class LicenseService {
       customer,
       accountId: accountId ?? null,
       features,
+      quota: quota ?? null,
       createdAt: Date.now(),
       expiresAt: expiresAt ? expiresAt * 1000 : null,
       revokedAt: null,

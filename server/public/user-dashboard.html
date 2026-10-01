@@ -227,13 +227,7 @@
     (function () {
       'use strict';
 
-      var PACKAGES = [
-        { key: 'basic', name: 'Basic', tokens: '5M tokens', amount: 99000 },
-        { key: 'pro', name: 'Pro', tokens: '15M tokens', amount: 249000 },
-        { key: 'enterprise', name: 'Enterprise', tokens: '50M tokens', amount: 749000 }
-      ];
-
-      var state = { account: null, licenses: [], orgs: [], filter: 'all', lastFocused: null, lastOrderId: null, pollTimer: null };
+      var state = { account: null, licenses: [], orgs: [], plans: [], filter: 'all', lastFocused: null, lastOrderId: null, pollTimer: null };
       var POLL_MS = 5000;
 
       var els = {
@@ -316,6 +310,24 @@
       }
 
       /* ---------------- data load ---------------- */
+
+      // Plan catalogue comes from the server (GET /api/plans) — the browser
+      // never holds a hardcoded price list (A2), and checkout sends packageKey
+      // only; the amount is resolved server-side (A1).
+      async function loadPlans() {
+        var res;
+        try {
+          res = await fetch('/api/plans', { credentials: 'same-origin' });
+        } catch (e) {
+          state.plans = [];
+          renderPackages();
+          return;
+        }
+        if (!res.ok) { state.plans = []; renderPackages(); return; }
+        var data = await res.json().catch(function () { return {}; });
+        state.plans = Array.isArray(data.plans) ? data.plans : [];
+        renderPackages();
+      }
 
       async function loadMe() {
         var res;
@@ -514,12 +526,17 @@
       /* ---------------- purchase flow ---------------- */
 
       function renderPackages() {
-        els.pkgGrid.innerHTML = PACKAGES.map(function (p, i) {
+        var plans = state.plans;
+        if (!plans.length) {
+          els.pkgGrid.innerHTML = '<div class="empty">Katalog paket tidak tersedia saat ini. Coba refresh halaman.</div>';
+          return;
+        }
+        els.pkgGrid.innerHTML = plans.map(function (p, i) {
           return '<div class="metal-panel panel">' +
             '<div class="panel-body row-between">' +
               '<div>' +
                 '<div class="panel-title">' + escapeHtml(p.name) + '</div>' +
-                '<div class="sub">' + escapeHtml(p.tokens) + '</div>' +
+                '<div class="sub">' + escapeHtml(p.quota || '') + '</div>' +
               '</div>' +
               '<button class="btn btn-primary btn-sm" type="button" data-idx="' + i + '" aria-label="Pilih paket ' + escapeHtml(p.name) + ', ' + escapeHtml(rupiah(p.amount)) + '">' +
                 rupiah(p.amount) +
@@ -530,7 +547,7 @@
 
         Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('[data-idx]'), function (btn) {
           btn.addEventListener('click', function () {
-            var p = PACKAGES[Number(btn.getAttribute('data-idx'))];
+            var p = state.plans[Number(btn.getAttribute('data-idx'))];
             if (p) createOrder(p);
           });
         });
@@ -627,11 +644,9 @@
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              packageKey: pkg.key,
-              amount: pkg.amount,
-              description: 'gRouter Copilot ' + pkg.name + ' (' + pkg.tokens + ')'
-            })
+            // packageKey ONLY — the server resolves the price and entitlement
+            // from its own plan catalogue (A1). Sending an amount now 400s.
+            body: JSON.stringify({ packageKey: pkg.key })
           });
           data = await res.json();
         } catch (e) {
@@ -851,7 +866,7 @@
         if (window.innerWidth > 860 && els.sidebar.classList.contains('open')) setSidebar(false);
       });
 
-      renderPackages();
+      loadPlans();
       loadMe();
       loadOrgs();
     })();

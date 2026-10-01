@@ -71,12 +71,6 @@
         status: document.getElementById('doneStatus'),
       };
 
-      var PACKAGES = {
-        basic: 'Basic — 5M tokens',
-        pro: 'Pro — 15M tokens',
-        enterprise: 'Enterprise — 50M tokens',
-      };
-
       function rupiah(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); }
 
       function markOk() {
@@ -86,7 +80,9 @@
 
       function fill(order, license) {
         els.details.hidden = false;
-        els.pkg.textContent = PACKAGES[order.packageKey] || order.packageKey || '—';
+        // planName is stored server-side on the order (from the plan catalogue);
+        // fall back to packageKey only for legacy orders created before I2.
+        els.pkg.textContent = order.planName || order.packageKey || '—';
         els.amount.textContent = rupiah(order.amount);
         els.order.textContent = order.id;
         if (license && license.id) { els.licRow.hidden = false; els.lic.textContent = license.id; }

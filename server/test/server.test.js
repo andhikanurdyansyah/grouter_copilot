@@ -132,7 +132,8 @@ test('order access is session-scoped: unauthenticated requests are rejected', as
   const { baseUrl, server } = await startServer();
   try {
     // No session cookie → /api/orders must not create, and reads must 401.
-    const create = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'basic', amount: 1000 });
+    // Body carries packageKey ONLY (A1): the amount is resolved server-side.
+    const create = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'basic' });
     assert.equal(create.status, 401);
     const latest = await req(baseUrl, 'GET', '/api/orders/latest');
     assert.equal(latest.status, 401);

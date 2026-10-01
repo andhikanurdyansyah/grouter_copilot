@@ -27,7 +27,7 @@ import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
 import { AccountService } from './accountService.js';
 import {
-  resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans,
+  resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans, findPlan,
 } from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
@@ -328,24 +328,33 @@ export function createCopilotServer({
     }
 
     // Create a payment order (customer checkout). Returns KlikQRIS QR.
-    // SECURITY: the accountId is derived from the authenticated session, never
-    // from the request body, so a caller cannot create orders for other accounts.
+    // SECURITY (A1 / cost-integrity, D-020): the price and entitlement are
+    // resolved SERVER-SIDE from the plan catalogue by packageKey — the request
+    // body is never trusted for the amount (a client could otherwise pay Rp1
+    // for a Rp249.000 plan). The accountId is derived from the authenticated
+    // session, never from the request body.
     if (req.method === 'POST' && url.pathname === '/api/orders') {
       return (async () => {
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
         const body = await readBody(req);
-        if (!body.amount) {
-          return sendJson(res, 400, { error: 'amount is required' });
+        if (body.amount !== undefined) {
+          return sendJson(res, 400, { error: 'amount is resolved server-side; send packageKey only' });
+        }
+        if (body.description !== undefined) {
+          return sendJson(res, 400, { error: 'description is derived server-side from the plan; send packageKey only' });
+        }
+        if (!body.packageKey || typeof body.packageKey !== 'string') {
+          return sendJson(res, 400, { error: 'packageKey is required' });
+        }
+        const eff = resolveSettings(store.getSettings());
+        const plan = findPlan(eff, body.packageKey);
+        if (!plan || plan.active === false) {
+          return sendJson(res, 400, { error: 'unknown or inactive package' });
         }
         try {
-          const { order, qr } = await payment.createOrder({
-            accountId: account.id,
-            packageKey: body.packageKey ?? 'default',
-            amount: body.amount,
-            description: body.description ?? '',
-          });
+          const { order, qr } = await payment.createOrder({ plan, accountId: account.id });
           return sendJson(res, 201, { order, qr: { qrUrl: qr.qrUrl, qrImage: qr.qrImage, expiredAt: qr.expiredAt } });
         } catch (err) {
           return sendJson(res, err.code === 'AUTH_FAILED' ? 502 : 500, { error: err.message });
@@ -417,6 +426,8 @@ function sanitizeOrder(o) {
     id: o.id,
     accountId: o.accountId,
     packageKey: o.packageKey,
+    planName: o.planName ?? null,
+    quota: o.quota ?? null,
     amount: o.amount,
     status: o.status,
     createdAt: o.createdAt,

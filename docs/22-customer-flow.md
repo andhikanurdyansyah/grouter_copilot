@@ -30,7 +30,7 @@ Chat runs; usage recorded; dashboard shows quota via gRouter /check-usage
 | License server (issue/revoke/validate) | ✅ `server/src/licenseService.js` |
 | Heartbeat (install counting) | ✅ `POST /api/heartbeat` |
 | Key handoff (license → api key) | ✅ `POST /api/resolve` + `bind` |
-| Usage resolution (gRouter /check-usage) | ✅ `server/src/usageResolver.js` + `GET /api/usage` |
+| Usage resolution (gRouter /check-usage) | ✅ `server/src/usageResolver.js` + `GET /api/admin/usage` |
 | Admin dashboard | ✅ `server/public/dashboard.html` |
 | Landing page | ✅ `server/public/landing.html` (`/landing`) |
 | gRouter API contract (verified) | ✅ `docs/23-grouter-api-contract.md` |
@@ -59,14 +59,14 @@ plugin install
 
 ## Usage / quota (verified)
 
-`GET /api/usage` → for each bound license, consume gRouter `/check-usage` (read-only), cache, aggregate.
+`GET /api/admin/usage` → for each bound license, consume gRouter `/check-usage` (read-only), cache, aggregate.
 
 Contract documented in `docs/23-grouter-api-contract.md`.
 
 ## Deferred (do NOT build yet)
 
 - **Auto-provisioning:** on license purchase, auto-generate gRouter api key. Deferred until the gRouter provisioning contract is clear.
-- Admin maps license → existing gRouter api key manually (via `POST /api/licenses/:id/bind`).
+- Admin maps license → existing gRouter api key manually (via `POST /api/admin/licenses/:id/bind`).
 
 ## Open questions
 

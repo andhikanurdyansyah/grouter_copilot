@@ -61,6 +61,25 @@ const apiKey = (process.env.BETTER_AUTH_API_KEY || '').trim();
 const apiUrl = (process.env.BETTER_AUTH_API_URL || '').trim() || undefined;
 const kvUrl = (process.env.BETTER_AUTH_KV_URL || '').trim() || undefined;
 
+// Cross-subdomain cookie domain: the frontend (copilot.grouter.id) starts the
+// Google flow but the callback lands on the backend (be.grouter.id), so the
+// OAuth `state` cookie must be shared across both subdomains or Better Auth
+// rejects the exchange with `state_mismatch`. Derived from BETTER_AUTH_URL so
+// localhost/IP dev origins (which need no sharing) stay on host-only cookies.
+function crossSubDomainCookieDomain() {
+  const explicit = (process.env.BETTER_AUTH_COOKIE_DOMAIN || '').trim();
+  if (explicit) return explicit;
+  try {
+    const host = new URL(process.env.BETTER_AUTH_URL || '').hostname;
+    if (!host || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return null;
+    const parts = host.split('.');
+    return parts.length >= 2 ? parts.slice(-2).join('.') : host;
+  } catch {
+    return null;
+  }
+}
+const cookieDomain = crossSubDomainCookieDomain();
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || undefined,
   trustedOrigins,
@@ -102,5 +121,16 @@ export const auth = betterAuth({
     ipAddress: {
       ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for', 'x-real-ip'],
     },
+    // gRouter Copilot runs on TWO origins that must share auth cookies:
+    //   copilot.grouter.id (frontend: starts the Google flow)
+    //   be.grouter.id      (backend:  receives /api/auth/callback/google)
+    // Without a shared parent-domain cookie the OAuth `state` cookie set on the
+    // frontend origin is NOT sent to the backend callback → Better Auth rejects
+    // the exchange with `state_mismatch` (`State not persisted correctly`).
+    // Scoping to the registrable domain makes the cookie visible to both
+    // subdomains; null (localhost/IP) keeps host-only cookies.
+    ...(cookieDomain
+      ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } }
+      : {}),
   },
 });

@@ -30,7 +30,7 @@ async function req(baseUrl, method, p, body) {
 test('key handoff: issue → bind → resolve returns api key; license list never leaks it', async () => {
   const { baseUrl, server } = await startServer();
   try {
-    const issued = await req(baseUrl, 'POST', '/api/licenses', { customer: 'CRM', features: ['core'] });
+    const issued = await req(baseUrl, 'POST', '/api/admin/licenses', { customer: 'CRM', features: ['core'] });
     const { id, token } = issued.json.license;
     const rawToken = issued.json.token;
 
@@ -39,7 +39,7 @@ test('key handoff: issue → bind → resolve returns api key; license list neve
     assert.equal(before.status, 404);
 
     // bind api key (admin)
-    const bind = await req(baseUrl, 'POST', `/api/licenses/${id}/bind`, { grouterApiKey: 'gRouter-abc123' });
+    const bind = await req(baseUrl, 'POST', `/api/admin/licenses/${id}/bind`, { grouterApiKey: 'gRouter-abc123' });
     assert.equal(bind.status, 200);
     assert.equal(bind.json.license.grouterApiKey, undefined); // sanitized
 
@@ -49,7 +49,7 @@ test('key handoff: issue → bind → resolve returns api key; license list neve
     assert.equal(resolve.json.apiKey, 'gRouter-abc123');
 
     // license list does not expose api key
-    const list = await req(baseUrl, 'GET', '/api/licenses');
+    const list = await req(baseUrl, 'GET', '/api/admin/licenses');
     assert.equal(list.json.licenses[0].grouterApiKey, undefined);
   } finally {
     server.close();
@@ -59,7 +59,7 @@ test('key handoff: issue → bind → resolve returns api key; license list neve
 test('key handoff rejects tampered token', async () => {
   const { baseUrl, server } = await startServer();
   try {
-    const issued = await req(baseUrl, 'POST', '/api/licenses', { customer: 'CRM', grouterApiKey: 'gRouter-x' });
+    const issued = await req(baseUrl, 'POST', '/api/admin/licenses', { customer: 'CRM', grouterApiKey: 'gRouter-x' });
     const parts = issued.json.token.split('.');
     const forged = `${parts[0]}.${Buffer.from('{"lic":"evil"}').toString('base64url')}.${parts[2]}`;
     const resolve = await req(baseUrl, 'POST', '/api/resolve', { token: forged });
@@ -83,8 +83,8 @@ test('usage endpoint aggregates /check-usage per bound license', async () => {
   };
   const { baseUrl, server } = await startServer({ fakeFetch });
   try {
-    const issued = await req(baseUrl, 'POST', '/api/licenses', { customer: 'POS', grouterApiKey: 'gRouter-y' });
-    const usage = await req(baseUrl, 'GET', '/api/usage');
+    const issued = await req(baseUrl, 'POST', '/api/admin/licenses', { customer: 'POS', grouterApiKey: 'gRouter-y' });
+    const usage = await req(baseUrl, 'GET', '/api/admin/usage');
     assert.equal(usage.status, 200);
     assert.equal(usage.json.usage.length, 1);
     assert.equal(usage.json.usage[0].usage.usage.tokens, 100);

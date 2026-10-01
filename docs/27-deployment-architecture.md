@@ -6,8 +6,15 @@
 
 | Service | Local port | Public domain | Serves |
 |---|---|---|---|
-| Frontend | 4601 | `copilot.grouter.id` | landing, register, user dashboard, admin dashboard; proxies `/api/*` to backend |
-| Backend | 4600 | `be.grouter.id` | `/api/auth/*` (Better Auth), `/api/me`, `/api/licenses`, `/api/orders`, `/api/payment/klikqris/webhook`, `/api/usage` |
+| Frontend | 4601 | `copilot.grouter.id` | landing, register, user dashboard; proxies `/api/*` to backend |
+| Backend | 4600 | `be.grouter.id` | `/api/auth/*` (Better Auth), `/api/me`, `/api/orders`, `/api/payment/klikqris/webhook`, `/api/admin/*` (admin only) |
+
+### Surface split (customer vs admin)
+
+- **`/`** → customer landing (both frontend and backend). Never the admin gate.
+- **`/admin`** → admin console (token gate). Admin-only APIs live under **`/api/admin/*`**.
+- Customer APIs (`/api/me`, `/api/orders`, `/api/config`, `/api/auth/*`) never carry admin paths.
+- OAuth failures redirect to the customer origin (`errorCallbackURL`) so a customer never lands on the admin surface.
 
 ## Cloudflare Tunnel
 
@@ -37,12 +44,12 @@ Boot startup: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\gRouter_C
 
 ### App
 - `GET  /api/me` (cookie) → `{account:{id,name,email}, licenses:[...]}` | 401.
-- `POST /api/orders` `{accountId, packageKey, amount, description}` → `{order, qr:{qrUrl,qrImage,expiredAt}}`.
+- `POST /api/orders` `{packageKey, amount, description}` (cookie) → `{order, qr:{qrUrl,qrImage,expiredAt}}`; 401 if unauthenticated. The `accountId` is derived from the session, never trusted from the body.
 - `POST /api/payment/klikqris/webhook` `{order_id, status}` → settles order, issues license.
 
 ### Admin
-- `GET  /api/stats`, `GET /api/licenses`, `POST /api/licenses`, `POST /api/licenses/:id/revoke`,
-  `POST /api/licenses/:id/bind`, `GET /api/usage` — require `Authorization: Bearer <ADMIN_TOKEN>` when set.
+- `GET  /api/admin/stats`, `GET /api/admin/licenses`, `POST /api/admin/licenses`, `POST /api/admin/licenses/:id/revoke`,
+  `POST /api/admin/licenses/:id/bind`, `GET /api/admin/usage` — require `Authorization: Bearer <ADMIN_TOKEN>` when set.
 
 ## Frontend routing (frontendServer.js)
 

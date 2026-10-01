@@ -26,7 +26,7 @@
 
 **Why:** purchase → auto-generate gRouter api key requires a gRouter provisioning endpoint contract that does not exist yet.
 
-**Current workaround:** admin binds an existing gRouter api key to a license manually (`POST /api/licenses/:id/bind`).
+**Current workaround:** admin binds an existing gRouter api key to a license manually (`POST /api/admin/licenses/:id/bind`).
 
 **Unblock when:** gRouter exposes a documented api-key-generation endpoint.
 

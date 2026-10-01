@@ -489,7 +489,7 @@
       $('gateError').style.display = 'none';
       setToken(val);
       // Verify against a real admin endpoint before revealing the console.
-      apiFetch('/api/stats').then(function () {
+      apiFetch('/api/admin/stats').then(function () {
         btn.disabled = false; btn.textContent = prev;
         showConsole();
         return loadAll();
@@ -800,13 +800,13 @@
        Loaders
     ------------------------------------------------------------------ */
     function loadStats() {
-      return apiFetch('/api/stats').then(function (data) { renderStats(data); });
+      return apiFetch('/api/admin/stats').then(function (data) { renderStats(data); });
     }
     function loadLicenses() {
-      return apiFetch('/api/licenses').then(function (data) { renderLicenses((data && data.licenses) || []); });
+      return apiFetch('/api/admin/licenses').then(function (data) { renderLicenses((data && data.licenses) || []); });
     }
     function loadUsage() {
-      return apiFetch('/api/usage').then(function (data) { renderUsage((data && data.usage) || []); });
+      return apiFetch('/api/admin/usage').then(function (data) { renderUsage((data && data.usage) || []); });
     }
     function loadAll() {
       renderSkeletons();
@@ -867,7 +867,7 @@
       };
       var btn = $('confirmIssue');
       btn.disabled = true; btn.textContent = 'Issuing…';
-      apiFetch('/api/licenses', { method: 'POST', body: JSON.stringify(payload) })
+      apiFetch('/api/admin/licenses', { method: 'POST', body: JSON.stringify(payload) })
         .then(function (data) {
           btn.disabled = false;
           if (data && data.token) {
@@ -895,7 +895,7 @@
     function revokeLicense(id, btn) {
       if (!window.confirm('Revoke license ' + id + '? Lisensi tidak dapat diaktifkan kembali.')) return;
       if (btn) { btn.disabled = true; }
-      apiFetch('/api/licenses/' + encodeURIComponent(id) + '/revoke', { method: 'POST', body: '{}' })
+      apiFetch('/api/admin/licenses/' + encodeURIComponent(id) + '/revoke', { method: 'POST', body: '{}' })
         .then(function () {
           setStatus('License ' + id + ' direvokasi.');
           toast('License direvokasi.', 'ok');
@@ -930,7 +930,7 @@
       if (!bindTargetId) return;
       var btn = $('confirmBind');
       btn.disabled = true; btn.textContent = 'Binding…';
-      apiFetch('/api/licenses/' + encodeURIComponent(bindTargetId) + '/bind', {
+      apiFetch('/api/admin/licenses/' + encodeURIComponent(bindTargetId) + '/bind', {
         method: 'POST', body: JSON.stringify({ grouterApiKey: key })
       }).then(function () {
         btn.disabled = false; btn.textContent = 'Bind';

@@ -25,14 +25,14 @@ server/
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/stats` | none | aggregate counts |
-| GET | `/api/licenses` | none | list (no raw tokens/api keys) |
-| POST | `/api/licenses` | admin (Bearer) | issue license, returns token ONCE |
+| GET | `/api/admin/stats` | none | aggregate counts |
+| GET | `/api/admin/licenses` | none | list (no raw tokens/api keys) |
+| POST | `/api/admin/licenses` | admin (Bearer) | issue license, returns token ONCE |
 | POST | `/api/licenses/:id/bind` | admin (Bearer) | bind gRouter api key |
 | POST | `/api/resolve` | license token | key handoff → returns bound api key |
 | POST | `/api/licenses/:id/revoke` | admin (Bearer) | revoke |
 | POST | `/api/heartbeat` | license token | validate + record install |
-| GET | `/api/usage` | admin (Bearer) | per-license quota via gRouter /check-usage |
+| GET | `/api/admin/usage` | admin (Bearer) | per-license quota via gRouter /check-usage |
 
 ## Routes
 

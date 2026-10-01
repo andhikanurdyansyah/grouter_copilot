@@ -320,7 +320,13 @@
           var res = await fetch('/api/auth/sign-in/social', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ provider: 'google', callbackURL: location.origin + '/user' }),
+            body: JSON.stringify({
+              provider: 'google',
+              callbackURL: location.origin + '/user',
+              // On failure return the user to the CUSTOMER origin, not the raw
+              // backend error page, so they never see the admin surface.
+              errorCallbackURL: location.origin + '/login',
+            }),
             credentials: 'same-origin',
           });
           var data = null;
@@ -357,6 +363,23 @@
         if (!wantsSignin && new URLSearchParams(location.search).get('mode') === 'signin') wantsSignin = true;
       } catch (e) { /* ignore */ }
       toggleForm(wantsSignin ? 'signin' : 'signup');
+
+      /* ---------- Surface an OAuth failure back on the customer page ---------- */
+      try {
+        var authErr = new URLSearchParams(location.search).get('error');
+        if (authErr) {
+          var authErrMsg = ({
+            state_mismatch: 'Sesi login Google kedaluwarsa. Silakan coba lagi.',
+            invalid_code: 'Login Google gagal diverifikasi. Silakan coba lagi.',
+            unable_to_get_user_info: 'Tidak dapat mengambil data akun Google Anda.',
+            email_not_found: 'Google tidak memberikan alamat email akun Anda.',
+            account_not_linked: 'Akun Google ini belum tertaut. Daftar dengan email & kata sandi dahulu.',
+            oauth_account_already_linked: 'Email ini sudah tertaut ke akun lain.',
+          })[authErr] || 'Login Google gagal (' + authErr + '). Silakan coba lagi.';
+          toggleForm('signin');
+          showError(authErrMsg);
+        }
+      } catch (e) { /* ignore */ }
     })();
   </script>
 </body>

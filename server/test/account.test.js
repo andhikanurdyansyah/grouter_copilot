@@ -39,7 +39,7 @@ test('store supports accounts + licensesByAccount (D-017)', async () => {
 test('issue accepts accountId and sanitizeLicense includes it (no secret leak)', async () => {
   const { baseUrl, server } = await startServer();
   try {
-    const res = await fetch(`${baseUrl}/api/licenses`, {
+    const res = await fetch(`${baseUrl}/api/admin/licenses`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ customer: 'CRM', accountId: 'acc_1', grouterApiKey: 'gRouter-secret' }),
     });

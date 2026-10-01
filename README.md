@@ -123,10 +123,10 @@ node src/index.js          # http://localhost:4600  (admin dashboard)
 ```
 
 ```text
-GET  /api/stats           → total license, active, install
-GET  /api/licenses        → daftar license (tanpa raw token)
-POST /api/licenses        → issue license (kembalikan token SEKALI)
-POST /api/licenses/:id/revoke
+GET  /api/admin/stats           → total license, active, install
+GET  /api/admin/licenses        → daftar license (tanpa raw token)
+POST /api/admin/licenses        → issue license (kembalikan token SEKALI)
+POST /api/admin/licenses/:id/revoke
 POST /api/heartbeat       → plugin phone-home (counting + revoke)
 ```
 

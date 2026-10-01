@@ -3,10 +3,10 @@
  * Zero-dependency Node http server (no external packages, no npm install).
  *
  * Endpoints:
- *   GET  /api/stats          → aggregate stats
- *   GET  /api/licenses       → list licenses (no raw tokens)
- *   POST /api/licenses       → issue license { customer, features?, expiresInDays? }
- *   POST /api/licenses/:id/revoke → revoke
+ *   GET  /api/admin/stats    → aggregate stats (admin only)
+ *   GET  /api/admin/licenses → list licenses (no raw tokens)
+ *   POST /api/admin/licenses → issue license { customer, features?, expiresInDays? }
+ *   POST /api/admin/licenses/:id/revoke → revoke
  *   POST /api/heartbeat      → { token, installId, baseUrl } (called by plugin)
  *   GET  /                  → admin dashboard HTML
  *
@@ -79,6 +79,13 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && url.pathname === '/') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8'));
+    }
+
+    // Admin console is a SEPARATE surface from the customer site: it lives at
+    // /admin (never at /), so a customer OAuth callback or error never lands on
+    // the "Masuk sebagai Admin" gate.
+    if (req.method === 'GET' && url.pathname === '/admin') {
       return sendHtml(res, 200, renderDashboardHtml(service));
     }
 
@@ -111,18 +118,18 @@ export function createCopilotServer({
       }
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/stats') {
+    if (req.method === 'GET' && url.pathname === '/api/admin/stats') {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       return sendJson(res, 200, service.stats());
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/licenses') {
+    if (req.method === 'GET' && url.pathname === '/api/admin/licenses') {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       const list = service.list().map(sanitizeLicense);
       return sendJson(res, 200, { licenses: list });
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/licenses') {
+    if (req.method === 'POST' && url.pathname === '/api/admin/licenses') {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
         const { record, token } = service.issue({
@@ -137,9 +144,9 @@ export function createCopilotServer({
     }
 
     // Bind a gRouter api key to a license (admin).
-    if (req.method === 'POST' && /^\/api\/licenses\/([^/]+)\/bind$/.test(url.pathname)) {
+    if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/bind$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
-      const id = url.pathname.split('/')[3];
+      const id = url.pathname.split('/')[4];
       return readBody(req).then((body) => {
         const bound = service.bindApiKey(id, body.grouterApiKey);
         if (!bound) return sendJson(res, 404, { error: 'not found' });
@@ -168,9 +175,9 @@ export function createCopilotServer({
       });
     }
 
-    if (req.method === 'POST' && /^\/api\/licenses\/([^/]+)\/revoke$/.test(url.pathname)) {
+    if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/revoke$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
-      const id = url.pathname.split('/')[3];
+      const id = url.pathname.split('/')[4];
       const revoked = service.revoke(id);
       if (!revoked) return sendJson(res, 404, { error: 'not found' });
       return sendJson(res, 200, { license: sanitizeLicense(revoked) });
@@ -199,7 +206,7 @@ export function createCopilotServer({
 
     // Usage endpoint (admin): fetch gRouter /check-usage for each license with a
     // bound api key. Read-only consumption of gRouter.
-    if (req.method === 'GET' && url.pathname === '/api/usage') {
+    if (req.method === 'GET' && url.pathname === '/api/admin/usage') {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
       return (async () => {
         const licenses = service.list();
@@ -229,9 +236,9 @@ export function createCopilotServer({
     }
 
     // Admin: manually settle an order (ops/testing; same verified path as webhook).
-    if (req.method === 'POST' && /^\/api\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
+    if (req.method === 'POST' && /^\/api\/admin\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
-      const orderId = url.pathname.split('/')[3];
+      const orderId = url.pathname.split('/')[4];
       return payment.settlePaid(orderId).then(({ order, license }) => {
         if (!order) return sendJson(res, 404, { error: 'order not found' });
         return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
@@ -239,22 +246,29 @@ export function createCopilotServer({
     }
 
     // Create a payment order (customer checkout). Returns KlikQRIS QR.
+    // SECURITY: the accountId is derived from the authenticated session, never
+    // from the request body, so a caller cannot create orders for other accounts.
     if (req.method === 'POST' && url.pathname === '/api/orders') {
-      return readBody(req).then((body) => {
-        if (!body.accountId || !body.amount) {
-          return sendJson(res, 400, { error: 'accountId and amount are required' });
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const body = await readBody(req);
+        if (!body.amount) {
+          return sendJson(res, 400, { error: 'amount is required' });
         }
-        return payment.createOrder({
-          accountId: body.accountId,
-          packageKey: body.packageKey ?? 'default',
-          amount: body.amount,
-          description: body.description ?? '',
-        }).then(({ order, qr }) => {
+        try {
+          const { order, qr } = await payment.createOrder({
+            accountId: account.id,
+            packageKey: body.packageKey ?? 'default',
+            amount: body.amount,
+            description: body.description ?? '',
+          });
           return sendJson(res, 201, { order, qr: { qrUrl: qr.qrUrl, qrImage: qr.qrImage, expiredAt: qr.expiredAt } });
-        }).catch((err) => {
+        } catch (err) {
           return sendJson(res, err.code === 'AUTH_FAILED' ? 502 : 500, { error: err.message });
-        });
-      });
+        }
+      })();
     }
 
     // KlikQRIS webhook callback. Marks order paid and issues a license.

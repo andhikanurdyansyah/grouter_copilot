@@ -9,28 +9,37 @@ Panduan setup eksternal untuk gRouter Copilot. Semua nilai masuk ke `server/.env
 ### Callback / Webhook URL
 
 ```
-https://be.grouter.id/api/payment/klikqris/webhook
+https://copilot.grouter.id/api/payment/klikqris/webhook
 ```
 
-**Kenapa `be.grouter.id` (bukan `copilot.grouter.id`)?** Webhook itu server-to-server: KlikQRIS memanggil backend langsung. Backend ada di port 4600 → domain `be.grouter.id`. Frontend (`copilot.grouter.id`, port 4601) hanya untuk browser.
-
-> Alternatif: frontend juga mem-proxy `/api/*` ke backend, jadi `https://copilot.grouter.id/api/payment/klikqris/webhook` juga sampai. Tapi pakai `be.grouter.id` saja — lebih langsung dan tidak bergantung pada frontend hidup.
+**Kenapa `copilot.grouter.id` (bukan backend langsung)?** Arsitektur sekarang
+SINGLE public origin: hanya `copilot.grouter.id` (frontend :4601) yang
+di-expose; frontend mem-proxy `/api/*` ke backend :4600 (tidak publik).
+`be.grouter.id` sudah dihapus dari Cloudflare Tunnel dan TIDAK dipakai lagi.
 
 ### Redirect URL
 
 ```
-https://copilot.grouter.id/user
+https://copilot.grouter.id/success
 ```
 
-**Kenapa `copilot.grouter.id`?** Redirect itu browser user (setelah bayar), jadi harus ke origin yang user lihat = frontend.
+**Kenapa `/success` (bukan `/user`)?** Redirect itu browser user (setelah
+bayar). `/success` adalah landing post-payment yang mem-poll
+`/api/orders/latest` lalu menampilkan status PAID + license yang terbit.
 
 ### Security (penting)
 
-Server TIDAK mempercayai `status:"PAID"` dari body webhook. Setiap webhook `PAID` diverifikasi ulang lewat `GET {base}/qris/status/{order_id}` ke KlikQRIS; license hanya terbit kalau KlikQRIS mengonfirmasi `PAID`. Jadi webhook palsu tidak bisa menerbitkan license.
+Server TIDAK mempercayai `status:"SUCCESS"/"PAID"` dari body webhook. Setiap
+klaim lunas diverifikasi ulang lewat `GET {base}/qris/status/{order_id}` ke
+KlikQRIS; license hanya terbit kalau KlikQRIS mengonfirmasi status lunas
+(`SUCCESS`/`PAID`/`SETTLEMENT`). Jadi webhook palsu tidak bisa menerbitkan
+license.
 
 ### Perubahan dari setup lama
 
-Webhook URL lama masih memakai `be.grouter.id` → **tidak berubah**, tetap valid. Yang perlu dipastikan cuma dua nilai di atas sudah terisi.
+Webhook/redirect dulu memakai `be.grouter.id` + `/user` → **SUDAH BERGANTI**
+ke `copilot.grouter.id` + `/success` (single origin). Pastikan dua nilai di
+dashboard KlikQRIS sudah sesuai di atas.
 
 ---
 
@@ -45,15 +54,14 @@ Login memakai Google hanya aktif kalau `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRE
 3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
    - Application type: **Web application**
    - Name: `gRouter Copilot`
-   - **Authorized JavaScript origins**
+   - **Authorized JavaScript origins** (single origin; `be.grouter.id` retired)
      ```
      https://copilot.grouter.id
-     https://be.grouter.id
      http://localhost:4601
      ```
    - **Authorized redirect URIs** (Better Auth callback, server-side):
      ```
-     https://be.grouter.id/api/auth/callback/google
+     https://copilot.grouter.id/api/auth/callback/google
      http://localhost:4600/api/auth/callback/google
      ```
 4. Copy **Client ID** + **Client Secret** ke `.env`:
@@ -62,16 +70,16 @@ Login memakai Google hanya aktif kalau `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRE
    GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
    ```
 5. Restart: `pm2 restart copilot-backend --update-env`
-6. Cek: `curl https://be.grouter.id/api/config` → harus `{"providers":{"google":true}}`.
+6. Cek: `curl https://copilot.grouter.id/api/config` → harus `{"providers":{"google":true}}`.
 7. Buttons: halaman register/login akan otomatis menampilkan tombol "Lanjut dengan Google".
 
 ### Verifikasi cepat
 
 ```bash
 # provider aktif?
-curl -s https://be.grouter.id/api/config
+curl -s https://copilot.grouter.id/api/config
 # alur social sign-in menghasilkan URL OAuth Google?
-curl -s -X POST https://be.grouter.id/api/auth/sign-in/social \
+curl -s -X POST https://copilot.grouter.id/api/auth/sign-in/social \
   -H 'content-type: application/json' -H 'Origin: https://copilot.grouter.id' \
   -d '{"provider":"google","callbackURL":"https://copilot.grouter.id/user"}'
 # -> { "url": "https://accounts.google.com/o/oauth2/v2/auth?...", "redirect": false }
@@ -147,5 +155,5 @@ Dashboard web ada di <https://dash.better-auth.com> (analytics, user/session man
 - [ ] Webhook + Redirect URL di dashboard KlikQRIS sesuai di atas.
 - [ ] `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` terisi + redirect URI terdaftar.
 - [ ] `BETTER_AUTH_TRUSTED_ORIGINS` memuat `https://copilot.grouter.id`.
-- [ ] `BETTER_AUTH_URL=https://be.grouter.id`.
-- [ ] `curl https://be.grouter.id/api/config` → `providers.google: true` (kalau pakai Google).
+- [ ] `BETTER_AUTH_URL=https://copilot.grouter.id`.
+- [ ] `curl https://copilot.grouter.id/api/config` → `providers.google: true` (kalau pakai Google).

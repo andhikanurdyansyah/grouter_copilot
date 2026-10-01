@@ -68,9 +68,12 @@ Contract documented in `docs/23-grouter-api-contract.md`.
 - **Auto-provisioning:** on license purchase, auto-generate gRouter api key. Deferred until the gRouter provisioning contract is clear.
 - Admin maps license → existing gRouter api key manually (via `POST /api/admin/licenses/:id/bind`).
 
-## Open questions
+## Open questions (semua sudah terjawab — diperbarui I5, 2026-10-01)
 
-1. gRouter api key generation endpoint (future auto-provision).
-2. Registration/auth mechanism.
-3. Payment flow.
-4. License server + dashboard deployment (single vs separate).
+1. ~~gRouter api key generation endpoint (future auto-provision).~~ → DEFERRED (D-016); admin bind manual.
+2. ~~Registration/auth mechanism.~~ → Better Auth email/password + Google OAuth kondisional (D-019), organization plugin.
+3. ~~Payment flow.~~ → KlikQRIS end-to-end LIVE (sandbox): checkout `{packageKey}` (harga server-side, A1) → QR → webhook terverifikasi/admin settle → license (D-018, doc 26).
+4. ~~License server + dashboard deployment (single vs separate).~~ → SINGLE public origin `copilot.grouter.id`; frontend :4601 proxy `/api/*` → backend :4600 (docs/27).
+
+Status implementasi lengkap per komponen: lihat `docs/25-pending-implementations.md`
+(P-001..P-005 sudah ditinjau ulang) dan `docs/29-backend-api-contract.md`.

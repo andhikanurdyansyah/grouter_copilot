@@ -45,6 +45,16 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - `server/src/settings.js`: `DEFAULT_SETTINGS`, `resolveSettings()`, `validateSettings()`, `maskSettings()`, `publicPlans()`, `findPlan()`.
 - `store.getSettings()/updateSettings()` → persist di `store.json` (gitignored).
 - Endpoint: publik `GET /api/plans`; admin `GET|PATCH /api/admin/settings` (secret di-mask `••••<last4>`).
+- **I3 wiring (`92cf9fb`):** klikqris mode/baseUrl (`payment.klikqrisBaseUrl`), usageResolver
+  (url+TTL), auth (trustedOrigins/sentinel/minPasswordLength dari settings; `be.grouter.id`
+  DIHAPUS dari default), adapter default `https://prod.grouter.web.id` (A4; adapter append
+  `/v1/chat/completions` sendiri — base TANPA `/v1`).
+- **I4 panel Settings (`61b8e67`):** tab Plans/Branding/Payment/Provider&Limits di `/admin`;
+  plans HOT, auth+mode payment butuh restart.
+
+## Kontrak API
+
+- **`docs/29-backend-api-contract.md` = kontrak resmi** (19 route + `/api/auth/*`, di-enumerasi dari kode).
 
 ## Cost-integrity (A1 — CLOSED, live sejak 2026-10-01, commit `36c99b1`)
 
@@ -76,12 +86,19 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - Instance terisolasi: `DATA_FILE=<tmp> PORT=4690 node src/index.js` (pakai path `$LOCALAPPDATA/Temp`, bukan `/tmp` MSYS).
 - Test ber-session: set env auth SEBELUM import `server.js` (dynamic import) + copy `server/data/auth.sqlite` ke tmp lalu clear semua row (`foreign_keys=OFF`) — pola di `server/test/cost-integrity.test.js`.
 
-## Docs stale (JANGAN percaya mentah)
+## Docs stale (SUDAH DIREKONSILIASI I5, 2026-10-01)
 
-- `docs/27` (two-origin/`be.grouter.id`), `docs/28` (webhook/redirect `be.grouter.id`),
-  `docs/26` (status tak sebut `SUCCESS`), `docs/25` (P-001/003/004/005 sudah selesai),
-  `docs/22` (open questions), `docs/00/01/02` ("tanpa backend Copilot").
-- Rekonsiliasi = pekerjaan **I5** di handoff.
+- ~~`docs/27`, `docs/28`, `docs/26`, `docs/25`, `docs/22`, `docs/00/01`~~ ✅ semua sudah
+  direkonsiliasi ke realita kode. Kontrak resmi: **`docs/29-backend-api-contract.md`**.
+- Tetap ingat: `be.grouter.id` TIDAK dipakai (single origin `copilot.grouter.id`).
+
+## Pending / terbuka (ringkas — detail di handoff §4)
+
+- ~~A1~~ ✅ closed (I2). ~~A2~~ ✅ closed. ~~A3~~ ✅ closed. ~~A4~~ ✅ closed (I3).
+- ~~I3 wiring config~~ ✅ (`92cf9fb`). ~~I4 panel Settings~~ ✅ (`61b8e67`). ~~I5 rekonsiliasi docs~~ ✅.
+- **Ops go-live (butuh keputusan/aksi Jie):** `KLIKQRIS_MODE=production` + kredensial produksi;
+  persist license keypair (LICENSE_PRIVATE_KEY_PEM/PUBLIC) sebelum license nyata; isi
+  `ADMIN_TOKEN` produksi; checklist lengkap di `docs/28` §Checklist.
 
 ## Standing conventions
 
@@ -98,13 +115,6 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - **Order prod PAID tapi KlikQRIS EXPIRED** (`ord_muoizb2w_al70`, `ord_muojvlen_5xe3`) = sisa admin-settle, bukan bayar nyata.
 - **Custom `assert()` menimpa module `node:assert`** di skrip probe → `assert.deepEqual is not a function`; pakai `JSON.stringify` compare.
 - **Fresh/empty auth.sqlite crash** (`SchemaMismatchError`) → selalu copy schema prod lalu DELETE semua row.
-
-## Pending / terbuka (ringkas — detail di handoff §4)
-
-- ~~A1~~ ✅ closed (I2, `36c99b1`). ~~A2~~ ✅ closed. ~~A3~~ ✅ closed.
-- **A4** adapter baseUrl salah (`api.grouter.id` → seharusnya `prod.grouter.web.id`) — target I3.
-- Hardcode config tersisa: auth thresholds, klikqris URL/poll, usage URL, port, `src/config.js`, POLL_MS — target I3.
-- I4 = panel Settings admin; I5 = rekonsiliasi docs.
 
 ## KlikQRIS
 

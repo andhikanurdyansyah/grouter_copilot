@@ -58,4 +58,4 @@ Wedge bukan "chatbot generik". Wedge adalah **skill layer yang developer-definab
 
 ## 7. Success thesis
 
-v0.1 sukses ketika seorang developer Node.js/Next.js bisa `npx @grouter/copilot init`, menulis 1 skill, dan mendapatkan jawaban chatbot yang bersumber dari data aplikasinya — tanpa key gRouter bocor ke browser dan tanpa backend Copilot.
+v0.1 sukses ketika seorang developer Node.js/Next.js bisa `npx @grouter/copilot init`, menulis 1 skill, dan mendapatkan jawaban chatbot yang bersumber dari data aplikasinya — tanpa key gRouter bocor ke browser dan tanpa backend Copilot *(catatan rekonsiliasi I5: syarat "tanpa backend" berlaku untuk RUNTIME plugin — backend Copilot kini ada sebagai license authority + pembayaran + dashboard, lihat D-009; plugin tetap self-contained dan tidak butuh backend untuk menjawab chat offline-hybrid)*.

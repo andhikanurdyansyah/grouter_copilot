@@ -60,7 +60,9 @@ Response (verified):
 GET {base}/qris/status/{order_id}
 ```
 
-Response: same envelope; `data.status` = `PENDING` | `PAID` | `EXPIRED` (possibly `FAILED`).
+Response: same envelope; `data.status` = `PENDING` | `SUCCESS` (lunas — nilai
+yang dipakai KlikQRIS saat ini) | `PAID`/`SETTLEMENT` (bentuk lama) | `EXPIRED`
+(possibly `FAILED`/`CANCELLED`).
 
 ## Webhook
 
@@ -76,15 +78,19 @@ Expected payload contains `order_id` + `status`. Our endpoint:
 
 401 + "Invalid API Key or Account Inactive" = wrong mode base URL, wrong key, or inactive account.
 
-## Flow (implemented)
+## Flow (implemented — A1-safe, diperbarui I5 2026-10-01)
 
 ```text
-POST /api/orders {accountId, packageKey, amount}
-  → KlikQRIS create → order PENDING (QR returned)
+POST /api/orders {packageKey}          (body TANPA amount — server resolve
+  → KlikQRIS create → order PENDING (QR returned; amount = plan.amount)
 customer pays
-  → webhook POST /api/payment/klikqris/webhook {order_id, status: PAID}
-  → settlePaid → issue license (bound to accountId)
+  → webhook POST /api/payment/klikqris/webhook {order_id, status}
+     (klaim paid di-re-verify ke GET /qris/status/:id sebelum settle)
+  → settlePaid → issue license (bound to accountId; entitlement dari plan)
 ```
+
+Catatan: payload status lunas dari KlikQRIS adalah `SUCCESS` (bukan `PAID`);
+server menerima `SUCCESS/PAID/SETTLEMENT` via `isPaidStatus()`.
 
 ## Notes
 

@@ -48,4 +48,4 @@ gRouter existing menyediakan AI usage; Copilot menambah nilai integrasi dan skil
 
 ## 6. Business acceptance
 
-v0.1 diterima ketika developer Node.js/Next.js bisa install, tulis 1 skill, dan end user mendapat jawaban bersumber dari data aplikasi, tanpa key gRouter bocor dan tanpa backend Copilot.
+v0.1 diterima ketika developer Node.js/Next.js bisa install, tulis 1 skill, dan end user mendapat jawaban bersumber dari data aplikasi, tanpa key gRouter bocor dan tanpa backend Copilot *(catatan rekonsiliasi I5: berlaku untuk RUNTIME plugin; backend Copilot kini ada sebagai license authority + pembayaran + dashboard per D-009)*.

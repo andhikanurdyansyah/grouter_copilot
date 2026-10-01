@@ -59,6 +59,12 @@
 ### D-019 — Google OAuth = PENDING
 **Accepted (pending).** Google OAuth dicatat di doc implementasi sebagai pending. Belum dibangun backend-nya (butuh client ID + redirect + token exchange + session model).
 
+## D-020 — Runtime configuration is store-backed + admin-configurable
+
+**Accepted.** All runtime configuration (branding, plans/pricing, payment, usage/provider, limits, license defaults, auth) has a single source of truth resolved as `DEFAULT_SETTINGS <- env seeds <- store.settings` (`server/src/settings.js` + `store.json`). Env vars are SEEDS only; the admin panel writes to the store. **No configurable value may be hardcoded at a call site.** Secrets are masked in every admin response. Endpoints: public `GET /api/plans`; admin `GET|PATCH /api/admin/settings`.
+
+**Consequence (revenue):** `POST /api/orders` MUST resolve the amount server-side from the plan catalogue by `packageKey` — never trust `body.amount`. License `features`/`expiresInDays` come from the plan, not a hardcoded `['core']`/`365`.
+
 ## Customer flow
 
 ```text

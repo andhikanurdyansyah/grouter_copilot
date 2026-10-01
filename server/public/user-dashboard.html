@@ -8,6 +8,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
+  <style>
+    /* page-local: plan tier cards (hanya token grx) */
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
+    .plan-card { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); position: relative; }
+    .plan-card--featured { border-color: rgba(34, 211, 238, 0.35); }
+    .plan-card__name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+    .plan-card__price { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .plan-card__quota { font-size: 13px; color: var(--grx-ink-dim); }
+    .plan-card__features { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
+    .plan-card__features li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--grx-ink-dim); }
+    .plan-card__features li svg { width: 14px; height: 14px; color: var(--grx-cyan); flex-shrink: 0; margin-top: 3px; }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Lewati ke konten utama</a>
@@ -64,9 +76,9 @@
               <div class="stat-delta" id="statInstDelta">—</div>
             </div>
             <div class="metal-panel stat-card">
-              <div class="stat-label">Tokens used</div>
-              <div class="stat-value" id="statTokens">—</div>
-              <div class="stat-delta">Tidak disediakan /api/me</div>
+              <div class="stat-label">Organisasi</div>
+              <div class="stat-value" id="statOrgs">0</div>
+              <div class="stat-delta" id="statOrgDelta">ruang kerja tim</div>
             </div>
           </section>
 
@@ -112,7 +124,7 @@
             <div class="panel-head">
               <div>
                 <span class="panel-title" id="trendTitle">Tren license terbit</span>
-                <div class="sub">Akumulasi license per bulan, dari <span class="mono">createdAt</span> di /api/me</div>
+                <div class="sub">Akumulasi license per bulan, dari tanggal terbit license Anda.</div>
               </div>
             </div>
             <div class="panel-body">
@@ -202,7 +214,7 @@
 
       <div id="pickerView">
         <p class="sub" style="margin-bottom:16px">Setelah pembayaran terkonfirmasi, license otomatis aktif di akun Anda.</p>
-        <div class="grid" id="pkgGrid"></div>
+        <div class="plan-grid" id="pkgGrid"></div>
         <p id="pkgError" class="chip-err sub" hidden></p>
         <div class="modal-actions">
           <button class="btn btn-ghost" id="closePicker" type="button" style="flex:1">Batal</button>
@@ -531,19 +543,29 @@
           els.pkgGrid.innerHTML = '<div class="empty">Katalog paket tidak tersedia saat ini. Coba refresh halaman.</div>';
           return;
         }
-        els.pkgGrid.innerHTML = plans.map(function (p, i) {
-          return '<div class="metal-panel panel">' +
-            '<div class="panel-body row-between">' +
-              '<div>' +
-                '<div class="panel-title">' + escapeHtml(p.name) + '</div>' +
-                '<div class="sub">' + escapeHtml(p.quota || '') + '</div>' +
-              '</div>' +
-              '<button class="btn btn-primary btn-sm" type="button" data-idx="' + i + '" aria-label="Pilih paket ' + escapeHtml(p.name) + ', ' + escapeHtml(rupiah(p.amount)) + '">' +
-                rupiah(p.amount) +
-              '</button>' +
-            '</div>' +
-          '</div>';
-        }).join('');
+        els.pkgGrid.innerHTML = plans
+          .map(function (p, i) {
+            // keep the ORIGINAL index i so data-idx always matches state.plans
+            if (p.active === false) return '';
+            var featured = p.key === 'pro' ? ' plan-card--featured' : '';
+            var features = Array.isArray(p.features) ? p.features : [];
+            var featureItems = features.map(function (f) {
+              return '<li>' +
+                '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">' +
+                  '<polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />' +
+                '</svg>' +
+                '<span>' + escapeHtml(f) + '</span>' +
+              '</li>';
+            }).join('');
+            return '<div class="plan-card metal-panel' + featured + '">' +
+              '<span class="mono-label">' + escapeHtml(p.key) + '</span>' +
+              '<div class="plan-card__name">' + escapeHtml(p.name) + '</div>' +
+              '<div class="plan-card__price">' + escapeHtml(rupiah(p.amount)) + '</div>' +
+              '<div class="plan-card__quota">' + escapeHtml(p.quota || '') + '</div>' +
+              '<ul class="plan-card__features">' + featureItems + '</ul>' +
+              '<button class="btn btn-primary btn-block" type="button" data-idx="' + i + '" style="margin-top:auto" aria-label="Pilih paket ' + escapeHtml(p.name) + ', ' + escapeHtml(rupiah(p.amount)) + '">Pilih paket</button>' +
+            '</div>';
+          }).join('');
 
         Array.prototype.forEach.call(els.pkgGrid.querySelectorAll('[data-idx]'), function (btn) {
           btn.addEventListener('click', function () {
@@ -706,7 +728,16 @@
         }
         var orgs = await res.json();
         state.orgs = Array.isArray(orgs) ? orgs : [];
+        updateOrgStat();
         renderOrgs();
+      }
+
+      function updateOrgStat() {
+        var el = document.getElementById('statOrgs');
+        var delta = document.getElementById('statOrgDelta');
+        if (!el) return;
+        el.textContent = String((state.orgs || []).length);
+        if (delta) delta.textContent = (state.orgs || []).length === 0 ? 'belum ada tim' : ((state.orgs || []).length === 1 ? '1 tim' : (state.orgs || []).length + ' tim');
       }
 
       function renderOrgs() {

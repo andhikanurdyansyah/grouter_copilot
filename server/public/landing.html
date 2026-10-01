@@ -68,8 +68,6 @@
     .terminal__body .ln { white-space: nowrap; overflow-x: auto; }
     .syn-cmd { color: var(--grx-cyan); } .syn-str { color: #4ade80; } .syn-comment { color: #5a6672; } .syn-prompt { color: var(--grx-magenta); }
 
-    /* Stats strip */
-    .stats-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
 
     /* Section rhythm */
     .section { padding: var(--sp-12) 0; position: relative; z-index: 1; }
@@ -99,9 +97,14 @@
     .step h4 { font-size: 15px; }
     .step p { color: var(--grx-ink-dim); font-size: 13.5px; line-height: 1.6; }
 
-    /* Chart card */
-    .chart-card { padding: var(--sp-5); }
-    .chart-card .chart { height: auto; }
+    /* Data-flow panel (Bagaimana Copilot bekerja) */
+    .flow-row { display: flex; align-items: stretch; gap: var(--sp-3); }
+    .flow-node { flex: 1 1 0; padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+    .flow-node h3 { font-size: 15.5px; }
+    .flow-node p { color: var(--grx-ink-dim); font-size: 13.5px; line-height: 1.6; }
+    .flow-arrow { align-self: center; flex: 0 0 auto; color: var(--grx-cyan); display: grid; place-items: center; padding: 0 var(--sp-1); }
+    .flow-arrow svg { width: 22px; height: 22px; }
+    .flow-arrow--down { display: none; }
 
     /* Pricing */
     .pricing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
@@ -130,7 +133,6 @@
     @media (max-width: 1024px) {
       .hero__grid { grid-template-columns: 1fr; gap: var(--sp-8); }
       .hero .lead { max-width: 42rem; }
-      .stats-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .pricing-grid { grid-template-columns: 1fr; max-width: 34rem; }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: var(--sp-6); }
@@ -142,9 +144,12 @@
     @media (max-width: 640px) {
       .hero { padding: var(--sp-8) 0 var(--sp-8); }
       .section { padding: var(--sp-10) 0; }
-      .stats-strip, .steps { grid-template-columns: 1fr; }
       .footer-grid { grid-template-columns: 1fr; gap: var(--sp-6); }
       .terminal__body { font-size: 12.5px; }
+      .flow-row { flex-direction: column; align-items: stretch; }
+      .flow-arrow { display: none; }
+      .flow-arrow--down { display: grid; color: var(--grx-cyan); padding: var(--sp-1) 0; }
+      .flow-arrow--down svg { width: 20px; height: 20px; margin: 0 auto; }
     }
   </style>
 </head>
@@ -243,36 +248,6 @@
         </div>
       </section>
 
-      <!-- ============================ STATS STRIP ============================ -->
-      <div class="container">
-        <h2 class="sr-only">Ringkasan metrik gRouter Copilot</h2>
-        <div class="stats-strip reveal-3" role="list" aria-label="Ringkasan metrik">
-          <div class="metal-panel stat-card" role="listitem">
-            <span class="stat-label">Latency p95</span>
-            <span class="stat-value cyan">1.2s</span>
-            <span class="stat-delta up">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
-              live
-            </span>
-          </div>
-          <div class="metal-panel stat-card" role="listitem">
-            <span class="stat-label">Skills per app</span>
-            <span class="stat-value">∞</span>
-            <span class="stat-delta">developer-defined</span>
-          </div>
-          <div class="metal-panel stat-card" role="listitem">
-            <span class="stat-label">Credential</span>
-            <span class="stat-value">2</span>
-            <span class="stat-delta">license + provider lock</span>
-          </div>
-          <div class="metal-panel stat-card" role="listitem">
-            <span class="stat-label">Uptime</span>
-            <span class="stat-value cyan">99.9%</span>
-            <span class="stat-delta up">heartbeat hybrid</span>
-          </div>
-        </div>
-      </div>
-
       <!-- ============================ FEATURES ============================ -->
       <section class="section" id="features" aria-labelledby="features-title">
         <div class="container">
@@ -310,70 +285,53 @@
         </div>
       </section>
 
-      <!-- ============================ CHART ============================ -->
-      <section class="section" id="metrics" aria-labelledby="metrics-title" style="padding-top:0">
+      <!-- ============================ DATA FLOW ============================ -->
+      <section class="section" id="flow" aria-labelledby="flow-title" style="padding-top:0">
         <div class="container">
-          <div class="metal-panel chart-card">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Observability</p>
-                <h2 id="metrics-title" style="margin-top:var(--sp-2);font-size:1.25rem">Volume request copilot</h2>
+          <div class="section-head">
+            <p class="eyebrow">Arsitektur</p>
+            <h2 id="flow-title" style="margin-top:var(--sp-3)">Bagaimana <span class="chip-cyan">Copilot bekerja</span></h2>
+            <p class="sub">Data mengalir satu arah: aplikasi Anda, plugin Copilot, engine AI gRouter. API key tidak pernah menyentuh browser.</p>
+          </div>
+
+          <div class="flow-row">
+            <article class="metal-panel flow-node">
+              <div class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 20h10M9 8h6M9 12h4"/></svg>
               </div>
-              <span class="badge pending" role="note" aria-label="Data contoh">Demo data</span>
+              <h3>Aplikasi Anda</h3>
+              <p>Next.js, Express, atau app host lain. Copilot hidup di dalam aplikasi yang sudah berjalan.</p>
+            </article>
+
+            <div class="flow-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M13 5l7 7-7 7"/></svg>
+            </div>
+            <div class="flow-arrow flow-arrow--down" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 13l7 7 7-7"/></svg>
             </div>
 
-            <div class="chart-head">
-              <div>
-                <div class="chart-value">118<span class="sub" style="font-size:0.85rem;margin-left:6px">k req / bulan</span></div>
+            <article class="metal-panel flow-node">
+              <div class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
               </div>
-              <div class="legend" aria-hidden="true">
-                <span class="legend-item"><span class="legend-swatch"></span> Requests</span>
-              </div>
+              <h3>Copilot plugin</h3>
+              <p>Skills developer-defined, read-only default. License key Ed25519 memvalidasi runtime secara offline.</p>
+            </article>
+
+            <div class="flow-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M13 5l7 7-7 7"/></svg>
+            </div>
+            <div class="flow-arrow flow-arrow--down" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 13l7 7 7-7"/></svg>
             </div>
 
-            <!-- Premium inline SVG area chart — illustrative (demo) data -->
-            <svg class="chart" viewBox="0 0 520 220" preserveAspectRatio="none" role="img" aria-labelledby="chartTitle chartDesc" style="height:200px">
-              <title id="chartTitle">Grafik area: volume request copilot per bulan sepanjang tahun (data contoh)</title>
-              <desc id="chartDesc">Ilustrasi tren naik dari 42 ribu request di Januari ke 118 ribu di Desember.</desc>
-              <defs>
-                <linearGradient id="grxCyanArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34" />
-                  <stop offset="55%" stop-color="#22d3ee" stop-opacity="0.10" />
-                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-
-              <!-- grid + y axis labels -->
-              <g aria-hidden="true">
-                <line class="grid-line" x1="40" y1="14"    x2="508" y2="14"></line>
-                <line class="grid-line" x1="40" y1="74"    x2="508" y2="74"></line>
-                <line class="grid-line" x1="40" y1="134"   x2="508" y2="134"></line>
-                <line class="grid-line" x1="40" y1="194"   x2="508" y2="194"></line>
-                <text class="axis-label" x="34" y="17"  text-anchor="end">120k</text>
-                <text class="axis-label" x="34" y="77"  text-anchor="end">80k</text>
-                <text class="axis-label" x="34" y="137" text-anchor="end">40k</text>
-                <text class="axis-label" x="34" y="197" text-anchor="end">0</text>
-              </g>
-
-              <!-- x axis labels -->
-              <g aria-hidden="true">
-                <text class="axis-label" x="40"  y="212" text-anchor="start">Jan</text>
-                <text class="axis-label" x="125" y="212" text-anchor="middle">Mar</text>
-                <text class="axis-label" x="210" y="212" text-anchor="middle">May</text>
-                <text class="axis-label" x="295" y="212" text-anchor="middle">Jul</text>
-                <text class="axis-label" x="380" y="212" text-anchor="middle">Sep</text>
-                <text class="axis-label" x="508" y="212" text-anchor="end">Dec</text>
-              </g>
-
-              <!-- area fill -->
-              <path class="area" d="M 40.0 131.0 C 47.1 129.5 68.4 122.8 82.5 122.0 C 96.7 121.2 110.9 128.8 125.1 126.5 C 139.3 124.2 153.5 113.0 167.6 108.5 C 181.8 104.0 196.0 100.5 210.2 99.5 C 224.4 98.5 238.5 105.2 252.7 102.5 C 266.9 99.8 281.1 88.2 295.3 83.0 C 309.5 77.8 323.6 72.2 337.8 71.0 C 352.0 69.8 366.2 77.8 380.4 75.5 C 394.5 73.2 408.7 63.8 422.9 57.5 C 437.1 51.2 451.3 44.8 465.5 38.0 C 479.6 31.2 500.9 20.5 508.0 17.0 L 508.0 194.0 L 40.0 194.0 Z"></path>
-
-              <!-- line -->
-              <path class="line" d="M 40.0 131.0 C 47.1 129.5 68.4 122.8 82.5 122.0 C 96.7 121.2 110.9 128.8 125.1 126.5 C 139.3 124.2 153.5 113.0 167.6 108.5 C 181.8 104.0 196.0 100.5 210.2 99.5 C 224.4 98.5 238.5 105.2 252.7 102.5 C 266.9 99.8 281.1 88.2 295.3 83.0 C 309.5 77.8 323.6 72.2 337.8 71.0 C 352.0 69.8 366.2 77.8 380.4 75.5 C 394.5 73.2 408.7 63.8 422.9 57.5 C 437.1 51.2 451.3 44.8 465.5 38.0 C 479.6 31.2 500.9 20.5 508.0 17.0"></path>
-
-              <!-- end marker -->
-              <circle class="dot" cx="508" cy="17" r="3.6" aria-hidden="true"></circle>
-            </svg>
+            <article class="metal-panel flow-node">
+              <div class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2.1 2.1M16.9 16.9L19 19M19 5l-2.1 2.1M7.1 16.9L5 19"/></svg>
+              </div>
+              <h3>gRouter AI engine</h3>
+              <p>Model routing di atas gRouter. API key di-resolve server-side — tidak pernah bocor ke browser.</p>
+            </article>
           </div>
         </div>
       </section>
@@ -455,56 +413,13 @@
           <div class="section-head">
             <p class="eyebrow">Harga</p>
             <h2 id="pricing-title" style="margin-top:var(--sp-3)">Paket &amp; quota</h2>
-            <p class="sub">Hipotesis paket — final saat launch. Semua tier berbagi satu license key per aplikasi.</p>
+            <p class="sub">Harga dari katalog resmi gRouter Copilot. Semua tier berbagi satu license key per aplikasi.</p>
           </div>
 
-          <div class="pricing-grid">
-            <article class="metal-panel price-card hud-brackets">
-              <div class="price-card__head">
-                <div>
-                  <p class="mono-label">Free core</p>
-                  <p class="price" style="margin-top:var(--sp-2)">Rp0 <small>/ selamanya</small></p>
-                </div>
-              </div>
-              <ul>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>install + widget dasar</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>skills read-only</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>1 license key</li>
-              </ul>
-              <a class="btn btn-ghost btn-block" href="/register" style="margin-top:auto">Mulai gratis</a>
-            </article>
-
-            <article class="metal-panel price-card price-card--featured hud-brackets">
-              <div class="price-card__head">
-                <div>
-                  <p class="mono-label" style="color:var(--grx-cyan)">Pro</p>
-                  <p class="price" style="margin-top:var(--sp-2)">Quota <small>/ bulanan</small></p>
-                </div>
-                <span class="badge cyan">Populer</span>
-              </div>
-              <ul>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Semua Free core</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>advanced skills</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>observasi &amp; metrik</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>multi-model routing</li>
-              </ul>
-              <a class="btn btn-primary btn-block" href="/register" style="margin-top:auto">Pilih Pro</a>
-            </article>
-
-            <article class="metal-panel price-card hud-brackets">
-              <div class="price-card__head">
-                <div>
-                  <p class="mono-label">Enterprise</p>
-                  <p class="price" style="margin-top:var(--sp-2)">Custom <small>/ SLA</small></p>
-                </div>
-              </div>
-              <ul>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Semua Pro</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>mutating skills (gated)</li>
-                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>SLA &amp; kustomisasi</li>
-              </ul>
-              <a class="btn btn-ghost btn-block" href="/register" style="margin-top:auto">Hubungi kami</a>
-            </article>
+          <div class="pricing-grid" id="pricingGrid" aria-live="polite">
+            <div class="metal-panel price-card" style="grid-column:1/-1">
+              <div class="empty">Memuat katalog paket…</div>
+            </div>
           </div>
         </div>
       </section>
@@ -528,7 +443,7 @@
             <h4>Produk</h4>
             <a href="#features">Fitur</a>
             <a href="#integration">Integrasi</a>
-            <a href="#metrics">Observability</a>
+            <a href="#flow">Arsitektur</a>
             <a href="#pricing">Harga</a>
           </div>
           <div class="footer-col">
@@ -590,6 +505,65 @@
         if (desktopMq.addEventListener) { desktopMq.addEventListener('change', onMq); }
         else if (desktopMq.addListener) { desktopMq.addListener(onMq); }
       }
+
+      /* ---------------- Pricing: render dari katalog server (SSOT) ---------------- */
+      /* Katalog dari GET /api/plans (publik, same-origin). Tidak ada harga
+         hardcode di halaman ini — same rule dengan A2 di user dashboard. */
+      function escapeHtmlPricing(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function rupiahLanding(n) {
+        return 'Rp ' + Number(n).toLocaleString('id-ID');
+      }
+
+      function renderPricingError() {
+        var grid = document.getElementById('pricingGrid');
+        if (!grid) return;
+        grid.innerHTML =
+          '<div class="metal-panel price-card" style="grid-column:1/-1">' +
+            '<div class="empty">Katalog paket sementara tidak tersedia. Coba muat ulang halaman.<br>' +
+            '<a class="btn btn-ghost" style="margin-top:12px;display:inline-block" href="/register">Buat akun</a></div>' +
+          '</div>';
+      }
+
+      function loadPricing() {
+        var grid = document.getElementById('pricingGrid');
+        if (!grid) return;
+        fetch('/api/plans', { credentials: 'same-origin' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            var plans = data && Array.isArray(data.plans) ? data.plans : [];
+            var visible = plans.filter(function (p) { return p && p.active !== false; });
+            if (!visible.length) { renderPricingError(); return; }
+            grid.innerHTML = visible.map(function (p) {
+              var featured = p.key === 'pro';
+              var feats = Array.isArray(p.features) ? p.features : [];
+              var items = feats.map(function (f) {
+                return '<li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>' +
+                  escapeHtmlPricing(f) + '</li>';
+              }).join('');
+              return '<article class="metal-panel price-card hud-brackets' + (featured ? ' price-card--featured' : '') + '">' +
+                '<div class="price-card__head">' +
+                  '<div>' +
+                    '<p class="mono-label"' + (featured ? ' style="color:var(--grx-cyan)"' : '') + '>' + escapeHtmlPricing(p.key) + '</p>' +
+                    '<p class="price" style="margin-top:var(--sp-2)">' + escapeHtmlPricing(rupiahLanding(p.amount)) + ' <small>' + escapeHtmlPricing(p.quota || '') + '</small></p>' +
+                  '</div>' +
+                  (featured ? '<span class="badge cyan">Populer</span>' : '') +
+                '</div>' +
+                '<ul>' + items + '</ul>' +
+                '<a class="btn ' + (featured ? 'btn-primary' : 'btn-ghost') + ' btn-block" style="margin-top:auto" href="/register">Pilih ' + escapeHtmlPricing(p.name || p.key) + '</a>' +
+              '</article>';
+            }).join('');
+          })
+          .catch(renderPricingError);
+      }
+      loadPricing();
     })();
   </script>
 </body>

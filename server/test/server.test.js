@@ -188,7 +188,29 @@ test('webhook cannot forge a PAID: unverified order is ignored (no license)', as
   }
 });
 
-test('webhook settles a verified PAID and issues a license (idempotent)', async () => {
+test('webhook settles a verified SUCCESS (KlikQRIS uses SUCCESS, not PAID)', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-success-'));
+  // Real KlikQRIS reports a completed payment as SUCCESS — accepting only PAID
+  // would silently drop every real payment (no license issued).
+  const fakeFetch = async () => new Response(
+    JSON.stringify({ status: true, data: { order_id: 'ord_ok', status: 'SUCCESS', paid_at: '2026-10-01 11:27:35' } }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+  const { server, store } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
+  store.addOrder({ id: 'ord_ok', accountId: 'acc_y', packageKey: 'pro', amount: 249000, status: 'PENDING', createdAt: Date.now() });
+  await new Promise((r) => server.listen(0, r));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const res = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: 'ord_ok', status: 'SUCCESS' });
+    assert.equal(res.status, 200);
+    assert.ok(res.json.licenseId, 'SUCCESS must issue a license');
+    assert.equal(store.getOrder('ord_ok').status, 'PAID');
+  } finally {
+    server.close();
+  }
+});
+
+test('webhook still twin-accepts legacy PAID claim', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-paid-'));
   // KlikQRIS is the source of truth: report the order PAID.
   const fakeFetch = async () => new Response(

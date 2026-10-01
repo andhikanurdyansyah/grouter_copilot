@@ -22,6 +22,20 @@
 
 export const KLIKQRIS_BASE_URL = 'https://klikqris.com';
 
+/**
+ * A completed KlikQRIS payment is reported as `SUCCESS` (see the official
+ * sandbox status & webhook examples and payment-snap.js, which treats
+ * SUCCESS/PAID/SETTLEMENT as success). Matching ONLY `PAID` silently drops real
+ * payments — the webhook verification would ignore them and no license issues.
+ * Accept every paid-equivalent state.
+ */
+export const PAID_STATES = new Set(['PAID', 'SUCCESS', 'SETTLEMENT']);
+export const TERMINAL_STATES = new Set([...PAID_STATES, 'EXPIRED', 'FAILED', 'CANCELLED']);
+
+export function isPaidStatus(status) {
+  return PAID_STATES.has(String(status || '').toUpperCase());
+}
+
 export class KlikQrisError extends Error {
   constructor(message, { code = 'KLIKQRIS_ERROR', cause = null } = {}) {
     super(message);
@@ -133,15 +147,14 @@ export class KlikQris {
 
 /**
  * Poll a QRIS order until a terminal status or timeout.
- * KlikQRIS statuses: PENDING → PAID / EXPIRED / (FAILED).
+ * KlikQRIS statuses: PENDING → SUCCESS/PAID/SETTLEMENT | EXPIRED | FAILED.
  * @returns {Promise<{status:string}>}
  */
 export async function pollUntilSettled(klikqris, orderId, { intervalMs = 10000, timeoutMs = 15 * 60_000 } = {}) {
   const start = Date.now();
-  const terminal = new Set(['PAID', 'EXPIRED', 'FAILED']);
   while (Date.now() - start < timeoutMs) {
     const { status } = await klikqris.checkStatus(orderId);
-    if (terminal.has(status)) return { status };
+    if (TERMINAL_STATES.has(String(status || '').toUpperCase())) return { status };
     await new Promise((r) => setTimeout(r, intervalMs));
   }
   return { status: 'TIMEOUT' };

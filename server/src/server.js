@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { JsonStore } from './store.js';
 import { LicenseService } from './licenseService.js';
 import { UsageResolver } from './usageResolver.js';
-import { KlikQris } from './klikqris.js';
+import { KlikQris, isPaidStatus } from './klikqris.js';
 import { PaymentService } from './paymentService.js';
 import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
@@ -324,8 +324,8 @@ export function createCopilotServer({
         const claimed = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
         if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
 
-        // Ignore non-terminal / non-paid claims outright.
-        if (claimed !== 'PAID') {
+        // Ignore non-paid claims outright (accept SUCCESS/PAID/SETTLEMENT).
+        if (!isPaidStatus(claimed)) {
           return sendJson(res, 200, { ok: true, ignored: claimed || 'unknown' });
         }
 
@@ -337,7 +337,9 @@ export function createCopilotServer({
         } catch (err) {
           return sendJson(res, 502, { error: 'unable to verify payment status' });
         }
-        if (verifiedStatus !== 'PAID') {
+        // KlikQRIS reports a completed payment as SUCCESS (older payloads may say
+        // PAID/SETTLEMENT) — treat all as paid, or real payments get dropped.
+        if (!isPaidStatus(verifiedStatus)) {
           return sendJson(res, 200, { ok: true, ignored: `unverified:${verifiedStatus || 'unknown'}` });
         }
 

@@ -41,6 +41,17 @@
     .row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
     td.nowrap, th.nowrap { white-space: nowrap; }
 
+    /* settings: inline cell inputs inside the plans table */
+    .cell-in {
+      width: 100%; min-width: 90px;
+      background: transparent; border: 1px solid transparent; border-radius: var(--r-sm);
+      color: var(--grx-ink); font: inherit; font-size: 13px; padding: 6px 8px;
+    }
+    .cell-in:hover { border-color: var(--grx-steel-hi); }
+    .cell-in:focus { outline: none; border-color: var(--grx-cyan); background: rgba(34,211,238,0.06); }
+    .cell-in.mono { font-family: var(--font-mono); font-size: 12.5px; }
+    #planRows td { vertical-align: middle; }
+
     /* topbar identity */
     .identity { display: inline-flex; align-items: center; gap: 10px; }
     .identity .who { line-height: 1.15; text-align: right; }
@@ -110,6 +121,9 @@
           </button>
           <button class="nav-item" type="button" data-view="usage">
             <span class="dot" aria-hidden="true"></span> Usage &amp; Quota
+          </button>
+          <button class="nav-item" type="button" data-view="settings">
+            <span class="dot" aria-hidden="true"></span> Settings
           </button>
         </nav>
 
@@ -266,6 +280,183 @@
             </div>
           </div>
         </section>
+
+        <!-- ===================== SETTINGS ===================== -->
+        <section class="view" id="view-settings" aria-labelledby="settingsHeading" tabindex="-1">
+          <h2 class="sr-only" id="settingsHeading">Settings</h2>
+
+          <div class="tabs" role="tablist" aria-label="Bagian settings">
+            <button class="tab" type="button" role="tab" id="tab-plans" aria-selected="true" aria-controls="pane-plans">Plans</button>
+            <button class="tab" type="button" role="tab" id="tab-branding" aria-selected="false" aria-controls="pane-branding">Branding</button>
+            <button class="tab" type="button" role="tab" id="tab-payment" aria-selected="false" aria-controls="pane-payment">Payment</button>
+            <button class="tab" type="button" role="tab" id="tab-provider" aria-selected="false" aria-controls="pane-provider">Provider &amp; Limits</button>
+          </div>
+
+          <!-- ---------- Plans ---------- -->
+          <div class="pane" id="pane-plans" role="tabpanel" aria-labelledby="tab-plans">
+            <div class="metal-panel panel" style="margin-bottom:var(--sp-4)">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Plans &amp; Pricing</div>
+                  <div class="mono-label">katalog harga — sumber checkout server-side (A1)</div>
+                </div>
+                <div class="row" style="gap:var(--sp-2)">
+                  <button class="btn btn-ghost btn-sm" type="button" id="addPlanBtn">+ Tambah plan</button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="table-wrap">
+                  <table>
+                    <caption class="sr-only">Daftar plan dan harga</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Key</th>
+                        <th scope="col">Nama</th>
+                        <th scope="col">Harga (Rp)</th>
+                        <th scope="col">Quota</th>
+                        <th scope="col">Features</th>
+                        <th scope="col">Expiry</th>
+                        <th scope="col">Active</th>
+                        <th scope="col"><span class="sr-only">Aksi</span></th>
+                      </tr>
+                    </thead>
+                    <tbody id="planRows"></tbody>
+                  </table>
+                </div>
+                <div class="empty" id="planEmpty" style="display:none">Belum ada plan.</div>
+                <p class="hint" style="margin-top:var(--sp-3)">Checkout customer resolve harga dari tabel ini server-side. Perubahan langsung aktif (hot).</p>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="button" data-save-settings>Simpan Settings</button>
+          </div>
+
+          <!-- ---------- Branding ---------- -->
+          <div class="pane" id="pane-branding" role="tabpanel" aria-labelledby="tab-branding" hidden>
+            <div class="metal-panel panel" style="margin-bottom:var(--sp-4)">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Branding</div>
+                  <div class="mono-label">identitas produk tampil ke customer</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="brProductName">Product name</label>
+                    <input id="brProductName" type="text" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label for="brDomain">Public domain</label>
+                    <input id="brDomain" type="text" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="field">
+                    <label for="brSupport">Support email</label>
+                    <input id="brSupport" type="email" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label for="brLogo">Logo URL</label>
+                    <input id="brLogo" type="text" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="field">
+                    <label for="brCurrency">Currency</label>
+                    <input id="brCurrency" type="text" autocomplete="off" maxlength="8" spellcheck="false" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="button" data-save-settings>Simpan Settings</button>
+          </div>
+
+          <!-- ---------- Payment ---------- -->
+          <div class="pane" id="pane-payment" role="tabpanel" aria-labelledby="tab-payment" hidden>
+            <div class="metal-panel panel" style="margin-bottom:var(--sp-4)">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Payment — KlikQRIS</div>
+                  <div class="mono-label">mode &amp; host; kredensial tersimpan server-side (ter-mask)</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="payMode">Mode</label>
+                    <select id="payMode">
+                      <option value="sandbox">sandbox</option>
+                      <option value="production">production</option>
+                    </select>
+                    <p class="hint">Ganti mode butuh restart backend (auth/payment dibangun saat boot).</p>
+                  </div>
+                  <div class="field">
+                    <label for="payKlikBase">KlikQRIS base URL</label>
+                    <input id="payKlikBase" type="text" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="field">
+                    <label for="payApiKey">API key <span class="hint" style="display:inline">(ter-mask — kosongkan biarkan)</span></label>
+                    <input id="payApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="••••" />
+                  </div>
+                  <div class="field">
+                    <label for="payMerchant">Merchant ID <span class="hint" style="display:inline">(ter-mask — kosongkan biarkan)</span></label>
+                    <input id="payMerchant" type="password" autocomplete="off" spellcheck="false" placeholder="••••" />
+                  </div>
+                  <div class="field">
+                    <label for="payPollInt">Poll interval (ms)</label>
+                    <input id="payPollInt" type="number" min="1000" inputmode="numeric" />
+                  </div>
+                  <div class="field">
+                    <label for="payPollTo">Poll timeout (ms)</label>
+                    <input id="payPollTo" type="number" min="1000" inputmode="numeric" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="button" data-save-settings>Simpan Settings</button>
+          </div>
+
+          <!-- ---------- Provider & Limits ---------- -->
+          <div class="pane" id="pane-provider" role="tabpanel" aria-labelledby="tab-provider" hidden>
+            <div class="metal-panel panel" style="margin-bottom:var(--sp-4)">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Provider &amp; Limits</div>
+                  <div class="mono-label">gRouter base, usage URL, batas konteks plugin</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="grid-2">
+                  <div class="field">
+                    <label for="prBase">gRouter base URL <span class="hint" style="display:inline">(tanpa /v1)</span></label>
+                    <input id="prBase" type="text" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="field">
+                    <label for="prTimeout">Provider timeout (ms)</label>
+                    <input id="prTimeout" type="number" min="1000" inputmode="numeric" />
+                  </div>
+                  <div class="field">
+                    <label for="usUrl">Check-usage URL</label>
+                    <input id="usUrl" type="text" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="field">
+                    <label for="usTtl">Usage cache TTL (ms)</label>
+                    <input id="usTtl" type="number" min="0" inputmode="numeric" />
+                  </div>
+                  <div class="field">
+                    <label for="liContext">Max context bytes</label>
+                    <input id="liContext" type="number" min="1" inputmode="numeric" />
+                  </div>
+                  <div class="field">
+                    <label for="liRows">Max rows</label>
+                    <input id="liRows" type="number" min="1" inputmode="numeric" />
+                  </div>
+                  <div class="field">
+                    <label for="liTokens">Max tokens</label>
+                    <input id="liTokens" type="number" min="1" inputmode="numeric" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="button" data-save-settings>Simpan Settings</button>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -354,7 +545,8 @@
     var VIEW_META = {
       overview: { title: 'Overview', sub: 'Monitor lisensi, install, dan quota plugin gRouter Copilot.', heading: 'Overview' },
       licenses: { title: 'Licenses', sub: 'Terbitkan, bind, dan revoke lisensi pelanggan.', heading: 'Licenses' },
-      usage:    { title: 'Usage & Quota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Quota' }
+      usage:    { title: 'Usage & Quota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Quota' },
+      settings: { title: 'Settings', sub: 'Konfigurasi runtime — plans, branding, payment, provider & limits.', heading: 'Settings' }
     };
 
     var $ = function (id) { return document.getElementById(id); };
@@ -530,6 +722,7 @@
       $('pageSub').textContent = meta.sub;
       document.title = 'gRouter Copilot — ' + meta.heading;
       closeSidebar();
+      if (name === 'settings') loadSettingsOnce();
     }
 
     var navToggle = $('navToggle');
@@ -943,6 +1136,213 @@
         if (err.status !== 401) toast('Bind gagal: ' + err.message, 'err');
       });
     });
+
+    /* ------------------------------------------------------------------
+       Settings (SSOT admin panel — I4)
+       GET  /api/admin/settings → masked effective settings
+       PATCH /api/admin/settings → validated partial patch; masked/empty
+       secret fields are kept as-is server-side (stripMaskedSecrets).
+    ------------------------------------------------------------------ */
+    var settingsLoaded = false;
+    var plansDraft = [];
+
+    function loadSettingsOnce() {
+      if (settingsLoaded) return Promise.resolve();
+      return apiFetch('/api/admin/settings').then(function (data) {
+        fillSettingsForm((data && data.settings) || {});
+        settingsLoaded = true;
+        setStatus('Settings dimuat.');
+      }).catch(function (err) {
+        if (err.status !== 401) toast('Settings gagal dimuat: ' + err.message, 'err');
+      });
+    }
+
+    function intVal(id, fallback) {
+      var v = parseInt($(id).value, 10);
+      return isFinite(v) ? v : fallback;
+    }
+
+    function fillSettingsForm(eff) {
+      eff = eff || {};
+      var br = eff.branding || {};
+      $('brProductName').value = br.productName || '';
+      $('brDomain').value = br.publicDomain || '';
+      $('brSupport').value = br.supportEmail || '';
+      $('brLogo').value = br.logoUrl || '';
+      $('brCurrency').value = br.currency || 'IDR';
+
+      var pay = eff.payment || {};
+      $('payMode').value = pay.mode || 'sandbox';
+      $('payKlikBase').value = pay.klikqrisBaseUrl || pay.baseUrl || '';
+      // Masked secrets are NOT echoed back into the inputs — an empty input
+      // means "keep the stored value" (stripMaskedSecrets server-side).
+      $('payApiKey').value = '';
+      $('payMerchant').value = '';
+      $('payPollInt').value = pay.pollIntervalMs != null ? pay.pollIntervalMs : '';
+      $('payPollTo').value = pay.pollTimeoutMs != null ? pay.pollTimeoutMs : '';
+
+      var pr = eff.provider || {};
+      $('prBase').value = pr.baseUrl || '';
+      $('prTimeout').value = pr.timeoutMs != null ? pr.timeoutMs : '';
+      var us = eff.usage || {};
+      $('usUrl').value = us.checkUsageUrl || '';
+      $('usTtl').value = us.cacheTtlMs != null ? us.cacheTtlMs : '';
+      var li = eff.limits || {};
+      $('liContext').value = li.maxContextBytes != null ? li.maxContextBytes : '';
+      $('liRows').value = li.maxRows != null ? li.maxRows : '';
+      $('liTokens').value = li.maxTokens != null ? li.maxTokens : '';
+
+      plansDraft = (eff.plans || []).map(function (p) {
+        return {
+          key: p.key || '', name: p.name || '', amount: p.amount != null ? p.amount : 0,
+          quota: p.quota || '', features: (p.features || []).join(', '),
+          expiresInDays: p.expiresInDays != null ? p.expiresInDays : 365,
+          active: p.active !== false
+        };
+      });
+      renderPlanRows();
+    }
+
+    function renderPlanRows() {
+      var body = $('planRows');
+      $('planEmpty').style.display = plansDraft.length ? 'none' : 'block';
+      body.innerHTML = plansDraft.map(function (p, i) {
+        return '<tr>' +
+          '<td><input class="cell-in mono" data-p="key" data-i="' + i + '" value="' + escapeHtml(p.key) + '" autocomplete="off" spellcheck="false" aria-label="Plan key baris ' + (i + 1) + '" /></td>' +
+          '<td><input class="cell-in" data-p="name" data-i="' + i + '" value="' + escapeHtml(p.name) + '" autocomplete="off" aria-label="Nama plan baris ' + (i + 1) + '" /></td>' +
+          '<td><input class="cell-in mono" data-p="amount" data-i="' + i + '" type="number" min="0" inputmode="numeric" value="' + escapeHtml(String(p.amount)) + '" aria-label="Harga plan baris ' + (i + 1) + '" /></td>' +
+          '<td><input class="cell-in" data-p="quota" data-i="' + i + '" value="' + escapeHtml(p.quota) + '" autocomplete="off" aria-label="Quota plan baris ' + (i + 1) + '" /></td>' +
+          '<td><input class="cell-in" data-p="features" data-i="' + i + '" value="' + escapeHtml(p.features) + '" autocomplete="off" aria-label="Features plan baris ' + (i + 1) + '" /></td>' +
+          '<td><input class="cell-in mono" data-p="expiresInDays" data-i="' + i + '" type="number" min="1" inputmode="numeric" value="' + escapeHtml(String(p.expiresInDays)) + '" aria-label="Expiry plan baris ' + (i + 1) + '" /></td>' +
+          '<td style="text-align:center"><input data-p="active" data-i="' + i + '" type="checkbox"' + (p.active ? ' checked' : '') + ' aria-label="Active plan baris ' + (i + 1) + '" /></td>' +
+          '<td><button class="btn btn-ghost btn-sm" type="button" data-del-plan="' + i + '" aria-label="Hapus plan ' + escapeHtml(p.key || String(i + 1)) + '">Hapus</button></td>' +
+        '</tr>';
+      }).join('');
+
+      Array.prototype.forEach.call(body.querySelectorAll('.cell-in'), function (inp) {
+        inp.addEventListener('change', function () {
+          var i = Number(inp.getAttribute('data-i'));
+          var prop = inp.getAttribute('data-p');
+          if (!plansDraft[i]) return;
+          if (prop === 'amount' || prop === 'expiresInDays') plansDraft[i][prop] = intValInline(inp, plansDraft[i][prop]);
+          else if (prop === 'active') plansDraft[i].active = inp.checked;
+          else plansDraft[i][prop] = inp.value;
+        });
+      });
+      Array.prototype.forEach.call(body.querySelectorAll('[data-del-plan]'), function (btn) {
+        btn.addEventListener('click', function () {
+          var i = Number(btn.getAttribute('data-del-plan'));
+          var key = (plansDraft[i] && plansDraft[i].key) || String(i + 1);
+          if (!window.confirm('Hapus plan "' + key + '" dari katalog?')) return;
+          plansDraft.splice(i, 1);
+          renderPlanRows();
+        });
+      });
+    }
+    function intValInline(inp, fallback) {
+      var v = parseInt(inp.value, 10);
+      return isFinite(v) ? v : fallback;
+    }
+
+    $('addPlanBtn').addEventListener('click', function () {
+      plansDraft.push({ key: '', name: '', amount: 0, quota: '', features: 'core', expiresInDays: 365, active: true });
+      renderPlanRows();
+      var rows = document.querySelectorAll('#planRows tr');
+      var last = rows[rows.length - 1];
+      if (last) { try { last.querySelector('.cell-in').focus(); } catch (e) {} }
+    });
+
+    document.querySelectorAll('[data-save-settings]').forEach(function (btn) {
+      btn.addEventListener('click', saveSettings);
+    });
+
+    function saveSettings() {
+      var plans = plansDraft.map(function (p) {
+        return {
+          key: (p.key || '').trim(), name: (p.name || '').trim(),
+          amount: Number(p.amount) || 0, currency: ($('brCurrency').value || 'IDR').trim(),
+          quota: (p.quota || '').trim(),
+          features: (p.features || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+          expiresInDays: Number(p.expiresInDays) || 365,
+          active: !!p.active
+        };
+      });
+      var patch = {
+        plans: plans,
+        branding: {
+          productName: ($('brProductName').value || '').trim(),
+          publicDomain: ($('brDomain').value || '').trim(),
+          supportEmail: ($('brSupport').value || '').trim(),
+          logoUrl: ($('brLogo').value || '').trim(),
+          currency: ($('brCurrency').value || 'IDR').trim()
+        },
+        payment: {
+          mode: $('payMode').value || 'sandbox',
+          klikqrisBaseUrl: ($('payKlikBase').value || '').trim(),
+          pollIntervalMs: intVal('payPollInt', 10000),
+          pollTimeoutMs: intVal('payPollTo', 900000)
+        },
+        provider: {
+          baseUrl: ($('prBase').value || '').trim(),
+          timeoutMs: intVal('prTimeout', 60000)
+        },
+        usage: {
+          checkUsageUrl: ($('usUrl').value || '').trim(),
+          cacheTtlMs: intVal('usTtl', 60000)
+        },
+        limits: {
+          maxContextBytes: intVal('liContext', 32000),
+          maxRows: intVal('liRows', 500),
+          maxTokens: intVal('liTokens', 2000)
+        }
+      };
+      // Secret inputs: only include when the admin typed something new.
+      var newKey = ($('payApiKey').value || '').trim();
+      var newMerchant = ($('payMerchant').value || '').trim();
+      if (newKey) patch.payment.apiKey = newKey;
+      if (newMerchant) patch.payment.merchantId = newMerchant;
+
+      var btns = document.querySelectorAll('[data-save-settings]');
+      Array.prototype.forEach.call(btns, function (b) { b.disabled = true; });
+      apiFetch('/api/admin/settings', { method: 'PATCH', body: JSON.stringify(patch) })
+        .then(function (data) {
+          Array.prototype.forEach.call(btns, function (b) { b.disabled = false; });
+          fillSettingsForm((data && data.settings) || {});
+          settingsLoaded = true;
+          setStatus('Settings tersimpan.');
+          toast('Settings tersimpan.', 'ok');
+        })
+        .catch(function (err) {
+          Array.prototype.forEach.call(btns, function (b) { b.disabled = false; });
+          if (err.status !== 401) toast('Simpan gagal: ' + err.message, 'err');
+        });
+    }
+
+    /* Settings tabs (ARIA) */
+    (function () {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('#view-settings .tab'));
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () { selectTab(tab); });
+        tab.addEventListener('keydown', function (e) {
+          var idx = tabs.indexOf(tab);
+          var next = null;
+          if (e.key === 'ArrowRight') next = tabs[(idx + 1) % tabs.length];
+          else if (e.key === 'ArrowLeft') next = tabs[(idx - 1 + tabs.length) % tabs.length];
+          else if (e.key === 'Home') next = tabs[0];
+          else if (e.key === 'End') next = tabs[tabs.length - 1];
+          if (next) { e.preventDefault(); next.focus(); selectTab(next); }
+        });
+      });
+      function selectTab(tab) {
+        tabs.forEach(function (t) {
+          var on = t === tab;
+          t.setAttribute('aria-selected', String(on));
+          t.tabIndex = on ? 0 : -1;
+          var pane = document.getElementById(t.getAttribute('aria-controls'));
+          if (pane) pane.hidden = !on;
+        });
+      }
+    })();
 
     /* ------------------------------------------------------------------
        Refresh controls

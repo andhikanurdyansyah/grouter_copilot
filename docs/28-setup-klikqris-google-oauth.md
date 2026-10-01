@@ -79,9 +79,64 @@ curl -s -X POST https://be.grouter.id/api/auth/sign-in/social \
 
 ---
 
-## 3. Better Auth dashboard (opsional, sudah aktif)
+## 3. Better Auth Infrastructure (dash + sentinel) — SUDAH AKTIF
 
-`BETTER_AUTH_API_KEY` = key dari `@better-auth/infra` (dash plugin) untuk analytics/dashboard di better-auth.com. Sudah terisi. Key ini **bukan** `BETTER_AUTH_SECRET` (yang dipakai menandatangani session). Kalau dashboard belum connect, pastikan key valid di <https://better-auth.com/dashboard>.
+`BETTER_AUTH_API_KEY` mengaktifkan dua plugin dari `@better-auth/infra`:
+
+| Plugin | Fungsi | Terverifikasi |
+|---|---|---|
+| `dash()` | Dashboard/analytics, user & session management, audit logs, activity tracking (`lastActiveAt`) | ✅ signup/signin tercatat |
+| `sentinel()` | Security: credential stuffing, impossible travel, compromised password, **email validation (disposable block)**, bot/IP blocking | ✅ password bocor ditolak, email disposable ditolak |
+
+Juga aktif: **`organization()`** (multi-tenant: organization, member, invitation, roles) — terverifikasi create org + owner member.
+
+### Env vars (PENTING)
+
+```ini
+BETTER_AUTH_API_KEY=ba_...
+BETTER_AUTH_API_URL=https://dash.better-auth.com
+BETTER_AUTH_KV_URL=https://kv.better-auth.com
+BETTER_AUTH_CLIENT_IP_HEADER=cf-connecting-ip
+```
+
+⚠️ **`BETTER_AUTH_KV_URL` WAJIB base URL `https://kv.better-auth.com`** — BUKAN URL project (`https://kv.better-auth.com/projects/<id>`).
+
+URL `/projects/<id>` itu **halaman settings dashboard**, bukan API base. Plugin meng-append path ke `kvUrl` sendiri (`kvUrl` + `/email/validate`), jadi kalau diisi URL project, request jadi `.../projects/<id>/email/validate` → **404**, dan email validation diam-diam gagal (fallback "allow"). Gejala di log: `[Dash] Email validation unavailable ... 404`.
+
+Project ID lo (`Yf8dlZvR6FClZZvhOm2iXk2dtAo1uUSj`) dipakai plugin dari **API key**, bukan dari URL — jadi cukup base URL.
+
+### Verifikasi
+
+```bash
+# email validation (harus 200)
+curl -s -X POST https://kv.better-auth.com/email/validate \
+  -H 'content-type: application/json' -H "x-api-key: $BETTER_AUTH_API_KEY" \
+  -d '{"email":"test@mailinator.com","strictness":"medium"}'
+# -> {"valid":false,"disposable":true,...}
+```
+
+### Migration
+
+Plugin dash (activity tracking) + organization menambah schema. Jalankan (idempotent, API built-in — tanpa `npx`):
+
+```bash
+node --input-type=module -e "
+process.loadEnvFile?.('.env');
+const { getMigrations } = await import('better-auth/db/migration');
+const { auth } = await import('./src/auth.js');
+await (await getMigrations(auth.options)).runMigrations();
+"
+```
+
+Menambah: tabel `organization`/`member`/`invitation`, kolom `user.lastActiveAt`, `session.activeOrganizationId`.
+
+---
+
+## 4. Better Auth dashboard (better-auth.com)
+
+Dashboard web ada di <https://dash.better-auth.com> (analytics, user/session management, org overview, audit logs). Project lo: `kv.better-auth.com/projects/Yf8dlZvR6FClZZvhOm2iXk2dtAo1uUSj` (settings page).
+
+> `dashClient()` (plugin client-side) **tidak dipakai** di sini — frontend gRouter Copilot adalah reverse-proxy statis (`server/src/frontend.js`), bukan SPA React, jadi tidak ada auth-client JS. Sisi server (`dash()`/`sentinel()`) sudah meliput analytics + security.
 
 ---
 

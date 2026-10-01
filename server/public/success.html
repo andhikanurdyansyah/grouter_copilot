@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pembayaran — gRouter Copilot</title>
+  <meta name="description" content="Konfirmasi pembayaran gRouter Copilot dan penerbitan license Anda." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/grx.css" />
+  <style>
+    .done-shell { position: relative; z-index: 1; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-6); }
+    .done-card { width: 100%; max-width: 560px; }
+    .done-ico { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin-bottom: var(--sp-5); }
+    .done-ico.ok { background: rgba(34, 211, 238, 0.14); border: 1px solid rgba(34, 211, 238, 0.42); }
+    .done-ico.wait { background: rgba(250, 204, 21, 0.12); border: 1px solid rgba(250, 204, 21, 0.38); }
+    .done-kv { display: flex; justify-content: space-between; gap: var(--sp-4); padding: 10px 0; border-bottom: 1px solid var(--grx-line, rgba(255,255,255,0.08)); font-size: 13.5px; }
+    .done-kv:last-child { border-bottom: 0; }
+    .done-kv .k { color: var(--grx-ink-dim, #94a3b8); }
+    .done-kv .v { font-weight: 600; }
+    .spin { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: sp 0.8s linear infinite; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+    .done-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-6); flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Lewati ke konten utama</a>
+  <main id="main" class="done-shell">
+    <section class="done-card">
+      <div class="panel metal-panel">
+        <div class="panel-body">
+          <div class="done-ico wait" id="doneIco" aria-hidden="true">
+            <div class="spin" id="doneSpin"></div>
+          </div>
+          <h1 class="panel-title" id="doneTitle" style="font-size:1.35rem">Memverifikasi pembayaran…</h1>
+          <p class="sub" id="doneMsg" style="margin:8px 0 20px">Mohon tunggu sebentar, kami sedang memeriksa status transaksi Anda.</p>
+
+          <div id="doneDetails" hidden>
+            <div class="done-kv"><span class="k">Paket</span><span class="v" id="dvPkg">—</span></div>
+            <div class="done-kv"><span class="k">Jumlah</span><span class="v" id="dvAmount">—</span></div>
+            <div class="done-kv"><span class="k">Order</span><span class="v mono" id="dvOrder" style="font-size:12px">—</span></div>
+            <div class="done-kv" id="dvLicRow" hidden><span class="k">License</span><span class="v mono" id="dvLic" style="font-size:12px">—</span></div>
+          </div>
+
+          <div class="done-actions">
+            <a class="btn btn-primary" href="/user">Buka Dashboard</a>
+            <a class="btn btn-ghost" href="/user#licenses">Lihat License</a>
+          </div>
+        </div>
+      </div>
+      <p class="sub" id="doneStatus" role="status" aria-live="polite" style="text-align:center;margin-top:16px"></p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var els = {
+        ico: document.getElementById('doneIco'),
+        spin: document.getElementById('doneSpin'),
+        title: document.getElementById('doneTitle'),
+        msg: document.getElementById('doneMsg'),
+        details: document.getElementById('doneDetails'),
+        pkg: document.getElementById('dvPkg'),
+        amount: document.getElementById('dvAmount'),
+        order: document.getElementById('dvOrder'),
+        licRow: document.getElementById('dvLicRow'),
+        lic: document.getElementById('dvLic'),
+        status: document.getElementById('doneStatus'),
+      };
+
+      var PACKAGES = {
+        basic: 'Basic — 5M tokens',
+        pro: 'Pro — 15M tokens',
+        enterprise: 'Enterprise — 50M tokens',
+      };
+
+      function rupiah(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); }
+
+      function markOk() {
+        els.ico.className = 'done-ico ok';
+        els.spin.outerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      }
+
+      function fill(order, license) {
+        els.details.hidden = false;
+        els.pkg.textContent = PACKAGES[order.packageKey] || order.packageKey || '—';
+        els.amount.textContent = rupiah(order.amount);
+        els.order.textContent = order.id;
+        if (license && license.id) { els.licRow.hidden = false; els.lic.textContent = license.id; }
+      }
+
+      var tries = 0;
+      var MAX = 30; // ~2 min at 4s
+
+      async function check() {
+        tries++;
+        var res;
+        try {
+          res = await fetch('/api/orders/latest', { credentials: 'same-origin' });
+        } catch (e) {
+          els.status.textContent = 'Koneksi bermasalah. Menghubungkan ulang…';
+          return false;
+        }
+        if (res.status === 401) { location.href = '/register'; return true; }
+        var data = await res.json().catch(function () { return {}; });
+        var order = data.order;
+        if (!order) {
+          els.title.textContent = 'Tidak ada transaksi terbaru';
+          els.msg.textContent = 'Kami tidak menemukan order untuk akun Anda.';
+          return true;
+        }
+        var st = String(order.status || '').toUpperCase();
+        if (st === 'PAID') {
+          markOk();
+          els.title.textContent = 'Pembayaran berhasil';
+          els.msg.textContent = 'Terima kasih! License Anda sudah diterbitkan.';
+          fill(order, data.license);
+          els.status.textContent = '';
+          return true;
+        }
+        if (st === 'EXPIRED' || st === 'FAILED') {
+          els.title.textContent = 'Pembayaran ' + (st === 'EXPIRED' ? 'kedaluwarsa' : 'gagal');
+          els.msg.textContent = 'Silakan buat order baru untuk menyelesaikan pembayaran.';
+          fill(order, null);
+          return true;
+        }
+        // still PENDING
+        fill(order, null);
+        els.title.textContent = 'Menunggu pembayaran…';
+        els.msg.textContent = 'Status masih PENDING. Halaman ini akan otomatis diperbarui setelah pembayaran terkonfirmasi.';
+        els.status.textContent = 'Memeriksa ulang otomatis… (' + tries + '/' + MAX + ')';
+        return false;
+      }
+
+      (async function loop() {
+        for (var i = 0; i < MAX; i++) {
+          var done = await check();
+          if (done) return;
+          await new Promise(function (r) { setTimeout(r, 4000); });
+        }
+        els.title.textContent = 'Pembayaran belum terkonfirmasi';
+        els.msg.textContent = 'Jika Anda sudah membayar, license akan tampil di dashboard setelah konfirmasi.';
+        els.status.textContent = '';
+      })();
+    })();
+  </script>
+</body>
+</html>

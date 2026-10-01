@@ -105,6 +105,11 @@ export function createCopilotServer({
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'user-dashboard.html'), 'utf8'));
     }
 
+    // Post-payment landing (KlikQRIS redirect URL target).
+    if (req.method === 'GET' && (url.pathname === '/success' || url.pathname === '/checkout/success')) {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'success.html'), 'utf8'));
+    }
+
     // Static assets (css)
     if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
       const file = path.join(__dirname, '..', 'public', url.pathname);
@@ -232,7 +237,45 @@ export function createCopilotServer({
       return sendJson(res, 200, {
         providers: { google: googleEnabled },
         basePath: '/api/auth',
+        payment: {
+          enabled: klikqris.configured,
+          mode: klikqris.mode,
+        },
       });
+    }
+
+    // Customer: the authenticated account's most recent order (for /success).
+    if (req.method === 'GET' && url.pathname === '/api/orders/latest') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const orders = store.listOrders().filter((o) => o.accountId === account.id);
+        const order = orders.length ? orders[orders.length - 1] : null;
+        if (!order) return sendJson(res, 200, { order: null });
+        const license = store.licensesByAccount(account.id)
+          .filter((l) => l.createdAt >= order.createdAt)
+          .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+        return sendJson(res, 200, {
+          order: sanitizeOrder(order),
+          license: license ? sanitizeLicense(license) : null,
+        });
+      })();
+    }
+
+    // Customer: poll a single order (session-scoped — never exposes other accounts).
+    if (req.method === 'GET' && /^\/api\/orders\/([^/]+)$/.test(url.pathname)) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const id = decodeURIComponent(url.pathname.split('/')[3]);
+        const order = store.getOrder(id);
+        if (!order || order.accountId !== account.id) {
+          return sendJson(res, 404, { error: 'not found' });
+        }
+        return sendJson(res, 200, { order: sanitizeOrder(order) });
+      })();
     }
 
     // Admin: manually settle an order (ops/testing; same verified path as webhook).
@@ -321,6 +364,19 @@ function sanitizeLicense(l) {
     revokedAt: l.revokedAt,
     installCount: l.installIds?.length ?? 0,
     lastSeenAt: l.lastSeenAt,
+  };
+}
+
+function sanitizeOrder(o) {
+  return {
+    id: o.id,
+    accountId: o.accountId,
+    packageKey: o.packageKey,
+    amount: o.amount,
+    status: o.status,
+    createdAt: o.createdAt,
+    paidAt: o.paidAt ?? null,
+    expiredAt: o.expiredAt ?? null,
   };
 }
 

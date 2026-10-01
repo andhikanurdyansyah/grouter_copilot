@@ -233,7 +233,8 @@
         { key: 'enterprise', name: 'Enterprise', tokens: '50M tokens', amount: 749000 }
       ];
 
-      var state = { account: null, licenses: [], orgs: [], filter: 'all', lastFocused: null };
+      var state = { account: null, licenses: [], orgs: [], filter: 'all', lastFocused: null, lastOrderId: null, pollTimer: null };
+      var POLL_MS = 5000;
 
       var els = {
         sidebar: document.getElementById('sidebar'),
@@ -261,6 +262,8 @@
         qrOrderId: document.getElementById('qrOrderId'),
         qrAmount: document.getElementById('qrAmount'),
         qrStatus: document.getElementById('qrStatus'),
+        qrNote: document.getElementById('qrNote'),
+        refreshBtn: document.getElementById('refreshBtn'),
         orgHost: document.getElementById('orgHost'),
         orgForm: document.getElementById('orgForm'),
         orgName: document.getElementById('orgName'),
@@ -551,6 +554,13 @@
         els.pkgError.hidden = true;
         els.picker.hidden = false;
         els.qrView.hidden = true;
+        // reset QR view state from any previous order
+        stopPolling();
+        state.lastOrderId = null;
+        els.qrStatus.textContent = 'PENDING';
+        els.qrStatus.className = 'badge pending';
+        els.refreshBtn.textContent = 'Refresh';
+        els.refreshBtn.removeAttribute('data-go-success');
         els.modalTitle.textContent = 'Pilih Paket';
         els.modal.classList.add('open');
         window.setTimeout(function () {
@@ -561,9 +571,45 @@
 
       function closeModal() {
         els.modal.classList.remove('open');
+        stopPolling();
         if (state.lastFocused && state.lastFocused.focus) {
           try { state.lastFocused.focus(); } catch (e) { /* noop */ }
         }
+      }
+
+      function stopPolling() {
+        if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+      }
+
+      /* Poll the current order so the customer sees PAID without manual refresh. */
+      function startPolling(orderId) {
+        stopPolling();
+        state.lastOrderId = orderId;
+        state.pollTimer = setInterval(async function () {
+          if (!state.lastOrderId) return;
+          var res;
+          try { res = await fetch('/api/orders/' + encodeURIComponent(state.lastOrderId), { credentials: 'same-origin' }); }
+          catch (e) { return; }
+          if (!res.ok) return;
+          var data = await res.json().catch(function () { return {}; });
+          var order = data.order;
+          if (!order) return;
+          var st = String(order.status || '').toUpperCase();
+          els.qrStatus.textContent = st;
+          if (st === 'PAID') {
+            stopPolling();
+            els.qrStatus.className = 'badge cyan';
+            els.qrNote.innerHTML = '<strong>Pembayaran berhasil.</strong> License Anda sudah diterbitkan.';
+            els.refreshBtn.textContent = 'Lihat License';
+            els.refreshBtn.setAttribute('data-go-success', order.id);
+            toast('Pembayaran terkonfirmasi. License diterbitkan.', 'ok');
+            loadMe();
+          } else if (st === 'EXPIRED' || st === 'FAILED') {
+            stopPolling();
+            els.qrStatus.className = 'badge expired';
+            els.qrNote.textContent = st === 'EXPIRED' ? 'QR kedaluwarsa. Buat order baru.' : 'Pembayaran gagal. Buat order baru.';
+          }
+        }, POLL_MS);
       }
 
       async function createOrder(pkg) {
@@ -582,7 +628,6 @@
             credentials: 'same-origin',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-              accountId: state.account.id,
               packageKey: pkg.key,
               amount: pkg.amount,
               description: 'gRouter Copilot ' + pkg.name + ' (' + pkg.tokens + ')'
@@ -614,6 +659,7 @@
         els.qrView.hidden = false;
         els.modalTitle.textContent = 'Scan untuk Bayar';
         toast('Order dibuat. Scan QR untuk membayar.', 'ok');
+        if (data.order && data.order.id) startPolling(data.order.id);
         els.modalBox.scrollTop = 0;
         var f = focusables();
         if (f.length) f[0].focus();
@@ -765,6 +811,10 @@
       document.getElementById('closeQr').addEventListener('click', closeModal);
       document.getElementById('modalClose').addEventListener('click', closeModal);
       document.getElementById('refreshBtn').addEventListener('click', function () {
+        if (els.refreshBtn.getAttribute('data-go-success')) {
+          location.href = '/success';
+          return;
+        }
         closeModal();
         loadMe();
       });

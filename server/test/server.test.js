@@ -122,3 +122,44 @@ test('customer root is the landing page, not the admin gate', async () => {
     server.close();
   }
 });
+
+test('order access is session-scoped: unauthenticated requests are rejected', async () => {
+  const { baseUrl, server } = await startServer();
+  try {
+    // No session cookie → /api/orders must not create, and reads must 401.
+    const create = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'basic', amount: 1000 });
+    assert.equal(create.status, 401);
+    const latest = await req(baseUrl, 'GET', '/api/orders/latest');
+    assert.equal(latest.status, 401);
+    const one = await req(baseUrl, 'GET', '/api/orders/ord_whatever');
+    assert.equal(one.status, 401);
+  } finally {
+    server.close();
+  }
+});
+
+test('/success renders the payment landing page', async () => {
+  const { baseUrl, server } = await startServer();
+  try {
+    const html = await (await fetch(`${baseUrl}/success`)).text();
+    assert.match(html, /Memverifikasi pembayaran/);
+    assert.match(html, /\/api\/orders\/latest/);
+  } finally {
+    server.close();
+  }
+});
+
+test('/api/config advertises payment status (no secrets)', async () => {
+  const { baseUrl, server } = await startServer();
+  try {
+    const res = await req(baseUrl, 'GET', '/api/config');
+    assert.equal(res.status, 200);
+    assert.ok(res.json.payment && typeof res.json.payment.enabled === 'boolean');
+    assert.ok(['sandbox', 'production'].includes(res.json.payment.mode));
+    // Must never leak gateway credentials.
+    const raw = JSON.stringify(res.json);
+    assert.ok(!raw.includes('apiKey') && !raw.includes('api_key') && !raw.includes('merchantId'));
+  } finally {
+    server.close();
+  }
+});

@@ -61,24 +61,11 @@ const apiKey = (process.env.BETTER_AUTH_API_KEY || '').trim();
 const apiUrl = (process.env.BETTER_AUTH_API_URL || '').trim() || undefined;
 const kvUrl = (process.env.BETTER_AUTH_KV_URL || '').trim() || undefined;
 
-// Cross-subdomain cookie domain: the frontend (copilot.grouter.id) starts the
-// Google flow but the callback lands on the backend (be.grouter.id), so the
-// OAuth `state` cookie must be shared across both subdomains or Better Auth
-// rejects the exchange with `state_mismatch`. Derived from BETTER_AUTH_URL so
-// localhost/IP dev origins (which need no sharing) stay on host-only cookies.
-function crossSubDomainCookieDomain() {
-  const explicit = (process.env.BETTER_AUTH_COOKIE_DOMAIN || '').trim();
-  if (explicit) return explicit;
-  try {
-    const host = new URL(process.env.BETTER_AUTH_URL || '').hostname;
-    if (!host || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return null;
-    const parts = host.split('.');
-    return parts.length >= 2 ? parts.slice(-2).join('.') : host;
-  } catch {
-    return null;
-  }
-}
-const cookieDomain = crossSubDomainCookieDomain();
+// Cross-subdomain cookie scope is ONLY needed when the frontend and backend are
+// served from DIFFERENT subdomains (split-origin OAuth). The default deployment
+// is SINGLE-origin (copilot.grouter.id proxying /api/* to the backend), where a
+// host-only cookie is correct and safer. Enable it only when explicitly set.
+const cookieDomain = (process.env.BETTER_AUTH_COOKIE_DOMAIN || '').trim() || null;
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || undefined,

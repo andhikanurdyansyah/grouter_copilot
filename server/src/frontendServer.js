@@ -36,6 +36,8 @@ const PAGES = {
   '/register': 'register.html',
   '/login': 'register.html',
   '/user': 'user-dashboard.html',
+  '/success': 'success.html',
+  '/checkout/success': 'success.html',
   '/admin': 'dashboard.html',
 };
 

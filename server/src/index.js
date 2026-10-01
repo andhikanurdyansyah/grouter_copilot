@@ -12,7 +12,14 @@ const keys = loadPersistedKeys();
 
 const { createCopilotServer } = await import('./server.js');
 const port = parseInt(process.env.PORT ?? '4600', 10);
-const { server } = createCopilotServer({ port, privateKeyPem: keys.privateKeyPem, publicKeyPem: keys.publicKeyPem });
+// DATA_FILE lets an isolated instance (E2E / staging) keep its own store.json
+// without touching the production data directory.
+const { server } = createCopilotServer({
+  port,
+  privateKeyPem: keys.privateKeyPem,
+  publicKeyPem: keys.publicKeyPem,
+  ...(process.env.DATA_FILE ? { dataFile: process.env.DATA_FILE } : {}),
+});
 
 server.listen(port, () => {
   console.log(`gRouter Copilot license server listening on http://localhost:${port}`);

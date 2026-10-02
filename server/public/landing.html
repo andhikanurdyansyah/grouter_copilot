@@ -1,21 +1,22 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f5f4"><meta name="description" content="gRouter Copilot: AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca Anda yang tentukan."><title>gRouter Copilot: AI dengan konteks aplikasi Anda</title><link rel="icon" type="image/png" href="/assets/copilot-mark.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/landing.css"></head><body>
 <!--
-  DIRECTION CONTRACT - gRouter Copilot landing v3 (brief-pinned: DESIGN.md, Notion ref)
+  DIRECTION CONTRACT - gRouter Copilot landing v4 (brief-pinned: design/ = DESIGN.md + variables.css + tokens.json, Notion ref)
   Pola scroll-motion ala aeronet.id (diinspeksi langsung): canvas Three.js FIXED fullscreen
-  di z-0, konten chapter scroll normal di atasnya, scene+kamera digerakkan scroll progress.
-  THESIS: satu perjalanan scroll dari "AI memahami konteks" sampai "lisensi mengunci semuanya";
-  scene adalah narasinya, bukan dekorasi. Menolak: hero statis terpisah, canvas yang tidak
-  digerakkan scroll, teks yang kalah oleh 3D.
-  OWN-WORLD: kertas hangat #f6f5f4 + fog senada; core icosahedron midnight; 6 pill skill
-  warna aksen; shell batas data (edges halus); torus lisensi sky; partikel debu kertas.
-  STORY: ch0 konteks -> ch1 Anda yang menentukan skill -> ch2 yang tak terdaftar ditolak
-  -> ch3 lisensi mengunci; lalu halaman menutup dengan kertas solid (demo, cara kerja,
-  keamanan, harga real, close, footer).
-  FIRST VIEWPORT: nav transparan di atas canvas; chapter-0: marks, headline pill peach,
-  sub serif, 2 CTA; scene 3D mengisi kanan-atas frame.
-  FORM: brief-pinned (Notion) + arahan Jie v3: scroll-motion three.js seperti aeronet.id.
-  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review,
-  the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+  di z-0, konten chapter scroll normal di atasnya. v4: KAMERA TETAP; satu "unit" grup scene
+  yang berpindah pose (offset-x + skala) per chapter — deterministik, mudah dihitung tabrakan.
+  THESIS v4 (per feedback PO: scene lama abstrak, gak ada makna produk): SETIAP bentuk
+  di scene adalah bagian produk yang nyata -
+    - jendela aplikasi host (tabel Orders) = app tempat Copilot menempel
+    - panel Copilot menempel di tepi kanan app (drawer), redup sebelum lisensi
+    - kartu skill read-only terdaftar (orders.list / tickets.list / customers.find)
+    - billing.write = kartu coral yang DIDORONG KELUAR kandang (tidak terdaftar)
+    - kandang kaca = batas data: hanya app + skill terdaftar yang ada di dalamnya
+    - kartu lisensi turun, mengunci, app beralih ke status aktif (chip lisensi menyala)
+  Semua kartu digambar via CanvasTexture dengan bahasa Notion (flat, hairline, radius).
+  STORY: ch0 app + Copilot redup -> ch1 skill keluar satu per satu -> ch2 kandang nutup,
+  billing.write ditolak -> ch3 lisensi mengunci, Copilot aktif; lalu halaman menutup
+  dengan kertas solid (demo, cara kerja, keamanan, harga real, close, footer).
+  FINISH: unreviewed and undocumented is unfinished.
 -->
 <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
 <a class="skip" href="#main">Lewati ke konten</a>
@@ -79,7 +80,7 @@
       <p class="lead">Token Ed25519 diverifikasi server, kredensial tidak pernah menyentuh browser. Sisanya tinggal membangun.</p>
       <div class="actions">
         <a class="btn btn-primary" href="/register">Mulai sekarang</a>
-        <a class="btn btn-ghost" href="#harga">Lihat harga</a>
+        <a class="btn btn-text" href="#harga">Lihat harga</a>
       </div>
     </div>
   </section>
@@ -124,8 +125,8 @@
         <div class="step"><span class="step-k">Hubungkan</span><p>Aktifkan dengan satu lisensi Copilot.</p><code>license: GR-XXXX-XXXX</code></div>
       </div>
       <div class="duo">
-        <article class="card" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
-        <article class="card" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
+        <article class="card tint-sky" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
+        <article class="card tint-mocha" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
       </div>
       <p class="state-note" data-rv>Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
     </div>
@@ -184,7 +185,7 @@
     <nav class="footer-cols" aria-label="Tautan footer">
       <div class="fcol"><h4>Produk</h4><a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a></div>
       <div class="fcol"><h4>Akun</h4><a href="/register">Daftar</a><a href="/login">Masuk</a></div>
-      <div class="fcol"><h4>Ekosistem</h4><a href="https://github.com/andhikanurdyansyah/grouter_copilot" rel="noopener" target="_blank">GitHub</a><a href="/register">npm @grouter/copilot</a></div>
+      <div class="fcol"><h4>Ekosistem</h4><a class="btn-outline" href="https://github.com/andhikanurdyansyah/grouter_copilot" rel="noopener" target="_blank">GitHub</a><a class="btn-outline" href="/register">npm @grouter/copilot</a></div>
     </nav>
     <button class="to-top" id="toTop" aria-label="Kembali ke atas"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
@@ -205,7 +206,7 @@ var g=document.getElementById('plans');
 fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(d){
   var plans=(d.plans||[]).filter(function(x){return x.active!==false;});
   if(!plans.length)throw new Error('empty');
-  g.innerHTML=plans.map(function(x,i){return '<article class="plan'+(i===1?' featured':'')+'" data-rv style="--d:'+(i+1)+'"><h3>'+esc(x.name||x.key)+'</h3><div class="price">'+esc(money(x.amount))+'</div><small>'+esc(x.quota||'')+(x.expiresInDays?' · aktif '+esc(x.expiresInDays)+' hari':'')+'</small><ul>'+(x.features||[]).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="btn btn-plan" href="/register">Pilih plan</a></article>';}).join('');
+  g.innerHTML=plans.map(function(x,i){return '<article class="plan'+(i===1?' featured':'')+'" data-rv style="--d:'+(i+1)+'">'+(i===1?'<span class="plan-tag">Direkomendasikan</span>':'')+'<h3>'+esc(x.name||x.key)+'</h3><div class="price">'+esc(money(x.amount))+'</div><small>'+esc(x.quota||'')+(x.expiresInDays?' · aktif '+esc(x.expiresInDays)+' hari':'')+'</small><ul>'+(x.features||[]).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="btn btn-plan" href="/register">Pilih plan</a></article>';}).join('');
   initReveal();
 }).catch(function(){g.innerHTML='<div class="plan-empty">Katalog belum tersedia. Coba muat ulang halaman.</div>';});
 /* ---- scroll state: header, progress bar, reveal, scrollspy ---- */
@@ -252,18 +253,22 @@ if(tt)tt.addEventListener('click',function(){scrollTo({top:0,behavior:reduce?'au
 })();
 </script>
 <script type="module">
-/* Scroll-motion scene (pola aeronet.id): canvas fixed z-0, scene+kamera digerakkan
-   scroll progress lintas 4 chapter. Teks chapter tetap di depan. */
+/* Scene v4 — setiap bentuk bermakna untuk produk:
+   jendela app host (tabel Orders) + panel Copilot menempel di tepinya,
+   kartu skill read-only terdaftar, kandang kaca = batas data,
+   kartu lisensi yang turun, mengunci, dan mengaktifkan Copilot.
+   KAMERA TETAP; stage group bergeser horizontal per chapter (deterministik).
+   Scroll progress (p) lintas story: chapter i terlihat saat p ~ i/3. */
 const stage=document.getElementById('glStage');
 const story=document.getElementById('story');
-const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mqReduce=matchMedia('(prefers-reduced-motion: reduce)');
+let reduce=mqReduce.matches;
+mqReduce.addEventListener?.('change',e=>{reduce=e.matches;if(reduce)pShown=target;});
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-let started=false;
-const io=new IntersectionObserver((es)=>{es.forEach(en=>{if(en.isIntersecting&&!started){started=true;boot();}})},{threshold:0});
-io.observe(stage);
 async function boot(){
+  try{
   let THREE,renderer;
   try{
     THREE=await import('/assets/vendor/three.module.min.js');
@@ -273,138 +278,271 @@ async function boot(){
   renderer.setSize(innerWidth,innerHeight);
   stage.appendChild(renderer.domElement);
   const scene=new THREE.Scene();
-  scene.fog=new THREE.Fog(0xf6f5f4,9,26);
+  scene.fog=new THREE.Fog(0xf6f5f4,12,30);
   const cam=new THREE.PerspectiveCamera(innerWidth<900?54:42,innerWidth/innerHeight,.1,60);
-  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,1.2));
-  const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(4,7,5);scene.add(key);
-  const rim=new THREE.DirectionalLight(0x9bd7ff,.85);rim.position.set(-6,2,-4);scene.add(rim);
   const world=new THREE.Group();scene.add(world);
-  /* core runtime */
-  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1.12,1),new THREE.MeshStandardMaterial({color:0x02093a,roughness:.3,metalness:.15,flatShading:true}));
-  world.add(core);
-  /* skill pills */
-  const pillCols=[0x0075de,0x62aef0,0xffb110,0xf64932,0x005ea8,0x9aa2ab];
-  const pills=pillCols.map((c,i)=>{
-    const m=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.6,4,14),new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.06,transparent:true,opacity:0}));
-    m.rotation.z=Math.PI/2;
-    m.userData={a:i/pillCols.length*Math.PI*2,r:2.35+((i%3)-1)*.24,y:(i%2?1:-1)*(.34+(i%3)*.2),ph:i*1.07};
-    world.add(m);
+  /* ---- kanvas -> tekstur: kartu flat ala Notion (hairline, radius, tanpa shadow)
+         pw/ph dalam PIKSEL desain; plane world = px / PXW ---- */
+  const PXW=95;
+  function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+  function wrapTxt(g,txt,x,y,maxW,lh){let line='';const words=String(txt).split(' ');for(let i=0;i<words.length;i++){const t=line?line+' '+words[i]:words[i];if(g.measureText(t).width>maxW&&line){g.fillText(line,x,y);y+=lh;line=words[i];}else line=t;}if(line)g.fillText(line,x,y);}
+  function card(pw,ph,drawFn){
+    const c=document.createElement('canvas');c.width=pw*2;c.height=ph*2;
+    const g=c.getContext('2d');g.scale(2,2);
+    const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;if(THREE.SRGBColorSpace)tex.colorSpace=THREE.SRGBColorSpace;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(pw/PXW,ph/PXW),new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
+    m.userData.redraw=(st)=>{g.clearRect(0,0,pw,ph);drawFn(g,pw,ph,st||{});tex.needsUpdate=true;};
+    m.userData.redraw({});
     return m;
+  }
+  /* app host: title bar + tabel order + chip lisensi saat aktif */
+  function drawApp(g,w,h,st){
+    g.textBaseline='middle';
+    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,16);g.fill();
+    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,16);g.stroke();
+    g.save();rr(g,1,1,w-2,h-2,16);g.clip();
+    g.fillStyle='#faf9f7';g.fillRect(1,1,w-2,30);
+    g.fillStyle='#dcd8d3';
+    for(let i=0;i<3;i++){g.beginPath();g.arc(17+i*13,16,3.4,0,7);g.fill();}
+    g.fillStyle='#757575';g.font='500 10px Inter,system-ui,sans-serif';
+    g.fillText('Aplikasi Anda — Orders',60,17);
+    g.font='500 8px Inter,system-ui,sans-serif';g.fillStyle='#a8a29c';
+    g.fillText('ORDER',20,46);g.fillText('PELANGGAN',96,46);g.fillText('STATUS',206,46);
+    g.strokeStyle='rgba(0,0,0,.07)';g.lineWidth=1;g.beginPath();g.moveTo(14,54);g.lineTo(w-14,54);g.stroke();
+    const rows=[['#10241','PackAndGo','Dikirim',0],['#10242','Kirana Store','Diproses',1],['#10243','Sentra Mart','Dikirim',0]];
+    rows.forEach((r,i)=>{
+      const y=72+i*27;
+      g.font='500 10px Inter,system-ui,sans-serif';
+      g.fillStyle='#1f1d1b';g.fillText(r[0],20,y);
+      g.fillStyle='#44403c';g.fillText(r[1],96,y);
+      const pw2=r[2].length*5.6+18;
+      g.fillStyle=r[3]?'#e6f3fe':'#f1efec';rr(g,206,y-8,pw2,16,8);g.fill();
+      g.font='500 8px Inter,system-ui,sans-serif';g.fillStyle=r[3]?'#065e9d':'#57534e';
+      g.fillText(r[2],215,y);
+      g.strokeStyle='rgba(0,0,0,.06)';g.beginPath();g.moveTo(14,y+13);g.lineTo(w-14,y+13);g.stroke();
+    });
+    if(st.active){
+      g.fillStyle='#e7f6ec';rr(g,16,h-26,112,16,8);g.fill();
+      g.fillStyle='#177a3d';g.font='600 8.5px Inter,system-ui,sans-serif';
+      g.fillText('✓ Lisensi aktif',26,h-18);
+    }
+    g.restore();
+  }
+  /* panel Copilot: header + chip skill + Q/A + status koneksi */
+  function drawCopilot(g,w,h,st){
+    g.textBaseline='middle';
+    g.globalAlpha=st.active?1:.62;
+    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,14);g.fill();
+    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,14);g.stroke();
+    g.fillStyle='#111111';g.font='600 13px Inter,system-ui,sans-serif';
+    g.fillText('Copilot',14,22);
+    const pl='fx orders.list';g.font='500 8px ui-monospace,Consolas,monospace';
+    const pw2=pl.length*4.9+20;
+    g.fillStyle='#e6f3fe';rr(g,w-pw2-12,13,pw2,17,8.5);g.fill();
+    g.fillStyle='#005ea8';g.fillText(pl,w-pw2-2,22);
+    g.strokeStyle='rgba(0,0,0,.07)';g.lineWidth=1;g.beginPath();g.moveTo(12,38);g.lineTo(w-12,38);g.stroke();
+    g.fillStyle='#111111';g.font='500 10.5px Inter,system-ui,sans-serif';
+    g.fillText('Ada order baru minggu ini?',14,54);
+    g.fillStyle='#e6f3fe';rr(g,12,66,w-24,84,10);g.fill();
+    g.fillStyle='#26221f';g.font='400 9.5px Inter,system-ui,sans-serif';
+    wrapTxt(g,'Ada 3 order baru sejak Senin. Semua sudah masuk tahap pengiriman.',22,84,w-44,13);
+    g.fillStyle='#757575';g.font='400 7.5px ui-monospace,Consolas,monospace';
+    g.fillText('sumber: orders.list · read-only',22,140);
+    if(st.active){
+      g.fillStyle='#e7f6ec';rr(g,12,h-28,120,16,8);g.fill();
+      g.fillStyle='#177a3d';g.font='600 8px Inter,system-ui,sans-serif';
+      g.fillText('● aktif · Ed25519',20,h-20);
+    }
+    g.globalAlpha=1;
+  }
+  /* kartu skill read-only: titik status + label mono + check/silang */
+  function drawSkill(g,w,h,s,st){
+    g.textBaseline='middle';
+    if(st.blocked)g.globalAlpha=.8;
+    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,12);g.fill();
+    g.strokeStyle=s.ok?'rgba(0,0,0,.10)':'rgba(246,73,50,.5)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,12);g.stroke();
+    g.fillStyle=s.ok?'#097fe8':'#e32d14';g.beginPath();g.arc(20,h/2,4.5,0,7);g.fill();
+    g.fillStyle='#141210';g.font='500 12px ui-monospace,Consolas,monospace';
+    g.fillText(s.label,34,h/2+1);
+    if(s.ok){
+      g.strokeStyle='#177a3d';g.lineWidth=2.2;g.lineCap='round';
+      g.beginPath();g.moveTo(w-28,h/2);g.lineTo(w-24,h/2+4);g.lineTo(w-17,h/2-4);g.stroke();
+    }else{
+      g.strokeStyle='#e32d14';g.lineWidth=2.2;g.lineCap='round';
+      g.beginPath();g.moveTo(w-28,h/2-4);g.lineTo(w-19,h/2+4);g.moveTo(w-19,h/2-4);g.lineTo(w-28,h/2+4);g.stroke();
+      if(st.blocked){
+        g.strokeStyle='rgba(226,45,20,.85)';g.lineWidth=2;
+        g.beginPath();g.moveTo(32,h/2+1);g.lineTo(34+s.label.length*7.2,h/2+1);g.stroke();
+      }
+    }
+    g.globalAlpha=1;
+  }
+  /* kartu lisensi: header midnight + key mono + check biru */
+  function drawLicense(g,w,h){
+    g.textBaseline='middle';
+    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,14);g.fill();
+    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,14);g.stroke();
+    g.save();rr(g,1,1,w-2,h-2,14);g.clip();
+    g.fillStyle='#02093a';g.fillRect(1,1,w-2,40);
+    g.fillStyle='#9bd7ff';g.font='600 8.5px Inter,system-ui,sans-serif';
+    g.fillText('LISENSI COPILOT',14,16);
+    g.fillStyle='rgba(255,255,255,.55)';g.font='500 7px Inter,system-ui,sans-serif';
+    g.fillText('Ed25519 · terverifikasi server',14,30);
+    g.restore();
+    g.fillStyle='#141210';g.font='600 15px ui-monospace,Consolas,monospace';
+    g.fillText('GR-XXXX-XXXX',14,66);
+    g.fillStyle='#757575';g.font='400 7.5px Inter,system-ui,sans-serif';
+    g.fillText('1 lisensi mengaktifkan 1 aplikasi host',14,88);
+    g.fillStyle='#0075de';g.beginPath();g.arc(w-32,62,14,0,7);g.fill();
+    g.strokeStyle='#ffffff';g.lineWidth=2.6;g.lineCap='round';
+    g.beginPath();g.moveTo(w-38,62);g.lineTo(w-34,67);g.lineTo(w-26,56);g.stroke();
+  }
+  /* ---- bayangan lantai lembut (satu drop shadow, ala mockup Notion) ---- */
+  const shTex=(()=>{const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');const gr=g.createRadialGradient(128,64,6,128,64,120);gr.addColorStop(0,'rgba(30,26,22,.20)');gr.addColorStop(1,'rgba(30,26,22,0)');g.fillStyle=gr;g.fillRect(0,0,256,128);return new THREE.CanvasTexture(c);})();
+  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(6.6,2.6),new THREE.MeshBasicMaterial({map:shTex,transparent:true,opacity:.85,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2;shadow.position.set(.3,-2.2,.3);
+  world.add(shadow);
+  /* ---- unit: semuanya dalam satu grup; pose per chapter (x + skala + copilot) ---- */
+  const unit=new THREE.Group();world.add(unit);
+  const CL=1; /* skala internal; skala per-chapter lewat pose */
+  const appGroup=new THREE.Group();appGroup.scale.setScalar(.82);unit.add(appGroup);
+  const appM=card(440,300,drawApp);appM.material.opacity=1;appGroup.add(appM);
+  const copM=card(180,250,drawCopilot);copM.material.opacity=1;copM.position.set(2.3,.1,.9);copM.rotation.y=-.06;appGroup.add(copM);
+  /* ---- kartu skill read-only (billing.write = yang ditolak) ----
+     posisi RELATIF terhadap stage; kartu lahir dari app lalu menyebar ke kiri app */
+  const SK=[
+    {label:'orders.list',ok:true,x:-2.3,y:1.15,z:1.2},
+    {label:'tickets.list',ok:true,x:-2.55,y:.25,z:1.45},
+    {label:'customers.find',ok:true,x:-2.15,y:-.65,z:1.0},
+    {label:'billing.write',ok:false,x:-1.75,y:-1.35,z:1.2,ox:-4.1,oy:-1.55,oz:1.8},
+  ];
+  const skills=SK.map((s,i)=>{
+    const m=card(170,56,(g,w,h,st)=>drawSkill(g,w,h,s,st));
+    m.scale.setScalar(CL);
+    m.userData.ph=i*1.13;m.userData.base={x:s.x,y:s.y,z:s.z};
+    m.userData.out=s.ox?{x:s.ox,y:s.oy,z:s.oz}:null;
+    m.userData.blockedDrawn=false;m.userData.isOk=!!s.ok;
+    unit.add(m);return m;
   });
-  /* batas data: shell + edges */
-  const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(3.35,1),new THREE.MeshStandardMaterial({color:0x0075de,transparent:true,opacity:0,roughness:.5,metalness:0,depthWrite:false}));
-  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(3.35,1)),new THREE.LineBasicMaterial({color:0x1a2029,transparent:true,opacity:0}));
-  world.add(shell,edges);
-  /* skill ditolak (coral): didorong keluar saat ch-batas */
-  const reject=pills[3];
-  /* lisensi: torus mengunci */
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(3.35,.045,12,140),new THREE.MeshStandardMaterial({color:0x62aef0,roughness:.3,metalness:.2}));
-  ring.material.transparent=true;ring.material.opacity=0;
-  ring.rotation.x=Math.PI/2.15;
-  world.add(ring);
-  /* debu kertas: partikel sprite bulat */
+  /* ---- kandang batas data: kaca + rusuk midnight ---- */
+  const fGeo=new THREE.BoxGeometry(6.4,4.1,3.4);
+  const fence=new THREE.Mesh(fGeo,new THREE.MeshBasicMaterial({color:0xe6f3fe,transparent:true,opacity:0,depthWrite:false}));
+  const fenceEdge=new THREE.LineSegments(new THREE.EdgesGeometry(fGeo),new THREE.LineBasicMaterial({color:0x0a1a38,transparent:true,opacity:0}));
+  fence.position.set(.2,0,.4);fenceEdge.position.copy(fence.position);
+  unit.add(fence,fenceEdge);
+  /* ---- kartu lisensi: turun dan mengunci di atas app ---- */
+  const lic=card(200,124,drawLicense);lic.scale.setScalar(CL);unit.add(lic);
+  /* ---- debu kertas ---- */
   const dustTex=(()=>{
     const c=document.createElement('canvas');c.width=c.height=32;
     const g=c.getContext('2d');
     const gr=g.createRadialGradient(16,16,0,16,16,15);
     gr.addColorStop(0,'rgba(20,30,40,.55)');gr.addColorStop(1,'rgba(20,30,40,0)');
     g.fillStyle=gr;g.beginPath();g.arc(16,16,15,0,7);g.fill();
-    const t=new THREE.CanvasTexture(c);return t;
+    return new THREE.CanvasTexture(c);
   })();
-  const N=reduce?0:130;
+  const N=reduce?0:90;
   const pos=new Float32Array(N*3);
   for(let i=0;i<N;i++){
-    const r=6+Math.random()*7,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
-    pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=(Math.random()-.5)*9;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+    const r=8+Math.random()*8,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=(Math.random()-.5)*10;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
   }
   const dust=(()=>{
     if(!N)return null;
     const geo=new THREE.BufferGeometry();
     geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    const mat=new THREE.PointsMaterial({size:.09,map:dustTex,transparent:true,opacity:.5,depthWrite:false,color:0x445060});
+    const mat=new THREE.PointsMaterial({size:.07,map:dustTex,transparent:true,opacity:.4,depthWrite:false,color:0x4a5460});
     const pts=new THREE.Points(geo,mat);scene.add(pts);return pts;
   })();
-  /* scroll progress 0..1 lintas story */
-  let target=0,pShown=0,renderable=true;
+  /* ---- scroll progress 0..1 lintas story ---- */
+  let target=0,pShown=0,renderable=true,active=false;
   function measure(){
     const total=story.offsetHeight-innerHeight;
-    target=total>0?clamp(scrollY/total,0,1.15):0;
+    target=total>0?clamp(scrollY/total,0,1.12):0;
     renderable=scrollY<total+innerHeight*1.2;
   }
-  addEventListener('scroll',()=>{measure();},{passive:true});
+  addEventListener('scroll',measure,{passive:true});
   addEventListener('resize',()=>{
     cam.aspect=innerWidth/innerHeight;
     cam.fov=innerWidth<900?54:42;
     cam.updateProjectionMatrix();
     renderer.setSize(innerWidth,innerHeight);measure();
   });
-  document.addEventListener('visibilitychange',()=>{measure();});
+  document.addEventListener('visibilitychange',measure);
   measure();
-  /* kunci kamera per chapter (p: 0..1 lintas 4 chapter)
-     lx/ly = titik pandang: menggeser objek di frame — teks kiri -> objek ke kanan (lx negatif) */
-  const camKeys=[
-    {p:0.00,x:-3.2,y:.7,z:10.6,lx:-1.45,ly:.1},
-    {p:0.33,x:3.0,y:.9,z:8.8,lx:3.7,ly:.05},
-    {p:0.66,x:-3.8,y:.9,z:7.0,lx:-1.1,ly:0},
-    {p:1.00,x:0,y:2.6,z:9.6,lx:0,ly:-.2},
+  pShown=target;
+  /* pose per chapter: geser + skala unit (teks kiri -> unit kanan, dst).
+     Kamera tetap z=10.2, fov 42 (setengah lebar viewport ~7.6 unit). */
+  const poseKeys=[
+    {p:0.000,x:4.3,s:1},
+    {p:0.333,x:-3.9,s:.66},
+    {p:0.667,x:4.2,s:.85},
+    {p:1.000,x:4.0,s:.85},
   ];
-  function camAt(p){
-    let a=camKeys[0],b=camKeys[camKeys.length-1];
-    for(let i=0;i<camKeys.length-1;i++){
-      if(p>=camKeys[i].p&&p<=camKeys[i+1].p){a=camKeys[i];b=camKeys[i+1];break;}
+  function poseAt(p){
+    let a=poseKeys[0],b=poseKeys[poseKeys.length-1];
+    for(let i=0;i<poseKeys.length-1;i++){
+      if(p>=poseKeys[i].p&&p<=poseKeys[i+1].p){a=poseKeys[i];b=poseKeys[i+1];break;}
     }
     const t=clamp((p-a.p)/Math.max(b.p-a.p,1e-4),0,1),e=ease(t);
-    return{x:lerp(a.x,b.x,e),y:lerp(a.y,b.y,e),z:lerp(a.z,b.z,e),lx:lerp(a.lx,b.lx,e),ly:lerp(a.ly,b.ly,e)};
+    return{x:lerp(a.x,b.x,e),s:lerp(a.s,b.s,e)};
   }
-  const seg=(p,i,n)=>clamp(p*n-i,0,1);
+  /* progres animasi per chapter: chapter i berjalan saat p dari (i-1)/3 ke i/3 */
+  const seg=(p,i)=>clamp(p*3-(i-1),0,1);
   let last=performance.now();
   function frame(now){
     requestAnimationFrame(frame);
-    const dt=Math.min((now-last)/1000,.05);last=now;
-    if(!renderable||document.hidden)return;
+    const t=now/1000;
+    if(!renderable||document.hidden){last=now;return;}
     pShown+=(target-pShown)*(reduce?1:.075);
     const p=clamp(pShown,0,1);
-    const t=now/1000;
-    /* kamera */
-    const c=camAt(p);
-    cam.position.set(c.x,c.y,c.z);
-    cam.lookAt(c.lx,c.ly,0);
-    /* world berputar pelan mengikuti perjalanan */
-    world.rotation.y=p*Math.PI*1.35+(reduce?0:t*.03);
-    /* ch0: core sendiri, mengambang */
-    core.rotation.y=t*.16;core.rotation.x=Math.sin(t*.27)*.1;
-    core.position.y=Math.sin(t*.8)*.08;
-    /* ch1: skill muncul satu per satu */
-    const s1=ease(seg(p,1,4));
-    pills.forEach((m,i)=>{
-      const born=ease(clamp((s1-.08-i*.1)/.5,0,1));
-      m.material.opacity=born;
+    const mob=innerWidth<900;
+    /* kamera tetap; micro-drift untuk hidup */
+    cam.position.set(0,.25+Math.sin(t*.3)*.06,10.2);
+    cam.lookAt(0,.05,0);
+    /* unit mengikuti pose per chapter */
+    const po=poseAt(p);
+    const tx=mob?0:po.x,tsc=mob?po.s*.6:po.s;
+    unit.position.x+=(tx-unit.position.x)*(reduce?1:.09);
+    unit.position.y=mob?-3.4:0;
+    unit.scale.setScalar(unit.scale.x+(tsc-unit.scale.x)*(reduce?1:.09));
+    const s1=ease(seg(p,1)),s2=ease(seg(p,2)),s3=ease(seg(p,3));
+    appGroup.rotation.y=(reduce?0:Math.sin(t*.4)*.045)-.03;
+    appGroup.position.y=reduce?0:Math.sin(t*.7)*.05;
+    shadow.material.opacity=.85+Math.sin(t*.7)*.06;
+    skills.forEach((m,i)=>{
       const u=m.userData;
-      const a=u.a+p*Math.PI*1.35+(reduce?0:Math.sin(t*.5+u.ph)*.06);
-      const out=i===3?1:0;
-      const push=ease(seg(p,2,4));
-      const r=lerp(0,u.r,born)+out*push*2.4;
-      const y=u.y+(reduce?0:Math.sin(t*1.2+u.ph)*.12);
-      m.position.set(Math.cos(a)*r,y+ (1-born)*2.2,Math.sin(a)*r);
-      m.rotation.y=a+Math.PI/2;
-      if(i===3){m.material.opacity=born*(1-push*.75);}
+      const born=ease(clamp((s1-.05-i*.1)/.55,0,1));
+      m.material.opacity=born;
+      const bx=lerp(-.2,u.base.x,born),by=lerp(.4,u.base.y,born),bz=lerp(.8,u.base.z,born);
+      if(u.out){
+        const push=ease(s2);
+        m.position.set(lerp(bx,u.out.x,push),lerp(by,u.out.y,push),lerp(bz,u.out.z,push));
+        m.rotation.z=(reduce?0:Math.sin(t*1.2+u.ph)*.04)+push*.15;
+        m.material.opacity=born*(1-push*.5);
+        const wantB=push>.5;
+        if(wantB!==u.blockedDrawn){u.blockedDrawn=wantB;u.redraw({blocked:wantB});}
+      }else{
+        m.position.set(bx,by+(reduce?0:Math.sin(t*.85+u.ph)*.07),bz);
+        m.rotation.z=reduce?0:Math.sin(t*.75+u.ph)*.045;
+        if(u.blockedDrawn){u.blockedDrawn=false;u.redraw({});}
+      }
+      if(u.isOk&&active)m.scale.setScalar(CL*(1+Math.sin(t*2.1+u.ph)*.02));
     });
-    /* ch2: shell batas terbentuk; edges mengikuti */
-    const s2=ease(seg(p,2,4));
-    const shellS=1+(1-s2)*.35;
-    shell.scale.setScalar(shellS);
-    shell.material.opacity=s2*.07;
-    edges.scale.setScalar(shellS);
-    edges.material.opacity=s2*.16;
-    /* ch3: ring lisensi mengunci */
-    const s3=ease(seg(p,3,4));
-    ring.scale.setScalar(s3);
-    ring.material.opacity=s3*.95;
-    ring.rotation.z=t*.12;
-    /* debu */
-    if(dust){dust.rotation.y=t*.02;}
+    const fs=.8+.2*s2;
+    fence.scale.setScalar(fs);fenceEdge.scale.setScalar(fs);
+    fence.material.opacity=s2*.07;fenceEdge.material.opacity=s2*.45;
+    const lk=ease(clamp((s3-.06)/.5,0,1));
+    lic.material.opacity=lk;
+    lic.position.set(-.7,lerp(3.6,.62,lk),1.5);
+    lic.rotation.x=lerp(-.45,0,lk);
+    const on=s3>.6;
+    if(on!==active){active=on;appM.userData.redraw({active:on});copM.userData.redraw({active:on});}
+    if(dust&&!reduce)dust.rotation.y=t*.02;
     renderer.render(scene,cam);
   }
   requestAnimationFrame(frame);
+  }catch(err){ try{stage.remove();}catch(_){} }
 }
+boot();
 </script></body></html>

@@ -671,4 +671,30 @@ async function boot(){
   }catch(err){ try{stage.remove();}catch(_){} }
 }
 boot();
+</script><script type="module">
+/* dotLottie micro-accents — progressive enhancement (svg fallback tetap di markup).
+   Skip bila reduced-motion / WebAssembly tak tersedia. Bundle+wasm self-hosted. */
+(function () {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (typeof WebAssembly !== 'object') return;
+  import('/assets/vendor/dotlottie-wc.js').then(function () {
+    function mk(src, aria) {
+      var el = document.createElement('dotlottie-wc');
+      el.setAttribute('src', src);
+      el.setAttribute('autoplay', '');
+      el.setAttribute('loop', '');
+      if (aria) el.setAttribute('aria-hidden', 'true');
+      return el;
+    }
+    /* hero mark m5: AI core orbit menggantikan svg statis */
+    var m5 = document.querySelector('.marks .m5 svg');
+    if (m5) m5.replaceWith(mk('/assets/lottie/orbit.json', true));
+    /* panel Copilot demo: indikator "sedang mengetik" */
+    var head = document.querySelector('.copilot .copilot-head');
+    if (head) head.insertBefore(mk('/assets/lottie/typing.json', true), head.children[1] || null);
+    /* app-bar demo: paket data read-only mengalir */
+    var bar = document.querySelector('.app-bar');
+    if (bar) bar.appendChild(mk('/assets/lottie/dataflow.json', true));
+  }).catch(function () {});
+})();
 </script></body></html>

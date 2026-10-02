@@ -328,3 +328,15 @@ a { color: inherit; }
   .scroll-cue { display: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ============================================================
+   dotLottie micro-accents (dotlottie-wc vendored, wasm self-hosted)
+   Progressive enhancement: svg statis = fallback no-JS/reduced-motion.
+   ============================================================ */
+dotlottie-wc { display: inline-block; vertical-align: middle; }
+.mark dotlottie-wc { width: 28px; height: 28px; }
+.copilot-head dotlottie-wc { width: 60px; height: 20px; opacity: .9; }
+.app-bar dotlottie-wc { width: 40px; height: 10px; margin-left: auto; opacity: .85; }
+@media (prefers-reduced-motion: reduce) {
+  dotlottie-wc { display: none !important; }
+}

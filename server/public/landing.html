@@ -1,21 +1,25 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f5f4"><meta name="description" content="gRouter Copilot: AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca Anda yang tentukan."><title>gRouter Copilot: AI dengan konteks aplikasi Anda</title><link rel="icon" type="image/png" href="/assets/copilot-mark.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/landing.css"></head><body>
 <!--
-  DIRECTION CONTRACT - gRouter Copilot landing v2 (brief-pinned: DESIGN.md, Notion ref)
-  THESIS: dokumen kerja rapi di atas kertas hangat, sekarang HIDUP: orbit 3D runtime+skill
-  yang bisa diputar, reveal berlapis saat scroll, header yang merespons posisi baca.
-  Menolak: hero center-slop, spacing retak-beras, footer satu-baris, animasi tempel.
-  OWN-WORLD: kanvas #f6f5f4, kartu hairline tanpa shadow, satu aksen #0075de, panel aksen
-  flat (#ffb110/#02093a/#f64932), Inter tracking negatif, Source Serif 4, pill peach.
-  STORY: pengunjung main dulu dengan orbit 3D (runtime = core, skill = pill), paham batas
-  data lewat diagram arsitektur, lihat harga real, lalu membuat akun.
-  FIRST VIEWPORT: nav 60px + progress bar; grid split: copy kiri (marks, headline 2 baris
-  dengan pill, sub serif, 2 CTA) dan panel 3D orbit kanan yang bisa diseret.
-  FORM: brief-pinned (DESIGN.md Notion) + arahan Jie v2: motion lebih kuat, scale lebih rapat.
+  DIRECTION CONTRACT - gRouter Copilot landing v3 (brief-pinned: DESIGN.md, Notion ref)
+  Pola scroll-motion ala aeronet.id (diinspeksi langsung): canvas Three.js FIXED fullscreen
+  di z-0, konten chapter scroll normal di atasnya, scene+kamera digerakkan scroll progress.
+  THESIS: satu perjalanan scroll dari "AI memahami konteks" sampai "lisensi mengunci semuanya";
+  scene adalah narasinya, bukan dekorasi. Menolak: hero statis terpisah, canvas yang tidak
+  digerakkan scroll, teks yang kalah oleh 3D.
+  OWN-WORLD: kertas hangat #f6f5f4 + fog senada; core icosahedron midnight; 6 pill skill
+  warna aksen; shell batas data (edges halus); torus lisensi sky; partikel debu kertas.
+  STORY: ch0 konteks -> ch1 Anda yang menentukan skill -> ch2 yang tak terdaftar ditolak
+  -> ch3 lisensi mengunci; lalu halaman menutup dengan kertas solid (demo, cara kerja,
+  keamanan, harga real, close, footer).
+  FIRST VIEWPORT: nav transparan di atas canvas; chapter-0: marks, headline pill peach,
+  sub serif, 2 CTA; scene 3D mengisi kanan-atas frame.
+  FORM: brief-pinned (Notion) + arahan Jie v3: scroll-motion three.js seperti aeronet.id.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review,
   the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 -->
 <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
 <a class="skip" href="#main">Lewati ke konten</a>
+<div class="gl-stage" id="glStage" aria-hidden="true"></div>
 <header class="nav" id="nav"><div class="nav-in">
   <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="30" height="30"></span><span>gRouter <b>Copilot</b></span></a>
   <nav class="nav-links" id="navLinks" aria-label="Navigasi utama">
@@ -32,9 +36,9 @@
 </div>
 </header>
 <main id="main">
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
+<div class="story" id="story">
+  <section class="chapter ch-a" id="ch-konteks">
+    <div class="wrap">
       <div class="marks" aria-hidden="true">
         <span class="mark m1"><svg viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span class="mark m2"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
@@ -42,111 +46,133 @@
         <span class="mark m4"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
         <span class="mark m5"><svg viewBox="0 0 24 24"><path d="M12 4v5m0 6v5m8-8h-5m-6 0H4m12.5-4.5l-3 3m-5 5l-3 3m11 0l-3-3m-5-5l-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
       </div>
-      <h1>AI yang memahami <span class="hl">konteks</span><br>aplikasi Anda.</h1>
+      <h1 class="ch-h">AI yang memahami <span class="hl">konteks</span><br>aplikasi Anda.</h1>
       <p class="lead">Tentukan sendiri data yang boleh dibaca asisten. Sisanya, tetap di tangan aplikasi Anda.</p>
       <div class="actions">
         <a class="btn btn-primary" href="/register">Mulai sekarang<svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 12h13m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         <a class="btn btn-ghost" href="#cara-kerja">Lihat cara kerja</a>
       </div>
+      <div class="scroll-cue" aria-hidden="true"><span></span></div>
     </div>
-    <div class="hero-vis" id="vis3d" role="img" aria-label="Ilustrasi 3D interaktif: pill skill berwarna mengorbit inti runtime. Seret untuk memutar.">
-      <div class="vis-hint" id="visHint"><svg viewBox="0 0 24 24"><path d="M8 8l-3 4 3 4m8-8l3 4-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Seret untuk memutar</div>
-      <div class="vis-fallback" id="visFallback" hidden>
-        <svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="34" fill="#02093a"/><ellipse cx="100" cy="100" rx="86" ry="34" fill="none" stroke="rgba(0,0,0,.14)" stroke-dasharray="3 6"/><circle cx="186" cy="100" r="9" fill="#0075de"/><circle cx="22" cy="88" r="9" fill="#ffb110"/><circle cx="150" cy="61" r="9" fill="#f64932"/><circle cx="52" cy="133" r="9" fill="#62aef0"/></svg>
+  </section>
+  <section class="chapter ch-b" id="ch-skill">
+    <div class="wrap">
+      <h2 class="ch-h">Anda yang menentukan<br>data yang boleh dibaca.</h2>
+      <p class="lead">Skill adalah fungsi read-only yang Anda tulis. Apa yang tidak Anda daftarkan, tidak ada di dunia asisten.</p>
+      <div class="ch-chips" aria-hidden="true">
+        <span class="skchip c1">orders.list</span><span class="skchip c2">tickets.list</span><span class="skchip c3">customers.find</span>
       </div>
     </div>
-  </div>
-  <div class="wrap">
-    <figure class="mockup" data-rv>
-      <div class="app">
-        <div class="app-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="app-title">Aplikasi Anda / Orders</span></div>
-        <div class="app-body">
-          <table class="grid" aria-label="Contoh data aplikasi host">
-            <thead><tr><th>Order</th><th>Pelanggan</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>#10241</td><td>PackAndGo</td><td><span class="chip">Dikirim</span></td></tr>
-              <tr><td>#10242</td><td>Kirana Store</td><td><span class="chip chip-blue">Diproses</span></td></tr>
-              <tr><td>#10243</td><td>Sentra Mart</td><td><span class="chip">Dikirim</span></td></tr>
-            </tbody>
-          </table>
-          <div class="copilot">
-            <div class="copilot-head"><span class="copilot-name">Copilot</span><span class="copilot-skill">skill: orders.list</span></div>
-            <p class="q">Ada order baru minggu ini?</p>
-            <p class="a">Ada 3 order baru sejak Senin. Semua sudah masuk tahap pengiriman.<small>sumber: orders.list({ since: "7d" }) · read-only</small></p>
+  </section>
+  <section class="chapter ch-c" id="ch-batas">
+    <div class="wrap">
+      <h2 class="ch-h">Yang tidak terdaftar,<br>tidak bisa dipanggil.</h2>
+      <p class="lead">Model tidak pernah melihat database. Ia hanya boleh lewat skill yang Anda buka, dan setiap jawaban menyebut sumbernya.</p>
+      <div class="ch-chips" aria-hidden="true">
+        <span class="skchip c1">orders.list &#10003;</span><span class="skchip c4">billing.write &#215;</span>
+      </div>
+    </div>
+  </section>
+  <section class="chapter ch-d" id="ch-lisensi">
+    <div class="wrap">
+      <h2 class="ch-h">Satu lisensi.<br>Semua terkunci dan aktif.</h2>
+      <p class="lead">Token Ed25519 diverifikasi server, kredensial tidak pernah menyentuh browser. Sisanya tinggal membangun.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/register">Mulai sekarang</a>
+        <a class="btn btn-ghost" href="#harga">Lihat harga</a>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="paper-after">
+  <section class="demo">
+    <div class="wrap">
+      <figure class="mockup" data-rv>
+        <div class="app">
+          <div class="app-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="app-title">Aplikasi Anda / Orders</span></div>
+          <div class="app-body">
+            <table class="grid" aria-label="Contoh data aplikasi host">
+              <thead><tr><th>Order</th><th>Pelanggan</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>#10241</td><td>PackAndGo</td><td><span class="chip">Dikirim</span></td></tr>
+                <tr><td>#10242</td><td>Kirana Store</td><td><span class="chip chip-blue">Diproses</span></td></tr>
+                <tr><td>#10243</td><td>Sentra Mart</td><td><span class="chip">Dikirim</span></td></tr>
+              </tbody>
+            </table>
+            <div class="copilot">
+              <div class="copilot-head"><span class="copilot-name">Copilot</span><span class="copilot-skill">skill: orders.list</span></div>
+              <p class="q">Ada order baru minggu ini?</p>
+              <p class="a">Ada 3 order baru sejak Senin. Semua sudah masuk tahap pengiriman.<small>sumber: orders.list({ since: "7d" }) · read-only</small></p>
+            </div>
           </div>
         </div>
+        <figcaption>Ilustrasi: Copilot menjawab lewat skill read-only yang Anda definisikan sendiri.</figcaption>
+      </figure>
+    </div>
+  </section>
+  <section class="section" id="cara-kerja">
+    <div class="wrap head" data-rv>
+      <h2>Satu lapisan percakapan, batas yang jelas.</h2>
+      <p class="serif">Copilot menghubungkan pertanyaan pengguna dengan fungsi yang Anda sediakan. Tidak lebih dari itu.</p>
+    </div>
+    <div class="wrap">
+      <div class="flow-card" data-rv>
+        <div class="step"><span class="step-k">Instal</span><p>Tambahkan plugin ke aplikasi Node.js Anda.</p><code>npm i @grouter/copilot</code></div>
+        <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step"><span class="step-k">Definisikan</span><p>Tulis skill read-only: fungsi data yang Anda pilih.</p><code>orders.list({ since })</code></div>
+        <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step"><span class="step-k">Hubungkan</span><p>Aktifkan dengan satu lisensi Copilot.</p><code>license: GR-XXXX-XXXX</code></div>
       </div>
-      <figcaption>Ilustrasi: Copilot menjawab lewat skill read-only yang Anda definisikan sendiri.</figcaption>
-    </figure>
-  </div>
-</section>
-<section class="strip" aria-label="Prinsip produk">
-  <div class="wrap strip-in">
-    <span class="tag" data-rv>Node.js native</span><span class="tag" data-rv>Skill read-only</span><span class="tag" data-rv>Satu lisensi</span><span class="tag" data-rv>Kredensial di server</span>
-  </div>
-</section>
-<section class="section" id="cara-kerja">
-  <div class="wrap head" data-rv>
-    <h2>Satu lapisan percakapan, batas yang jelas.</h2>
-    <p class="serif">Copilot menghubungkan pertanyaan pengguna dengan fungsi yang Anda sediakan. Tidak lebih dari itu.</p>
-  </div>
-  <div class="wrap">
-    <div class="flow-card" data-rv>
-      <div class="step"><span class="step-k">Instal</span><p>Tambahkan plugin ke aplikasi Node.js Anda.</p><code>npm i @grouter/copilot</code></div>
-      <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="step"><span class="step-k">Definisikan</span><p>Tulis skill read-only: fungsi data yang Anda pilih.</p><code>orders.list({ since })</code></div>
-      <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="step"><span class="step-k">Hubungkan</span><p>Aktifkan dengan satu lisensi Copilot.</p><code>license: GR-XXXX-XXXX</code></div>
+      <div class="duo">
+        <article class="card" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
+        <article class="card" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
+      </div>
+      <p class="state-note" data-rv>Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
     </div>
-    <div class="duo">
-      <article class="card" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
-      <article class="card" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
-    </div>
-    <p class="state-note" data-rv>Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
-  </div>
-</section>
-<section class="section" id="keamanan">
-  <div class="wrap split">
-    <div class="split-text" data-rv>
-      <h2>Model tidak pernah menyentuh database.</h2>
-      <p class="serif">Aplikasi Anda tetap sumber kebenaran. Copilot hanya membaca lewat skill yang terdaftar, dan kredensial tidak pernah keluar dari server.</p>
-      <ul class="points">
-        <li><b>Batas eksplisit</b><span>Skill yang tidak terdaftar tidak bisa dipanggil, apa pun yang diminta pengguna.</span></li>
-        <li><b>Read-only secara default</b><span>Operasi tulis bukan bagian dari runtime dasar.</span></li>
-        <li><b>Kredensial di sisi server</b><span>Browser dan lisensi tidak pernah membawa kunci provider.</span></li>
-        <li><b>Lisensi terverifikasi</b><span>Token lisensi ditandatangani Ed25519 dan diperiksa server.</span></li>
-      </ul>
-    </div>
-    <div class="arch" data-rv role="img" aria-label="Diagram: aplikasi host memanggil Copilot runtime yang hanya boleh membaca skill terdaftar, hasilnya diteruskan ke model">
-      <div class="arch-node">Aplikasi Anda</div>
-      <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="arch-node arch-core">Copilot runtime</div>
-      <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="arch-skills">
-        <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>orders.list</span>
-        <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>tickets.list</span>
-        <span class="skill-chip no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>billing.write</span>
-        <span class="arch-note">billing.write tidak terdaftar, tidak bisa dipanggil</span>
+  </section>
+  <section class="section" id="keamanan">
+    <div class="wrap split">
+      <div class="split-text" data-rv>
+        <h2>Model tidak pernah menyentuh database.</h2>
+        <p class="serif">Aplikasi Anda tetap sumber kebenaran. Copilot hanya membaca lewat skill yang terdaftar, dan kredensial tidak pernah keluar dari server.</p>
+        <ul class="points">
+          <li><b>Batas eksplisit</b><span>Skill yang tidak terdaftar tidak bisa dipanggil, apa pun yang diminta pengguna.</span></li>
+          <li><b>Read-only secara default</b><span>Operasi tulis bukan bagian dari runtime dasar.</span></li>
+          <li><b>Kredensial di sisi server</b><span>Browser dan lisensi tidak pernah membawa kunci provider.</span></li>
+          <li><b>Lisensi terverifikasi</b><span>Token lisensi ditandatangani Ed25519 dan diperiksa server.</span></li>
+        </ul>
+      </div>
+      <div class="arch" data-rv role="img" aria-label="Diagram: aplikasi host memanggil Copilot runtime yang hanya boleh membaca skill terdaftar">
+        <div class="arch-node">Aplikasi Anda</div>
+        <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="arch-node arch-core">Copilot runtime</div>
+        <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="arch-skills">
+          <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>orders.list</span>
+          <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>tickets.list</span>
+          <span class="skill-chip no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>billing.write</span>
+          <span class="arch-note">billing.write tidak terdaftar, tidak bisa dipanggil</span>
+        </div>
       </div>
     </div>
-  </div>
-</section>
-<section class="section section-alt" id="harga">
-  <div class="wrap head" data-rv>
-    <h2>Harga yang jelas, langsung dari katalog.</h2>
-    <p class="serif">Plan dimuat dari server saat halaman ini dibuka. Beli lewat dasbor setelah membuat akun.</p>
-  </div>
-  <div class="wrap plans" id="plans">
-    <div class="plan-skeleton"></div><div class="plan-skeleton"></div><div class="plan-skeleton"></div>
-  </div>
-</section>
-<section class="close">
-  <div class="wrap close-in" data-rv>
-    <h2>Bangun Copilot yang memahami produk Anda.</h2>
-    <p>Mulai dari batas data yang Anda kendalikan.</p>
-    <a class="btn btn-onaccent" href="/register">Mulai sekarang</a>
-  </div>
-</section>
+  </section>
+  <section class="section section-alt" id="harga">
+    <div class="wrap head" data-rv>
+      <h2>Harga yang jelas, langsung dari katalog.</h2>
+      <p class="serif">Plan dimuat dari server saat halaman ini dibuka. Beli lewat dasbor setelah membuat akun.</p>
+    </div>
+    <div class="wrap plans" id="plans">
+      <div class="plan-skeleton"></div><div class="plan-skeleton"></div><div class="plan-skeleton"></div>
+    </div>
+  </section>
+  <section class="close">
+    <div class="wrap close-in" data-rv>
+      <h2>Bangun Copilot yang memahami produk Anda.</h2>
+      <p>Mulai dari batas data yang Anda kendalikan.</p>
+      <a class="btn btn-onaccent" href="/register">Mulai sekarang</a>
+    </div>
+  </section>
+</div>
 </main>
 <footer class="footer">
   <div class="wrap footer-top">
@@ -203,6 +229,7 @@ function onScroll(){
     var sc=window.scrollY||0,max=document.documentElement.scrollHeight-window.innerHeight;
     bar.style.transform='scaleX('+(max>0?sc/max:0)+')';
     nav.classList.toggle('scrolled',sc>10);
+    nav.classList.toggle('on-canvas',sc<(document.getElementById('story').offsetHeight-window.innerHeight));
     updateSpy();
     tick=false;
   });
@@ -225,87 +252,157 @@ if(tt)tt.addEventListener('click',function(){scrollTo({top:0,behavior:reduce?'au
 })();
 </script>
 <script type="module">
-/* 3D orbit: runtime core + skill pills. Lazy-load; drag = rotate; hover = highlight. */
-const panel=document.getElementById('vis3d');
+/* Scroll-motion scene (pola aeronet.id): canvas fixed z-0, scene+kamera digerakkan
+   scroll progress lintas 4 chapter. Teks chapter tetap di depan. */
+const stage=document.getElementById('glStage');
+const story=document.getElementById('story');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 let started=false;
-const io=new IntersectionObserver((es)=>{
-  es.forEach((en)=>{if(en.isIntersecting&&!started){started=true;io.disconnect();boot();}});
-},{threshold:.2});
-io.observe(panel);
+const io=new IntersectionObserver((es)=>{es.forEach(en=>{if(en.isIntersecting&&!started){started=true;boot();}})},{threshold:0});
+io.observe(stage);
 async function boot(){
-  let THREE;
-  try{THREE=await import('/assets/vendor/three.module.min.js');}
-  catch(e){panel.querySelector('#visFallback').hidden=false;panel.querySelector('#visHint').style.display='none';return;}
-  let renderer;
-  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}
-  catch(e){panel.querySelector('#visFallback').hidden=false;panel.querySelector('#visHint').style.display='none';return;}
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setSize(panel.clientWidth,panel.clientHeight);
-  renderer.domElement.className='vis-canvas';
-  panel.appendChild(renderer.domElement);
+  let THREE,renderer;
+  try{
+    THREE=await import('/assets/vendor/three.module.min.js');
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+  }catch(e){stage.remove();return;}
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+  renderer.setSize(innerWidth,innerHeight);
+  stage.appendChild(renderer.domElement);
   const scene=new THREE.Scene();
-  const cam=new THREE.PerspectiveCamera(38,panel.clientWidth/panel.clientHeight,.1,50);
-  cam.position.set(0,1.6,8.2);cam.lookAt(0,0,0);
-  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,1.15));
-  const key=new THREE.DirectionalLight(0xffffff,2.4);key.position.set(4,6,5);scene.add(key);
-  const rim=new THREE.DirectionalLight(0x9bd7ff,.9);rim.position.set(-5,2,-4);scene.add(rim);
+  scene.fog=new THREE.Fog(0xf6f5f4,9,26);
+  const cam=new THREE.PerspectiveCamera(innerWidth<900?54:42,innerWidth/innerHeight,.1,60);
+  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,1.2));
+  const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(4,7,5);scene.add(key);
+  const rim=new THREE.DirectionalLight(0x9bd7ff,.85);rim.position.set(-6,2,-4);scene.add(rim);
   const world=new THREE.Group();scene.add(world);
-  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1.08,1),new THREE.MeshStandardMaterial({color:0x02093a,roughness:.32,metalness:.15,flatShading:true}));
+  /* core runtime */
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1.12,1),new THREE.MeshStandardMaterial({color:0x02093a,roughness:.3,metalness:.15,flatShading:true}));
   world.add(core);
-  const cols=[0x0075de,0x62aef0,0xffb110,0xf64932,0x0075de,0x9aa2ab];
-  const pills=[];
-  cols.forEach((c,i)=>{
-    const m=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.62,4,14),new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.08}));
-    const a=i/cols.length*Math.PI*2;
-    m.userData={a,r:2.25+((i%3)-1)*.22,y:(i%2?1:-1)*(.32+(i%3)*.18),ph:i*1.1};
-    m.rotation.z=Math.PI/2;m.rotation.y=a;
-    world.add(m);pills.push(m);
+  /* skill pills */
+  const pillCols=[0x0075de,0x62aef0,0xffb110,0xf64932,0x005ea8,0x9aa2ab];
+  const pills=pillCols.map((c,i)=>{
+    const m=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.6,4,14),new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.06,transparent:true,opacity:0}));
+    m.rotation.z=Math.PI/2;
+    m.userData={a:i/pillCols.length*Math.PI*2,r:2.35+((i%3)-1)*.24,y:(i%2?1:-1)*(.34+(i%3)*.2),ph:i*1.07};
+    world.add(m);
+    return m;
   });
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.35,.012,8,120),new THREE.MeshBasicMaterial({color:0xb9c2cc,transparent:true,opacity:.55}));
-  ring.rotation.x=Math.PI/2*.86;world.add(ring);
-  let tRotY=0,tRotX=.14,rotY=0,rotX=.14,drag=false,px=0,py=0,moved=0;
-  const cv=renderer.domElement;
-  cv.style.cursor='grab';
-  cv.addEventListener('pointerdown',(e)=>{drag=true;moved=0;px=e.clientX;py=e.clientY;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';panel.classList.add('dragging');});
-  cv.addEventListener('pointermove',(e)=>{
-    const r=cv.getBoundingClientRect();
-    if(drag){
-      const dx=e.clientX-px,dy=e.clientY-py;moved+=Math.abs(dx)+Math.abs(dy);
-      tRotY+=dx*.006;tRotX=Math.max(-.7,Math.min(.7,tRotX+dy*.004));px=e.clientX;py=e.clientY;
-    }
-    const ray=new THREE.Raycaster();
-    const v=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-    ray.setFromCamera(v,cam);
-    const hit=ray.intersectObjects(pills)[0];
-    pills.forEach((p)=>{const on=hit&&hit.object===p;p.userData.hover=on;p.scale.setScalar(on?1.16:1);});
-    cv.style.cursor=drag?'grabbing':(hit?'pointer':'grab');
-  });
-  const endDrag=()=>{drag=false;cv.style.cursor='grab';panel.classList.remove('dragging');};
-  cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
-  let visible=true,t0=performance.now();
-  new IntersectionObserver((es)=>{visible=es[0].isIntersecting;},{threshold:0}).observe(panel);
-  document.addEventListener('visibilitychange',()=>{visible=!document.hidden;});
+  /* batas data: shell + edges */
+  const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(3.35,1),new THREE.MeshStandardMaterial({color:0x0075de,transparent:true,opacity:0,roughness:.5,metalness:0,depthWrite:false}));
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(3.35,1)),new THREE.LineBasicMaterial({color:0x1a2029,transparent:true,opacity:0}));
+  world.add(shell,edges);
+  /* skill ditolak (coral): didorong keluar saat ch-batas */
+  const reject=pills[3];
+  /* lisensi: torus mengunci */
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(3.35,.045,12,140),new THREE.MeshStandardMaterial({color:0x62aef0,roughness:.3,metalness:.2}));
+  ring.material.transparent=true;ring.material.opacity=0;
+  ring.rotation.x=Math.PI/2.15;
+  world.add(ring);
+  /* debu kertas: partikel sprite bulat */
+  const dustTex=(()=>{
+    const c=document.createElement('canvas');c.width=c.height=32;
+    const g=c.getContext('2d');
+    const gr=g.createRadialGradient(16,16,0,16,16,15);
+    gr.addColorStop(0,'rgba(20,30,40,.55)');gr.addColorStop(1,'rgba(20,30,40,0)');
+    g.fillStyle=gr;g.beginPath();g.arc(16,16,15,0,7);g.fill();
+    const t=new THREE.CanvasTexture(c);return t;
+  })();
+  const N=reduce?0:130;
+  const pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const r=6+Math.random()*7,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=(Math.random()-.5)*9;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+  }
+  const dust=(()=>{
+    if(!N)return null;
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const mat=new THREE.PointsMaterial({size:.09,map:dustTex,transparent:true,opacity:.5,depthWrite:false,color:0x445060});
+    const pts=new THREE.Points(geo,mat);scene.add(pts);return pts;
+  })();
+  /* scroll progress 0..1 lintas story */
+  let target=0,pShown=0,renderable=true;
+  function measure(){
+    const total=story.offsetHeight-innerHeight;
+    target=total>0?clamp(scrollY/total,0,1.15):0;
+    renderable=scrollY<total+innerHeight*1.2;
+  }
+  addEventListener('scroll',()=>{measure();},{passive:true});
   addEventListener('resize',()=>{
-    const w=panel.clientWidth,h=panel.clientHeight;
-    cam.aspect=w/h;cam.updateProjectionMatrix();renderer.setSize(w,h);
+    cam.aspect=innerWidth/innerHeight;
+    cam.fov=innerWidth<900?54:42;
+    cam.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);measure();
   });
+  document.addEventListener('visibilitychange',()=>{measure();});
+  measure();
+  /* kunci kamera per chapter (p: 0..1 lintas 4 chapter)
+     lx/ly = titik pandang: menggeser objek di frame — teks kiri -> objek ke kanan (lx negatif) */
+  const camKeys=[
+    {p:0.00,x:-3.2,y:.7,z:10.6,lx:-1.45,ly:.1},
+    {p:0.33,x:3.0,y:.9,z:8.8,lx:3.7,ly:.05},
+    {p:0.66,x:-3.8,y:.9,z:7.0,lx:-1.1,ly:0},
+    {p:1.00,x:0,y:2.6,z:9.6,lx:0,ly:-.2},
+  ];
+  function camAt(p){
+    let a=camKeys[0],b=camKeys[camKeys.length-1];
+    for(let i=0;i<camKeys.length-1;i++){
+      if(p>=camKeys[i].p&&p<=camKeys[i+1].p){a=camKeys[i];b=camKeys[i+1];break;}
+    }
+    const t=clamp((p-a.p)/Math.max(b.p-a.p,1e-4),0,1),e=ease(t);
+    return{x:lerp(a.x,b.x,e),y:lerp(a.y,b.y,e),z:lerp(a.z,b.z,e),lx:lerp(a.lx,b.lx,e),ly:lerp(a.ly,b.ly,e)};
+  }
+  const seg=(p,i,n)=>clamp(p*n-i,0,1);
+  let last=performance.now();
   function frame(now){
     requestAnimationFrame(frame);
-    if(!visible)return;
-    const t=(now-t0)/1000;
-    if(!reduce&&!drag)tRotY+=.0028;
-    rotY+=(tRotY-rotY)*.07;rotX+=(tRotX-rotX)*.07;
-    world.rotation.y=rotY;world.rotation.x=rotX;
-    core.rotation.y=t*.15;core.rotation.x=Math.sin(t*.3)*.1;
-    pills.forEach((p)=>{
-      const u=p.userData,a=u.a+rotY;
-      const bob=reduce?0:Math.sin(t*1.3+u.ph)*.12;
-      p.position.set(Math.cos(a)*u.r,u.y+bob,Math.sin(a)*u.r);
-      p.rotation.y=a+Math.PI/2;
-      if(!p.userData.hover)p.scale.setScalar(1);
+    const dt=Math.min((now-last)/1000,.05);last=now;
+    if(!renderable||document.hidden)return;
+    pShown+=(target-pShown)*(reduce?1:.075);
+    const p=clamp(pShown,0,1);
+    const t=now/1000;
+    /* kamera */
+    const c=camAt(p);
+    cam.position.set(c.x,c.y,c.z);
+    cam.lookAt(c.lx,c.ly,0);
+    /* world berputar pelan mengikuti perjalanan */
+    world.rotation.y=p*Math.PI*1.35+(reduce?0:t*.03);
+    /* ch0: core sendiri, mengambang */
+    core.rotation.y=t*.16;core.rotation.x=Math.sin(t*.27)*.1;
+    core.position.y=Math.sin(t*.8)*.08;
+    /* ch1: skill muncul satu per satu */
+    const s1=ease(seg(p,1,4));
+    pills.forEach((m,i)=>{
+      const born=ease(clamp((s1-.08-i*.1)/.5,0,1));
+      m.material.opacity=born;
+      const u=m.userData;
+      const a=u.a+p*Math.PI*1.35+(reduce?0:Math.sin(t*.5+u.ph)*.06);
+      const out=i===3?1:0;
+      const push=ease(seg(p,2,4));
+      const r=lerp(0,u.r,born)+out*push*2.4;
+      const y=u.y+(reduce?0:Math.sin(t*1.2+u.ph)*.12);
+      m.position.set(Math.cos(a)*r,y+ (1-born)*2.2,Math.sin(a)*r);
+      m.rotation.y=a+Math.PI/2;
+      if(i===3){m.material.opacity=born*(1-push*.75);}
     });
-    ring.rotation.z=t*.05;
+    /* ch2: shell batas terbentuk; edges mengikuti */
+    const s2=ease(seg(p,2,4));
+    const shellS=1+(1-s2)*.35;
+    shell.scale.setScalar(shellS);
+    shell.material.opacity=s2*.07;
+    edges.scale.setScalar(shellS);
+    edges.material.opacity=s2*.16;
+    /* ch3: ring lisensi mengunci */
+    const s3=ease(seg(p,3,4));
+    ring.scale.setScalar(s3);
+    ring.material.opacity=s3*.95;
+    ring.rotation.z=t*.12;
+    /* debu */
+    if(dust){dust.rotation.y=t*.02;}
     renderer.render(scene,cam);
   }
   requestAnimationFrame(frame);

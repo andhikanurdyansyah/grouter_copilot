@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
+  <link rel="stylesheet" href="/assets/grx-v3.css" />
   <style>
     /* ---- Landing-only structural glue (uses grx.css tokens; no new palette) ---- */
 
@@ -153,7 +154,7 @@
     }
   </style>
 </head>
-<body>
+<body class="grx-v3">
   <a class="skip-link" href="#main">Lewati ke konten utama</a>
 
   <div class="grx-surface">
@@ -168,7 +169,7 @@
         <nav class="site-nav__links" aria-label="Navigasi utama">
           <a class="navlink" href="#features">Fitur</a>
           <a class="navlink" href="#integration">Integrasi</a>
-          <a class="navlink" href="#license">License</a>
+          <a class="navlink" href="#license">Lisensi</a>
           <a class="navlink" href="#pricing">Harga</a>
         </nav>
 
@@ -191,7 +192,7 @@
           <nav aria-label="Navigasi mobile">
             <a class="navlink" href="#features">Fitur</a>
             <a class="navlink" href="#integration">Integrasi</a>
-            <a class="navlink" href="#license">License</a>
+            <a class="navlink" href="#license">Lisensi</a>
             <a class="navlink" href="#pricing">Harga</a>
             <div class="menu-actions">
               <a class="btn btn-ghost btn-block" href="#integration">Lihat Integrasi</a>
@@ -353,7 +354,7 @@
             </li>
             <li class="metal-panel step">
               <span class="step__num" aria-hidden="true">2</span>
-              <h4>Purchase license</h4>
+              <h4>Beli lisensi</h4>
               <p>Pilih paket quota. Terima <span class="mono">LICENSE KEY</span> — satu-satunya credential Anda.</p>
             </li>
             <li class="metal-panel step">
@@ -374,7 +375,7 @@
       <section class="section" id="license" aria-labelledby="license-title">
         <div class="container">
           <div class="section-head">
-            <p class="eyebrow">License model</p>
+            <p class="eyebrow">Model lisensi</p>
             <h2 id="license-title" style="margin-top:var(--sp-3)">Satu credential, <span class="chip-cyan">dua lapis keamanan</span></h2>
             <p class="sub">Verifikasi offline Ed25519 dengan heartbeat best-effort. App tetap jalan walau license server down.</p>
           </div>
@@ -450,7 +451,7 @@
             <h4>Akun</h4>
             <a href="/register">Register</a>
             <a href="/login">Login</a>
-            <a href="#license">License model</a>
+            <a href="#license">Model lisensi</a>
           </div>
         </div>
         <div class="footer-bottom">

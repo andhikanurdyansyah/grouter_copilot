@@ -36,11 +36,11 @@
         <span class="nav-section">Akun</span>
         <a class="nav-item" data-route="overview" href="/user">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="12" width="7" height="9" rx="1.5"/></svg>
-          Overview
+          Ringkasan
         </a>
         <a class="nav-item" data-route="licenses" href="/user/licenses">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="16" r="4"/><path d="M11 13L21 3M16 8l3 3"/></svg>
-          Licenses
+          Lisensi
         </a>
         <a class="nav-item" data-route="organization" href="/user/organization">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -57,8 +57,8 @@
               </svg>
             </button>
             <div>
-              <div class="page-title" id="pageTitle">Overview</div>
-              <div class="page-sub" id="pageSub">Kelola license dan pantau penggunaan Anda</div>
+              <div class="page-title" id="pageTitle">Ringkasan</div>
+              <div class="page-sub" id="pageSub">Kelola lisensi dan pantau penggunaan Anda</div>
             </div>
           </div>
           <div class="row">
@@ -78,12 +78,12 @@
           <!-- Stats -->
           <section class="grid grid-3" aria-label="Ringkasan akun">
             <div class="metal-panel stat-card">
-              <div class="stat-label">Active licenses</div>
+              <div class="stat-label">Lisensi aktif</div>
               <div class="stat-value cyan" id="statLicenses">0</div>
               <div class="stat-delta" id="statLicDelta">—</div>
             </div>
             <div class="metal-panel stat-card">
-              <div class="stat-label">Installs</div>
+              <div class="stat-label">Install</div>
               <div class="stat-value" id="statInstalls">0</div>
               <div class="stat-delta" id="statInstDelta">—</div>
             </div>
@@ -98,18 +98,18 @@
           <section class="metal-panel panel" aria-labelledby="licensesTitle">
             <div class="panel-head">
               <div>
-                <span class="panel-title" id="licensesTitle">License terbaru</span>
-                <div class="sub">5 license terakhir — kelola semuanya di <a class="chip-cyan" href="/user/licenses">halaman License</a>.</div>
+                <span class="panel-title" id="licensesTitle">Lisensi terbaru</span>
+                <div class="sub">5 lisensi terakhir — kelola semuanya di <a class="chip-cyan" href="/user/licenses">halaman Lisensi</a>.</div>
               </div>
             </div>
             <div class="panel-body">
               <div class="table-wrap">
                 <table>
-                  <caption class="sr-only">Lima license terakhir milik akun Anda</caption>
+                  <caption class="sr-only">Lima lisensi terakhir milik akun Anda</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Customer</th>
-                      <th scope="col">Installs</th>
+                      <th scope="col">Label</th>
+                      <th scope="col">Install</th>
                       <th scope="col">Status</th>
                       <th scope="col">Expires</th>
                     </tr>
@@ -126,15 +126,15 @@
           <section class="metal-panel panel" id="trend" aria-labelledby="trendTitle">
             <div class="panel-head">
               <div>
-                <span class="panel-title" id="trendTitle">Tren license terbit</span>
-                <div class="sub">Akumulasi license per bulan, dari tanggal terbit license Anda.</div>
+                <span class="panel-title" id="trendTitle">Tren lisensi terbit</span>
+                <div class="sub">Akumulasi lisensi per bulan, dari tanggal terbit lisensi Anda.</div>
               </div>
             </div>
             <div class="panel-body">
               <div class="chart-head">
                 <div class="chart-value" id="chartValue">—</div>
                 <div class="legend">
-                  <span class="legend-item"><span class="legend-swatch" aria-hidden="true"></span> License kumulatif</span>
+                  <span class="legend-item"><span class="legend-swatch" aria-hidden="true"></span> Lisensi kumulatif</span>
                 </div>
               </div>
               <div id="chartHost" aria-live="polite">
@@ -150,12 +150,12 @@
           <section class="metal-panel panel">
             <div class="panel-head">
               <div>
-                <span class="panel-title">License Anda</span>
-                <div class="sub">Install, status, dan masa berlaku setiap license.</div>
+                <span class="panel-title">Lisensi Anda</span>
+                <div class="sub">Install, status, dan masa berlaku setiap lisensi.</div>
               </div>
               <div class="row wrap">
                 <div class="field" style="margin:0">
-                  <label class="sr-only" for="licFilter">Filter status license</label>
+                  <label class="sr-only" for="licFilter">Filter status lisensi</label>
                   <select id="licFilter">
                     <option value="all">Semua status</option>
                     <option value="active">Aktif</option>
@@ -163,17 +163,17 @@
                     <option value="revoked">Dicabut</option>
                   </select>
                 </div>
-                <button class="btn btn-primary btn-sm" id="purchaseBtn" type="button">Purchase License</button>
+                <button class="btn btn-primary btn-sm" id="purchaseBtn" type="button">Beli Lisensi</button>
               </div>
             </div>
             <div class="panel-body">
               <div class="table-wrap">
                 <table>
-                  <caption class="sr-only">Daftar license milik akun Anda</caption>
+                  <caption class="sr-only">Daftar lisensi milik akun Anda</caption>
                   <thead>
                     <tr>
-                      <th scope="col">Customer</th>
-                      <th scope="col">Installs</th>
+                      <th scope="col">Label</th>
+                      <th scope="col">Install</th>
                       <th scope="col">Status</th>
                       <th scope="col">Expires</th>
                     </tr>
@@ -236,7 +236,7 @@
       </div>
 
       <div id="pickerView">
-        <p class="sub" style="margin-bottom:16px">Setelah pembayaran terkonfirmasi, license otomatis aktif di akun Anda.</p>
+        <p class="sub" style="margin-bottom:16px">Setelah pembayaran terkonfirmasi, lisensi otomatis aktif di akun Anda.</p>
         <div class="plan-grid" id="pkgGrid"></div>
         <p id="pkgError" class="chip-err sub" hidden></p>
         <div class="modal-actions">
@@ -249,9 +249,9 @@
         <img id="qrImage" alt="Kode QR untuk pembayaran order" style="width:min(240px,100%);height:auto;display:block;margin:14px auto;background:#fff;padding:8px;border:1px solid var(--grx-steel-hi);border-radius:var(--r)" />
         <div class="chart-value" id="qrAmount" style="text-align:center"></div>
         <div class="row" style="justify-content:center;margin-top:8px"><span class="badge pending" id="qrStatus">PENDING</span></div>
-        <p class="sub" id="qrNote" style="margin-top:14px">Setelah pembayaran dikonfirmasi, license akan otomatis terbit. Klik <strong>Refresh</strong> untuk melihat license baru Anda.</p>
+        <p class="sub" id="qrNote" style="margin-top:14px">Setelah pembayaran dikonfirmasi, lisensi akan otomatis terbit. Klik <strong>Muat ulang</strong> untuk melihat lisensi baru Anda.</p>
         <div class="modal-actions">
-          <button class="btn btn-primary" id="refreshBtn" type="button" style="flex:1">Refresh</button>
+          <button class="btn btn-primary" id="refreshBtn" type="button" style="flex:1">Muat ulang</button>
           <button class="btn btn-ghost" id="closeQr" type="button" style="flex:1">Tutup</button>
         </div>
       </div>
@@ -407,21 +407,21 @@
         renderLicenses(licenses.slice(0, 5), els.licenseRows, false);
         renderLicenses(licenses, els.licenseRowsFull, true);
         renderChart(licenses);
-        els.liveStatus.textContent = licenses.length + ' license dimuat, ' + active.length + ' aktif.';
+        els.liveStatus.textContent = licenses.length + ' lisensi dimuat, ' + active.length + ' aktif.';
       }
 
       /* renderLicenses: isi satu tabel license. Filter + empty-state khusus
          halaman full (/user/licenses); overview menampilkan apa adanya. */
       function renderLicenses(list, tbody, filterable) {
         if (!state.licenses.length) {
-          tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada license. Purchase untuk mulai.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada lisensi. Beli lisensi untuk mulai.</td></tr>';
           return;
         }
         if (filterable && state.filter !== 'all') {
           list = list.filter(function (l) { return licenseStatus(l) === state.filter; });
         }
         if (!list.length) {
-          tbody.innerHTML = '<tr><td colspan="4" class="empty">Tidak ada license dengan status ini.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">Tidak ada lisensi dengan status ini.</td></tr>';
           return;
         }
 
@@ -850,8 +850,8 @@
       /* ---------------- routing (/user, /user/licenses, /user/organization) ---------------- */
 
       var ROUTES = {
-        overview:    { path: '/user',                 view: 'view-overview',    title: 'Overview',    sub: 'Kelola license dan pantau penggunaan Anda' },
-        licenses:    { path: '/user/licenses',        view: 'view-licenses',    title: 'Licenses',    sub: 'Install, status, dan masa berlaku setiap license' },
+        overview:    { path: '/user',                 view: 'view-overview',    title: 'Ringkasan',    sub: 'Kelola lisensi dan pantau penggunaan Anda' },
+        licenses:    { path: '/user/licenses',        view: 'view-licenses',    title: 'Lisensi',    sub: 'Install, status, dan masa berlaku setiap lisensi' },
         organization: { path: '/user/organization',   view: 'view-organization', title: 'Organisasi', sub: 'Kelola organisasi & anggota tim Anda' }
       };
 

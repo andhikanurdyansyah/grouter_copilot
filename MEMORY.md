@@ -6,7 +6,8 @@
 
 ## START DI SINI
 
-- **Baca `docs/handoff-2026-10-01.md` DULU** (status, temuan terbuka, plan I3–I5).
+- **Baca `docs/handoff-2026-10-02.md` DULU** (status terbaru: UI v3 + routing real-path, pushed).
+  Baseline lama: `docs/handoff-2026-10-01.md` (safety rules + gotcha §8 masih berlaku).
 - Docs = source of truth. Beberapa doc MASIH STALE — lihat @section "Docs stale" di bawah.
 
 ## Identitas & boundary

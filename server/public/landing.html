@@ -1,24 +1,25 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f5f4"><meta name="description" content="gRouter Copilot: AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca Anda yang tentukan."><title>gRouter Copilot: AI dengan konteks aplikasi Anda</title><link rel="icon" type="image/png" href="/assets/copilot-mark.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/landing.css"></head><body>
 <!--
-  DIRECTION CONTRACT - gRouter Copilot landing (brief-pinned: DESIGN.md, Notion style reference)
-  THESIS: halaman marketing yang terasa seperti dokumen kerja yang rapi di atas kertas hangat;
-  menolak default kategori (dark tech neon) karena produk dijual pada kejelasan batas data.
-  OWN-WORLD: kanvas #f6f5f4, kartu putih hairline rgba(0,0,0,.08) tanpa shadow, satu aksen
-  #0075de untuk aksi, panel aksen flat (#ffb110, #f64932, #62aef0, #02093a), Inter display
-  tracking negatif, serif Source Serif 4 untuk sub-neraca, pill highlight di headline.
-  STORY: pengunjung paham cara kerja skill read-only dalam satu scroll, percaya bahwa model
-  tidak pernah menyentuh database, lalu membuat akun.
-  FIRST VIEWPORT: nav 64px; baris tanda skill lingkaran; headline 2 baris dengan pill "konteks";
-  sub serif 1 kalimat; 2 tombol; mockup produk besar dengan satu drop shadow.
-  FORM: brief-pinned (DESIGN.md Notion reference); seed key tidak berlaku.
+  DIRECTION CONTRACT - gRouter Copilot landing v2 (brief-pinned: DESIGN.md, Notion ref)
+  THESIS: dokumen kerja rapi di atas kertas hangat, sekarang HIDUP: orbit 3D runtime+skill
+  yang bisa diputar, reveal berlapis saat scroll, header yang merespons posisi baca.
+  Menolak: hero center-slop, spacing retak-beras, footer satu-baris, animasi tempel.
+  OWN-WORLD: kanvas #f6f5f4, kartu hairline tanpa shadow, satu aksen #0075de, panel aksen
+  flat (#ffb110/#02093a/#f64932), Inter tracking negatif, Source Serif 4, pill peach.
+  STORY: pengunjung main dulu dengan orbit 3D (runtime = core, skill = pill), paham batas
+  data lewat diagram arsitektur, lihat harga real, lalu membuat akun.
+  FIRST VIEWPORT: nav 60px + progress bar; grid split: copy kiri (marks, headline 2 baris
+  dengan pill, sub serif, 2 CTA) dan panel 3D orbit kanan yang bisa diseret.
+  FORM: brief-pinned (DESIGN.md Notion) + arahan Jie v2: motion lebih kuat, scale lebih rapat.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review,
   the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 -->
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
 <a class="skip" href="#main">Lewati ke konten</a>
 <header class="nav" id="nav"><div class="nav-in">
   <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="30" height="30"></span><span>gRouter <b>Copilot</b></span></a>
   <nav class="nav-links" id="navLinks" aria-label="Navigasi utama">
-    <a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a>
+    <a href="#cara-kerja" data-spy="cara-kerja">Cara kerja</a><a href="#keamanan" data-spy="keamanan">Keamanan</a><a href="#harga" data-spy="harga">Harga</a>
   </nav>
   <div class="nav-actions">
     <a class="nav-login" href="/login">Masuk</a>
@@ -32,21 +33,31 @@
 </header>
 <main id="main">
 <section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="marks" aria-hidden="true">
+        <span class="mark m1"><svg viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="mark m2"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <span class="mark m3"><svg viewBox="0 0 24 24"><path d="M9 7V4h6v3M9 17v3h6v-3M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <span class="mark m4"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <span class="mark m5"><svg viewBox="0 0 24 24"><path d="M12 4v5m0 6v5m8-8h-5m-6 0H4m12.5-4.5l-3 3m-5 5l-3 3m11 0l-3-3m-5-5l-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      </div>
+      <h1>AI yang memahami <span class="hl">konteks</span><br>aplikasi Anda.</h1>
+      <p class="lead">Tentukan sendiri data yang boleh dibaca asisten. Sisanya, tetap di tangan aplikasi Anda.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/register">Mulai sekarang<svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 12h13m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="btn btn-ghost" href="#cara-kerja">Lihat cara kerja</a>
+      </div>
+    </div>
+    <div class="hero-vis" id="vis3d" role="img" aria-label="Ilustrasi 3D interaktif: pill skill berwarna mengorbit inti runtime. Seret untuk memutar.">
+      <div class="vis-hint" id="visHint"><svg viewBox="0 0 24 24"><path d="M8 8l-3 4 3 4m8-8l3 4-3 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Seret untuk memutar</div>
+      <div class="vis-fallback" id="visFallback" hidden>
+        <svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="34" fill="#02093a"/><ellipse cx="100" cy="100" rx="86" ry="34" fill="none" stroke="rgba(0,0,0,.14)" stroke-dasharray="3 6"/><circle cx="186" cy="100" r="9" fill="#0075de"/><circle cx="22" cy="88" r="9" fill="#ffb110"/><circle cx="150" cy="61" r="9" fill="#f64932"/><circle cx="52" cy="133" r="9" fill="#62aef0"/></svg>
+      </div>
+    </div>
+  </div>
   <div class="wrap">
-    <div class="marks" aria-hidden="true">
-      <span class="mark m1"><svg viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="mark m2"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-      <span class="mark m3"><svg viewBox="0 0 24 24"><path d="M9 7V4h6v3M9 17v3h6v-3M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-      <span class="mark m4"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-      <span class="mark m5"><svg viewBox="0 0 24 24"><path d="M12 4v5m0 6v5m8-8h-5m-6 0H4m12.5-4.5l-3 3m-5 5l-3 3m11 0l-3-3m-5-5l-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-    </div>
-    <h1>AI yang memahami <span class="hl">konteks</span><br>aplikasi Anda.</h1>
-    <p class="lead">Tentukan sendiri data yang boleh dibaca asisten. Sisanya, tetap di tangan aplikasi Anda.</p>
-    <div class="actions">
-      <a class="btn btn-primary" href="/register">Mulai sekarang</a>
-      <a class="btn btn-ghost" href="#cara-kerja">Lihat cara kerja</a>
-    </div>
-    <figure class="mockup">
+    <figure class="mockup" data-rv>
       <div class="app">
         <div class="app-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="app-title">Aplikasi Anda / Orders</span></div>
         <div class="app-body">
@@ -71,16 +82,16 @@
 </section>
 <section class="strip" aria-label="Prinsip produk">
   <div class="wrap strip-in">
-    <span class="tag">Node.js native</span><span class="tag">Skill read-only</span><span class="tag">Satu lisensi</span><span class="tag">Kredensial di server</span>
+    <span class="tag" data-rv>Node.js native</span><span class="tag" data-rv>Skill read-only</span><span class="tag" data-rv>Satu lisensi</span><span class="tag" data-rv>Kredensial di server</span>
   </div>
 </section>
 <section class="section" id="cara-kerja">
-  <div class="wrap head">
+  <div class="wrap head" data-rv>
     <h2>Satu lapisan percakapan, batas yang jelas.</h2>
     <p class="serif">Copilot menghubungkan pertanyaan pengguna dengan fungsi yang Anda sediakan. Tidak lebih dari itu.</p>
   </div>
   <div class="wrap">
-    <div class="flow-card">
+    <div class="flow-card" data-rv>
       <div class="step"><span class="step-k">Instal</span><p>Tambahkan plugin ke aplikasi Node.js Anda.</p><code>npm i @grouter/copilot</code></div>
       <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="step"><span class="step-k">Definisikan</span><p>Tulis skill read-only: fungsi data yang Anda pilih.</p><code>orders.list({ since })</code></div>
@@ -88,15 +99,15 @@
       <div class="step"><span class="step-k">Hubungkan</span><p>Aktifkan dengan satu lisensi Copilot.</p><code>license: GR-XXXX-XXXX</code></div>
     </div>
     <div class="duo">
-      <article class="card"><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
-      <article class="card"><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
+      <article class="card" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
+      <article class="card" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
     </div>
-    <p class="state-note">Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
+    <p class="state-note" data-rv>Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
   </div>
 </section>
 <section class="section" id="keamanan">
   <div class="wrap split">
-    <div class="split-text">
+    <div class="split-text" data-rv>
       <h2>Model tidak pernah menyentuh database.</h2>
       <p class="serif">Aplikasi Anda tetap sumber kebenaran. Copilot hanya membaca lewat skill yang terdaftar, dan kredensial tidak pernah keluar dari server.</p>
       <ul class="points">
@@ -106,7 +117,7 @@
         <li><b>Lisensi terverifikasi</b><span>Token lisensi ditandatangani Ed25519 dan diperiksa server.</span></li>
       </ul>
     </div>
-    <div class="arch" role="img" aria-label="Diagram: aplikasi host memanggil Copilot runtime yang hanya boleh membaca skill terdaftar, hasilnya diteruskan ke model">
+    <div class="arch" data-rv role="img" aria-label="Diagram: aplikasi host memanggil Copilot runtime yang hanya boleh membaca skill terdaftar, hasilnya diteruskan ke model">
       <div class="arch-node">Aplikasi Anda</div>
       <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="arch-node arch-core">Copilot runtime</div>
@@ -121,7 +132,7 @@
   </div>
 </section>
 <section class="section section-alt" id="harga">
-  <div class="wrap head">
+  <div class="wrap head" data-rv>
     <h2>Harga yang jelas, langsung dari katalog.</h2>
     <p class="serif">Plan dimuat dari server saat halaman ini dibuka. Beli lewat dasbor setelah membuat akun.</p>
   </div>
@@ -130,19 +141,35 @@
   </div>
 </section>
 <section class="close">
-  <div class="wrap close-in">
+  <div class="wrap close-in" data-rv>
     <h2>Bangun Copilot yang memahami produk Anda.</h2>
     <p>Mulai dari batas data yang Anda kendalikan.</p>
     <a class="btn btn-onaccent" href="/register">Mulai sekarang</a>
   </div>
 </section>
 </main>
-<footer class="footer"><div class="wrap footer-in">
-  <span>&copy; <span id="year"></span> gRouter Copilot</span>
-  <nav aria-label="Tautan footer"><a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a><a href="/login">Masuk</a></nav>
-</div></footer>
+<footer class="footer">
+  <div class="wrap footer-top">
+    <div class="footer-brand">
+      <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="30" height="30"></span><span>gRouter <b>Copilot</b></span></a>
+      <p>AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca, Anda yang tentukan.</p>
+      <a class="btn btn-primary" href="/register">Mulai sekarang</a>
+    </div>
+    <nav class="footer-cols" aria-label="Tautan footer">
+      <div class="fcol"><h4>Produk</h4><a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a></div>
+      <div class="fcol"><h4>Akun</h4><a href="/register">Daftar</a><a href="/login">Masuk</a></div>
+      <div class="fcol"><h4>Ekosistem</h4><a href="https://github.com/andhikanurdyansyah/grouter_copilot" rel="noopener" target="_blank">GitHub</a><a href="/register">npm @grouter/copilot</a></div>
+    </nav>
+    <button class="to-top" id="toTop" aria-label="Kembali ke atas"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="wrap footer-base">
+    <span>&copy; <span id="year"></span> gRouter Copilot</span>
+    <span class="mono-tag">Node.js murni · tanpa dependensi runtime</span>
+  </div>
+</footer>
 <script>
 (function(){'use strict';
+document.documentElement.classList.add('js');
 var y=document.getElementById('year');if(y)y.textContent=new Date().getFullYear();
 var m=document.getElementById('menu'),p=document.getElementById('mobilePanel');
 if(m&&p){m.onclick=function(){var open=p.hidden;p.hidden=!open;m.setAttribute('aria-expanded',String(open));};}
@@ -152,7 +179,135 @@ var g=document.getElementById('plans');
 fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(d){
   var plans=(d.plans||[]).filter(function(x){return x.active!==false;});
   if(!plans.length)throw new Error('empty');
-  g.innerHTML=plans.map(function(x,i){return '<article class="plan'+(i===1?' featured':'')+'"><h3>'+esc(x.name||x.key)+'</h3><div class="price">'+esc(money(x.amount))+'</div><small>'+esc(x.quota||'')+(x.expiresInDays?' · aktif '+esc(x.expiresInDays)+' hari':'')+'</small><ul>'+(x.features||[]).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="btn btn-plan" href="/register">Pilih plan</a></article>';}).join('');
+  g.innerHTML=plans.map(function(x,i){return '<article class="plan'+(i===1?' featured':'')+'" data-rv style="--d:'+(i+1)+'"><h3>'+esc(x.name||x.key)+'</h3><div class="price">'+esc(money(x.amount))+'</div><small>'+esc(x.quota||'')+(x.expiresInDays?' · aktif '+esc(x.expiresInDays)+' hari':'')+'</small><ul>'+(x.features||[]).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="btn btn-plan" href="/register">Pilih plan</a></article>';}).join('');
+  initReveal();
 }).catch(function(){g.innerHTML='<div class="plan-empty">Katalog belum tersedia. Coba muat ulang halaman.</div>';});
+/* ---- scroll state: header, progress bar, reveal, scrollspy ---- */
+var nav=document.getElementById('nav'),bar=document.getElementById('progressBar'),tick=false;
+var spyLinks=[].slice.call(document.querySelectorAll('[data-spy]'));
+var spySections=spyLinks.map(function(l){return document.getElementById(l.getAttribute('data-spy'));}).filter(Boolean);
+function updateSpy(){
+  var line=(window.innerHeight||800)*0.42,current=-1;
+  for(var i=0;i<spySections.length;i++){
+    if(spySections[i].getBoundingClientRect().top<=line)current=i;
+  }
+  spyLinks.forEach(function(l,j){
+    var on=j===current;
+    l.classList.toggle('active',on);
+    if(on)l.setAttribute('aria-current','true');else l.removeAttribute('aria-current');
+  });
+}
+function onScroll(){
+  if(tick)return;tick=true;
+  requestAnimationFrame(function(){
+    var sc=window.scrollY||0,max=document.documentElement.scrollHeight-window.innerHeight;
+    bar.style.transform='scaleX('+(max>0?sc/max:0)+')';
+    nav.classList.toggle('scrolled',sc>10);
+    updateSpy();
+    tick=false;
+  });
+}
+addEventListener('scroll',onScroll,{passive:true});
+addEventListener('resize',onScroll,{passive:true});
+onScroll();
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function initReveal(){
+  var els=[].slice.call(document.querySelectorAll('[data-rv]:not(.in)'));
+  if(reduce||!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in');});return;}
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+  },{threshold:.15,rootMargin:'0px 0px -8% 0px'});
+  els.forEach(function(e){io.observe(e);});
+}
+initReveal();
+var tt=document.getElementById('toTop');
+if(tt)tt.addEventListener('click',function(){scrollTo({top:0,behavior:reduce?'auto':'smooth'});});
 })();
+</script>
+<script type="module">
+/* 3D orbit: runtime core + skill pills. Lazy-load; drag = rotate; hover = highlight. */
+const panel=document.getElementById('vis3d');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let started=false;
+const io=new IntersectionObserver((es)=>{
+  es.forEach((en)=>{if(en.isIntersecting&&!started){started=true;io.disconnect();boot();}});
+},{threshold:.2});
+io.observe(panel);
+async function boot(){
+  let THREE;
+  try{THREE=await import('/assets/vendor/three.module.min.js');}
+  catch(e){panel.querySelector('#visFallback').hidden=false;panel.querySelector('#visHint').style.display='none';return;}
+  let renderer;
+  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}
+  catch(e){panel.querySelector('#visFallback').hidden=false;panel.querySelector('#visHint').style.display='none';return;}
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(panel.clientWidth,panel.clientHeight);
+  renderer.domElement.className='vis-canvas';
+  panel.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(38,panel.clientWidth/panel.clientHeight,.1,50);
+  cam.position.set(0,1.6,8.2);cam.lookAt(0,0,0);
+  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,1.15));
+  const key=new THREE.DirectionalLight(0xffffff,2.4);key.position.set(4,6,5);scene.add(key);
+  const rim=new THREE.DirectionalLight(0x9bd7ff,.9);rim.position.set(-5,2,-4);scene.add(rim);
+  const world=new THREE.Group();scene.add(world);
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1.08,1),new THREE.MeshStandardMaterial({color:0x02093a,roughness:.32,metalness:.15,flatShading:true}));
+  world.add(core);
+  const cols=[0x0075de,0x62aef0,0xffb110,0xf64932,0x0075de,0x9aa2ab];
+  const pills=[];
+  cols.forEach((c,i)=>{
+    const m=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.62,4,14),new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.08}));
+    const a=i/cols.length*Math.PI*2;
+    m.userData={a,r:2.25+((i%3)-1)*.22,y:(i%2?1:-1)*(.32+(i%3)*.18),ph:i*1.1};
+    m.rotation.z=Math.PI/2;m.rotation.y=a;
+    world.add(m);pills.push(m);
+  });
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.35,.012,8,120),new THREE.MeshBasicMaterial({color:0xb9c2cc,transparent:true,opacity:.55}));
+  ring.rotation.x=Math.PI/2*.86;world.add(ring);
+  let tRotY=0,tRotX=.14,rotY=0,rotX=.14,drag=false,px=0,py=0,moved=0;
+  const cv=renderer.domElement;
+  cv.style.cursor='grab';
+  cv.addEventListener('pointerdown',(e)=>{drag=true;moved=0;px=e.clientX;py=e.clientY;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';panel.classList.add('dragging');});
+  cv.addEventListener('pointermove',(e)=>{
+    const r=cv.getBoundingClientRect();
+    if(drag){
+      const dx=e.clientX-px,dy=e.clientY-py;moved+=Math.abs(dx)+Math.abs(dy);
+      tRotY+=dx*.006;tRotX=Math.max(-.7,Math.min(.7,tRotX+dy*.004));px=e.clientX;py=e.clientY;
+    }
+    const ray=new THREE.Raycaster();
+    const v=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+    ray.setFromCamera(v,cam);
+    const hit=ray.intersectObjects(pills)[0];
+    pills.forEach((p)=>{const on=hit&&hit.object===p;p.userData.hover=on;p.scale.setScalar(on?1.16:1);});
+    cv.style.cursor=drag?'grabbing':(hit?'pointer':'grab');
+  });
+  const endDrag=()=>{drag=false;cv.style.cursor='grab';panel.classList.remove('dragging');};
+  cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+  let visible=true,t0=performance.now();
+  new IntersectionObserver((es)=>{visible=es[0].isIntersecting;},{threshold:0}).observe(panel);
+  document.addEventListener('visibilitychange',()=>{visible=!document.hidden;});
+  addEventListener('resize',()=>{
+    const w=panel.clientWidth,h=panel.clientHeight;
+    cam.aspect=w/h;cam.updateProjectionMatrix();renderer.setSize(w,h);
+  });
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(!visible)return;
+    const t=(now-t0)/1000;
+    if(!reduce&&!drag)tRotY+=.0028;
+    rotY+=(tRotY-rotY)*.07;rotX+=(tRotX-rotX)*.07;
+    world.rotation.y=rotY;world.rotation.x=rotX;
+    core.rotation.y=t*.15;core.rotation.x=Math.sin(t*.3)*.1;
+    pills.forEach((p)=>{
+      const u=p.userData,a=u.a+rotY;
+      const bob=reduce?0:Math.sin(t*1.3+u.ph)*.12;
+      p.position.set(Math.cos(a)*u.r,u.y+bob,Math.sin(a)*u.r);
+      p.rotation.y=a+Math.PI/2;
+      if(!p.userData.hover)p.scale.setScalar(1);
+    });
+    ring.rotation.z=t*.05;
+    renderer.render(scene,cam);
+  }
+  requestAnimationFrame(frame);
+}
 </script></body></html>

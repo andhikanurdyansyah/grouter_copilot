@@ -253,12 +253,15 @@ if(tt)tt.addEventListener('click',function(){scrollTo({top:0,behavior:reduce?'au
 })();
 </script>
 <script type="module">
-/* Scene v4 — setiap bentuk bermakna untuk produk:
-   jendela app host (tabel Orders) + panel Copilot menempel di tepinya,
-   kartu skill read-only terdaftar, kandang kaca = batas data,
-   kartu lisensi yang turun, mengunci, dan mengaktifkan Copilot.
-   KAMERA TETAP; stage group bergeser horizontal per chapter (deterministik).
-   Scroll progress (p) lintas story: chapter i terlihat saat p ~ i/3. */
+/* Scene v5 PREMIUM — narasi produk sama (app host -> skill read-only -> batas data ->
+   lisensi mengunci), dieksekusi dengan bahasa material kelas studio:
+   - environment studio via PMREMGenerator.fromScene (softbox putih/paper + strip midnight)
+   - slab rounded-rect EXTRUDED (bukan plane tipis): ceramic clearcoat, kaca frosted
+     (clearcoat murah, tanpa transmission — biaya render aman), midnight gloss, coin marigold
+   - soft shadows nyata (PCFSoft + ShadowMaterial ground), tone mapping ACESFilmic
+   - pointer parallax, spring stagger, reduced-motion live.
+   Kamera tetap + satu grup unit berpindah pose per chapter (deterministik).
+   Semua API core three r164 — tanpa addon, tanpa npm. */
 const stage=document.getElementById('glStage');
 const story=document.getElementById('story');
 const mqReduce=matchMedia('(prefers-reduced-motion: reduce)');
@@ -267,6 +270,7 @@ mqReduce.addEventListener?.('change',e=>{reduce=e.matches;if(reduce)pShown=targe
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const backOut=t=>{const c1=1.70158,c3=c1+1;t=clamp(t,0,1);return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
 async function boot(){
   try{
   let THREE,renderer;
@@ -274,39 +278,110 @@ async function boot(){
     THREE=await import('/assets/vendor/three.module.min.js');
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
   }catch(e){stage.remove();return;}
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+  const mob0=innerWidth<900;
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
   renderer.setSize(innerWidth,innerHeight);
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.2;
+  if(THREE.SRGBColorSpace)renderer.outputColorSpace=THREE.SRGBColorSpace;
+  const isGL2=renderer.capabilities.isWebGL2!==false;
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
   const scene=new THREE.Scene();
   scene.fog=new THREE.Fog(0xf6f5f4,12,30);
-  const cam=new THREE.PerspectiveCamera(innerWidth<900?54:42,innerWidth/innerHeight,.1,60);
+  const cam=new THREE.PerspectiveCamera(mob0?54:42,innerWidth/innerHeight,.1,60);
   const world=new THREE.Group();scene.add(world);
-  /* ---- kanvas -> tekstur: kartu flat ala Notion (hairline, radius, tanpa shadow)
-         pw/ph dalam PIKSEL desain; plane world = px / PXW ---- */
+  /* ---- environment studio: softbox putih/paper + strip midnight untuk refleksi ---- */
+  (function studio(){
+    const env=new THREE.Scene();
+    env.background=new THREE.Color(0xf6f5f4);
+    const P=(w,h,c,x,y,z,rx,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.set(rx||0,ry||0,0);env.add(m);};
+    P(14,7,0xffffff,0,6,0,Math.PI/2,0);          /* top softbox */
+    P(9,6,0xffffff,-8,1,0,0,Math.PI/2);           /* kiri */
+    P(9,6,0xe6f3fe,8,1,0,0,-Math.PI/2);           /* kanan: wash sky */
+    P(16,8,0xd8d2ca,0,-3,7,0,Math.PI);            /* bantalan paper bawah */
+    P(2.4,7,0x02093a,-6,2,-6,0,Math.PI/4);        /* strip midnight: aksen refleksi */
+    const pm=new THREE.PMREMGenerator(renderer);
+    scene.environment=pm.fromScene(env,.05).texture;
+    pm.dispose();
+  })();
+  /* ---- lights + shadow nyata ---- */
+  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,.55));
+  const key=new THREE.DirectionalLight(0xffffff,1.5);
+  key.position.set(4.5,7.5,5);
+  key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048);
+  key.shadow.camera.left=-8;key.shadow.camera.right=8;
+  key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
+  key.shadow.camera.far=30;key.shadow.bias=-.0004;key.shadow.radius=8;
+  scene.add(key);
+  const rim=new THREE.DirectionalLight(0x9bd7ff,.5);rim.position.set(-6,3,-4);scene.add(rim);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.ShadowMaterial({opacity:.13}));
+  ground.rotation.x=-Math.PI/2;ground.position.y=-2.32;ground.receiveShadow=true;
+  world.add(ground);
+  /* ---- kanvas -> layar: konten UI tetap digambar 2D (crisp), di-depankan pada slab ---- */
   const PXW=95;
   function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
   function wrapTxt(g,txt,x,y,maxW,lh){let line='';const words=String(txt).split(' ');for(let i=0;i<words.length;i++){const t=line?line+' '+words[i]:words[i];if(g.measureText(t).width>maxW&&line){g.fillText(line,x,y);y+=lh;line=words[i];}else line=t;}if(line)g.fillText(line,x,y);}
-  function card(pw,ph,drawFn){
+  function screen(pw,ph,drawFn){
     const c=document.createElement('canvas');c.width=pw*2;c.height=ph*2;
     const g=c.getContext('2d');g.scale(2,2);
     const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;if(THREE.SRGBColorSpace)tex.colorSpace=THREE.SRGBColorSpace;
-    const m=new THREE.Mesh(new THREE.PlaneGeometry(pw/PXW,ph/PXW),new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(pw/PXW,ph/PXW),new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:1,depthWrite:false}));
     m.userData.redraw=(st)=>{g.clearRect(0,0,pw,ph);drawFn(g,pw,ph,st||{});tex.needsUpdate=true;};
     m.userData.redraw({});
     return m;
   }
-  /* app host: title bar + tabel order + chip lisensi saat aktif */
+  /* slab rounded-rect extruded */
+  function slabMat(kind){
+    if(kind==='ceramic')return new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.3,metalness:.02,clearcoat:.55,clearcoatRoughness:.28});
+    if(kind==='glass')return new THREE.MeshPhysicalMaterial({color:0xf4faff,roughness:.22,metalness:0,transparent:true,opacity:.74,clearcoat:.9,clearcoatRoughness:.15,envMapIntensity:1.1});
+    if(kind==='midnight')return new THREE.MeshPhysicalMaterial({color:0x1c3f8f,roughness:.22,metalness:.08,clearcoat:.8,clearcoatRoughness:.18});
+    if(kind==='coin')return new THREE.MeshPhysicalMaterial({color:0xffb110,roughness:.24,metalness:1});
+    return new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.35,clearcoat:.5,clearcoatRoughness:.25});
+  }
+  function slab(w,h,depth,r,kind){
+    const sh=new THREE.Shape();
+    const x=-w/2,y=-h/2;
+    sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.absarc(x+w-r,y+r,r,-Math.PI/2,0,false);
+    sh.lineTo(x+w,y+h-r);sh.absarc(x+w-r,y+h-r,r,0,Math.PI/2,false);
+    sh.lineTo(x+r,y+h);sh.absarc(x+r,y+h-r,r,Math.PI/2,Math.PI,false);
+    sh.lineTo(x,y+r);sh.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
+    const geo=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:true,bevelThickness:.025,bevelSize:.025,bevelSegments:3,curveSegments:14});
+    geo.center();
+    const m=new THREE.Mesh(geo,slabMat(kind));
+    return m;
+  }
+  /* kartu produk = slab + layar; satu grup, fade via kedua material */
+  function productCard(pw,ph,drawFn,kind,opts){
+    opts=opts||{};
+    const grp=new THREE.Group();
+    const sm=slab(pw/PXW,ph/PXW,opts.depth||.12,opts.r||.14,kind);
+    sm.castShadow=kind!=='glass';
+    const scr=screen(pw,ph,drawFn);
+    scr.position.z=(opts.depth||.12)/2+.05; /* di depan face + bevel */
+    const sc=opts.screenScale||.965;
+    scr.scale.setScalar(sc);
+    grp.add(sm,scr);
+    grp.userData={slab:sm,scr,mats:[sm.material,scr.material]};
+    grp.redraw=(st)=>{scr.userData.redraw(st);};
+    grp.setFade=(o)=>{grp.userData.mats.forEach(mt=>{mt.transparent=true;mt.opacity=o;});};
+    if(!grp.isGroup)grp.isGroup=true;
+    return grp;
+  }
+  /* ---- konten UI (makna produk dipertahankan dari v4) ---- */
   function drawApp(g,w,h,st){
     g.textBaseline='middle';
     g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,16);g.fill();
     g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,16);g.stroke();
     g.save();rr(g,1,1,w-2,h-2,16);g.clip();
-    g.fillStyle='#faf9f7';g.fillRect(1,1,w-2,30);
+    g.fillStyle='#f4f2ef';g.fillRect(1,1,w-2,30);
     g.fillStyle='#dcd8d3';
     for(let i=0;i<3;i++){g.beginPath();g.arc(17+i*13,16,3.4,0,7);g.fill();}
-    g.fillStyle='#757575';g.font='500 10px Inter,system-ui,sans-serif';
+    g.fillStyle='#1f1d1b';g.font='600 10px Inter,system-ui,sans-serif';
     g.fillText('Aplikasi Anda — Orders',60,17);
-    g.font='500 8px Inter,system-ui,sans-serif';g.fillStyle='#a8a29c';
+    g.font='600 8px Inter,system-ui,sans-serif';g.fillStyle='#6b655f';
     g.fillText('ORDER',20,46);g.fillText('PELANGGAN',96,46);g.fillText('STATUS',206,46);
     g.strokeStyle='rgba(0,0,0,.07)';g.lineWidth=1;g.beginPath();g.moveTo(14,54);g.lineTo(w-14,54);g.stroke();
     const rows=[['#10241','PackAndGo','Dikirim',0],['#10242','Kirana Store','Diproses',1],['#10243','Sentra Mart','Dikirim',0]];
@@ -328,7 +403,6 @@ async function boot(){
     }
     g.restore();
   }
-  /* panel Copilot: header + chip skill + Q/A + status koneksi */
   function drawCopilot(g,w,h,st){
     g.textBaseline='middle';
     g.globalAlpha=st.active?1:.62;
@@ -355,7 +429,6 @@ async function boot(){
     }
     g.globalAlpha=1;
   }
-  /* kartu skill read-only: titik status + label mono + check/silang */
   function drawSkill(g,w,h,s,st){
     g.textBaseline='middle';
     if(st.blocked)g.globalAlpha=.8;
@@ -377,71 +450,79 @@ async function boot(){
     }
     g.globalAlpha=1;
   }
-  /* kartu lisensi: header midnight + key mono + check biru */
   function drawLicense(g,w,h){
     g.textBaseline='middle';
-    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,14);g.fill();
-    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,14);g.stroke();
-    g.save();rr(g,1,1,w-2,h-2,14);g.clip();
-    g.fillStyle='#02093a';g.fillRect(1,1,w-2,40);
-    g.fillStyle='#9bd7ff';g.font='600 8.5px Inter,system-ui,sans-serif';
-    g.fillText('LISENSI COPILOT',14,16);
-    g.fillStyle='rgba(255,255,255,.55)';g.font='500 7px Inter,system-ui,sans-serif';
-    g.fillText('Ed25519 · terverifikasi server',14,30);
-    g.restore();
-    g.fillStyle='#141210';g.font='600 15px ui-monospace,Consolas,monospace';
-    g.fillText('GR-XXXX-XXXX',14,66);
-    g.fillStyle='#757575';g.font='400 7.5px Inter,system-ui,sans-serif';
-    g.fillText('1 lisensi mengaktifkan 1 aplikasi host',14,88);
-    g.fillStyle='#0075de';g.beginPath();g.arc(w-32,62,14,0,7);g.fill();
-    g.strokeStyle='#ffffff';g.lineWidth=2.6;g.lineCap='round';
-    g.beginPath();g.moveTo(w-38,62);g.lineTo(w-34,67);g.lineTo(w-26,56);g.stroke();
+    g.clearRect(0,0,w,h); /* layar transparan: slab midnight terlihat */
+    g.fillStyle='#cfe6ff';g.font='600 9px Inter,system-ui,sans-serif';
+    g.fillText('LISENSI COPILOT',20,20);
+    g.fillStyle='rgba(207,230,255,.75)';g.font='500 7.5px Inter,system-ui,sans-serif';
+    g.fillText('Ed25519 · terverifikasi server',20,38);
+    g.fillStyle='#ffffff';g.font='600 16px ui-monospace,Consolas,monospace';
+    g.fillText('GR-XXXX-XXXX',20,66);
+    g.fillStyle='rgba(255,255,255,.6)';g.font='400 7.5px Inter,system-ui,sans-serif';
+    g.fillText('1 lisensi mengaktifkan 1 aplikasi host',20,90);
+    g.strokeStyle='rgba(255,255,255,.3)';g.lineWidth=1;
+    g.beginPath();g.moveTo(20,104);g.lineTo(w-20,104);g.stroke();
   }
-  /* ---- bayangan lantai lembut (satu drop shadow, ala mockup Notion) ---- */
-  const shTex=(()=>{const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');const gr=g.createRadialGradient(128,64,6,128,64,120);gr.addColorStop(0,'rgba(30,26,22,.20)');gr.addColorStop(1,'rgba(30,26,22,0)');g.fillStyle=gr;g.fillRect(0,0,256,128);return new THREE.CanvasTexture(c);})();
-  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(6.6,2.6),new THREE.MeshBasicMaterial({map:shTex,transparent:true,opacity:.85,depthWrite:false}));
-  shadow.rotation.x=-Math.PI/2;shadow.position.set(.3,-2.2,.3);
-  world.add(shadow);
-  /* ---- unit: semuanya dalam satu grup; pose per chapter (x + skala + copilot) ---- */
+  /* ---- unit: semuanya dalam satu grup; pose per chapter ---- */
   const unit=new THREE.Group();world.add(unit);
-  const CL=1; /* skala internal; skala per-chapter lewat pose */
-  const appGroup=new THREE.Group();appGroup.scale.setScalar(.82);unit.add(appGroup);
-  const appM=card(440,300,drawApp);appM.material.opacity=1;appGroup.add(appM);
-  const copM=card(180,250,drawCopilot);copM.material.opacity=1;copM.position.set(2.3,.1,.9);copM.rotation.y=-.06;appGroup.add(copM);
-  /* ---- kartu skill read-only (billing.write = yang ditolak) ----
-     posisi RELATIF terhadap stage; kartu lahir dari app lalu menyebar ke kiri app */
+  const appGroup=new THREE.Group();appGroup.scale.setScalar(.95);unit.add(appGroup);
+  const appSlab=slab(4.4,2.9,.3,.22,'ceramic');
+  appSlab.castShadow=true;
+  const appScr=screen(440,300,drawApp);
+  appScr.scale.setScalar(.965);appScr.position.z=.195;
+  appGroup.add(appSlab,appScr);
+  const copCard=productCard(180,250,drawCopilot,'glass',{depth:.2,r:.16,screenScale:.94});
+  copCard.position.set(2.42,.08,.55);copCard.rotation.y=-.1;
+  appGroup.add(copCard);
+  /* ---- kartu skill read-only ---- */
   const SK=[
-    {label:'orders.list',ok:true,x:-2.3,y:1.15,z:1.2},
-    {label:'tickets.list',ok:true,x:-2.55,y:.25,z:1.45},
-    {label:'customers.find',ok:true,x:-2.15,y:-.65,z:1.0},
-    {label:'billing.write',ok:false,x:-1.75,y:-1.35,z:1.2,ox:-4.1,oy:-1.55,oz:1.8},
+    {label:'orders.list',ok:true,x:-1.9,y:1.95,z:1.1},
+    {label:'tickets.list',ok:true,x:-.2,y:2.05,z:1.1},
+    {label:'customers.find',ok:true,x:1.5,y:1.95,z:1.1},
+    {label:'billing.write',ok:false,x:-.95,y:-1.35,z:1.2,ox:-3.2,oy:-1.55,oz:1.8},
   ];
   const skills=SK.map((s,i)=>{
-    const m=card(170,56,(g,w,h,st)=>drawSkill(g,w,h,s,st));
-    m.scale.setScalar(CL);
-    m.userData.ph=i*1.13;m.userData.base={x:s.x,y:s.y,z:s.z};
-    m.userData.out=s.ox?{x:s.ox,y:s.oy,z:s.oz}:null;
-    m.userData.blockedDrawn=false;m.userData.isOk=!!s.ok;
-    unit.add(m);return m;
+    const c=productCard(150,48,(g,w,h,st)=>drawSkill(g,w,h,s,st),'ceramic',{depth:.14,r:.12,screenScale:.86});
+    c.userData.ph=i*1.13;c.userData.base={x:s.x,y:s.y,z:s.z};
+    c.userData.out=s.ox?{x:s.ox,y:s.oy,z:s.oz}:null;
+    c.userData.blockedDrawn=false;c.userData.isOk=!!s.ok;
+    c.setFade(0);
+    unit.add(c);return c;
   });
-  /* ---- kandang batas data: kaca + rusuk midnight ---- */
+  /* ---- kandang batas data: kaca nyata + rusuk + post midnight ---- */
   const fGeo=new THREE.BoxGeometry(6.4,4.1,3.4);
-  const fence=new THREE.Mesh(fGeo,new THREE.MeshBasicMaterial({color:0xe6f3fe,transparent:true,opacity:0,depthWrite:false}));
+  const fenceGlass=new THREE.Mesh(fGeo,new THREE.MeshPhysicalMaterial({color:0xf4faff,roughness:.18,metalness:0,transparent:true,opacity:0,clearcoat:.85,clearcoatRoughness:.18,envMapIntensity:1.05,depthWrite:false}));
   const fenceEdge=new THREE.LineSegments(new THREE.EdgesGeometry(fGeo),new THREE.LineBasicMaterial({color:0x0a1a38,transparent:true,opacity:0}));
-  fence.position.set(.2,0,.4);fenceEdge.position.copy(fence.position);
-  unit.add(fence,fenceEdge);
-  /* ---- kartu lisensi: turun dan mengunci di atas app ---- */
-  const lic=card(200,124,drawLicense);lic.scale.setScalar(CL);unit.add(lic);
-  /* ---- debu kertas ---- */
+  fenceGlass.position.set(.2,0,.4);fenceEdge.position.copy(fenceGlass.position);
+  fenceGlass.castShadow=false;
+  const posts=[];
+  [[-3,-1.3],[-3,2.1],[3.4,-1.3],[3.4,2.1]].forEach(([px,pz])=>{
+    const pm2=slabMat('midnight');pm2.transparent=true;pm2.opacity=0;
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,4.35,12),pm2);
+    p.position.set(px+.2,0,pz+.4);unit.add(p);posts.push(p);
+  });
+  unit.add(fenceGlass,fenceEdge);
+  /* ---- kartu lisensi: slab midnight gloss + coin marigold ---- */
+  const licCard=productCard(200,124,drawLicense,'midnight',{depth:.18,r:.14,screenScale:1});
+  licCard.userData.slab.material.emissive=new THREE.Color(0x123a8c);
+  licCard.userData.slab.material.emissiveIntensity=.3;
+  licCard.setFade(0);
+  const coin=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.05,32),slabMat('coin'));
+  coin.rotation.x=Math.PI/2;coin.position.set(.82,-.34,.16);coin.castShadow=true;
+  licCard.add(coin);
+  unit.add(licCard);
+  window.__dbg={renderer,scene,cam,unit,skills,appGroup};
+  /* ---- debu kertas halus ---- */
   const dustTex=(()=>{
     const c=document.createElement('canvas');c.width=c.height=32;
     const g=c.getContext('2d');
     const gr=g.createRadialGradient(16,16,0,16,16,15);
-    gr.addColorStop(0,'rgba(20,30,40,.55)');gr.addColorStop(1,'rgba(20,30,40,0)');
+    gr.addColorStop(0,'rgba(20,30,40,.5)');gr.addColorStop(1,'rgba(20,30,40,0)');
     g.fillStyle=gr;g.beginPath();g.arc(16,16,15,0,7);g.fill();
     return new THREE.CanvasTexture(c);
   })();
-  const N=reduce?0:90;
+  const N=reduce?0:70;
   const pos=new Float32Array(N*3);
   for(let i=0;i<N;i++){
     const r=8+Math.random()*8,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
@@ -451,10 +532,10 @@ async function boot(){
     if(!N)return null;
     const geo=new THREE.BufferGeometry();
     geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    const mat=new THREE.PointsMaterial({size:.07,map:dustTex,transparent:true,opacity:.4,depthWrite:false,color:0x4a5460});
+    const mat=new THREE.PointsMaterial({size:.06,map:dustTex,transparent:true,opacity:.35,depthWrite:false,color:0x4a5460});
     const pts=new THREE.Points(geo,mat);scene.add(pts);return pts;
   })();
-  /* ---- scroll progress 0..1 lintas story ---- */
+  /* ---- scroll progress + pose per chapter ---- */
   let target=0,pShown=0,renderable=true,active=false;
   function measure(){
     const total=story.offsetHeight-innerHeight;
@@ -466,19 +547,18 @@ async function boot(){
     cam.aspect=innerWidth/innerHeight;
     cam.fov=innerWidth<900?54:42;
     cam.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);measure();
+    renderer.setSize(innerWidth,innerHeight);measure();fitX();
   });
   document.addEventListener('visibilitychange',measure);
   measure();
   pShown=target;
-  /* pose per chapter: geser + skala unit (teks kiri -> unit kanan, dst).
-     Kamera tetap z=10.2, fov 42 (setengah lebar viewport ~7.6 unit). */
   const poseKeys=[
-    {p:0.000,x:4.3,s:1},
-    {p:0.333,x:-3.9,s:.66},
-    {p:0.667,x:4.2,s:.85},
-    {p:1.000,x:4.0,s:.85},
+    {p:0.000,x:3.65,s:1},
+    {p:0.333,x:-3.2,s:.66},
+    {p:0.667,x:4.05,s:.85},
+    {p:1.000,x:3.9,s:.85},
   ];
+  const poseDesign=poseKeys.map(k=>({x:k.x,s:k.s}));
   function poseAt(p){
     let a=poseKeys[0],b=poseKeys[poseKeys.length-1];
     for(let i=0;i<poseKeys.length-1;i++){
@@ -487,8 +567,47 @@ async function boot(){
     const t=clamp((p-a.p)/Math.max(b.p-a.p,1e-4),0,1),e=ease(t);
     return{x:lerp(a.x,b.x,e),s:lerp(a.s,b.s,e)};
   }
-  /* progres animasi per chapter: chapter i berjalan saat p dari (i-1)/3 ke i/3 */
+  /* fit horizontal empiris: binary-search batas pose.x per kunci agar cluster app utuh di viewport apa pun.
+     Kamera diposisikan dulu persis seperti loop (boot-time camera masih di 0,0,0 -> proyeksi NaN). */
+  function fitX(){
+    try{
+      /* ukur dari keadaan netral: unit ke 0 (world box = local box), kamera seperti loop */
+      const savedX=unit.position.x;
+      unit.position.x=0;unit.updateMatrixWorld(true);
+      cam.position.set(0,.25,10.2);cam.lookAt(0,.05,0);cam.updateMatrixWorld();
+      const box=new THREE.Box3().setFromObject(appGroup);
+      unit.position.x=savedX;
+      if(!isFinite(box.min.x)||!isFinite(box.max.x))return;
+      poseKeys.forEach(k=>{
+        const dir=k.x>=0?1:-1;
+        let lo=0,hi=4.6;
+        for(let i=0;i<16;i++){
+          const mid=(lo+hi)/2;
+          const b2=new THREE.Box3(
+            box.min.clone().multiplyScalar(k.s).add(new THREE.Vector3(mid*dir,0,0)),
+            box.max.clone().multiplyScalar(k.s).add(new THREE.Vector3(mid*dir,0,0)));
+          /* proyeksikan SEMUA 8 sudut — proyeksi min/max saja meremehkan extent perspektif */
+          let mn=Infinity,mx=-Infinity,fin=true;
+          for(let ci=0;ci<8;ci++){
+            const c=new THREE.Vector3(ci&1?b2.max.x:b2.min.x,ci&2?b2.max.y:b2.min.y,ci&4?b2.max.z:b2.min.z);
+            const v=c.project(cam);
+            if(!isFinite(v.x)){fin=false;break;}
+            if(v.x<mn)mn=v.x;if(v.x>mx)mx=v.x;
+          }
+          (fin&&mx<=.97&&mn>=-.97)?lo=mid:hi=mid;
+        }
+        const dx=poseDesign[poseKeys.indexOf(k)].x;
+        k.x=dir>0?Math.min(dx,lo):Math.max(dx,-lo);
+      });
+    }catch(e){}
+  }
+  fitX();
   const seg=(p,i)=>clamp(p*3-(i-1),0,1);
+  /* pointer parallax */
+  let pX=0,pY=0;
+  addEventListener('pointermove',e=>{
+    pX=(e.clientX/innerWidth-.5)*2;pY=(e.clientY/innerHeight-.5)*2;
+  },{passive:true});
   let last=performance.now();
   function frame(now){
     requestAnimationFrame(frame);
@@ -497,47 +616,54 @@ async function boot(){
     pShown+=(target-pShown)*(reduce?1:.075);
     const p=clamp(pShown,0,1);
     const mob=innerWidth<900;
-    /* kamera tetap; micro-drift untuk hidup */
-    cam.position.set(0,.25+Math.sin(t*.3)*.06,10.2);
+    /* kamera: parallax pointer halus */
+    const cx=(mob?0:pX*.32),cy=.25-pY*.14;
+    cam.position.x+=(cx-cam.position.x)*(reduce?1:.04);
+    cam.position.y+=(cy+Math.sin(t*.3)*.04-cam.position.y)*(reduce?1:.04);
+    cam.position.z=10.2;
     cam.lookAt(0,.05,0);
-    /* unit mengikuti pose per chapter */
+    /* unit pose */
     const po=poseAt(p);
     const tx=mob?0:po.x,tsc=mob?po.s*.6:po.s;
     unit.position.x+=(tx-unit.position.x)*(reduce?1:.09);
     unit.position.y=mob?-3.4:0;
     unit.scale.setScalar(unit.scale.x+(tsc-unit.scale.x)*(reduce?1:.09));
     const s1=ease(seg(p,1)),s2=ease(seg(p,2)),s3=ease(seg(p,3));
-    appGroup.rotation.y=(reduce?0:Math.sin(t*.4)*.045)-.03;
+    appGroup.rotation.y=(reduce?0:Math.sin(t*.4)*.045)-.2;
     appGroup.position.y=reduce?0:Math.sin(t*.7)*.05;
-    shadow.material.opacity=.85+Math.sin(t*.7)*.06;
-    skills.forEach((m,i)=>{
-      const u=m.userData;
-      const born=ease(clamp((s1-.05-i*.1)/.55,0,1));
-      m.material.opacity=born;
-      const bx=lerp(-.2,u.base.x,born),by=lerp(.4,u.base.y,born),bz=lerp(.8,u.base.z,born);
+    skills.forEach((c,i)=>{
+      if(!c.setFade||!c.redraw)return;
+      const u=c.userData;
+      const born=backOut(clamp((s1-.05-i*.1)/.55,0,1));
+      c.setFade(clamp(born,0,1));
+      c.scale.setScalar(Math.max(.001,born)*(u.isOk&&active?1+Math.sin(t*2.1+u.ph)*.018:1));
+      const bx=lerp(u.base.x+.9,u.base.x,clamp(born,0,1)),by=lerp(u.base.y-.5,u.base.y,clamp(born,0,1)),bz=lerp(.9,u.base.z,clamp(born,0,1));
       if(u.out){
         const push=ease(s2);
-        m.position.set(lerp(bx,u.out.x,push),lerp(by,u.out.y,push),lerp(bz,u.out.z,push));
-        m.rotation.z=(reduce?0:Math.sin(t*1.2+u.ph)*.04)+push*.15;
-        m.material.opacity=born*(1-push*.5);
+        c.position.set(lerp(bx,u.out.x,push),lerp(by,u.out.y,push),lerp(bz,u.out.z,push));
+        c.rotation.z=(reduce?0:Math.sin(t*1.2+u.ph)*.04)+push*.15;
+        c.setFade(clamp(born,0,1)*(1-push*.5));
         const wantB=push>.5;
         if(wantB!==u.blockedDrawn){u.blockedDrawn=wantB;u.redraw({blocked:wantB});}
       }else{
-        m.position.set(bx,by+(reduce?0:Math.sin(t*.85+u.ph)*.07),bz);
-        m.rotation.z=reduce?0:Math.sin(t*.75+u.ph)*.045;
+        c.position.set(bx,by+(reduce?0:Math.sin(t*.85+u.ph)*.07),bz);
+        c.rotation.z=reduce?0:Math.sin(t*.75+u.ph)*.045;
         if(u.blockedDrawn){u.blockedDrawn=false;u.redraw({});}
       }
-      if(u.isOk&&active)m.scale.setScalar(CL*(1+Math.sin(t*2.1+u.ph)*.02));
     });
     const fs=.8+.2*s2;
-    fence.scale.setScalar(fs);fenceEdge.scale.setScalar(fs);
-    fence.material.opacity=s2*.07;fenceEdge.material.opacity=s2*.45;
-    const lk=ease(clamp((s3-.06)/.5,0,1));
-    lic.material.opacity=lk;
-    lic.position.set(-.7,lerp(3.6,.62,lk),1.5);
-    lic.rotation.x=lerp(-.45,0,lk);
+    fenceGlass.scale.setScalar(fs);fenceEdge.scale.setScalar(fs);
+    posts.forEach(pt=>{pt.scale.setScalar(Math.max(.001,fs));pt.material.opacity=s2*.85;});
+    fenceGlass.material.opacity=s2*.12;
+    fenceEdge.material.opacity=s2*.45;
+    const lk=backOut(clamp((s3-.06)/.55,0,1));
+    if(licCard.setFade)licCard.setFade(clamp(lk,0,1));
+    licCard.scale.setScalar(Math.max(.001,lk)*1.05);
+    licCard.position.set(-.55,lerp(3.6,.66,clamp(lk,0,1)),1.5);
+    licCard.rotation.x=lerp(-.45,0,clamp(lk,0,1));
+    coin.rotation.z=t*.6;
     const on=s3>.6;
-    if(on!==active){active=on;appM.userData.redraw({active:on});copM.userData.redraw({active:on});}
+    if(on!==active){active=on;appScr.userData.redraw({active:on});copCard.redraw({active:on});}
     if(dust&&!reduce)dust.rotation.y=t*.02;
     renderer.render(scene,cam);
   }

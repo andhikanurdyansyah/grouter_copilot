@@ -52,6 +52,7 @@
     .cell-in:hover { border-color: var(--grx-steel-hi); }
     .cell-in:focus { outline: none; border-color: var(--grx-cyan); background: rgba(34,211,238,0.06); }
     .cell-in.mono { font-family: var(--font-mono); font-size: 12.5px; }
+    @media (max-width: 640px) { .cell-in { min-width: 0; } }
     #planRows td { vertical-align: middle; }
 
     /* topbar identity */
@@ -118,19 +119,19 @@
         <nav style="display:flex;flex-direction:column;gap:2px" aria-label="Bagian console">
           <a class="nav-item" type="button" data-view="overview" href="/admin">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="12" width="7" height="9" rx="1.5"/></svg>
-            Overview
+            Ringkasan
           </a>
           <a class="nav-item" type="button" data-view="licenses" href="/admin/licenses">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="16" r="4"/><path d="M11 13L21 3M16 8l3 3"/></svg>
-            Licenses
+            Lisensi
           </a>
           <a class="nav-item" type="button" data-view="usage" href="/admin/usage">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18V8M10 18V5M16 18v-7M22 18V9"/><path d="M2 21h20"/></svg>
-            Usage &amp; Quota
+            Usage &amp; Kuota
           </a>
           <a class="nav-item" type="button" data-view="settings" href="/admin/settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Settings
+            Pengaturan
           </a>
         </nav>
 
@@ -153,7 +154,7 @@
                    stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
             </button>
             <div>
-              <h1 class="page-title" id="pageTitle">Overview</h1>
+              <h1 class="page-title" id="pageTitle">Ringkasan</h1>
               <p class="page-sub" id="pageSub">Monitor lisensi, install, dan quota plugin gRouter Copilot.</p>
             </div>
           </div>
@@ -162,10 +163,10 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
-              <span class="hide-sm">Refresh</span>
+              <span class="hide-sm">Muat ulang</span>
             </button>
             <button class="btn btn-primary btn-sm" type="button" id="issueBtn">
-              <span aria-hidden="true">+</span> Issue License
+              <span aria-hidden="true">+</span> Terbitkan Lisensi
             </button>
             <div class="identity">
               <div class="who">
@@ -181,7 +182,7 @@
 
         <!-- ===================== OVERVIEW ===================== -->
         <section class="view active" id="view-overview" aria-labelledby="ovHeading" tabindex="-1">
-          <h2 class="sr-only" id="ovHeading">Overview</h2>
+          <h2 class="sr-only" id="ovHeading">Ringkasan</h2>
 
           <div class="grid grid-4" id="statGrid" aria-busy="true" style="margin-bottom:var(--sp-5)">
             <div class="metal-panel stat-card"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="height:28px;width:42%;margin-top:6px"></div></div>
@@ -197,16 +198,16 @@
                 <div class="mono-label">dari data lisensi aktual</div>
               </div>
               <div class="legend" id="chartLegend" aria-hidden="true">
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-ok)"></span> Active</span>
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-warn)"></span> Expired</span>
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-err)"></span> Revoked</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-ok)"></span> Aktif</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-warn)"></span> Kedaluwarsa</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-err)"></span> Dicabut</span>
               </div>
             </div>
             <div class="panel-body">
               <div class="chart-head">
                 <div>
                   <div class="chart-value" id="chartTotal">—</div>
-                  <div class="mono-label">total licenses</div>
+                  <div class="mono-label">total lisensi</div>
                 </div>
                 <div class="mono-label" id="chartMeta"></div>
               </div>
@@ -219,16 +220,16 @@
 
         <!-- ===================== LICENSES ===================== -->
         <section class="view" id="view-licenses" aria-labelledby="licHeading" tabindex="-1">
-          <h2 class="sr-only" id="licHeading">Licenses</h2>
+          <h2 class="sr-only" id="licHeading">Lisensi</h2>
           <div class="metal-panel panel" id="licenses">
             <div class="panel-head">
               <div>
-                <div class="panel-title">Licenses</div>
+                <div class="panel-title">Lisensi</div>
                 <div class="mono-label" id="licCount">—</div>
               </div>
               <div class="row" style="gap:var(--sp-2)">
-                <button class="btn btn-ghost btn-sm" type="button" id="refreshLic">Refresh</button>
-                <button class="btn btn-primary btn-sm" type="button" id="issueBtn2">+ Issue</button>
+                <button class="btn btn-ghost btn-sm" type="button" id="refreshLic">Muat ulang</button>
+                <button class="btn btn-primary btn-sm" type="button" id="issueBtn2">+ Terbitkan</button>
               </div>
             </div>
             <div class="panel-body">
@@ -250,21 +251,21 @@
                 </table>
               </div>
               <div class="status-loading" id="licLoading">Memuat lisensi…</div>
-              <div class="empty" id="licEmpty" style="display:none">Belum ada license. Gunakan “Issue License” untuk membuat yang pertama.</div>
+              <div class="empty" id="licEmpty" style="display:none">Belum ada lisensi. Gunakan “Terbitkan Lisensi” untuk membuat yang pertama.</div>
             </div>
           </div>
         </section>
 
         <!-- ===================== USAGE ===================== -->
         <section class="view" id="view-usage" aria-labelledby="usageHeading" tabindex="-1">
-          <h2 class="sr-only" id="usageHeading">Usage &amp; Quota</h2>
+          <h2 class="sr-only" id="usageHeading">Usage &amp; Kuota</h2>
           <div class="metal-panel panel" id="usage">
             <div class="panel-head">
               <div>
-                <div class="panel-title">Usage &amp; Quota</div>
+                <div class="panel-title">Usage &amp; Kuota</div>
                 <div class="mono-label">via gRouter /check-usage</div>
               </div>
-              <button class="btn btn-ghost btn-sm" type="button" id="refreshUsage">Refresh</button>
+              <button class="btn btn-ghost btn-sm" type="button" id="refreshUsage">Muat ulang</button>
             </div>
             <div class="panel-body">
               <div class="table-wrap">
@@ -291,7 +292,7 @@
 
         <!-- ===================== SETTINGS ===================== -->
         <section class="view" id="view-settings" aria-labelledby="settingsHeading" tabindex="-1">
-          <h2 class="sr-only" id="settingsHeading">Settings</h2>
+          <h2 class="sr-only" id="settingsHeading">Pengaturan</h2>
 
           <div class="tabs" role="tablist" aria-label="Bagian settings">
             <button class="tab" type="button" role="tab" id="tab-plans" aria-selected="true" aria-controls="pane-plans">Plans</button>
@@ -324,7 +325,7 @@
                         <th scope="col">Quota</th>
                         <th scope="col">Features</th>
                         <th scope="col">Expiry</th>
-                        <th scope="col">Active</th>
+                        <th scope="col">Aktif</th>
                         <th scope="col"><span class="sr-only">Aksi</span></th>
                       </tr>
                     </thead>
@@ -473,7 +474,7 @@
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="issueTitle">
     <div class="modal">
       <div class="panel-head">
-        <div class="panel-title" id="issueTitle">Issue License</div>
+        <div class="panel-title" id="issueTitle">Terbitkan Lisensi</div>
         <button class="modal-close" type="button" id="cancelX" aria-label="Tutup">&times;</button>
       </div>
 
@@ -551,10 +552,10 @@
     try { token = sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) { token = ''; }
 
     var VIEW_META = {
-      overview: { title: 'Overview', sub: 'Monitor lisensi, install, dan quota plugin gRouter Copilot.', heading: 'Overview' },
-      licenses: { title: 'Licenses', sub: 'Terbitkan, bind, dan revoke lisensi pelanggan.', heading: 'Licenses' },
-      usage:    { title: 'Usage & Quota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Quota' },
-      settings: { title: 'Settings', sub: 'Konfigurasi runtime — plans, branding, payment, provider & limits.', heading: 'Settings' }
+      overview: { title: 'Ringkasan', sub: 'Monitor lisensi, install, dan quota plugin gRouter Copilot.', heading: 'Ringkasan' },
+      licenses: { title: 'Lisensi', sub: 'Terbitkan, bind, dan revoke lisensi pelanggan.', heading: 'Lisensi' },
+      usage:    { title: 'Usage & Kuota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Kuota' },
+      settings: { title: 'Pengaturan', sub: 'Konfigurasi runtime — plans, branding, payment, provider & limits.', heading: 'Pengaturan' }
     };
 
     function routeFromPath(path) {
@@ -783,19 +784,19 @@
     function renderStats(s) {
       s = s || {};
       var items = [
-        { label: 'Total licenses', value: s.totalLicenses, cls: '' },
-        { label: 'Active', value: s.activeLicenses, cls: 'ok' },
-        { label: 'Revoked', value: s.revokedLicenses, cls: 'warn' },
-        { label: 'Total installs', value: s.totalInstalls, cls: 'cyan' }
+        { label: 'Total lisensi', value: s.totalLicenses, cls: '' },
+        { label: 'Aktif', value: s.activeLicenses, cls: 'ok' },
+        { label: 'Dicabut', value: s.revokedLicenses, cls: 'warn' },
+        { label: 'Total install', value: s.totalInstalls, cls: 'cyan' }
       ];
       var total = Number(s.totalLicenses) || 0;
       var html = items.map(function (it) {
         var delta = '';
-        if (it.label === 'Active' && total > 0) {
+        if (it.label === 'Aktif' && total > 0) {
           delta = '<span class="stat-delta up">' + Math.round((Number(s.activeLicenses || 0) / total) * 100) + '% dari total</span>';
-        } else if (it.label === 'Total licenses') {
+        } else if (it.label === 'Total lisensi') {
           delta = '<span class="stat-delta">' + fmtNum(s.totalHeartbeats) + ' heartbeat</span>';
-        } else if (it.label === 'Total installs') {
+        } else if (it.label === 'Total install') {
           delta = '<span class="stat-delta">per install unik</span>';
         }
         return '<div class="metal-panel stat-card">' +
@@ -829,16 +830,16 @@
       var box = $('chartBox');
       var tally = statusTally(licenses);
       var bars = [
-        { key: 'active',  label: 'Active',  value: tally.active,  color: '#34d399' },
-        { key: 'expired', label: 'Expired', value: tally.expired, color: '#fbbf24' },
-        { key: 'revoked', label: 'Revoked', value: tally.revoked, color: '#f87171' }
+        { key: 'active',  label: 'Aktif',  value: tally.active,  color: '#34d399' },
+        { key: 'expired', label: 'Kedaluwarsa', value: tally.expired, color: '#fbbf24' },
+        { key: 'revoked', label: 'Dicabut', value: tally.revoked, color: '#f87171' }
       ];
       var totalLicenses = licenses.length;
       $('chartTotal').textContent = fmtNum(totalLicenses);
 
       var bound = licenses.filter(function (l) { return l && l.grouterApiKey !== undefined ? !!l.grouterApiKey : false; }).length;
       $('chartMeta').textContent = totalLicenses
-        ? (tally.active + ' active · ' + tally.expired + ' expired · ' + tally.revoked + ' revoked')
+        ? (tally.active + ' aktif · ' + tally.expired + ' kedaluwarsa · ' + tally.revoked + ' dicabut')
         : 'belum ada data';
 
       if (!totalLicenses) {
@@ -867,8 +868,8 @@
       svg.push('<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H +
                '" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="chartTitle chartDesc">');
       svg.push('<title id="chartTitle">Distribusi status lisensi gRouter Copilot</title>');
-      svg.push('<desc id="chartDesc">' + tally.active + ' active, ' + tally.expired + ' expired, ' +
-               tally.revoked + ' revoked dari total ' + totalLicenses + ' lisensi.</desc>');
+      svg.push('<desc id="chartDesc">' + tally.active + ' aktif, ' + tally.expired + ' kedaluwarsa, ' +
+               tally.revoked + ' dicabut dari total ' + totalLicenses + ' lisensi.</desc>');
       svg.push('<defs>');
       svg.push('  <linearGradient id="grxCyanArea" x1="0" y1="0" x2="0" y2="1">' +
                '<stop offset="0%" stop-color="#67e8f9" stop-opacity="0.95"/>' +

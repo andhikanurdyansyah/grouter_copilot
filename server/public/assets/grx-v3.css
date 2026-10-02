@@ -47,7 +47,7 @@
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--grx-ink-faint);
+  color: #6b7a88;
   padding: var(--sp-4) 11px 6px;
   display: block;
 }
@@ -107,7 +107,7 @@
   opacity: 0.5;
   pointer-events: none;
 }
-.grx-v3 .stat-label { font-size: 10.5px; letter-spacing: 0.14em; color: var(--grx-ink-dim); }
+.grx-v3 .stat-label { font-size: 10.5px; letter-spacing: 0.14em; color: #8494a5; }
 .grx-v3 .stat-value { font-size: clamp(1.45rem, 1.25rem + 0.7vw, 1.8rem); }
 
 /* ---------- table header: mono eyebrow style ---------- */
@@ -115,7 +115,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
-  color: var(--grx-ink-faint);
+  color: #7a8a99;
   border-bottom: 1px solid var(--grx-line-strong);
 }
 
@@ -142,3 +142,16 @@
 
 /* ---------- badge gloss ---------- */
 .grx-v3 .badge { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+
+/* ---------- mobile containment: tabel lebar scroll di dalam .table-wrap,
+   BUKAN melebar-controlled layout viewport (ICB). overflow di body
+   menjalar ke viewport (html overflow visible), jadi satu rule cukup. ---------- */
+@media (max-width: 640px) {
+  body.grx-v3 { overflow-x: hidden; }
+  .grx-v3 .topbar {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}

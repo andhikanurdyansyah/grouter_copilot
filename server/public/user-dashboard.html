@@ -8,8 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
+  <link rel="stylesheet" href="/assets/grx-v3.css" />
   <style>
-    /* page-local: plan tier cards (hanya token grx) */
+    /* page-local: routing views + plan tier cards (hanya token grx) */
+    [hidden] { display: none !important; }
     .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
     .plan-card { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); position: relative; }
     .plan-card--featured { border-color: rgba(34, 211, 238, 0.35); }
@@ -21,7 +23,7 @@
     .plan-card__features li svg { width: 14px; height: 14px; color: var(--grx-cyan); flex-shrink: 0; margin-top: 3px; }
   </style>
 </head>
-<body>
+<body class="grx-v3">
   <a class="skip-link" href="#main">Lewati ke konten utama</a>
 
   <div class="grx-surface">
@@ -31,11 +33,19 @@
           <span class="brand-mark" aria-hidden="true">G</span>
           <span>Copilot</span>
         </a>
-        <a class="nav-item active" href="#overview" aria-current="page"><span class="dot" aria-hidden="true"></span> Overview</a>
-        <a class="nav-item" href="#licenses"><span class="dot" aria-hidden="true"></span> Licenses</a>
-        <a class="nav-item" href="#trend"><span class="dot" aria-hidden="true"></span> Tren</a>
-        <a class="nav-item" href="#org"><span class="dot" aria-hidden="true"></span> Organisasi</a>
-        <a class="nav-item" href="#usage"><span class="dot" aria-hidden="true"></span> Usage</a>
+        <span class="nav-section">Akun</span>
+        <a class="nav-item" data-route="overview" href="/user">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="12" width="7" height="9" rx="1.5"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" data-route="licenses" href="/user/licenses">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="16" r="4"/><path d="M11 13L21 3M16 8l3 3"/></svg>
+          Licenses
+        </a>
+        <a class="nav-item" data-route="organization" href="/user/organization">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Organisasi
+        </a>
       </nav>
 
       <main class="main" id="main">
@@ -47,8 +57,8 @@
               </svg>
             </button>
             <div>
-              <div class="page-title">Overview</div>
-              <div class="page-sub">Kelola license dan pantau usage Anda</div>
+              <div class="page-title" id="pageTitle">Overview</div>
+              <div class="page-sub" id="pageSub">Kelola license dan pantau penggunaan Anda</div>
             </div>
           </div>
           <div class="row">
@@ -63,6 +73,8 @@
         <p class="sr-only" id="liveStatus" role="status" aria-live="polite"></p>
 
         <div class="stack">
+          <!-- ===== VIEW: OVERVIEW (/user) ===== -->
+          <div id="view-overview">
           <!-- Stats -->
           <section class="grid grid-3" aria-label="Ringkasan akun">
             <div class="metal-panel stat-card">
@@ -82,27 +94,18 @@
             </div>
           </section>
 
-          <!-- Licenses -->
-          <section class="metal-panel panel" id="licenses" aria-labelledby="licensesTitle">
+          <!-- License terbaru (compact — detail penuh di /user/licenses) -->
+          <section class="metal-panel panel" aria-labelledby="licensesTitle">
             <div class="panel-head">
-              <span class="panel-title" id="licensesTitle">License Anda</span>
-              <div class="row wrap">
-                <div class="field" style="margin:0">
-                  <label class="sr-only" for="licFilter">Filter status license</label>
-                  <select id="licFilter">
-                    <option value="all">Semua status</option>
-                    <option value="active">Aktif</option>
-                    <option value="expired">Kedaluwarsa</option>
-                    <option value="revoked">Dicabut</option>
-                  </select>
-                </div>
-                <button class="btn btn-primary btn-sm" id="purchaseBtn" type="button">Purchase License</button>
+              <div>
+                <span class="panel-title" id="licensesTitle">License terbaru</span>
+                <div class="sub">5 license terakhir — kelola semuanya di <a class="chip-cyan" href="/user/licenses">halaman License</a>.</div>
               </div>
             </div>
             <div class="panel-body">
               <div class="table-wrap">
                 <table>
-                  <caption class="sr-only">Daftar license milik akun Anda</caption>
+                  <caption class="sr-only">Lima license terakhir milik akun Anda</caption>
                   <thead>
                     <tr>
                       <th scope="col">Customer</th>
@@ -140,11 +143,56 @@
             </div>
           </section>
 
-          <!-- Organisasi (Better Auth organization plugin) -->
-          <section class="metal-panel panel" id="org" aria-labelledby="orgTitle">
+          </div><!-- /view-overview -->
+
+          <!-- ===== VIEW: LICENSES (/user/licenses) ===== -->
+          <div id="view-licenses" hidden>
+          <section class="metal-panel panel">
             <div class="panel-head">
               <div>
-                <span class="panel-title" id="orgTitle">Organisasi</span>
+                <span class="panel-title">License Anda</span>
+                <div class="sub">Install, status, dan masa berlaku setiap license.</div>
+              </div>
+              <div class="row wrap">
+                <div class="field" style="margin:0">
+                  <label class="sr-only" for="licFilter">Filter status license</label>
+                  <select id="licFilter">
+                    <option value="all">Semua status</option>
+                    <option value="active">Aktif</option>
+                    <option value="expired">Kedaluwarsa</option>
+                    <option value="revoked">Dicabut</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary btn-sm" id="purchaseBtn" type="button">Purchase License</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Daftar license milik akun Anda</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Customer</th>
+                      <th scope="col">Installs</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Expires</th>
+                    </tr>
+                  </thead>
+                  <tbody id="licenseRowsFull">
+                    <tr><td colspan="4"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          </div><!-- /view-licenses -->
+
+          <!-- ===== VIEW: ORGANIZATION (/user/organization) ===== -->
+          <div id="view-organization" hidden>
+          <section class="metal-panel panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-title">Organisasi</span>
                 <div class="sub">Kelola organisasi &amp; anggota tim Anda.</div>
               </div>
               <button class="btn btn-ghost btn-sm" id="orgCreateBtn" type="button">+ Buat Organisasi</button>
@@ -170,32 +218,7 @@
               </div>
             </div>
           </section>
-
-          <!-- Usage & quota -->
-          <section class="metal-panel panel" id="usage" aria-labelledby="usageTitle">
-            <div class="panel-head">
-              <span class="panel-title" id="usageTitle">Usage &amp; Quota</span>
-            </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table>
-                  <caption class="sr-only">Usage dan kuota token</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Package</th>
-                      <th scope="col">Tokens</th>
-                      <th scope="col">Limit</th>
-                      <th scope="col">Usage</th>
-                      <th scope="col">Expires</th>
-                    </tr>
-                  </thead>
-                  <tbody id="usageRows">
-                    <tr><td colspan="5" class="empty">Belum ada data usage.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
+          </div><!-- /view-organization -->
         </div>
       </main>
     </div>
@@ -253,6 +276,9 @@
         statLicDelta: document.getElementById('statLicDelta'),
         statInstDelta: document.getElementById('statInstDelta'),
         licenseRows: document.getElementById('licenseRows'),
+        licenseRowsFull: document.getElementById('licenseRowsFull'),
+        pageTitle: document.getElementById('pageTitle'),
+        pageSub: document.getElementById('pageSub'),
         licFilter: document.getElementById('licFilter'),
         liveStatus: document.getElementById('liveStatus'),
         chartHost: document.getElementById('chartHost'),
@@ -378,27 +404,28 @@
         els.statLicDelta.textContent = licenses.length + ' total license';
         els.statInstDelta.textContent = installs === 1 ? 'di 1 device' : 'di ' + licenses.length + ' license';
 
-        renderLicenses();
+        renderLicenses(licenses.slice(0, 5), els.licenseRows, false);
+        renderLicenses(licenses, els.licenseRowsFull, true);
         renderChart(licenses);
         els.liveStatus.textContent = licenses.length + ' license dimuat, ' + active.length + ' aktif.';
       }
 
-      function renderLicenses() {
-        var list = state.licenses;
-        if (state.filter !== 'all') {
+      /* renderLicenses: isi satu tabel license. Filter + empty-state khusus
+         halaman full (/user/licenses); overview menampilkan apa adanya. */
+      function renderLicenses(list, tbody, filterable) {
+        if (!state.licenses.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada license. Purchase untuk mulai.</td></tr>';
+          return;
+        }
+        if (filterable && state.filter !== 'all') {
           list = list.filter(function (l) { return licenseStatus(l) === state.filter; });
         }
-
-        if (!state.licenses.length) {
-          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Belum ada license. Purchase untuk mulai.</td></tr>';
-          return;
-        }
         if (!list.length) {
-          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Tidak ada license dengan status ini.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="empty">Tidak ada license dengan status ini.</td></tr>';
           return;
         }
 
-        els.licenseRows.innerHTML = list.map(function (l) {
+        tbody.innerHTML = list.map(function (l) {
           var st = licenseStatus(l);
           return '<tr>' +
             '<td>' + escapeHtml(l.customer || l.id) + '</td>' +
@@ -820,6 +847,37 @@
         loadOrgs();
       }
 
+      /* ---------------- routing (/user, /user/licenses, /user/organization) ---------------- */
+
+      var ROUTES = {
+        overview:    { path: '/user',                 view: 'view-overview',    title: 'Overview',    sub: 'Kelola license dan pantau penggunaan Anda' },
+        licenses:    { path: '/user/licenses',        view: 'view-licenses',    title: 'Licenses',    sub: 'Install, status, dan masa berlaku setiap license' },
+        organization: { path: '/user/organization',   view: 'view-organization', title: 'Organisasi', sub: 'Kelola organisasi & anggota tim Anda' }
+      };
+
+      function routeFromPath(path) {
+        if (path === '/user/licenses') return 'licenses';
+        if (path === '/user/organization') return 'organization';
+        return 'overview';
+      }
+
+      function applyRoute(name) {
+        var r = ROUTES[name] || ROUTES.overview;
+        ['view-overview', 'view-licenses', 'view-organization'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.hidden = (id !== r.view);
+        });
+        Array.prototype.forEach.call(els.sidebar.querySelectorAll('[data-route]'), function (a) {
+          var on = a.getAttribute('data-route') === name;
+          a.classList.toggle('active', on);
+          if (on) a.setAttribute('aria-current', 'page');
+          else a.removeAttribute('aria-current');
+        });
+        els.pageTitle.textContent = r.title;
+        els.pageSub.textContent = r.sub;
+        document.title = r.title + ' — gRouter Copilot';
+      }
+
       /* ---------------- sidebar toggle ---------------- */
 
       function setSidebar(open) {
@@ -839,7 +897,9 @@
 
       /* ---------------- events ---------------- */
 
-      document.getElementById('purchaseBtn').addEventListener('click', openModal);
+      Array.prototype.forEach.call(document.querySelectorAll('#purchaseBtn'), function (b) {
+        b.addEventListener('click', openModal);
+      });
       document.getElementById('orgCreateBtn').addEventListener('click', function () {
         els.orgForm.hidden = !els.orgForm.hidden;
         if (!els.orgForm.hidden) els.orgName.focus();
@@ -869,7 +929,7 @@
 
       els.licFilter.addEventListener('change', function () {
         state.filter = els.licFilter.value || 'all';
-        renderLicenses();
+        renderLicenses(state.licenses, els.licenseRowsFull, true);
       });
 
       document.addEventListener('keydown', function (e) {
@@ -897,6 +957,7 @@
         if (window.innerWidth > 860 && els.sidebar.classList.contains('open')) setSidebar(false);
       });
 
+      applyRoute(routeFromPath(location.pathname));
       loadPlans();
       loadMe();
       loadOrgs();

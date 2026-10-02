@@ -1,0 +1,144 @@
+/* ============================================================
+   grx-v3.css — gRouter Copilot design layer v3 (premium pass)
+   Layered AFTER grx.css. Cyberpunk metallic, stronger hierarchy,
+   real routing nav. No new palette; only tokens from grx.css.
+   ============================================================ */
+
+/* ---------- tokens tambahan (turunan cyan, bukan palette baru) ---------- */
+:root {
+  --grx-glow: rgba(34, 211, 238, 0.45);
+  --grx-glow-soft: rgba(34, 211, 238, 0.16);
+  --grx-line: rgba(34, 211, 238, 0.14);
+  --grx-line-strong: rgba(34, 211, 238, 0.28);
+}
+
+/* ---------- panel metalik v3: hairline steel + corner brace aksen ---------- */
+.grx-v3 .metal-panel {
+  border-color: var(--grx-line);
+  background:
+    linear-gradient(135deg, #0e131a 0%, #141b25 38%, #0f151d 62%, #0a0e14 100%);
+}
+.grx-v3 .metal-panel::after {
+  content: "";
+  position: absolute;
+  top: -1px; right: -1px;
+  width: 14px; height: 14px;
+  border-top: 1px solid var(--grx-glow);
+  border-right: 1px solid var(--grx-glow);
+  opacity: 0.55;
+  pointer-events: none;
+  border-radius: 0 var(--r) 0 0;
+}
+
+/* ---------- app shell: sidebar dengan depth + section labels ---------- */
+.grx-v3 .shell { background: transparent; }
+.grx-v3 .sidebar {
+  background: linear-gradient(180deg, rgba(10, 14, 20, 0.92) 0%, rgba(8, 11, 16, 0.96) 100%);
+  border-right: 1px solid var(--grx-line);
+  padding: var(--sp-5) var(--sp-3) var(--sp-4);
+}
+.grx-v3 .brand { padding: 2px 10px var(--sp-5); }
+.grx-v3 .brand-mark {
+  border-radius: 8px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.grx-v3 .nav-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--grx-ink-faint);
+  padding: var(--sp-4) 11px 6px;
+  display: block;
+}
+.grx-v3 .nav-item {
+  position: relative;
+  min-height: 40px;
+  padding: 9px 11px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.grx-v3 .nav-item svg {
+  width: 16px; height: 16px; flex-shrink: 0;
+  opacity: 0.75;
+}
+.grx-v3 .nav-item:hover { background: rgba(34, 211, 238, 0.06); color: var(--grx-ink); }
+.grx-v3 .nav-item:hover svg { opacity: 1; }
+.grx-v3 .nav-item.active {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.14), rgba(34, 211, 238, 0.02) 70%, transparent);
+  color: var(--grx-cyan);
+  border-color: rgba(34, 211, 238, 0.22);
+  font-weight: 600;
+}
+.grx-v3 .nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -1px; top: 20%; bottom: 20%;
+  width: 2px;
+  background: var(--grx-cyan);
+  box-shadow: 0 0 10px var(--grx-glow);
+  border-radius: 2px;
+}
+.grx-v3 .nav-item.active svg { opacity: 1; color: var(--grx-cyan); }
+.grx-v3 .nav-item.active .dot { display: none; }
+
+/* ---------- topbar glass sticky ---------- */
+.grx-v3 .topbar {
+  position: sticky;
+  top: 0; z-index: 20;
+  background: linear-gradient(180deg, rgba(6, 8, 11, 0.88) 0%, rgba(6, 8, 11, 0.72) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  margin: calc(-1 * var(--sp-6)) calc(-1 * var(--sp-8)) var(--sp-6);
+  padding: var(--sp-4) var(--sp-8);
+  border-bottom: 1px solid var(--grx-line);
+}
+.grx-v3 .topbar .page-title { font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem); }
+
+/* ---------- stat cards: eyebrow mono-label + cyan tick ---------- */
+.grx-v3 .stat-card { padding: var(--sp-4) var(--sp-5); gap: 4px; position: relative; overflow: hidden; }
+.grx-v3 .stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--grx-cyan), transparent 55%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.grx-v3 .stat-label { font-size: 10.5px; letter-spacing: 0.14em; color: var(--grx-ink-dim); }
+.grx-v3 .stat-value { font-size: clamp(1.45rem, 1.25rem + 0.7vw, 1.8rem); }
+
+/* ---------- table header: mono eyebrow style ---------- */
+.grx-v3 th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--grx-ink-faint);
+  border-bottom: 1px solid var(--grx-line-strong);
+}
+
+/* ---------- flow/step arrows ---------- */
+.grx-v3 .flow-arrow svg { filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4)); }
+
+/* ---------- hero (landing) ---------- */
+.grx-v3 .hero h1 { letter-spacing: -0.03em; }
+.grx-v3 .hero .chrome-text {
+  filter: drop-shadow(0 2px 14px rgba(34, 211, 238, 0.3));
+}
+.grx-v3 .hero__grid { align-items: center; }
+
+/* ---------- price card featured: cyan edge + brace ---------- */
+.grx-v3 .price-card--featured { border-color: var(--grx-line-strong); }
+.grx-v3 .price-card--featured::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 44px -14px rgba(34, 211, 238, 0.5);
+}
+
+/* ---------- badge gloss ---------- */
+.grx-v3 .badge { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }

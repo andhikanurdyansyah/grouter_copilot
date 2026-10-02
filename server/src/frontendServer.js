@@ -61,9 +61,26 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       res.writeHead(404); return res.end('not found');
     }
 
-    // Pages
+    // Pages (exact map)
     if (req.method === 'GET' && PAGES[url.pathname]) {
       const file = path.join(PUBLIC_DIR, PAGES[url.pathname]);
+      if (existsSync(file)) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        return res.end(readFileSync(file, 'utf8'));
+      }
+    }
+
+    // Real route prefixes: /user/* and /admin/* serve their app shell so the
+    // dashboards can use real paths (/user/licenses) instead of hash anchors.
+    if (req.method === 'GET' && (url.pathname === '/user' || url.pathname.startsWith('/user/'))) {
+      const file = path.join(PUBLIC_DIR, 'user-dashboard.html');
+      if (existsSync(file)) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        return res.end(readFileSync(file, 'utf8'));
+      }
+    }
+    if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) {
+      const file = path.join(PUBLIC_DIR, 'dashboard.html');
       if (existsSync(file)) {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return res.end(readFileSync(file, 'utf8'));

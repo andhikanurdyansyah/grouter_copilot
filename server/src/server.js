@@ -116,7 +116,7 @@ export function createCopilotServer({
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'register.html'), 'utf8'));
     }
 
-    if (req.method === 'GET' && url.pathname === '/user') {
+    if (req.method === 'GET' && (url.pathname === '/user' || url.pathname.startsWith('/user/'))) {
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'user-dashboard.html'), 'utf8'));
     }
 

@@ -1,700 +1,271 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f5f4"><meta name="description" content="gRouter Copilot: AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca Anda yang tentukan."><title>gRouter Copilot: AI dengan konteks aplikasi Anda</title><link rel="icon" type="image/png" href="/assets/copilot-mark.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/landing.css"></head><body>
-<!--
-  DIRECTION CONTRACT - gRouter Copilot landing v4 (brief-pinned: design/ = DESIGN.md + variables.css + tokens.json, Notion ref)
-  Pola scroll-motion ala aeronet.id (diinspeksi langsung): canvas Three.js FIXED fullscreen
-  di z-0, konten chapter scroll normal di atasnya. v4: KAMERA TETAP; satu "unit" grup scene
-  yang berpindah pose (offset-x + skala) per chapter — deterministik, mudah dihitung tabrakan.
-  THESIS v4 (per feedback PO: scene lama abstrak, gak ada makna produk): SETIAP bentuk
-  di scene adalah bagian produk yang nyata -
-    - jendela aplikasi host (tabel Orders) = app tempat Copilot menempel
-    - panel Copilot menempel di tepi kanan app (drawer), redup sebelum lisensi
-    - kartu skill read-only terdaftar (orders.list / tickets.list / customers.find)
-    - billing.write = kartu coral yang DIDORONG KELUAR kandang (tidak terdaftar)
-    - kandang kaca = batas data: hanya app + skill terdaftar yang ada di dalamnya
-    - kartu lisensi turun, mengunci, app beralih ke status aktif (chip lisensi menyala)
-  Semua kartu digambar via CanvasTexture dengan bahasa Notion (flat, hairline, radius).
-  STORY: ch0 app + Copilot redup -> ch1 skill keluar satu per satu -> ch2 kandang nutup,
-  billing.write ditolak -> ch3 lisensi mengunci, Copilot aktif; lalu halaman menutup
-  dengan kertas solid (demo, cara kerja, keamanan, harga real, close, footer).
-  FINISH: unreviewed and undocumented is unfinished.
--->
-<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
-<a class="skip" href="#main">Lewati ke konten</a>
-<div class="gl-stage" id="glStage" aria-hidden="true"></div>
-<header class="nav" id="nav"><div class="nav-in">
-  <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="30" height="30"></span><span>gRouter <b>Copilot</b></span></a>
-  <nav class="nav-links" id="navLinks" aria-label="Navigasi utama">
-    <a href="#cara-kerja" data-spy="cara-kerja">Cara kerja</a><a href="#keamanan" data-spy="keamanan">Keamanan</a><a href="#harga" data-spy="harga">Harga</a>
-  </nav>
-  <div class="nav-actions">
-    <a class="nav-login" href="/login">Masuk</a>
-    <a class="btn btn-primary" href="/register">Mulai sekarang</a>
-  </div>
-  <button class="menu" id="menu" aria-expanded="false" aria-controls="mobilePanel">Menu</button>
-</div>
-<div class="mobile-panel" id="mobilePanel" hidden>
-  <a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a><a href="/login">Masuk</a><a class="btn btn-primary" href="/register">Mulai sekarang</a>
-</div>
-</header>
-<main id="main">
-<div class="story" id="story">
-  <section class="chapter ch-a" id="ch-konteks">
-    <div class="wrap">
-      <div class="marks" aria-hidden="true">
-        <span class="mark m1"><svg viewBox="0 0 24 24"><path d="M5 7l5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span class="mark m2"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-        <span class="mark m3"><svg viewBox="0 0 24 24"><path d="M9 7V4h6v3M9 17v3h6v-3M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-        <span class="mark m4"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-        <span class="mark m5"><svg viewBox="0 0 24 24"><path d="M12 4v5m0 6v5m8-8h-5m-6 0H4m12.5-4.5l-3 3m-5 5l-3 3m11 0l-3-3m-5-5l-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+<!doctype html>
+<html lang="id" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#02050b">
+  <meta name="description" content="gRouter Copilot menambahkan lapisan inteligensi ke aplikasi yang sudah Anda jalankan. Anda menentukan data yang boleh dibaca lewat skill read-only. gRouter menyediakan mesin AI.">
+  <meta property="og:title" content="gRouter Copilot | Tambahkan AI ke aplikasi Anda">
+  <meta property="og:description" content="Data tetap di aplikasi Anda. Copilot membaca lewat skill yang Anda definisikan. gRouter menyediakan mesin AI.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://copilot.grouter.id">
+  <title>gRouter Copilot | Tambahkan AI ke aplikasi Anda</title>
+  <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
+  <link rel="preload" as="image" href="/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-001.jpg">
+  <link rel="stylesheet" href="/assets/landing.css?v=g1">
+  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Lewati ke konten</a>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-inner">
+      <a class="brand" href="/" aria-label="gRouter Copilot beranda">
+        <span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="27" height="29"></span>
+        <span>gRouter <strong>Copilot</strong></span>
+      </a>
+      <nav class="nav-links" aria-label="Navigasi utama">
+        <a href="#produk">Produk</a>
+        <a href="#fitur">Fitur</a>
+        <a href="#cerita">Percakapan</a>
+        <a href="#arsitektur">Arsitektur</a>
+        <a href="#harga">Harga</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="nav-login" href="/login">Masuk</a>
+        <a class="button button-primary" href="/register">Mulai Membangun</a>
       </div>
-      <h1 class="ch-h">AI yang memahami <span class="hl">konteks</span><br>aplikasi Anda.</h1>
-      <p class="lead">Tentukan sendiri data yang boleh dibaca asisten. Sisanya, tetap di tangan aplikasi Anda.</p>
-      <div class="actions">
-        <a class="btn btn-primary" href="/register">Mulai sekarang<svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 12h13m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-        <a class="btn btn-ghost" href="#cara-kerja">Lihat cara kerja</a>
-      </div>
-      <div class="scroll-cue" aria-hidden="true"><span></span></div>
+      <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileMenu">Menu</button>
     </div>
-  </section>
-  <section class="chapter ch-b" id="ch-skill">
-    <div class="wrap">
-      <h2 class="ch-h">Anda yang menentukan<br>data yang boleh dibaca.</h2>
-      <p class="lead">Skill adalah fungsi read-only yang Anda tulis. Apa yang tidak Anda daftarkan, tidak ada di dunia asisten.</p>
-      <div class="ch-chips" aria-hidden="true">
-        <span class="skchip c1">orders.list</span><span class="skchip c2">tickets.list</span><span class="skchip c3">customers.find</span>
-      </div>
+    <div class="mobile-menu" id="mobileMenu" hidden>
+      <a href="#produk">Produk</a>
+      <a href="#fitur">Fitur</a>
+      <a href="#cerita">Percakapan</a>
+      <a href="#arsitektur">Arsitektur</a>
+      <a href="#harga">Harga</a>
+      <a href="/login">Masuk</a>
+      <a class="button button-primary" href="/register">Mulai Membangun</a>
     </div>
-  </section>
-  <section class="chapter ch-c" id="ch-batas">
-    <div class="wrap">
-      <h2 class="ch-h">Yang tidak terdaftar,<br>tidak bisa dipanggil.</h2>
-      <p class="lead">Model tidak pernah melihat database. Ia hanya boleh lewat skill yang Anda buka, dan setiap jawaban menyebut sumbernya.</p>
-      <div class="ch-chips" aria-hidden="true">
-        <span class="skchip c1">orders.list &#10003;</span><span class="skchip c4">billing.write &#215;</span>
-      </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ THE JOURNEY: 300-frame scroll scrub ============
+         Satu canvas fixed menggambar frame sequence (frame 1 → 300)
+         mengikuti scroll. 4 babak cerita mengambang DI ATAS canvas;
+         frame tiap babak di-art-direct lewat data-frame. -->
+    <div class="scrub" aria-hidden="true">
+      <canvas id="scrubCanvas"></canvas>
+      <div class="scrub-vignette"></div>
+      <div class="scrub-progress"><i id="scrubBar"></i></div>
     </div>
-  </section>
-  <section class="chapter ch-d" id="ch-lisensi">
-    <div class="wrap">
-      <h2 class="ch-h">Satu lisensi.<br>Semua terkunci dan aktif.</h2>
-      <p class="lead">Token Ed25519 diverifikasi server, kredensial tidak pernah menyentuh browser. Sisanya tinggal membangun.</p>
-      <div class="actions">
-        <a class="btn btn-primary" href="/register">Mulai sekarang</a>
-        <a class="btn btn-text" href="#harga">Lihat harga</a>
-      </div>
-    </div>
-  </section>
-</div>
-<div class="paper-after">
-  <section class="demo">
-    <div class="wrap">
-      <figure class="mockup" data-rv>
-        <div class="app">
-          <div class="app-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="app-title">Aplikasi Anda / Orders</span></div>
-          <div class="app-body">
-            <table class="grid" aria-label="Contoh data aplikasi host">
-              <thead><tr><th>Order</th><th>Pelanggan</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>#10241</td><td>PackAndGo</td><td><span class="chip">Dikirim</span></td></tr>
-                <tr><td>#10242</td><td>Kirana Store</td><td><span class="chip chip-blue">Diproses</span></td></tr>
-                <tr><td>#10243</td><td>Sentra Mart</td><td><span class="chip">Dikirim</span></td></tr>
-              </tbody>
-            </table>
-            <div class="copilot">
-              <div class="copilot-head"><span class="copilot-name">Copilot</span><span class="copilot-skill">skill: orders.list</span></div>
-              <p class="q">Ada order baru minggu ini?</p>
-              <p class="a">Ada 3 order baru sejak Senin. Semua sudah masuk tahap pengiriman.<small>sumber: orders.list({ since: "7d" }) · read-only</small></p>
-            </div>
+
+    <div class="journey" id="journey">
+
+      <!-- 01 · HERO — terowongan data → core cyan -->
+      <section class="jch jch-hero" id="hero" data-frame="5" aria-label="gRouter Copilot">
+        <div class="giant" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
+        <div class="copy hero-copy">
+          <p class="eyebrow reveal">Aplikasi Anda. Data Anda. Copilot Anda.</p>
+          <h1 class="reveal" data-d="80">Aplikasi Anda sudah tahu jawabannya.</h1>
+          <p class="lead reveal" data-d="160">CRM, POS, HRIS — data inti bisnis sudah hidup di dalam sistem yang Anda bangun. Yang kurang bukan aplikasi baru. Yang kurang: <strong>cara bertanya langsung ke sana.</strong></p>
+          <div class="hero-actions reveal" data-d="240">
+            <a class="button button-primary button-lg" href="#fitur">Lihat Cara Kerja</a>
+            <a class="button button-glass button-lg" href="/register">Mulai Membangun</a>
+          </div>
+          <p class="hero-note reveal" data-d="320"><span class="signal"></span> Data tetap di aplikasi Anda. Tidak ada database scan otomatis.</p>
+        </div>
+        <div class="scroll-hint" aria-hidden="true"><i></i><span>Gulir untuk menjelajah</span></div>
+      </section>
+
+      <!-- 02 · PRODUK — cincin gyroscope berputar -->
+      <section class="jch jch-produk" id="produk" data-frame="95" aria-label="Tentang produk">
+        <div class="copy panel-copy">
+          <p class="eyebrow reveal">Selamat datang di lapisan inteligensi</p>
+          <h2 class="reveal" data-d="80">Satu Copilot untuk seluruh aplikasi yang sudah berjalan</h2>
+          <p class="lead center reveal" data-d="160">Plugin, bukan SaaS terpisah. Copilot dipasang di dalam host Anda — aplikasi tetap memegang data dan alur bisnisnya, Copilot menambahkan percakapan di atasnya.</p>
+          <div class="strip reveal" data-d="240">
+            <div class="strip-cell"><b>plugin</b><span>bukan SaaS terpisah</span></div>
+            <div class="strip-cell"><b>read-only</b><span>skill yang Anda definisikan</span></div>
+            <div class="strip-cell"><b>server-side</b><span>kunci tidak ke browser</span></div>
+            <div class="strip-cell"><b>licensed</b><span>Ed25519 · KlikQRIS</span></div>
           </div>
         </div>
-        <figcaption>Ilustrasi: Copilot menjawab lewat skill read-only yang Anda definisikan sendiri.</figcaption>
-      </figure>
-    </div>
-  </section>
-  <section class="section" id="cara-kerja">
-    <div class="wrap head" data-rv>
-      <h2>Satu lapisan percakapan, batas yang jelas.</h2>
-      <p class="serif">Copilot menghubungkan pertanyaan pengguna dengan fungsi yang Anda sediakan. Tidak lebih dari itu.</p>
-    </div>
-    <div class="wrap">
-      <div class="flow-card" data-rv>
-        <div class="step"><span class="step-k">Instal</span><p>Tambahkan plugin ke aplikasi Node.js Anda.</p><code>npm i @grouter/copilot</code></div>
-        <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="step"><span class="step-k">Definisikan</span><p>Tulis skill read-only: fungsi data yang Anda pilih.</p><code>orders.list({ since })</code></div>
-        <div class="step-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="step"><span class="step-k">Hubungkan</span><p>Aktifkan dengan satu lisensi Copilot.</p><code>license: GR-XXXX-XXXX</code></div>
-      </div>
-      <div class="duo">
-        <article class="card tint-sky" data-rv><h3>Skill Anda, aturan Anda</h3><p>Input, output, dan cakupan data ditentukan developer. Tidak ada pemindaian database otomatis dan tidak ada SQL yang dibuat model.</p></article>
-        <article class="card tint-mocha" data-rv><h3>Jawaban selalu dengan sumber</h3><p>Setiap jawaban menyebut skill yang dipakai. Pengguna melihat dari mana informasi itu berasal.</p></article>
-      </div>
-      <p class="state-note" data-rv>Yang sudah ada: runtime chat, skill registry, dan validasi lisensi Ed25519. Yang sedang dibangun: pengalaman first-use di dalam aplikasi host.</p>
-    </div>
-  </section>
-  <section class="section" id="keamanan">
-    <div class="wrap split">
-      <div class="split-text" data-rv>
-        <h2>Model tidak pernah menyentuh database.</h2>
-        <p class="serif">Aplikasi Anda tetap sumber kebenaran. Copilot hanya membaca lewat skill yang terdaftar, dan kredensial tidak pernah keluar dari server.</p>
-        <ul class="points">
-          <li><b>Batas eksplisit</b><span>Skill yang tidak terdaftar tidak bisa dipanggil, apa pun yang diminta pengguna.</span></li>
-          <li><b>Read-only secara default</b><span>Operasi tulis bukan bagian dari runtime dasar.</span></li>
-          <li><b>Kredensial di sisi server</b><span>Browser dan lisensi tidak pernah membawa kunci provider.</span></li>
-          <li><b>Lisensi terverifikasi</b><span>Token lisensi ditandatangani Ed25519 dan diperiksa server.</span></li>
-        </ul>
-      </div>
-      <div class="arch" data-rv role="img" aria-label="Diagram: aplikasi host memanggil Copilot runtime yang hanya boleh membaca skill terdaftar">
-        <div class="arch-node">Aplikasi Anda</div>
-        <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="arch-node arch-core">Copilot runtime</div>
-        <div class="arch-link" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14m-5-5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="arch-skills">
-          <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>orders.list</span>
-          <span class="skill-chip ok"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>tickets.list</span>
-          <span class="skill-chip no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>billing.write</span>
-          <span class="arch-note">billing.write tidak terdaftar, tidak bisa dipanggil</span>
+      </section>
+
+      <!-- 03 · ASK — robot masuk dari kiri, copy di kanan -->
+      <section class="jch jch-ask" id="ask" data-frame="195" aria-label="Percakapan dengan aplikasi Anda">
+        <div class="copy ask-copy">
+          <p class="eyebrow reveal">ask your application</p>
+          <h2 class="reveal" data-d="80">Pertanyaan biasa. Jawaban dari data Anda.</h2>
+          <p class="reveal" data-d="160">Di perjalanan ini, Copilot membaca aplikasi Anda lewat skill yang Anda izinkan — lalu menjawab dalam bahasa manusia. Contoh percakapan utuhnya ada di bawah.</p>
+          <p class="ask-link reveal" data-d="240"><a class="button button-glass" href="#cerita">Lihat contoh percakapan</a></p>
         </div>
-      </div>
+      </section>
+
+      <!-- 04 · ARSITEKTUR — terowongan keluar, alur data terbaca -->
+      <section class="jch jch-arch" id="arsitektur" data-frame="295" aria-label="Arsitektur server-side">
+        <div class="copy arch-copy">
+          <p class="eyebrow reveal">Server-side architecture</p>
+          <h2 class="reveal" data-d="80">Kunci tidak pernah sampai ke browser.</h2>
+          <div class="flow reveal" data-d="160" role="img" aria-label="Customer application, copilot runtime, skill resolver, gRouter, AI engine">
+            <div class="af-node"><b>CUSTOMER APPLICATION</b><small>your source of truth</small></div>
+            <span class="af-arrow" aria-hidden="true">→</span>
+            <div class="af-node af-core"><b>COPILOT RUNTIME</b><small>key stays here</small></div>
+            <span class="af-arrow" aria-hidden="true">→</span>
+            <div class="af-node"><b>SKILL RESOLVER</b><small>allowed skills only</small></div>
+            <span class="af-arrow" aria-hidden="true">→</span>
+            <div class="af-node af-engine"><b>GROUTER</b><small>AI supplier</small></div>
+            <span class="af-arrow" aria-hidden="true">→</span>
+            <div class="af-node"><b>AI ENGINE</b><small>generates the answer</small></div>
+          </div>
+          <div class="arch-chips reveal" data-d="240" aria-hidden="true"><code>license · signed Ed25519</code><code>usage · check-usage</code><code>key handoff · server-side</code></div>
+        </div>
+      </section>
+
     </div>
-  </section>
-  <section class="section section-alt" id="harga">
-    <div class="wrap head" data-rv>
-      <h2>Harga yang jelas, langsung dari katalog.</h2>
-      <p class="serif">Plan dimuat dari server saat halaman ini dibuka. Beli lewat dasbor setelah membuat akun.</p>
+
+    <!-- ============ GROUND: komponen solid di atas frame 300 (ambient) ============ -->
+    <div class="ground">
+
+      <!-- FITUR — bento -->
+      <section class="gsec" id="fitur" aria-label="Fitur">
+        <div class="features-head">
+          <p class="eyebrow reveal">Into the intelligence layer</p>
+          <h2 class="reveal" data-d="80">Fitur yang bekerja di dalam arsitektur Anda</h2>
+        </div>
+        <div class="bento">
+          <article class="cell cell-wide tilt reveal">
+            <div class="cell-body">
+              <h3>Skill read-only yang Anda definisikan</h3>
+              <p>Skill adalah satu-satunya pintu Copilot menuju data aplikasi. Apa yang tidak Anda expose — tidak ada.</p>
+            </div>
+            <div class="mini registry-mini" aria-hidden="true">
+              <div class="mini-head"><b>SKILL REGISTRY</b><i>read-only</i></div>
+              <div class="mini-row"><code>orders.search</code><span>readOnly: true</span></div>
+              <div class="mini-row"><code>users.lookup</code><span>readOnly: true</span></div>
+              <div class="mini-row"><code>analytics.rollup</code><span>readOnly: true</span></div>
+              <div class="mini-foot"><code>run(args, ctx)</code></div>
+            </div>
+          </article>
+          <article class="cell tilt reveal" data-d="80">
+            <div class="cell-body">
+              <h3>Data mengalir lewat jalur yang terlihat</h3>
+              <p>Skill → runtime → data aplikasi. Tidak ada jalur tersembunyi.</p>
+            </div>
+            <div class="mini stream-mini" aria-hidden="true">
+              <div class="mini-row st-skill"><code>orders.search</code><i>run()</i></div>
+              <div class="st-drop"><i></i><i></i><i></i></div>
+              <div class="mini-row st-store"><code>db.orders</code><i>read-only</i></div>
+              <div class="st-branch">↳ db.customers · db.tickets</div>
+            </div>
+          </article>
+          <article class="cell tilt reveal">
+            <div class="cell-body">
+              <h3>Percakapan yang grounded</h3>
+              <p>Jawaban dihitung dari skill terdaftar — bukan tebakan model.</p>
+            </div>
+            <div class="mini chat-mini" aria-hidden="true">
+              <div class="mini-row cm-user">Which customers haven't ordered in the last 30 days?</div>
+              <div class="mini-row cm-bot"><b>12 customers.</b><small>skill: orders.search → db.orders · sample data</small></div>
+            </div>
+          </article>
+          <article class="cell tilt reveal" data-d="80">
+            <div class="cell-body">
+              <h3>Kendali default enterprise</h3>
+              <p>Read-only default. Tulis butuh kontrol terpisah, bukan izin diam-diam.</p>
+            </div>
+            <div class="mini ctrl-mini" aria-hidden="true">
+              <div class="ctrl-col ok"><span>ALLOWED</span><b>✓ orders.search</b><b>✓ users.lookup</b></div>
+              <div class="ctrl-col no"><span>BLOCKED</span><b>× arbitrary DB</b><b>× writes</b></div>
+              <div class="ctrl-audit">AUDIT · skill → runtime → AI</div>
+            </div>
+          </article>
+          <article class="cell tilt reveal">
+            <div class="cell-body">
+              <h3>Kunci tidak pernah ke browser</h3>
+              <p>Runtime di server aplikasi Anda memanggil skill dan gRouter.</p>
+            </div>
+            <div class="mini pipe-mini" aria-hidden="true">
+              <div class="pipe-row"><b>APP</b><span>your data</span></div>
+              <div class="pipe-row core"><b>RUNTIME</b><span>key stays here</span></div>
+              <div class="pipe-row engine"><b>GROUTER</b><span>AI supplier</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- CERITA — panel chat -->
+      <section class="gsec gsec-chat" id="cerita" aria-label="Percakapan dengan aplikasi Anda">
+        <div class="chat-wrap">
+          <p class="eyebrow reveal">ask your application</p>
+          <h2 class="reveal" data-d="80">Percakapan yang grounded di data Anda.</h2>
+          <div class="chat-panel tilt reveal" data-d="160" aria-hidden="true">
+            <div class="chat-head"><span class="chat-avatar">C</span><span class="chat-id"><b>Copilot</b><small>via orders.search</small></span><i>read-only</i></div>
+            <div class="chat-msg cm-user">Which customers haven't ordered in the last 30 days?</div>
+            <div class="chat-msg cm-bot"><p>12 customers haven't placed an order in the last 30 days.</p><small>skill: orders.search → db.orders · sample data</small></div>
+            <div class="chat-msg cm-user">Summarize sales this quarter.</div>
+            <div class="chat-msg cm-bot"><p>Rp 482M across 1,284 orders.</p><small>skill: sales.analytics · sample data</small></div>
+            <div class="chat-foot">orders.search → db.orders → answer</div>
+          </div>
+          <p class="story-cap reveal" data-d="240">Angka pada panel adalah <strong>sample data</strong> untuk demonstrasi — jawaban nyata selalu dihitung dari skill aplikasi Anda.</p>
+        </div>
+      </section>
+
+      <!-- HARGA -->
+      <section class="pricing-section" id="harga">
+        <div class="pricing-inner">
+          <div class="pricing-copy">
+            <p class="eyebrow">Available plans</p>
+            <h2>Pilih lisensi yang cocok untuk aplikasi Anda.</h2>
+            <p>Harga dan entitlement dimuat dari katalog server. Tidak ada harga hardcode di halaman ini.</p>
+          </div>
+          <div class="plans" id="plans"><div class="plan-loading" aria-live="polite">Memuat katalog plan...</div></div>
+        </div>
+      </section>
+
+      <!-- CTA — kembali ke giant -->
+      <section class="gsec gsec-final" id="mulai" aria-label="Mulai membangun">
+        <div class="giant giant-final" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
+        <div class="final-inner">
+          <p class="eyebrow reveal">destination</p>
+          <h2 class="reveal" data-d="80">Beri aplikasi Anda Copilot.</h2>
+          <p class="lead center reveal" data-d="160">Copilot enterprise untuk aplikasi yang sudah berjalan. Data tetap milik Anda. Akses tetap Anda tentukan.</p>
+          <div class="hero-actions reveal" data-d="240">
+            <a class="button button-primary button-lg" href="/register">Mulai Membangun</a>
+            <a class="button button-outline button-lg" href="https://github.com/andhikanurdyansyah/grouter_copilot" target="_blank" rel="noopener">Read the Docs</a>
+          </div>
+          <p class="loop-line reveal" data-d="320" aria-hidden="true">application → copilot → skills → data → grouter → application</p>
+        </div>
+      </section>
+
     </div>
-    <div class="wrap plans" id="plans">
-      <div class="plan-skeleton"></div><div class="plan-skeleton"></div><div class="plan-skeleton"></div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="27" height="29"></span><span>gRouter <strong>Copilot</strong></span></a>
+      <p>AI tersemat untuk aplikasi yang sudah Anda jalankan.</p>
     </div>
-  </section>
-  <section class="close">
-    <div class="wrap close-in" data-rv>
-      <h2>Bangun Copilot yang memahami produk Anda.</h2>
-      <p>Mulai dari batas data yang Anda kendalikan.</p>
-      <a class="btn btn-onaccent" href="/register">Mulai sekarang</a>
-    </div>
-  </section>
-</div>
-</main>
-<footer class="footer">
-  <div class="wrap footer-top">
-    <div class="footer-brand">
-      <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="30" height="30"></span><span>gRouter <b>Copilot</b></span></a>
-      <p>AI tersemat untuk aplikasi Node.js. Data yang boleh dibaca, Anda yang tentukan.</p>
-      <a class="btn btn-primary" href="/register">Mulai sekarang</a>
-    </div>
-    <nav class="footer-cols" aria-label="Tautan footer">
-      <div class="fcol"><h4>Produk</h4><a href="#cara-kerja">Cara kerja</a><a href="#keamanan">Keamanan</a><a href="#harga">Harga</a></div>
-      <div class="fcol"><h4>Akun</h4><a href="/register">Daftar</a><a href="/login">Masuk</a></div>
-      <div class="fcol"><h4>Ekosistem</h4><a class="btn-outline" href="https://github.com/andhikanurdyansyah/grouter_copilot" rel="noopener" target="_blank">GitHub</a><a class="btn-outline" href="/register">npm @grouter/copilot</a></div>
+    <nav aria-label="Tautan footer">
+      <a href="#produk">Produk</a><a href="#fitur">Fitur</a><a href="#arsitektur">Arsitektur</a><a href="#harga">Harga</a><a href="/login">Masuk</a>
     </nav>
-    <button class="to-top" id="toTop" aria-label="Kembali ke atas"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-  </div>
-  <div class="wrap footer-base">
-    <span>&copy; <span id="year"></span> gRouter Copilot</span>
-    <span class="mono-tag">Node.js murni · tanpa dependensi runtime</span>
-  </div>
-</footer>
-<script>
-(function(){'use strict';
-document.documentElement.classList.add('js');
-var y=document.getElementById('year');if(y)y.textContent=new Date().getFullYear();
-var m=document.getElementById('menu'),p=document.getElementById('mobilePanel');
-if(m&&p){m.onclick=function(){var open=p.hidden;p.hidden=!open;m.setAttribute('aria-expanded',String(open));};}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function money(v){return 'Rp '+Number(v).toLocaleString('id-ID');}
-var g=document.getElementById('plans');
-fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(d){
-  var plans=(d.plans||[]).filter(function(x){return x.active!==false;});
-  if(!plans.length)throw new Error('empty');
-  g.innerHTML=plans.map(function(x,i){return '<article class="plan'+(i===1?' featured':'')+'" data-rv style="--d:'+(i+1)+'">'+(i===1?'<span class="plan-tag">Direkomendasikan</span>':'')+'<h3>'+esc(x.name||x.key)+'</h3><div class="price">'+esc(money(x.amount))+'</div><small>'+esc(x.quota||'')+(x.expiresInDays?' · aktif '+esc(x.expiresInDays)+' hari':'')+'</small><ul>'+(x.features||[]).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="btn btn-plan" href="/register">Pilih plan</a></article>';}).join('');
-  initReveal();
-}).catch(function(){g.innerHTML='<div class="plan-empty">Katalog belum tersedia. Coba muat ulang halaman.</div>';});
-/* ---- scroll state: header, progress bar, reveal, scrollspy ---- */
-var nav=document.getElementById('nav'),bar=document.getElementById('progressBar'),tick=false;
-var spyLinks=[].slice.call(document.querySelectorAll('[data-spy]'));
-var spySections=spyLinks.map(function(l){return document.getElementById(l.getAttribute('data-spy'));}).filter(Boolean);
-function updateSpy(){
-  var line=(window.innerHeight||800)*0.42,current=-1;
-  for(var i=0;i<spySections.length;i++){
-    if(spySections[i].getBoundingClientRect().top<=line)current=i;
-  }
-  spyLinks.forEach(function(l,j){
-    var on=j===current;
-    l.classList.toggle('active',on);
-    if(on)l.setAttribute('aria-current','true');else l.removeAttribute('aria-current');
-  });
-}
-function onScroll(){
-  if(tick)return;tick=true;
-  requestAnimationFrame(function(){
-    var sc=window.scrollY||0,max=document.documentElement.scrollHeight-window.innerHeight;
-    bar.style.transform='scaleX('+(max>0?sc/max:0)+')';
-    nav.classList.toggle('scrolled',sc>10);
-    nav.classList.toggle('on-canvas',sc<(document.getElementById('story').offsetHeight-window.innerHeight));
-    updateSpy();
-    tick=false;
-  });
-}
-addEventListener('scroll',onScroll,{passive:true});
-addEventListener('resize',onScroll,{passive:true});
-onScroll();
-var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-function initReveal(){
-  var els=[].slice.call(document.querySelectorAll('[data-rv]:not(.in)'));
-  if(reduce||!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in');});return;}
-  var io=new IntersectionObserver(function(es){
-    es.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
-  },{threshold:.15,rootMargin:'0px 0px -8% 0px'});
-  els.forEach(function(e){io.observe(e);});
-}
-initReveal();
-var tt=document.getElementById('toTop');
-if(tt)tt.addEventListener('click',function(){scrollTo({top:0,behavior:reduce?'auto':'smooth'});});
-})();
-</script>
-<script type="module">
-/* Scene v5 PREMIUM — narasi produk sama (app host -> skill read-only -> batas data ->
-   lisensi mengunci), dieksekusi dengan bahasa material kelas studio:
-   - environment studio via PMREMGenerator.fromScene (softbox putih/paper + strip midnight)
-   - slab rounded-rect EXTRUDED (bukan plane tipis): ceramic clearcoat, kaca frosted
-     (clearcoat murah, tanpa transmission — biaya render aman), midnight gloss, coin marigold
-   - soft shadows nyata (PCFSoft + ShadowMaterial ground), tone mapping ACESFilmic
-   - pointer parallax, spring stagger, reduced-motion live.
-   Kamera tetap + satu grup unit berpindah pose per chapter (deterministik).
-   Semua API core three r164 — tanpa addon, tanpa npm. */
-const stage=document.getElementById('glStage');
-const story=document.getElementById('story');
-const mqReduce=matchMedia('(prefers-reduced-motion: reduce)');
-let reduce=mqReduce.matches;
-mqReduce.addEventListener?.('change',e=>{reduce=e.matches;if(reduce)pShown=target;});
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const lerp=(a,b,t)=>a+(b-a)*t;
-const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-const backOut=t=>{const c1=1.70158,c3=c1+1;t=clamp(t,0,1);return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
-async function boot(){
-  try{
-  let THREE,renderer;
-  try{
-    THREE=await import('/assets/vendor/three.module.min.js');
-    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
-  }catch(e){stage.remove();return;}
-  const mob0=innerWidth<900;
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-  renderer.setSize(innerWidth,innerHeight);
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.2;
-  if(THREE.SRGBColorSpace)renderer.outputColorSpace=THREE.SRGBColorSpace;
-  const isGL2=renderer.capabilities.isWebGL2!==false;
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  stage.appendChild(renderer.domElement);
-  const scene=new THREE.Scene();
-  scene.fog=new THREE.Fog(0xf6f5f4,12,30);
-  const cam=new THREE.PerspectiveCamera(mob0?54:42,innerWidth/innerHeight,.1,60);
-  const world=new THREE.Group();scene.add(world);
-  /* ---- environment studio: softbox putih/paper + strip midnight untuk refleksi ---- */
-  (function studio(){
-    const env=new THREE.Scene();
-    env.background=new THREE.Color(0xf6f5f4);
-    const P=(w,h,c,x,y,z,rx,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.set(rx||0,ry||0,0);env.add(m);};
-    P(14,7,0xffffff,0,6,0,Math.PI/2,0);          /* top softbox */
-    P(9,6,0xffffff,-8,1,0,0,Math.PI/2);           /* kiri */
-    P(9,6,0xe6f3fe,8,1,0,0,-Math.PI/2);           /* kanan: wash sky */
-    P(16,8,0xd8d2ca,0,-3,7,0,Math.PI);            /* bantalan paper bawah */
-    P(2.4,7,0x02093a,-6,2,-6,0,Math.PI/4);        /* strip midnight: aksen refleksi */
-    const pm=new THREE.PMREMGenerator(renderer);
-    scene.environment=pm.fromScene(env,.05).texture;
-    pm.dispose();
+    <span class="footer-note">Node.js MVP · licensed plugin</span>
+  </footer>
+
+  <script>
+  (function(){
+    'use strict';
+    var menu=document.getElementById('menuButton'),mobileMenu=document.getElementById('mobileMenu');
+    if(menu&&mobileMenu){menu.addEventListener('click',function(){var open=mobileMenu.hidden;mobileMenu.hidden=!open;menu.setAttribute('aria-expanded',String(open));});mobileMenu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mobileMenu.hidden=true;menu.setAttribute('aria-expanded','false');});});}
+    var plans=document.getElementById('plans');
+    function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+    function money(v){return 'Rp '+Number(v).toLocaleString('id-ID');}
+    if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
   })();
-  /* ---- lights + shadow nyata ---- */
-  scene.add(new THREE.HemisphereLight(0xffffff,0xd8d2ca,.55));
-  const key=new THREE.DirectionalLight(0xffffff,1.5);
-  key.position.set(4.5,7.5,5);
-  key.castShadow=true;
-  key.shadow.mapSize.set(2048,2048);
-  key.shadow.camera.left=-8;key.shadow.camera.right=8;
-  key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
-  key.shadow.camera.far=30;key.shadow.bias=-.0004;key.shadow.radius=8;
-  scene.add(key);
-  const rim=new THREE.DirectionalLight(0x9bd7ff,.5);rim.position.set(-6,3,-4);scene.add(rim);
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.ShadowMaterial({opacity:.13}));
-  ground.rotation.x=-Math.PI/2;ground.position.y=-2.32;ground.receiveShadow=true;
-  world.add(ground);
-  /* ---- kanvas -> layar: konten UI tetap digambar 2D (crisp), di-depankan pada slab ---- */
-  const PXW=95;
-  function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
-  function wrapTxt(g,txt,x,y,maxW,lh){let line='';const words=String(txt).split(' ');for(let i=0;i<words.length;i++){const t=line?line+' '+words[i]:words[i];if(g.measureText(t).width>maxW&&line){g.fillText(line,x,y);y+=lh;line=words[i];}else line=t;}if(line)g.fillText(line,x,y);}
-  function screen(pw,ph,drawFn){
-    const c=document.createElement('canvas');c.width=pw*2;c.height=ph*2;
-    const g=c.getContext('2d');g.scale(2,2);
-    const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;if(THREE.SRGBColorSpace)tex.colorSpace=THREE.SRGBColorSpace;
-    const m=new THREE.Mesh(new THREE.PlaneGeometry(pw/PXW,ph/PXW),new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:1,depthWrite:false}));
-    m.userData.redraw=(st)=>{g.clearRect(0,0,pw,ph);drawFn(g,pw,ph,st||{});tex.needsUpdate=true;};
-    m.userData.redraw({});
-    return m;
-  }
-  /* slab rounded-rect extruded */
-  function slabMat(kind){
-    if(kind==='ceramic')return new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.3,metalness:.02,clearcoat:.55,clearcoatRoughness:.28});
-    if(kind==='glass')return new THREE.MeshPhysicalMaterial({color:0xf4faff,roughness:.22,metalness:0,transparent:true,opacity:.74,clearcoat:.9,clearcoatRoughness:.15,envMapIntensity:1.1});
-    if(kind==='midnight')return new THREE.MeshPhysicalMaterial({color:0x1c3f8f,roughness:.22,metalness:.08,clearcoat:.8,clearcoatRoughness:.18});
-    if(kind==='coin')return new THREE.MeshPhysicalMaterial({color:0xffb110,roughness:.24,metalness:1});
-    return new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.35,clearcoat:.5,clearcoatRoughness:.25});
-  }
-  function slab(w,h,depth,r,kind){
-    const sh=new THREE.Shape();
-    const x=-w/2,y=-h/2;
-    sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.absarc(x+w-r,y+r,r,-Math.PI/2,0,false);
-    sh.lineTo(x+w,y+h-r);sh.absarc(x+w-r,y+h-r,r,0,Math.PI/2,false);
-    sh.lineTo(x+r,y+h);sh.absarc(x+r,y+h-r,r,Math.PI/2,Math.PI,false);
-    sh.lineTo(x,y+r);sh.absarc(x+r,y+r,r,Math.PI,Math.PI*1.5,false);
-    const geo=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:true,bevelThickness:.025,bevelSize:.025,bevelSegments:3,curveSegments:14});
-    geo.center();
-    const m=new THREE.Mesh(geo,slabMat(kind));
-    return m;
-  }
-  /* kartu produk = slab + layar; satu grup, fade via kedua material */
-  function productCard(pw,ph,drawFn,kind,opts){
-    opts=opts||{};
-    const grp=new THREE.Group();
-    const sm=slab(pw/PXW,ph/PXW,opts.depth||.12,opts.r||.14,kind);
-    sm.castShadow=kind!=='glass';
-    const scr=screen(pw,ph,drawFn);
-    scr.position.z=(opts.depth||.12)/2+.05; /* di depan face + bevel */
-    const sc=opts.screenScale||.965;
-    scr.scale.setScalar(sc);
-    grp.add(sm,scr);
-    grp.userData={slab:sm,scr,mats:[sm.material,scr.material]};
-    grp.redraw=(st)=>{scr.userData.redraw(st);};
-    grp.setFade=(o)=>{grp.userData.mats.forEach(mt=>{mt.transparent=true;mt.opacity=o;});};
-    if(!grp.isGroup)grp.isGroup=true;
-    return grp;
-  }
-  /* ---- konten UI (makna produk dipertahankan dari v4) ---- */
-  function drawApp(g,w,h,st){
-    g.textBaseline='middle';
-    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,16);g.fill();
-    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,16);g.stroke();
-    g.save();rr(g,1,1,w-2,h-2,16);g.clip();
-    g.fillStyle='#f4f2ef';g.fillRect(1,1,w-2,30);
-    g.fillStyle='#dcd8d3';
-    for(let i=0;i<3;i++){g.beginPath();g.arc(17+i*13,16,3.4,0,7);g.fill();}
-    g.fillStyle='#1f1d1b';g.font='600 10px Inter,system-ui,sans-serif';
-    g.fillText('Aplikasi Anda — Orders',60,17);
-    g.font='600 8px Inter,system-ui,sans-serif';g.fillStyle='#6b655f';
-    g.fillText('ORDER',20,46);g.fillText('PELANGGAN',96,46);g.fillText('STATUS',206,46);
-    g.strokeStyle='rgba(0,0,0,.07)';g.lineWidth=1;g.beginPath();g.moveTo(14,54);g.lineTo(w-14,54);g.stroke();
-    const rows=[['#10241','PackAndGo','Dikirim',0],['#10242','Kirana Store','Diproses',1],['#10243','Sentra Mart','Dikirim',0]];
-    rows.forEach((r,i)=>{
-      const y=72+i*27;
-      g.font='500 10px Inter,system-ui,sans-serif';
-      g.fillStyle='#1f1d1b';g.fillText(r[0],20,y);
-      g.fillStyle='#44403c';g.fillText(r[1],96,y);
-      const pw2=r[2].length*5.6+18;
-      g.fillStyle=r[3]?'#e6f3fe':'#f1efec';rr(g,206,y-8,pw2,16,8);g.fill();
-      g.font='500 8px Inter,system-ui,sans-serif';g.fillStyle=r[3]?'#065e9d':'#57534e';
-      g.fillText(r[2],215,y);
-      g.strokeStyle='rgba(0,0,0,.06)';g.beginPath();g.moveTo(14,y+13);g.lineTo(w-14,y+13);g.stroke();
-    });
-    if(st.active){
-      g.fillStyle='#e7f6ec';rr(g,16,h-26,112,16,8);g.fill();
-      g.fillStyle='#177a3d';g.font='600 8.5px Inter,system-ui,sans-serif';
-      g.fillText('✓ Lisensi aktif',26,h-18);
-    }
-    g.restore();
-  }
-  function drawCopilot(g,w,h,st){
-    g.textBaseline='middle';
-    g.globalAlpha=st.active?1:.62;
-    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,14);g.fill();
-    g.strokeStyle='rgba(0,0,0,.10)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,14);g.stroke();
-    g.fillStyle='#111111';g.font='600 13px Inter,system-ui,sans-serif';
-    g.fillText('Copilot',14,22);
-    const pl='fx orders.list';g.font='500 8px ui-monospace,Consolas,monospace';
-    const pw2=pl.length*4.9+20;
-    g.fillStyle='#e6f3fe';rr(g,w-pw2-12,13,pw2,17,8.5);g.fill();
-    g.fillStyle='#005ea8';g.fillText(pl,w-pw2-2,22);
-    g.strokeStyle='rgba(0,0,0,.07)';g.lineWidth=1;g.beginPath();g.moveTo(12,38);g.lineTo(w-12,38);g.stroke();
-    g.fillStyle='#111111';g.font='500 10.5px Inter,system-ui,sans-serif';
-    g.fillText('Ada order baru minggu ini?',14,54);
-    g.fillStyle='#e6f3fe';rr(g,12,66,w-24,84,10);g.fill();
-    g.fillStyle='#26221f';g.font='400 9.5px Inter,system-ui,sans-serif';
-    wrapTxt(g,'Ada 3 order baru sejak Senin. Semua sudah masuk tahap pengiriman.',22,84,w-44,13);
-    g.fillStyle='#757575';g.font='400 7.5px ui-monospace,Consolas,monospace';
-    g.fillText('sumber: orders.list · read-only',22,140);
-    if(st.active){
-      g.fillStyle='#e7f6ec';rr(g,12,h-28,120,16,8);g.fill();
-      g.fillStyle='#177a3d';g.font='600 8px Inter,system-ui,sans-serif';
-      g.fillText('● aktif · Ed25519',20,h-20);
-    }
-    g.globalAlpha=1;
-  }
-  function drawSkill(g,w,h,s,st){
-    g.textBaseline='middle';
-    if(st.blocked)g.globalAlpha=.8;
-    g.fillStyle='#ffffff';rr(g,1,1,w-2,h-2,12);g.fill();
-    g.strokeStyle=s.ok?'rgba(0,0,0,.10)':'rgba(246,73,50,.5)';g.lineWidth=1.5;rr(g,1,1,w-2,h-2,12);g.stroke();
-    g.fillStyle=s.ok?'#097fe8':'#e32d14';g.beginPath();g.arc(20,h/2,4.5,0,7);g.fill();
-    g.fillStyle='#141210';g.font='500 12px ui-monospace,Consolas,monospace';
-    g.fillText(s.label,34,h/2+1);
-    if(s.ok){
-      g.strokeStyle='#177a3d';g.lineWidth=2.2;g.lineCap='round';
-      g.beginPath();g.moveTo(w-28,h/2);g.lineTo(w-24,h/2+4);g.lineTo(w-17,h/2-4);g.stroke();
-    }else{
-      g.strokeStyle='#e32d14';g.lineWidth=2.2;g.lineCap='round';
-      g.beginPath();g.moveTo(w-28,h/2-4);g.lineTo(w-19,h/2+4);g.moveTo(w-19,h/2-4);g.lineTo(w-28,h/2+4);g.stroke();
-      if(st.blocked){
-        g.strokeStyle='rgba(226,45,20,.85)';g.lineWidth=2;
-        g.beginPath();g.moveTo(32,h/2+1);g.lineTo(34+s.label.length*7.2,h/2+1);g.stroke();
-      }
-    }
-    g.globalAlpha=1;
-  }
-  function drawLicense(g,w,h){
-    g.textBaseline='middle';
-    g.clearRect(0,0,w,h); /* layar transparan: slab midnight terlihat */
-    g.fillStyle='#cfe6ff';g.font='600 9px Inter,system-ui,sans-serif';
-    g.fillText('LISENSI COPILOT',20,20);
-    g.fillStyle='rgba(207,230,255,.75)';g.font='500 7.5px Inter,system-ui,sans-serif';
-    g.fillText('Ed25519 · terverifikasi server',20,38);
-    g.fillStyle='#ffffff';g.font='600 16px ui-monospace,Consolas,monospace';
-    g.fillText('GR-XXXX-XXXX',20,66);
-    g.fillStyle='rgba(255,255,255,.6)';g.font='400 7.5px Inter,system-ui,sans-serif';
-    g.fillText('1 lisensi mengaktifkan 1 aplikasi host',20,90);
-    g.strokeStyle='rgba(255,255,255,.3)';g.lineWidth=1;
-    g.beginPath();g.moveTo(20,104);g.lineTo(w-20,104);g.stroke();
-  }
-  /* ---- unit: semuanya dalam satu grup; pose per chapter ---- */
-  const unit=new THREE.Group();world.add(unit);
-  const appGroup=new THREE.Group();appGroup.scale.setScalar(.95);unit.add(appGroup);
-  const appSlab=slab(4.4,2.9,.3,.22,'ceramic');
-  appSlab.castShadow=true;
-  const appScr=screen(440,300,drawApp);
-  appScr.scale.setScalar(.965);appScr.position.z=.195;
-  appGroup.add(appSlab,appScr);
-  const copCard=productCard(180,250,drawCopilot,'glass',{depth:.2,r:.16,screenScale:.94});
-  copCard.position.set(2.42,.08,.55);copCard.rotation.y=-.1;
-  appGroup.add(copCard);
-  /* ---- kartu skill read-only ---- */
-  const SK=[
-    {label:'orders.list',ok:true,x:-1.9,y:1.95,z:1.1},
-    {label:'tickets.list',ok:true,x:-.2,y:2.05,z:1.1},
-    {label:'customers.find',ok:true,x:1.5,y:1.95,z:1.1},
-    {label:'billing.write',ok:false,x:-.95,y:-1.35,z:1.2,ox:-3.2,oy:-1.55,oz:1.8},
-  ];
-  const skills=SK.map((s,i)=>{
-    const c=productCard(150,48,(g,w,h,st)=>drawSkill(g,w,h,s,st),'ceramic',{depth:.14,r:.12,screenScale:.86});
-    c.userData.ph=i*1.13;c.userData.base={x:s.x,y:s.y,z:s.z};
-    c.userData.out=s.ox?{x:s.ox,y:s.oy,z:s.oz}:null;
-    c.userData.blockedDrawn=false;c.userData.isOk=!!s.ok;
-    c.setFade(0);
-    unit.add(c);return c;
-  });
-  /* ---- kandang batas data: kaca nyata + rusuk + post midnight ---- */
-  const fGeo=new THREE.BoxGeometry(6.4,4.1,3.4);
-  const fenceGlass=new THREE.Mesh(fGeo,new THREE.MeshPhysicalMaterial({color:0xf4faff,roughness:.18,metalness:0,transparent:true,opacity:0,clearcoat:.85,clearcoatRoughness:.18,envMapIntensity:1.05,depthWrite:false}));
-  const fenceEdge=new THREE.LineSegments(new THREE.EdgesGeometry(fGeo),new THREE.LineBasicMaterial({color:0x0a1a38,transparent:true,opacity:0}));
-  fenceGlass.position.set(.2,0,.4);fenceEdge.position.copy(fenceGlass.position);
-  fenceGlass.castShadow=false;
-  const posts=[];
-  [[-3,-1.3],[-3,2.1],[3.4,-1.3],[3.4,2.1]].forEach(([px,pz])=>{
-    const pm2=slabMat('midnight');pm2.transparent=true;pm2.opacity=0;
-    const p=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,4.35,12),pm2);
-    p.position.set(px+.2,0,pz+.4);unit.add(p);posts.push(p);
-  });
-  unit.add(fenceGlass,fenceEdge);
-  /* ---- kartu lisensi: slab midnight gloss + coin marigold ---- */
-  const licCard=productCard(200,124,drawLicense,'midnight',{depth:.18,r:.14,screenScale:1});
-  licCard.userData.slab.material.emissive=new THREE.Color(0x123a8c);
-  licCard.userData.slab.material.emissiveIntensity=.3;
-  licCard.setFade(0);
-  const coin=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.05,32),slabMat('coin'));
-  coin.rotation.x=Math.PI/2;coin.position.set(.82,-.34,.16);coin.castShadow=true;
-  licCard.add(coin);
-  unit.add(licCard);
-  window.__dbg={renderer,scene,cam,unit,skills,appGroup};
-  /* ---- debu kertas halus ---- */
-  const dustTex=(()=>{
-    const c=document.createElement('canvas');c.width=c.height=32;
-    const g=c.getContext('2d');
-    const gr=g.createRadialGradient(16,16,0,16,16,15);
-    gr.addColorStop(0,'rgba(20,30,40,.5)');gr.addColorStop(1,'rgba(20,30,40,0)');
-    g.fillStyle=gr;g.beginPath();g.arc(16,16,15,0,7);g.fill();
-    return new THREE.CanvasTexture(c);
-  })();
-  const N=reduce?0:70;
-  const pos=new Float32Array(N*3);
-  for(let i=0;i<N;i++){
-    const r=8+Math.random()*8,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
-    pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=(Math.random()-.5)*10;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
-  }
-  const dust=(()=>{
-    if(!N)return null;
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    const mat=new THREE.PointsMaterial({size:.06,map:dustTex,transparent:true,opacity:.35,depthWrite:false,color:0x4a5460});
-    const pts=new THREE.Points(geo,mat);scene.add(pts);return pts;
-  })();
-  /* ---- scroll progress + pose per chapter ---- */
-  let target=0,pShown=0,renderable=true,active=false;
-  function measure(){
-    const total=story.offsetHeight-innerHeight;
-    target=total>0?clamp(scrollY/total,0,1.12):0;
-    renderable=scrollY<total+innerHeight*1.2;
-  }
-  addEventListener('scroll',measure,{passive:true});
-  addEventListener('resize',()=>{
-    cam.aspect=innerWidth/innerHeight;
-    cam.fov=innerWidth<900?54:42;
-    cam.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);measure();fitX();
-  });
-  document.addEventListener('visibilitychange',measure);
-  measure();
-  pShown=target;
-  const poseKeys=[
-    {p:0.000,x:3.65,s:1},
-    {p:0.333,x:-3.2,s:.66},
-    {p:0.667,x:4.05,s:.85},
-    {p:1.000,x:3.9,s:.85},
-  ];
-  const poseDesign=poseKeys.map(k=>({x:k.x,s:k.s}));
-  function poseAt(p){
-    let a=poseKeys[0],b=poseKeys[poseKeys.length-1];
-    for(let i=0;i<poseKeys.length-1;i++){
-      if(p>=poseKeys[i].p&&p<=poseKeys[i+1].p){a=poseKeys[i];b=poseKeys[i+1];break;}
-    }
-    const t=clamp((p-a.p)/Math.max(b.p-a.p,1e-4),0,1),e=ease(t);
-    return{x:lerp(a.x,b.x,e),s:lerp(a.s,b.s,e)};
-  }
-  /* fit horizontal empiris: binary-search batas pose.x per kunci agar cluster app utuh di viewport apa pun.
-     Kamera diposisikan dulu persis seperti loop (boot-time camera masih di 0,0,0 -> proyeksi NaN). */
-  function fitX(){
-    try{
-      /* ukur dari keadaan netral: unit ke 0 (world box = local box), kamera seperti loop */
-      const savedX=unit.position.x;
-      unit.position.x=0;unit.updateMatrixWorld(true);
-      cam.position.set(0,.25,10.2);cam.lookAt(0,.05,0);cam.updateMatrixWorld();
-      const box=new THREE.Box3().setFromObject(appGroup);
-      unit.position.x=savedX;
-      if(!isFinite(box.min.x)||!isFinite(box.max.x))return;
-      poseKeys.forEach(k=>{
-        const dir=k.x>=0?1:-1;
-        let lo=0,hi=4.6;
-        for(let i=0;i<16;i++){
-          const mid=(lo+hi)/2;
-          const b2=new THREE.Box3(
-            box.min.clone().multiplyScalar(k.s).add(new THREE.Vector3(mid*dir,0,0)),
-            box.max.clone().multiplyScalar(k.s).add(new THREE.Vector3(mid*dir,0,0)));
-          /* proyeksikan SEMUA 8 sudut — proyeksi min/max saja meremehkan extent perspektif */
-          let mn=Infinity,mx=-Infinity,fin=true;
-          for(let ci=0;ci<8;ci++){
-            const c=new THREE.Vector3(ci&1?b2.max.x:b2.min.x,ci&2?b2.max.y:b2.min.y,ci&4?b2.max.z:b2.min.z);
-            const v=c.project(cam);
-            if(!isFinite(v.x)){fin=false;break;}
-            if(v.x<mn)mn=v.x;if(v.x>mx)mx=v.x;
-          }
-          (fin&&mx<=.97&&mn>=-.97)?lo=mid:hi=mid;
-        }
-        const dx=poseDesign[poseKeys.indexOf(k)].x;
-        k.x=dir>0?Math.min(dx,lo):Math.max(dx,-lo);
-      });
-    }catch(e){}
-  }
-  fitX();
-  const seg=(p,i)=>clamp(p*3-(i-1),0,1);
-  /* pointer parallax */
-  let pX=0,pY=0;
-  addEventListener('pointermove',e=>{
-    pX=(e.clientX/innerWidth-.5)*2;pY=(e.clientY/innerHeight-.5)*2;
-  },{passive:true});
-  let last=performance.now();
-  function frame(now){
-    requestAnimationFrame(frame);
-    const t=now/1000;
-    if(!renderable||document.hidden){last=now;return;}
-    pShown+=(target-pShown)*(reduce?1:.075);
-    const p=clamp(pShown,0,1);
-    const mob=innerWidth<900;
-    /* kamera: parallax pointer halus */
-    const cx=(mob?0:pX*.32),cy=.25-pY*.14;
-    cam.position.x+=(cx-cam.position.x)*(reduce?1:.04);
-    cam.position.y+=(cy+Math.sin(t*.3)*.04-cam.position.y)*(reduce?1:.04);
-    cam.position.z=10.2;
-    cam.lookAt(0,.05,0);
-    /* unit pose */
-    const po=poseAt(p);
-    const tx=mob?0:po.x,tsc=mob?po.s*.6:po.s;
-    unit.position.x+=(tx-unit.position.x)*(reduce?1:.09);
-    unit.position.y=mob?-3.4:0;
-    unit.scale.setScalar(unit.scale.x+(tsc-unit.scale.x)*(reduce?1:.09));
-    const s1=ease(seg(p,1)),s2=ease(seg(p,2)),s3=ease(seg(p,3));
-    appGroup.rotation.y=(reduce?0:Math.sin(t*.4)*.045)-.2;
-    appGroup.position.y=reduce?0:Math.sin(t*.7)*.05;
-    skills.forEach((c,i)=>{
-      if(!c.setFade||!c.redraw)return;
-      const u=c.userData;
-      const born=backOut(clamp((s1-.05-i*.1)/.55,0,1));
-      c.setFade(clamp(born,0,1));
-      c.scale.setScalar(Math.max(.001,born)*(u.isOk&&active?1+Math.sin(t*2.1+u.ph)*.018:1));
-      const bx=lerp(u.base.x+.9,u.base.x,clamp(born,0,1)),by=lerp(u.base.y-.5,u.base.y,clamp(born,0,1)),bz=lerp(.9,u.base.z,clamp(born,0,1));
-      if(u.out){
-        const push=ease(s2);
-        c.position.set(lerp(bx,u.out.x,push),lerp(by,u.out.y,push),lerp(bz,u.out.z,push));
-        c.rotation.z=(reduce?0:Math.sin(t*1.2+u.ph)*.04)+push*.15;
-        c.setFade(clamp(born,0,1)*(1-push*.5));
-        const wantB=push>.5;
-        if(wantB!==u.blockedDrawn){u.blockedDrawn=wantB;u.redraw({blocked:wantB});}
-      }else{
-        c.position.set(bx,by+(reduce?0:Math.sin(t*.85+u.ph)*.07),bz);
-        c.rotation.z=reduce?0:Math.sin(t*.75+u.ph)*.045;
-        if(u.blockedDrawn){u.blockedDrawn=false;u.redraw({});}
-      }
-    });
-    const fs=.8+.2*s2;
-    fenceGlass.scale.setScalar(fs);fenceEdge.scale.setScalar(fs);
-    posts.forEach(pt=>{pt.scale.setScalar(Math.max(.001,fs));pt.material.opacity=s2*.85;});
-    fenceGlass.material.opacity=s2*.12;
-    fenceEdge.material.opacity=s2*.45;
-    const lk=backOut(clamp((s3-.06)/.55,0,1));
-    if(licCard.setFade)licCard.setFade(clamp(lk,0,1));
-    licCard.scale.setScalar(Math.max(.001,lk)*1.05);
-    licCard.position.set(-.55,lerp(3.6,.66,clamp(lk,0,1)),1.5);
-    licCard.rotation.x=lerp(-.45,0,clamp(lk,0,1));
-    coin.rotation.z=t*.6;
-    const on=s3>.6;
-    if(on!==active){active=on;appScr.userData.redraw({active:on});copCard.redraw({active:on});}
-    if(dust&&!reduce)dust.rotation.y=t*.02;
-    renderer.render(scene,cam);
-  }
-  requestAnimationFrame(frame);
-  }catch(err){ try{stage.remove();}catch(_){} }
-}
-boot();
-</script><script type="module">
-/* dotLottie micro-accents — progressive enhancement (svg fallback tetap di markup).
-   Skip bila reduced-motion / WebAssembly tak tersedia. Bundle+wasm self-hosted. */
-(function () {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (typeof WebAssembly !== 'object') return;
-  import('/assets/vendor/dotlottie-wc.js').then(function () {
-    function mk(src, aria) {
-      var el = document.createElement('dotlottie-wc');
-      el.setAttribute('src', src);
-      el.setAttribute('autoplay', '');
-      el.setAttribute('loop', '');
-      if (aria) el.setAttribute('aria-hidden', 'true');
-      return el;
-    }
-    /* hero mark m5: AI core orbit menggantikan svg statis */
-    var m5 = document.querySelector('.marks .m5 svg');
-    if (m5) m5.replaceWith(mk('/assets/lottie/orbit.json', true));
-    /* panel Copilot demo: indikator "sedang mengetik" */
-    var head = document.querySelector('.copilot .copilot-head');
-    if (head) head.insertBefore(mk('/assets/lottie/typing.json', true), head.children[1] || null);
-    /* app-bar demo: paket data read-only mengalir */
-    var bar = document.querySelector('.app-bar');
-    if (bar) bar.appendChild(mk('/assets/lottie/dataflow.json', true));
-  }).catch(function () {});
-})();
-</script></body></html>
+  </script>
+  <script src="/assets/landing.js?v=g1" defer></script>
+</body>
+</html>

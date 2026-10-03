@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#02050b">
+  <meta name="theme-color" content="#050d14">
   <meta name="description" content="gRouter Copilot menambahkan lapisan inteligensi ke aplikasi yang sudah Anda jalankan. Anda menentukan data yang boleh dibaca lewat skill read-only. gRouter menyediakan mesin AI.">
   <meta property="og:title" content="gRouter Copilot | Tambahkan AI ke aplikasi Anda">
   <meta property="og:description" content="Data tetap di aplikasi Anda. Copilot membaca lewat skill yang Anda definisikan. gRouter menyediakan mesin AI.">
@@ -12,7 +12,7 @@
   <title>gRouter Copilot | Tambahkan AI ke aplikasi Anda</title>
   <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
   <link rel="preload" as="image" href="/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-001.jpg">
-  <link rel="stylesheet" href="/assets/landing.css?v=g1">
+  <link rel="stylesheet" href="/assets/landing.css?v=g2">
   <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -25,7 +25,7 @@
         <span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="27" height="29"></span>
         <span>gRouter <strong>Copilot</strong></span>
       </a>
-      <nav class="nav-links" aria-label="Navigasi utama">
+      <nav class="nav-pill" aria-label="Navigasi utama">
         <a href="#produk">Produk</a>
         <a href="#fitur">Fitur</a>
         <a href="#cerita">Percakapan</a>
@@ -34,7 +34,7 @@
       </nav>
       <div class="nav-actions">
         <a class="nav-login" href="/login">Masuk</a>
-        <a class="button button-primary" href="/register">Mulai Membangun</a>
+        <a class="button button-white" href="/register">Mulai Membangun</a>
       </div>
       <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileMenu">Menu</button>
     </div>
@@ -52,64 +52,74 @@
   <main id="main">
 
     <!-- ============ THE JOURNEY: 300-frame scroll scrub ============
-         Satu canvas fixed menggambar frame sequence (frame 1 → 300)
-         mengikuti scroll. 4 babak cerita mengambang DI ATAS canvas;
-         frame tiap babak di-art-direct lewat data-frame. -->
+         Canvas fixed menggambar frame 1→300 mengikuti scroll.
+         4 babak sinematik di atasnya: copy KIRI (scrim), visual KANAN.
+         Pagination 01–04 + vertical tags ala referensi. -->
     <div class="scrub" aria-hidden="true">
       <canvas id="scrubCanvas"></canvas>
       <div class="scrub-vignette"></div>
-      <div class="scrub-progress"><i id="scrubBar"></i></div>
     </div>
 
     <div class="journey" id="journey">
 
-      <!-- 01 · HERO — terowongan data → core cyan -->
-      <section class="jch jch-hero" id="hero" data-frame="5" aria-label="gRouter Copilot">
+      <!-- 01 · MASUK — terowongan data → core cyan -->
+      <section class="jch" id="hero" data-frame="5" aria-label="gRouter Copilot">
         <div class="giant" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
-        <div class="copy hero-copy">
-          <p class="eyebrow reveal">Aplikasi Anda. Data Anda. Copilot Anda.</p>
-          <h1 class="reveal" data-d="80">Aplikasi Anda sudah tahu jawabannya.</h1>
-          <p class="lead reveal" data-d="160">CRM, POS, HRIS — data inti bisnis sudah hidup di dalam sistem yang Anda bangun. Yang kurang bukan aplikasi baru. Yang kurang: <strong>cara bertanya langsung ke sana.</strong></p>
-          <div class="hero-actions reveal" data-d="240">
-            <a class="button button-primary button-lg" href="#fitur">Lihat Cara Kerja</a>
-            <a class="button button-glass button-lg" href="/register">Mulai Membangun</a>
+        <div class="copy">
+          <p class="ch-meta reveal"><span class="ch-num">01</span><span class="ch-label">Masuk · terowongan data</span></p>
+          <p class="eyebrow reveal" data-d="60">Aplikasi Anda. Data Anda. Copilot Anda.</p>
+          <h1 class="reveal" data-d="120">Di dalam aplikasi Anda, ada data yang <em class="orb">sudah tahu</em> jawabannya.</h1>
+          <p class="lead reveal" data-d="200">CRM, POS, HRIS — data inti bisnis sudah hidup di sistem Anda. Yang kurang bukan aplikasi baru, melainkan <strong>cara bertanya langsung ke sana.</strong></p>
+          <div class="hero-actions reveal" data-d="280">
+            <a class="button button-primary button-lg" href="#fitur">Jelajahi Perjalanan</a>
+            <a class="button button-white button-lg" href="/register">Mulai Membangun</a>
           </div>
-          <p class="hero-note reveal" data-d="320"><span class="signal"></span> Data tetap di aplikasi Anda. Tidak ada database scan otomatis.</p>
+          <div class="metrics reveal" data-d="360" role="list">
+            <div class="metric" role="listitem"><b>100%</b><span>akses read-only</span></div>
+            <div class="metric" role="listitem"><b>0</b><span>kredensial di browser</span></div>
+            <div class="metric" role="listitem"><b>Ed25519</b><span>lisensi bertanda tangan</span></div>
+          </div>
+          <p class="hero-note reveal" data-d="440"><span class="signal"></span> Data tetap di aplikasi Anda. Tidak ada database scan otomatis.</p>
         </div>
-        <div class="scroll-hint" aria-hidden="true"><i></i><span>Gulir untuk menjelajah</span></div>
+        <p class="ch-cap reveal" data-d="520">Gulir — kita masuk ke inti data Anda.</p>
       </section>
 
-      <!-- 02 · PRODUK — cincin gyroscope berputar -->
-      <section class="jch jch-produk" id="produk" data-frame="95" aria-label="Tentang produk">
-        <div class="copy panel-copy">
-          <p class="eyebrow reveal">Selamat datang di lapisan inteligensi</p>
-          <h2 class="reveal" data-d="80">Satu Copilot untuk seluruh aplikasi yang sudah berjalan</h2>
-          <p class="lead center reveal" data-d="160">Plugin, bukan SaaS terpisah. Copilot dipasang di dalam host Anda — aplikasi tetap memegang data dan alur bisnisnya, Copilot menambahkan percakapan di atasnya.</p>
-          <div class="strip reveal" data-d="240">
+      <!-- 02 · LAPISAN INTELIGENSI — gyroscope berputar -->
+      <section class="jch" id="produk" data-frame="95" aria-label="Tentang produk">
+        <div class="copy">
+          <p class="ch-meta reveal"><span class="ch-num">02</span><span class="ch-label">Lapisan inteligensi</span></p>
+          <p class="eyebrow reveal" data-d="60">Selamat datang di lapisan inteligensi</p>
+          <h2 class="reveal" data-d="120">Copilot menyala di dalam aplikasi yang <em class="orb">sudah berjalan</em>.</h2>
+          <p class="lead reveal" data-d="200">Plugin, bukan SaaS terpisah. Copilot dipasang di dalam host Anda — aplikasi tetap memegang data dan alur bisnisnya, Copilot menambahkan percakapan di atasnya.</p>
+          <div class="strip reveal" data-d="280">
             <div class="strip-cell"><b>plugin</b><span>bukan SaaS terpisah</span></div>
             <div class="strip-cell"><b>read-only</b><span>skill yang Anda definisikan</span></div>
             <div class="strip-cell"><b>server-side</b><span>kunci tidak ke browser</span></div>
             <div class="strip-cell"><b>licensed</b><span>Ed25519 · KlikQRIS</span></div>
           </div>
         </div>
+        <p class="ch-cap reveal" data-d="360">Bukan aplikasi baru — lapisan baru di atas yang sudah Anda punya.</p>
       </section>
 
-      <!-- 03 · ASK — robot masuk dari kiri, copy di kanan -->
-      <section class="jch jch-ask" id="ask" data-frame="195" aria-label="Percakapan dengan aplikasi Anda">
-        <div class="copy ask-copy">
-          <p class="eyebrow reveal">ask your application</p>
-          <h2 class="reveal" data-d="80">Pertanyaan biasa. Jawaban dari data Anda.</h2>
-          <p class="reveal" data-d="160">Di perjalanan ini, Copilot membaca aplikasi Anda lewat skill yang Anda izinkan — lalu menjawab dalam bahasa manusia. Contoh percakapan utuhnya ada di bawah.</p>
-          <p class="ask-link reveal" data-d="240"><a class="button button-glass" href="#cerita">Lihat contoh percakapan</a></p>
+      <!-- 03 · PERCAKAPAN — robot masuk dari kiri -->
+      <section class="jch" id="ask" data-frame="195" aria-label="Percakapan dengan aplikasi Anda">
+        <div class="copy">
+          <p class="ch-meta reveal"><span class="ch-num">03</span><span class="ch-label">Percakapan</span></p>
+          <p class="eyebrow reveal" data-d="60">ask your application</p>
+          <h2 class="reveal" data-d="120">Pertanyaan biasa. Jawaban dari <em class="orb">data Anda</em>.</h2>
+          <p class="reveal body-p" data-d="200">Di perjalanan ini, Copilot membaca aplikasi Anda lewat skill yang Anda izinkan — lalu menjawab dalam bahasa manusia. Contoh percakapan utuhnya ada di bawah.</p>
+          <p class="ask-link reveal" data-d="280"><a class="button button-glass" href="#cerita">Lihat contoh percakapan</a></p>
         </div>
+        <p class="ch-cap reveal" data-d="360">Pendamping AI Anda siap — ia hanya boleh membaca.</p>
       </section>
 
-      <!-- 04 · ARSITEKTUR — terowongan keluar, alur data terbaca -->
-      <section class="jch jch-arch" id="arsitektur" data-frame="295" aria-label="Arsitektur server-side">
+      <!-- 04 · KENDALI — terowongan keluar, jalur data -->
+      <section class="jch" id="arsitektur" data-frame="295" aria-label="Arsitektur server-side">
         <div class="copy arch-copy">
-          <p class="eyebrow reveal">Server-side architecture</p>
-          <h2 class="reveal" data-d="80">Kunci tidak pernah sampai ke browser.</h2>
-          <div class="flow reveal" data-d="160" role="img" aria-label="Customer application, copilot runtime, skill resolver, gRouter, AI engine">
+          <p class="ch-meta reveal"><span class="ch-num">04</span><span class="ch-label">Kendali · arsitektur</span></p>
+          <p class="eyebrow reveal" data-d="60">Server-side architecture</p>
+          <h2 class="reveal" data-d="120">Kunci tidak pernah sampai ke <em class="orb">browser</em>.</h2>
+          <div class="flow reveal" data-d="200" role="img" aria-label="Customer application, copilot runtime, skill resolver, gRouter, AI engine">
             <div class="af-node"><b>CUSTOMER APPLICATION</b><small>your source of truth</small></div>
             <span class="af-arrow" aria-hidden="true">→</span>
             <div class="af-node af-core"><b>COPILOT RUNTIME</b><small>key stays here</small></div>
@@ -120,20 +130,34 @@
             <span class="af-arrow" aria-hidden="true">→</span>
             <div class="af-node"><b>AI ENGINE</b><small>generates the answer</small></div>
           </div>
-          <div class="arch-chips reveal" data-d="240" aria-hidden="true"><code>license · signed Ed25519</code><code>usage · check-usage</code><code>key handoff · server-side</code></div>
+          <div class="arch-chips reveal" data-d="280" aria-hidden="true"><code>license · signed Ed25519</code><code>usage · check-usage</code><code>key handoff · server-side</code></div>
         </div>
+        <p class="ch-cap reveal" data-d="360">Jalur tertutup: aplikasi → runtime → skill → gRouter → jawaban.</p>
       </section>
+
+      <!-- kontrol journey: pagination 01–04 (klik = pindah babak) -->
+      <div class="ch-pagination" role="tablist" aria-label="Babak perjalanan">
+        <button type="button" role="tab" data-target="hero" aria-label="Babak 1">01</button>
+        <button type="button" role="tab" data-target="produk" aria-label="Babak 2">02</button>
+        <button type="button" role="tab" data-target="ask" aria-label="Babak 3">03</button>
+        <button type="button" role="tab" data-target="arsitektur" aria-label="Babak 4">04</button>
+        <i id="chPagLine" aria-hidden="true"></i>
+      </div>
+
+      <p class="v-tags" aria-hidden="true">READ-ONLY<i></i>SERVER-SIDE<i></i>SIGNED<i></i>LICENSED</p>
+
+      <div class="scroll-hint" aria-hidden="true"><i>↓</i><span>Gulir untuk menjelajah</span></div>
 
     </div>
 
-    <!-- ============ GROUND: komponen solid di atas frame 300 (ambient) ============ -->
+    <!-- ============ GROUND: komponen menyatu dari frame 300 ============ -->
     <div class="ground">
 
       <!-- FITUR — bento -->
       <section class="gsec" id="fitur" aria-label="Fitur">
         <div class="features-head">
           <p class="eyebrow reveal">Into the intelligence layer</p>
-          <h2 class="reveal" data-d="80">Fitur yang bekerja di dalam arsitektur Anda</h2>
+          <h2 class="reveal" data-d="80">Fitur yang bekerja di dalam <em class="orb">arsitektur</em> Anda</h2>
         </div>
         <div class="bento">
           <article class="cell cell-wide tilt reveal">
@@ -200,7 +224,7 @@
       <section class="gsec gsec-chat" id="cerita" aria-label="Percakapan dengan aplikasi Anda">
         <div class="chat-wrap">
           <p class="eyebrow reveal">ask your application</p>
-          <h2 class="reveal" data-d="80">Percakapan yang grounded di data Anda.</h2>
+          <h2 class="reveal" data-d="80">Percakapan yang grounded di <em class="orb">data</em> Anda.</h2>
           <div class="chat-panel tilt reveal" data-d="160" aria-hidden="true">
             <div class="chat-head"><span class="chat-avatar">C</span><span class="chat-id"><b>Copilot</b><small>via orders.search</small></span><i>read-only</i></div>
             <div class="chat-msg cm-user">Which customers haven't ordered in the last 30 days?</div>
@@ -230,7 +254,7 @@
         <div class="giant giant-final" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
         <div class="final-inner">
           <p class="eyebrow reveal">destination</p>
-          <h2 class="reveal" data-d="80">Beri aplikasi Anda Copilot.</h2>
+          <h2 class="reveal" data-d="80">Beri aplikasi Anda <em class="orb">Copilot</em>.</h2>
           <p class="lead center reveal" data-d="160">Copilot enterprise untuk aplikasi yang sudah berjalan. Data tetap milik Anda. Akses tetap Anda tentukan.</p>
           <div class="hero-actions reveal" data-d="240">
             <a class="button button-primary button-lg" href="/register">Mulai Membangun</a>
@@ -266,6 +290,6 @@
     if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
   })();
   </script>
-  <script src="/assets/landing.js?v=g1" defer></script>
+  <script src="/assets/landing.js?v=g2" defer></script>
 </body>
 </html>

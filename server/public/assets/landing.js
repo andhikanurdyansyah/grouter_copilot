@@ -1,7 +1,7 @@
 /* ============================================================
-   gRouter Copilot — landing.js (SCRUB CUT v1, 2026-10-03)
+   gRouter Copilot — landing.js (SCRUB CUT v2 · CINEMATIC GLASS)
    300-frame scroll scrub di canvas (Apple-style image sequence)
-   + babak cerita mengambang + komponen ground.
+   + babak sinematik bernomor + pagination 01–04 + komponen ground.
    Semua gerakan di-gate motionAllowed(); ?motion=1 memaksa
    gerakan walau OS melaporkan prefers-reduced-motion (QA).
    Zero dependencies.
@@ -22,9 +22,7 @@
   window.addEventListener('scroll', navState, { passive: true });
   navState();
 
-  /* ---------------- giant letters split ----------------
-     <span data-word="COPILOT" data-acc="2"> → .g outline / .ga accent,
-     stagger via --i, entrance saat .giant dapat .is-in (IO). */
+  /* ---------------- giant letters split ---------------- */
   document.querySelectorAll('.giant span[data-word]').forEach(function (el) {
     var word = el.getAttribute('data-word') || '';
     var acc = parseInt(el.getAttribute('data-acc') || '-1', 10);
@@ -47,28 +45,24 @@
 
   /* ============================================================
      THE SCRUB — 300-frame image sequence on canvas
-     - .journey (4 babak) = track scroll utama; total panjang
-       didorong tinggi babak + GROUND di bawahnya.
-     - frame target = progres scroll 0→1 memetakan 1→300,
-       TAPI dibatasi sampai FRAME_AT_GROUND: setelah journey
-       selesai lewat viewport, canvas membeku di frame ambient.
-     - lerp eksponensial (0.16) = scrub halus walau scroll kasar.
-     - best-effort nearest-loaded frame = tidak pernah blank.
+     - progres = journey-only (ground membekukan frame 300)
+     - lerp eksponensial (0.16) = scrub halus walau scroll kasar
+     - best-effort nearest-loaded frame = tidak pernah blank
      ============================================================ */
   var canvas = document.getElementById('scrubCanvas');
-  var scrubBar = document.getElementById('scrubBar');
   var journey = document.getElementById('journey');
   var ctx = canvas ? canvas.getContext('2d', { alpha: false }) : null;
 
   var FRAME_COUNT = 300;
-  var FRAME_AT_GROUND = 300; /* frame saat konten ground menutupi layar */
+  var FRAME_AT_GROUND = 300;
   var FRAME_BASE = '/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-';
   var FRAME_EXT = '.jpg';
   var images = new Array(FRAME_COUNT + 1);
   var currentFrame = 1;
   var targetFrame = 1;
   var lastDrawn = -1;
-  var scrubReady = false;
+  var dprCap = 2;
+  var resizeDirty = false;
 
   function frameUrl(i) {
     return FRAME_BASE + String(i).padStart(3, '0') + FRAME_EXT;
@@ -100,8 +94,6 @@
     return isReady(images[1]) ? images[1] : null;
   }
 
-  var dprCap = 2;
-  var resizeDirty = false;
   function resizeCanvas() {
     if (!canvas || !ctx) return;
     var dpr = Math.min(window.devicePixelRatio || 1, dprCap);
@@ -113,6 +105,7 @@
       canvas.width = nw;
       canvas.height = nh;
       lastDrawn = -1;
+      resizeDirty = true;
       drawNow();
     }
   }
@@ -135,9 +128,7 @@
     resizeDirty = false;
   }
 
-  /* progres journey (bukan seluruh dokumen):
-     0 saat journey top menyentuh atas viewport,
-     1 saat journey bottom menyentuh bawah viewport. */
+  /* progres journey (bukan seluruh dokumen) */
   function journeyProgress() {
     if (!journey) return 0;
     var rect = journey.getBoundingClientRect();
@@ -148,8 +139,9 @@
   }
   function updateTarget() {
     var p = journeyProgress();
-    if (scrubBar) scrubBar.style.width = (p * 100).toFixed(2) + '%';
     targetFrame = 1 + p * (FRAME_AT_GROUND - 1);
+    /* journey selesai → kontrol babak memudar (ground bersih) */
+    document.body.classList.toggle('jch-ui-off', p >= 0.985);
   }
 
   var idleArmed = true;
@@ -168,29 +160,68 @@
   }
 
   function preload() {
-    /* frame kunci tiap babak + sampel tiap 6 frame dulu, lalu sisanya */
-    [1, 34, 108, 188, 244, 300].forEach(loadFrame);
+    [1, 5, 95, 195, 295, 300].forEach(loadFrame);
     var i;
     for (i = 6; i <= FRAME_COUNT; i += 6) loadFrame(i);
-    /* sisanya bertahap supaya bandwidth halus */
     setTimeout(function () {
       for (i = 1; i <= FRAME_COUNT; i++) if (i % 6 !== 0) loadFrame(i);
     }, 1200);
   }
 
   /* ============================================================
-     Parallax ringan babak (hanya saat motion diizinkan):
-     .copy bergeser sedikit lebih lambat dari scroll — depth halus.
+     PAGINATION BABAK 01–04 (referensi: 01 02 03 + garis aktif)
+     - aktif = babak yang copy-nya paling dekat ke tengah viewport
+     - garis ice-cyan merayap di bawah angka aktif
+     - klik = lompat halus ke babak tersebut
      ============================================================ */
-  var chapters = [];
+  var chapterEls = [];
   document.querySelectorAll('.jch').forEach(function (el) {
-    chapters.push({ el: el, copy: el.querySelector('.copy') });
+    chapterEls.push({ el: el, copy: el.querySelector('.copy') });
   });
+  var pagBtns = Array.prototype.slice.call(document.querySelectorAll('.ch-pagination button'));
+  var pagLine = document.getElementById('chPagLine');
+
+  function updatePagination() {
+    if (!pagBtns.length) return;
+    var vh = window.innerHeight || 1;
+    var best = 0, bestDist = Infinity;
+    for (var i = 0; i < chapterEls.length; i++) {
+      var r = chapterEls[i].el.getBoundingClientRect();
+      var d = Math.abs(r.top + r.height / 2 - vh / 2);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    for (var b = 0; b < pagBtns.length; b++) {
+      pagBtns[b].classList.toggle('is-active', b === best);
+    }
+    if (pagLine && pagBtns[best]) {
+      var pb = pagBtns[best];
+      pagLine.style.left = pb.offsetLeft + 'px';
+      pagLine.style.width = pb.offsetWidth + 'px';
+    }
+  }
+  pagBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var t = document.getElementById(btn.getAttribute('data-target'));
+      if (!t) return;
+      t.scrollIntoView({ behavior: motionAllowed() ? 'smooth' : 'auto', block: 'center' });
+    });
+  });
+
+  /* scroll-hint → babak berikutnya */
+  var hint = document.querySelector('.scroll-hint');
+  if (hint) hint.addEventListener('click', function () {
+    var t = document.getElementById('produk');
+    if (t) t.scrollIntoView({ behavior: motionAllowed() ? 'smooth' : 'auto', block: 'center' });
+  });
+
+  /* ============================================================
+     Parallax ringan babak (hanya saat motion diizinkan)
+     ============================================================ */
   function parallax() {
     if (!motionAllowed()) return;
     var vh = window.innerHeight || 1;
-    for (var i = 0; i < chapters.length; i++) {
-      var c = chapters[i];
+    for (var i = 0; i < chapterEls.length; i++) {
+      var c = chapterEls[i];
       if (!c.copy) continue;
       var r = c.el.getBoundingClientRect();
       if (r.bottom < -80 || r.top > vh + 80) continue;
@@ -200,9 +231,7 @@
   }
 
   /* ============================================================
-     Pointer tilt (bento/chat panel) + cursor glow (--gx/--gy)
-     — gate motionAllowed() DI SAAT EVENT (UA bisa salah lapor
-     reduce saat boot; keputusan final saat pointer bergerak).
+     Pointer tilt + cursor glow — gate motionAllowed() DI SAAT EVENT
      ============================================================ */
   function attachPointer() {
     if (!fineHover.matches) return;
@@ -242,38 +271,37 @@
     requestAnimationFrame(function () {
       ticking = false;
       updateTarget();
+      updatePagination();
       parallax();
     });
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', function () {
-    resizeDirty = true;
     resizeCanvas();
     onScroll();
   }, { passive: true });
   window.addEventListener('orientationchange', function () {
-    resizeDirty = true;
     resizeCanvas();
   }, { passive: true });
   window.addEventListener('load', function () {
     resizeCanvas();
     updateTarget();
+    updatePagination();
     parallax();
   });
   document.addEventListener('visibilitychange', function () {
-    /* kembali dari tab tersembunyi: pastikan canvas sesuai frame */
     if (!document.hidden) { resizeDirty = true; drawNow(); }
   });
 
   resizeCanvas();
   updateTarget();
+  updatePagination();
   drawNow();
   preload();
   attachPointer();
   requestAnimationFrame(loop);
 
-  /* Jika pengguna lebih suka gerak minimal: frame tetap discrub
-     (kanvas itu konten, bukan dekorasi) TANPA lerp — langsung. */
+  /* reduced-motion: scrub langsung tanpa lerp (kanvas = konten) */
   if (!motionAllowed()) {
     var direct = function () {
       currentFrame = targetFrame = 1 + journeyProgress() * (FRAME_AT_GROUND - 1);

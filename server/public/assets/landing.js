@@ -22,17 +22,6 @@
   window.addEventListener('scroll', navState, { passive: true });
   navState();
 
-  /* ---------------- giant letters split ---------------- */
-  document.querySelectorAll('.giant span[data-word]').forEach(function (el) {
-    var word = el.getAttribute('data-word') || '';
-    var acc = parseInt(el.getAttribute('data-acc') || '-1', 10);
-    var frag = '';
-    for (var i = 0; i < word.length; i++) {
-      frag += '<span class="' + (i === acc ? 'ga' : 'g') + '" style="--i:' + i + '">' + word[i] + '</span>';
-    }
-    el.innerHTML = frag;
-  });
-
   /* ---------------- IO reveals (once, stateless) ---------------- */
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (en) {
@@ -41,7 +30,7 @@
       io.unobserve(en.target);
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-  document.querySelectorAll('.reveal, .giant').forEach(function (el) { io.observe(el); });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
 
   /* ============================================================
      THE SCRUB — 300-frame image sequence on canvas
@@ -145,6 +134,23 @@
   }
 
   var idleArmed = true;
+  var breathe = {z: 1, y: 0, curZ: 1.04, curY: 0};
+  function renderStage() {
+    if (!journey || !ctx) return;
+    var vh = window.innerHeight || 1;
+    var mid = window.scrollY + vh / 2;
+    /* babak aktif = berisi viewport center */
+    var idx = 0;
+    for (var i = 0; i < chapterEls.length; i++) {
+      if (mid >= chapterEls[i].el.offsetTop) idx = i;
+    }
+    var el = chapterEls[idx].el;
+    var top = el.offsetTop, h = el.offsetHeight;
+    var bt = Math.min(1, Math.max(0, (mid - top) / Math.max(1, h)));
+    /* kamera per babak: push-in pelan + drift vertikal (feel sinematik) */
+    breathe.z = 1.03 + bt * 0.05 + idx * 0.006;
+    breathe.y = (0.5 - bt) * 3.2;
+  }
   function loop() {
     var diff = targetFrame - currentFrame;
     if (Math.abs(diff) > 0.004) {
@@ -155,6 +161,16 @@
       currentFrame = targetFrame;
       drawNow();
       idleArmed = false;
+    }
+    /* breathing: canvas selalu hidup pelan (kamera), walau frame diam */
+    if (motionAllowed() && journey && journey.getBoundingClientRect().bottom > 0) {
+      breathe.curZ += (breathe.z - breathe.curZ) * 0.06;
+      breathe.curY += (breathe.y - breathe.curY) * 0.06;
+      if (Math.abs(breathe.z - breathe.curZ) > 0.0001 || Math.abs(breathe.y - breathe.curY) > 0.001) {
+        var cv = canvas.style;
+        var t = 'scale(' + breathe.curZ.toFixed(4) + ') translate3d(0,' + breathe.curY.toFixed(2) + '%,0)';
+        if (cv.transform !== t) cv.transform = t;
+      }
     }
     requestAnimationFrame(loop);
   }
@@ -231,35 +247,46 @@
   }
 
   /* ============================================================
-     Pointer tilt + cursor glow — gate motionAllowed() DI SAAT EVENT
+     3D CARDS — event delegation di document:
+     - rotateX/Y mengikuti posisi pointer relatif kartu terdekat
+     - konten melayang (translateZ di CSS) + sheen --sx/--sy
+     - bekerja juga untuk .plan-card hasil fetch (delegated)
+     - gate motionAllowed() DI SAAT EVENT + pointer fine saja
      ============================================================ */
-  function attachPointer() {
+  function card3dDelegation() {
     if (!fineHover.matches) return;
-    document.querySelectorAll('.tilt').forEach(function (el) {
-      var max = parseFloat(el.getAttribute('data-tilt-max')) || 6;
-      var raf = 0;
-      el.addEventListener('pointermove', function (ev) {
-        if (!motionAllowed()) return;
-        if (raf) return;
-        raf = requestAnimationFrame(function () {
-          raf = 0;
-          var r = el.getBoundingClientRect();
-          var nx = (ev.clientX - r.left) / Math.max(1, r.width) - 0.5;
-          var ny = (ev.clientY - r.top) / Math.max(1, r.height) - 0.5;
-          el.style.transform = 'perspective(800px) rotateX(' + (ny * -max).toFixed(2) + 'deg) rotateY(' + (nx * max).toFixed(2) + 'deg)';
-        });
-      });
-      el.addEventListener('pointerleave', function () {
-        if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        el.style.transform = '';
-      });
+    var active = null, raf = 0, lastEv = null;
+    function apply() {
+      raf = 0;
+      if (!active || !lastEv) return;
+      if (!motionAllowed()) { active.style.transform = ''; active = null; return; }
+      var el = active;
+      var r = el.getBoundingClientRect();
+      var nx = (lastEv.clientX - r.left) / Math.max(1, r.width) - 0.5;
+      var ny = (lastEv.clientY - r.top) / Math.max(1, r.height) - 0.5;
+      var max = 9;
+      el.style.transform = 'perspective(900px) rotateX(' + (ny * -max).toFixed(2) + 'deg) rotateY(' + (nx * max).toFixed(2) + 'deg) translateZ(8px) scale(1.015)';
+      el.style.setProperty('--sx', ((nx + 0.5) * 100).toFixed(1) + '%');
+      el.style.setProperty('--sy', ((ny + 0.5) * 100).toFixed(1) + '%');
+    }
+    document.addEventListener('pointerover', function (ev) {
+      var el = ev.target && ev.target.closest ? ev.target.closest('.card3d') : null;
+      if (el && el !== active) { if (active) active.style.transform = ''; active = el; }
     });
-    document.querySelectorAll('.cell').forEach(function (el) {
-      el.addEventListener('pointermove', function (ev) {
-        var r = el.getBoundingClientRect();
-        el.style.setProperty('--gx', ((ev.clientX - r.left) / Math.max(1, r.width) * 100).toFixed(1) + '%');
-        el.style.setProperty('--gy', ((ev.clientY - r.top) / Math.max(1, r.height) * 100).toFixed(1) + '%');
-      });
+    document.addEventListener('pointermove', function (ev) {
+      if (!active) return;
+      var still = ev.target && ev.target.closest && ev.target.closest('.card3d') === active;
+      if (!still) { active.style.transform = ''; active = null; return; }
+      lastEv = ev;
+      if (!raf) raf = requestAnimationFrame(apply);
+    }, { passive: true });
+    document.addEventListener('pointerout', function (ev) {
+      if (!active) return;
+      var to = ev.relatedTarget;
+      if (!to || !to.closest || to.closest('.card3d') !== active) {
+        active.style.transform = '';
+        active = null;
+      }
     });
   }
 
@@ -273,6 +300,7 @@
       updateTarget();
       updatePagination();
       parallax();
+      renderStage();
     });
   }
   window.addEventListener('scroll', onScroll, { passive: true });
@@ -288,6 +316,7 @@
     updateTarget();
     updatePagination();
     parallax();
+    renderStage();
   });
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) { resizeDirty = true; drawNow(); }
@@ -298,7 +327,8 @@
   updatePagination();
   drawNow();
   preload();
-  attachPointer();
+  card3dDelegation();
+  renderStage();
   requestAnimationFrame(loop);
 
   /* reduced-motion: scrub langsung tanpa lerp (kanvas = konten) */

@@ -10,9 +10,9 @@
   /* midnight teal base — selaras warna sequence (bukan hitam pekat) */
   --bg:#050d14;
   --bg-deep:#030910;
-  --ink:#eaf4fb;
-  --muted:#b7cdde;
-  --faint:#8fa8b8;
+  --ink:#eef6fc;
+  --muted:#c3d9e9;
+  --faint:#97b1c2;
   --ice:#7ed6f3;          /* ice-cyan referensi — bukan neon */
   --ice-strong:#53c5eb;
   --ice-dim:rgba(126,214,243,.14);
@@ -50,14 +50,19 @@ h1,h2{
   font-family:var(--serif);
   font-weight:400;
   letter-spacing:-.01em;
-  color:#fff;
+  /* gradasi ice: menyatu dengan tone background, bukan putih datar */
+  background:linear-gradient(180deg,#ffffff 34%,#bfe2f2 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
 }
 h1{font-size:clamp(32px,4.2vw,52px)}
 h2{font-size:clamp(26px,3.2vw,40px)}
 h3{font-family:var(--sans);font-size:16.5px;font-weight:600;color:var(--ink)}
 /* kata aksen: italic serif ice-cyan + orbit glow tipis (referensi) */
 .orb{
+  display:inline-block;
   font-style:italic;
+  -webkit-text-fill-color:var(--ice);
   color:var(--ice);
   position:relative;
   text-shadow:0 0 34px rgba(126,214,243,.35);
@@ -188,22 +193,19 @@ a{color:inherit}
   margin:0 auto;
 }
 .jch .copy{max-width:600px;position:relative;z-index:2}
-.giant{
-  position:absolute;inset:0;display:grid;place-items:center;
-  font-family:var(--serif);font-weight:400;
-  font-size:clamp(78px,16vw,230px);line-height:1;letter-spacing:.04em;
-  pointer-events:none;user-select:none;overflow:clip;
-  z-index:0;
+
+/* halo cyan — pengganti giant word: ruang bernafas di final CTA */
+.halo{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(52% 46% at 50% 44%,rgba(126,214,243,.14),rgba(126,214,243,.05) 46%,transparent 72%);
 }
-.giant .g{
-  color:transparent;
-  -webkit-text-stroke:1px rgba(214,236,248,.22);
+.halo::after{
+  content:'';position:absolute;left:50%;top:44%;
+  width:min(680px,86vw);aspect-ratio:2.6/1;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(126,214,243,.2);
+  border-radius:50%;
 }
-.giant .ga{
-  color:rgba(126,214,243,.10);
-  -webkit-text-stroke:1px rgba(126,214,243,.42);
-}
-.giant span[data-word]{display:flex;flex-wrap:wrap;justify-content:center}
 
 /* chapter meta: nomor babak + label — pembuka tiap babak */
 .ch-meta{
@@ -247,7 +249,7 @@ a{color:inherit}
   max-width:600px;margin-top:40px;padding-top:18px;
   border-top:1px solid var(--hairline);
   font-family:var(--serif);font-style:italic;
-  font-size:16px;color:rgba(183,205,222,.85);
+  font-size:16px;color:rgba(195,216,232,.92);
 }
 /* hero tepat satu viewport — caption ikut terlihat saat load */
 #hero{min-height:100vh}
@@ -367,27 +369,46 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
   padding:120px 24px 40px;
   position:relative;
 }
+/* glow lembut di atas tiap ground-section — kartu 'duduk' di cahaya */
+.gsec::before{
+  content:'';position:absolute;left:0;right:0;top:-30px;height:320px;
+  background:radial-gradient(52% 62% at 50% 22%,rgba(126,214,243,.06),transparent 72%);
+  pointer-events:none;
+}
 .features-head{max-width:720px;margin-bottom:46px}
 
 /* ---- bento: teal glass, bukan hitam asing ---- */
-.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;perspective:1200px}
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;perspective:1400px}
+
+/* ================= 3D CARDS =================
+   rotateX/Y dari pointer (JS, delegated — plan card hasil fetch ikut),
+   konten melayang di atas permukaan (translateZ), sheen mengikuti --sx/--sy */
+.card3d{
+  position:relative;
+  transform-style:preserve-3d;
+  transition:transform .25s cubic-bezier(.2,.65,.25,1),border-color .25s ease,box-shadow .25s ease;
+  will-change:transform;
+}
+.card3d::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(340px circle at var(--sx,50%) var(--sy,50%),rgba(255,255,255,.13),rgba(126,214,243,.07) 42%,transparent 68%);
+  opacity:0;transition:opacity .3s ease;pointer-events:none;
+}
+.card3d:hover::after{opacity:1}
+.card3d > *{transform:translateZ(16px)}
+.card3d .mini,.card3d .plan-features{transform:translateZ(30px)}
+.chat-panel.card3d > *{transform:none} /* pesan chat tak perlu per-layer */
+.strip-cell.card3d > *{transform:translateZ(10px)}
+.af-node.card3d > *{transform:translateZ(10px)}
+
 .cell{
   position:relative;
   background:linear-gradient(180deg,rgba(13,32,42,.85),rgba(8,20,28,.85));
   border:1px solid var(--hairline);border-radius:18px;
   padding:26px 24px;
   display:flex;flex-direction:column;gap:18px;
-  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
-  transform-style:preserve-3d;will-change:transform;
-  overflow:hidden;
-}
-.cell::before{
-  content:'';position:absolute;inset:0;border-radius:inherit;
-  background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgba(126,214,243,.08),transparent 42%);
-  opacity:0;transition:opacity .25s ease;pointer-events:none;
 }
 .cell:hover{border-color:rgba(126,214,243,.4);box-shadow:0 24px 60px rgba(0,0,0,.35)}
-.cell:hover::before{opacity:1}
 .cell-wide{grid-column:span 2}
 .cell-body{display:grid;gap:8px}
 .cell-body p{font-size:14px;color:var(--muted)}
@@ -516,7 +537,6 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
 
 /* ---- final CTA ---- */
 .gsec-final{max-width:none;padding:150px 24px 160px;text-align:center;overflow:clip}
-.gsec-final .giant{z-index:0;opacity:.92}
 .final-inner{position:relative;z-index:1;max-width:720px;margin:0 auto}
 .final-inner .lead{margin-top:16px}
 .loop-line{margin-top:44px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:rgba(143,168,184,.55)}
@@ -537,15 +557,21 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
 .site-footer nav a:hover{color:var(--ink)}
 .footer-note{font-family:var(--mono);font-size:11px;color:var(--faint)}
 
-/* ================= REVEAL ================= */
-.no-js .reveal{opacity:1;transform:none}
-.js .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease;transition-delay:var(--d,0ms)}
-.js .reveal.is-in{opacity:1;transform:none}
-.js .giant .g,.js .giant .ga{
-  opacity:0;transform:translateY(.35em) rotateX(38deg);
-  transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1);
+/* ================= REVEAL — blur→sharp, ease premium ================= */
+.no-js .reveal{opacity:1;transform:none;filter:none}
+.js .reveal{
+  opacity:0;transform:translateY(26px);filter:blur(6px);
+  transition:
+    opacity .9s cubic-bezier(.2,.65,.25,1),
+    transform .9s cubic-bezier(.2,.65,.25,1),
+    filter .9s ease;
+  transition-delay:var(--d,0ms);
 }
-.js .giant.is-in .g,.js .giant.is-in .ga{opacity:1;transform:none;transition-delay:calc(var(--i,0)*55ms)}
+.js .reveal.is-in{opacity:1;transform:none;filter:blur(0)}
+/* kartu 3D TIDAK boleh dapat filter (filter mem-flatten preserve-3d):
+   entrance-nya scale + opacity saja */
+.js .reveal.card3d{filter:none;transform:translateY(26px) scale(.965)}
+.js .reveal.card3d.is-in{transform:none;filter:none}
 
 /* ================= RESPONSIVE ================= */
 @media (max-width:1024px){
@@ -577,7 +603,6 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
   .gsec{padding:80px 18px 30px}
   .pricing-section{padding:40px 18px 70px}
   .chat-msg{max-width:100%}
-  .giant{font-size:clamp(60px,20vw,120px)}
   .scroll-hint{display:none}
   .ground::before{top:-200px;height:200px}
 }
@@ -585,10 +610,10 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
 /* ================= REDUCED MOTION ================= */
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .js .reveal{opacity:1;transform:none;transition:none}
-  .js .giant .g,.js .giant .ga{opacity:1;transform:none;transition:none}
+  .js .reveal{opacity:1;transform:none;filter:none;transition:none}
   .scroll-hint i{animation:none}
-  .button,.plan-card,.cell{transition:none}
-  .tilt{transform:none !important}
+  .button,.plan-card,.cell,.card3d{transition:none}
+  .card3d{transform:none !important}
+  .card3d::after{display:none}
   .ch-pagination i{transition:none}
 }

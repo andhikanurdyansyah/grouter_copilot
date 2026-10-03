@@ -12,7 +12,7 @@
   <title>gRouter Copilot | Tambahkan AI ke aplikasi Anda</title>
   <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
   <link rel="preload" as="image" href="/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-001.jpg">
-  <link rel="stylesheet" href="/assets/landing.css?v=g2">
+  <link rel="stylesheet" href="/assets/landing.css?v=g3">
   <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -64,7 +64,6 @@
 
       <!-- 01 · MASUK — terowongan data → core cyan -->
       <section class="jch" id="hero" data-frame="5" aria-label="gRouter Copilot">
-        <div class="giant" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
         <div class="copy">
           <p class="ch-meta reveal"><span class="ch-num">01</span><span class="ch-label">Masuk · terowongan data</span></p>
           <p class="eyebrow reveal" data-d="60">Aplikasi Anda. Data Anda. Copilot Anda.</p>
@@ -92,10 +91,10 @@
           <h2 class="reveal" data-d="120">Copilot menyala di dalam aplikasi yang <em class="orb">sudah berjalan</em>.</h2>
           <p class="lead reveal" data-d="200">Plugin, bukan SaaS terpisah. Copilot dipasang di dalam host Anda — aplikasi tetap memegang data dan alur bisnisnya, Copilot menambahkan percakapan di atasnya.</p>
           <div class="strip reveal" data-d="280">
-            <div class="strip-cell"><b>plugin</b><span>bukan SaaS terpisah</span></div>
-            <div class="strip-cell"><b>read-only</b><span>skill yang Anda definisikan</span></div>
-            <div class="strip-cell"><b>server-side</b><span>kunci tidak ke browser</span></div>
-            <div class="strip-cell"><b>licensed</b><span>Ed25519 · KlikQRIS</span></div>
+            <div class="strip-cell card3d"><b>plugin</b><span>bukan SaaS terpisah</span></div>
+            <div class="strip-cell card3d"><b>read-only</b><span>skill yang Anda definisikan</span></div>
+            <div class="strip-cell card3d"><b>server-side</b><span>kunci tidak ke browser</span></div>
+            <div class="strip-cell card3d"><b>licensed</b><span>Ed25519 · KlikQRIS</span></div>
           </div>
         </div>
         <p class="ch-cap reveal" data-d="360">Bukan aplikasi baru — lapisan baru di atas yang sudah Anda punya.</p>
@@ -120,15 +119,15 @@
           <p class="eyebrow reveal" data-d="60">Server-side architecture</p>
           <h2 class="reveal" data-d="120">Kunci tidak pernah sampai ke <em class="orb">browser</em>.</h2>
           <div class="flow reveal" data-d="200" role="img" aria-label="Customer application, copilot runtime, skill resolver, gRouter, AI engine">
-            <div class="af-node"><b>CUSTOMER APPLICATION</b><small>your source of truth</small></div>
+            <div class="af-node card3d"><b>CUSTOMER APPLICATION</b><small>your source of truth</small></div>
             <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node af-core"><b>COPILOT RUNTIME</b><small>key stays here</small></div>
+            <div class="af-node card3d af-core"><b>COPILOT RUNTIME</b><small>key stays here</small></div>
             <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node"><b>SKILL RESOLVER</b><small>allowed skills only</small></div>
+            <div class="af-node card3d"><b>SKILL RESOLVER</b><small>allowed skills only</small></div>
             <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node af-engine"><b>GROUTER</b><small>AI supplier</small></div>
+            <div class="af-node card3d af-engine"><b>GROUTER</b><small>AI supplier</small></div>
             <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node"><b>AI ENGINE</b><small>generates the answer</small></div>
+            <div class="af-node card3d"><b>AI ENGINE</b><small>generates the answer</small></div>
           </div>
           <div class="arch-chips reveal" data-d="280" aria-hidden="true"><code>license · signed Ed25519</code><code>usage · check-usage</code><code>key handoff · server-side</code></div>
         </div>
@@ -160,7 +159,7 @@
           <h2 class="reveal" data-d="80">Fitur yang bekerja di dalam <em class="orb">arsitektur</em> Anda</h2>
         </div>
         <div class="bento">
-          <article class="cell cell-wide tilt reveal">
+          <article class="cell cell-wide card3d reveal">
             <div class="cell-body">
               <h3>Skill read-only yang Anda definisikan</h3>
               <p>Skill adalah satu-satunya pintu Copilot menuju data aplikasi. Apa yang tidak Anda expose — tidak ada.</p>
@@ -173,7 +172,7 @@
               <div class="mini-foot"><code>run(args, ctx)</code></div>
             </div>
           </article>
-          <article class="cell tilt reveal" data-d="80">
+          <article class="cell card3d reveal" data-d="80">
             <div class="cell-body">
               <h3>Data mengalir lewat jalur yang terlihat</h3>
               <p>Skill → runtime → data aplikasi. Tidak ada jalur tersembunyi.</p>
@@ -185,7 +184,7 @@
               <div class="st-branch">↳ db.customers · db.tickets</div>
             </div>
           </article>
-          <article class="cell tilt reveal">
+          <article class="cell card3d reveal">
             <div class="cell-body">
               <h3>Percakapan yang grounded</h3>
               <p>Jawaban dihitung dari skill terdaftar — bukan tebakan model.</p>
@@ -195,7 +194,7 @@
               <div class="mini-row cm-bot"><b>12 customers.</b><small>skill: orders.search → db.orders · sample data</small></div>
             </div>
           </article>
-          <article class="cell tilt reveal" data-d="80">
+          <article class="cell card3d reveal" data-d="80">
             <div class="cell-body">
               <h3>Kendali default enterprise</h3>
               <p>Read-only default. Tulis butuh kontrol terpisah, bukan izin diam-diam.</p>
@@ -206,7 +205,7 @@
               <div class="ctrl-audit">AUDIT · skill → runtime → AI</div>
             </div>
           </article>
-          <article class="cell tilt reveal">
+          <article class="cell card3d reveal">
             <div class="cell-body">
               <h3>Kunci tidak pernah ke browser</h3>
               <p>Runtime di server aplikasi Anda memanggil skill dan gRouter.</p>
@@ -225,7 +224,7 @@
         <div class="chat-wrap">
           <p class="eyebrow reveal">ask your application</p>
           <h2 class="reveal" data-d="80">Percakapan yang grounded di <em class="orb">data</em> Anda.</h2>
-          <div class="chat-panel tilt reveal" data-d="160" aria-hidden="true">
+          <div class="chat-panel card3d reveal" data-d="160" aria-hidden="true">
             <div class="chat-head"><span class="chat-avatar">C</span><span class="chat-id"><b>Copilot</b><small>via orders.search</small></span><i>read-only</i></div>
             <div class="chat-msg cm-user">Which customers haven't ordered in the last 30 days?</div>
             <div class="chat-msg cm-bot"><p>12 customers haven't placed an order in the last 30 days.</p><small>skill: orders.search → db.orders · sample data</small></div>
@@ -249,9 +248,9 @@
         </div>
       </section>
 
-      <!-- CTA — kembali ke giant -->
+      <!-- CTA — halo cyan, penutup perjalanan -->
       <section class="gsec gsec-final" id="mulai" aria-label="Mulai membangun">
-        <div class="giant giant-final" aria-hidden="true"><span data-word="COPILOT" data-acc="2"></span></div>
+        <div class="halo" aria-hidden="true"></div>
         <div class="final-inner">
           <p class="eyebrow reveal">destination</p>
           <h2 class="reveal" data-d="80">Beri aplikasi Anda <em class="orb">Copilot</em>.</h2>
@@ -287,9 +286,9 @@
     var plans=document.getElementById('plans');
     function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     function money(v){return 'Rp '+Number(v).toLocaleString('id-ID');}
-    if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
+    if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card card3d'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
   })();
   </script>
-  <script src="/assets/landing.js?v=g2" defer></script>
+  <script src="/assets/landing.js?v=g3" defer></script>
 </body>
 </html>

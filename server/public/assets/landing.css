@@ -191,12 +191,60 @@ a{color:inherit}
   padding:14vh 24px 16vh;
   max-width:var(--max);
   margin:0 auto;
+  /* scene push: scale-down halus saat babak meninggalkan layar
+     (JS: --push 0→1 dari jarak viewport-center) */
+  transform:scale(calc(1 - var(--push,0)*0.035));
+  transition:transform .1s linear;
+  will-change:transform;
 }
 .jch .copy{max-width:600px;position:relative;z-index:2}
 
+/* ============ KINETIC TITLES — title card antar babak ============
+   Teks film muncul per-kata mengikuti scroll (JS: --p per section). */
+.kine{
+  min-height:120vh;
+  display:grid;place-items:center;
+  padding:0 24px;
+  position:relative;
+}
+.kine-p{
+  font-family:var(--serif);
+  font-size:clamp(30px,4.6vw,54px);
+  line-height:1.22;
+  text-align:center;
+  max-width:900px;
+  letter-spacing:-.01em;
+}
+.kw{
+  display:inline-block;
+  color:rgba(238,246,252,.16);
+  transition:color .5s ease,filter .5s ease,opacity .5s ease;
+  opacity:.55;
+  filter:blur(3px);
+}
+.kw.on{color:var(--ink);opacity:1;filter:blur(0)}
+.kw.accent{font-style:italic}
+.kw.accent.on{color:var(--ice);text-shadow:0 0 40px rgba(126,214,243,.3)}
+
+/* ============ ANGKA BABAK RAKSASA — depth cue parallax ============ */
+.ch-bignum{
+  position:absolute;z-index:0;
+  font-family:var(--serif);font-style:italic;
+  font-size:clamp(200px,34vw,430px);
+  line-height:.8;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(126,214,243,.16);
+  pointer-events:none;user-select:none;
+  right:2vw;top:50%;margin-top:-.42em;
+  will-change:transform;
+}
+/* babak 02 = flip: copy KANAN, angka KIRI — rhythm kiri-kanan */
+.jch.flip .copy{margin-left:auto}
+.jch.flip .ch-bignum{right:auto;left:2vw}
+
 /* halo cyan — pengganti giant word: ruang bernafas di final CTA */
 .halo{
-  position:absolute;inset:0;z-index:0;pointer-events:none;
+  position:absolute;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(52% 46% at 50% 44%,rgba(126,214,243,.14),rgba(126,214,243,.05) 46%,transparent 72%);
 }
 .halo::after{
@@ -206,6 +254,7 @@ a{color:inherit}
   border:1px solid rgba(126,214,243,.2);
   border-radius:50%;
 }
+.final-inner{position:relative;z-index:2}
 
 /* chapter meta: nomor babak + label — pembuka tiap babak */
 .ch-meta{
@@ -591,6 +640,12 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
   .af-node{flex:1 1 44%}
   .site-footer{grid-template-columns:1fr;gap:18px}
   .ch-pagination{bottom:22px;gap:16px}
+  /* angka raksasa di mobile: watermark latar, jangan tabrak copy
+     (opacity .5 dulu — stroke .16×.5 = alpha efektif ~.08, tenggelam di frame gyroscope;
+      .85 ≈ alpha efektif desktop, tetap di belakang copy z-index:0) */
+  .ch-bignum{font-size:52vw;opacity:.85;right:-6vw}
+  .jch.flip .ch-bignum{left:-6vw;right:auto}
+  .kine{min-height:86vh}
 }
 @media (max-width:640px){
   .bento{grid-template-columns:1fr}
@@ -616,4 +671,8 @@ body.jch-ui-off .scroll-hint{opacity:0;pointer-events:none}
   .card3d{transform:none !important}
   .card3d::after{display:none}
   .ch-pagination i{transition:none}
+  /* scroll-driven states: tampilkan final */
+  .kw{color:var(--ink);opacity:1;filter:none}
+  .kw.accent{color:var(--ice)}
+  .jch{transform:none}
 }

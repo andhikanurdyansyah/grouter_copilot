@@ -12,7 +12,7 @@
   <title>gRouter Copilot | Tambahkan AI ke aplikasi Anda</title>
   <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
   <link rel="preload" as="image" href="/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-001.jpg">
-  <link rel="stylesheet" href="/assets/landing.css?v=g3">
+  <link rel="stylesheet" href="/assets/landing.css?v=g5">
   <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -64,6 +64,7 @@
 
       <!-- 01 · MASUK — terowongan data → core cyan -->
       <section class="jch" id="hero" data-frame="5" aria-label="gRouter Copilot">
+        <span class="ch-bignum" aria-hidden="true">01</span>
         <div class="copy">
           <p class="ch-meta reveal"><span class="ch-num">01</span><span class="ch-label">Masuk · terowongan data</span></p>
           <p class="eyebrow reveal" data-d="60">Aplikasi Anda. Data Anda. Copilot Anda.</p>
@@ -83,8 +84,14 @@
         <p class="ch-cap reveal" data-d="520">Gulir — kita masuk ke inti data Anda.</p>
       </section>
 
-      <!-- 02 · LAPISAN INTELIGENSI — gyroscope berputar -->
-      <section class="jch" id="produk" data-frame="95" aria-label="Tentang produk">
+      <!-- KINETIC 1 — title card antar babak -->
+      <section class="kine" aria-hidden="true">
+        <p class="kine-p"><span class="kw">Lalu</span> <span class="kw">sebuah</span> <span class="kw">lapisan</span> <span class="kw">baru</span> <span class="kw accent">menyala.</span></p>
+      </section>
+
+      <!-- 02 · LAPISAN INTELIGENSI — flip: copy kanan, angka raksasa kiri -->
+      <section class="jch flip" id="produk" data-frame="95" aria-label="Tentang produk">
+        <span class="ch-bignum" aria-hidden="true">02</span>
         <div class="copy">
           <p class="ch-meta reveal"><span class="ch-num">02</span><span class="ch-label">Lapisan inteligensi</span></p>
           <p class="eyebrow reveal" data-d="60">Selamat datang di lapisan inteligensi</p>
@@ -100,8 +107,14 @@
         <p class="ch-cap reveal" data-d="360">Bukan aplikasi baru — lapisan baru di atas yang sudah Anda punya.</p>
       </section>
 
+      <!-- KINETIC 2 -->
+      <section class="kine" aria-hidden="true">
+        <p class="kine-p"><span class="kw">Ia</span> <span class="kw">bisa</span> <span class="kw">Anda</span> <span class="kw">ajak</span> <span class="kw accent">bicara.</span></p>
+      </section>
+
       <!-- 03 · PERCAKAPAN — robot masuk dari kiri -->
       <section class="jch" id="ask" data-frame="195" aria-label="Percakapan dengan aplikasi Anda">
+        <span class="ch-bignum" aria-hidden="true">03</span>
         <div class="copy">
           <p class="ch-meta reveal"><span class="ch-num">03</span><span class="ch-label">Percakapan</span></p>
           <p class="eyebrow reveal" data-d="60">ask your application</p>
@@ -112,8 +125,14 @@
         <p class="ch-cap reveal" data-d="360">Pendamping AI Anda siap — ia hanya boleh membaca.</p>
       </section>
 
+      <!-- KINETIC 3 -->
+      <section class="kine" aria-hidden="true">
+        <p class="kine-p"><span class="kw">Tanpa</span> <span class="kw">pernah</span> <span class="kw">menyerahkan</span> <span class="kw accent">kunci</span> <span class="kw accent">Anda.</span></p>
+      </section>
+
       <!-- 04 · KENDALI — terowongan keluar, jalur data -->
       <section class="jch" id="arsitektur" data-frame="295" aria-label="Arsitektur server-side">
+        <span class="ch-bignum" aria-hidden="true">04</span>
         <div class="copy arch-copy">
           <p class="ch-meta reveal"><span class="ch-num">04</span><span class="ch-label">Kendali · arsitektur</span></p>
           <p class="eyebrow reveal" data-d="60">Server-side architecture</p>
@@ -289,6 +308,6 @@
     if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card card3d'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
   })();
   </script>
-  <script src="/assets/landing.js?v=g3" defer></script>
+  <script src="/assets/landing.js?v=g4" defer></script>
 </body>
 </html>

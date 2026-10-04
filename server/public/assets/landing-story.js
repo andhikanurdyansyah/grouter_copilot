@@ -6,9 +6,10 @@
    - kamera + seluruh objek di-lerp kontinyu oleh scroll
    - bloom sungguhan (EffectComposer + UnrealBloomPass + OutputPass)
    - layer copy 2D crossfade per babak + stepper kanan
-   Objek dunia: starfield → core blok data (aplikasi) → gate ring
-   (skill read-only) → paket pesan (percakapan) → kubah kendali
-   (runtime server) → pengiring menuju pricing/final.
+   Objek dunia (tema AI/automation): chip AI di papan sirkuit
+   (aplikasi Anda) → kepala bot (skill read-only) → orb asisten +
+   waveform (percakapan) → rak server + padlock (kunci di runtime)
+   → pengiring menuju pricing/final.
    ============================================================ */
 
 import * as THREE from '/assets/vendor/three.module.min.js';
@@ -25,21 +26,24 @@ let renderer = null;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
 } catch { /* WebGL mati — copy 2D tetap terbaca */ }
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x040814);
-scene.fog = new THREE.FogExp2(0x040814, 0.028);
+scene.fog = new THREE.FogExp2(0x040814, 0.05);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
 
 /* ---------- lights ---------- */
-scene.add(new THREE.AmbientLight(0x2a3850, 1.2));
-const rim = new THREE.DirectionalLight(0x9fd8ea, 1.4);
+scene.add(new THREE.AmbientLight(0x2a3850, 1.35));
+const rim = new THREE.DirectionalLight(0x9fd8ea, 1.05);
 rim.position.set(-5, 6, 4);
 scene.add(rim);
-const coreLight = new THREE.PointLight(0x22d3ee, 16, 14, 2);
+const fill = new THREE.DirectionalLight(0x8fb8d8, 0.55);
+fill.position.set(1.5, 2, 8);
+scene.add(fill);
+const coreLight = new THREE.PointLight(0x22d3ee, 1.2, 6, 2);
 scene.add(coreLight);
 
 /* ---------- starfield ---------- */
@@ -77,94 +81,320 @@ function makeNode(color) {
   return new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), new THREE.MeshBasicMaterial({ color }));
 }
 
-/* ---------- babak 0-1: CORE — blok data aplikasi (kubus wireframe + inti) ---------- */
+/* ---------- babak 0-1: CHIP AI — die + pin + jejak sirkuit (aplikasi Anda) ---------- */
 const core = new THREE.Group();
 
-const dataCube = new THREE.Mesh(
-  new THREE.BoxGeometry(1.7, 1.7, 1.7),
-  new THREE.MeshStandardMaterial({ color: 0x0c1526, metalness: 0.85, roughness: 0.35, transparent: true, opacity: 0.96 }),
+const chipBody = new THREE.Mesh(
+  new THREE.BoxGeometry(1.55, 0.16, 1.55),
+  new THREE.MeshStandardMaterial({ color: 0x16283f, metalness: 0.45, roughness: 0.6 }),
 );
-core.add(dataCube);
+chipBody.position.y = -0.22;
+core.add(chipBody);
 
-const cubeEdges = new THREE.LineSegments(
-  new THREE.EdgesGeometry(dataCube.geometry),
+const die = new THREE.Mesh(
+  new THREE.BoxGeometry(0.82, 0.1, 0.82),
+  new THREE.MeshStandardMaterial({ color: 0x101c30, metalness: 0.35, roughness: 0.75, emissive: 0x0a3a4a, emissiveIntensity: 0.2 }),
+);
+die.position.y = -0.09;
+core.add(die);
+
+const dieEdges = new THREE.LineSegments(
+  new THREE.EdgesGeometry(die.geometry),
   new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.5 }),
 );
-core.add(cubeEdges);
+dieEdges.position.y = -0.09;
+core.add(dieEdges);
 
-const heart = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 18), new THREE.MeshBasicMaterial({ color: 0xd9f6ff }));
+// inti pemrosesan yang denyut (otak chip)
+const heart = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.26), new THREE.MeshBasicMaterial({ color: 0x1f5568 }));
+heart.position.y = -0.01;
 core.add(heart);
 
-// node orbit amber + cyan (khas aeronet)
+// pin chip (4 sisi)
+const pins = [];
+{
+  const pinGeo = new THREE.BoxGeometry(0.05, 0.03, 0.3);
+  const pinMat = new THREE.MeshStandardMaterial({ color: 0x56697e, metalness: 0.55, roughness: 0.5 });
+  for (let s = 0; s < 4; s++) {
+    for (let i = 0; i < 6; i++) {
+      const pin = new THREE.Mesh(pinGeo, pinMat);
+      const off = -0.625 + i * 0.25;
+      if (s === 0) pin.position.set(off, -0.22, 0.95);
+      else if (s === 1) { pin.position.set(off, -0.22, -0.95); pin.rotation.y = Math.PI; }
+      else if (s === 2) { pin.position.set(0.95, -0.22, off); pin.rotation.y = Math.PI / 2; }
+      else { pin.position.set(-0.95, -0.22, off); pin.rotation.y = -Math.PI / 2; }
+      core.add(pin);
+      pins.push(pin);
+    }
+  }
+}
+
+// jejak sirkuit keluar dari pin (garis terang di papan gelap) + pulsa data berjalan
+const traces = [];
+const pulses = [];
+{
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0x081120, metalness: 0.4, roughness: 0.7 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.06, 2.8), boardMat);
+  board.position.y = -0.31;
+  core.add(board);
+
+  const traceMat = new THREE.LineBasicMaterial({ color: 0x2c8ba8, transparent: true, opacity: 1 });
+  for (let s = 0; s < 4; s++) {
+    for (let i = 0; i < 6; i++) {
+      const pts = [];
+      const off = -0.625 + i * 0.25;
+      const lane = off * 1.9;
+      if (s === 0) pts.push(new THREE.Vector3(off, -0.28, 1.1), new THREE.Vector3(off, -0.28, lane + 0.6), new THREE.Vector3(lane * 1.25, -0.28, lane + 0.6));
+      else if (s === 1) pts.push(new THREE.Vector3(off, -0.28, -1.1), new THREE.Vector3(off, -0.28, lane - 0.6), new THREE.Vector3(lane * 1.25, -0.28, lane - 0.6));
+      else if (s === 2) pts.push(new THREE.Vector3(1.1, -0.28, off), new THREE.Vector3(lane + 0.6, -0.28, off), new THREE.Vector3(lane + 0.6, -0.28, -lane * 1.25));
+      else pts.push(new THREE.Vector3(-1.1, -0.28, off), new THREE.Vector3(lane - 0.6, -0.28, off), new THREE.Vector3(lane - 0.6, -0.28, lane * 1.25));
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), traceMat);
+      core.add(line);
+      traces.push(line);
+
+      // pulsa: titik terang yang berjalan menyusuri jejak
+      const pulse = makeNode(i % 2 ? CYAN : AMBER);
+      pulse.scale.setScalar(0.55);
+      pulse.userData = { pts, off: (s * 6 + i) / 24, sp: 0.16 + (i % 3) * 0.05 };
+      core.add(pulse);
+      pulses.push(pulse);
+    }
+  }
+}
+
+// node orbit (modul AI — sengaja redup agar tak bersaing dengan chip)
 const orbitNodes = [];
-for (let i = 0; i < 5; i++) {
-  const n = makeNode(i % 2 ? AMBER : CYAN);
-  n.userData = { a: (i / 5) * Math.PI * 2, r: 2.5 + (i % 2) * 0.5, sp: 0.25 + i * 0.04, tilt: (i - 2) * 0.3 };
+for (let i = 0; i < 3; i++) {
+  const n = makeNode(i % 2 ? 0xa9741f : 0x1e7a92);
+  n.scale.setScalar(0.75);
+  n.userData = { a: (i / 3) * Math.PI * 2, r: 2.2 + i * 0.35, sp: 0.25 + i * 0.04, tilt: (i - 1) * 0.3 };
   core.add(n);
   orbitNodes.push(n);
 }
 
-core.position.set(0, 0.1, 0);
+core.position.set(2.0, 0.1, 0);
+core.scale.setScalar(0.92);
 scene.add(core);
 
-/* ---------- babak 2: GATE — dua cincin (skill read-only) ---------- */
-const gate = new THREE.Group();
-const ringA = new THREE.Mesh(
-  new THREE.TorusGeometry(1.55, 0.045, 12, 72),
-  new THREE.MeshBasicMaterial({ color: 0xbfeffd }),
-);
-const ringB = new THREE.Mesh(
-  new THREE.TorusGeometry(1.95, 0.03, 12, 72),
-  new THREE.MeshBasicMaterial({ color: AMBER }),
-);
-ringB.rotation.x = Math.PI / 2.4;
-gate.add(ringA, ringB);
-const gateKey = makeNode(CYAN);
-gateKey.scale.setScalar(1.3);
-gate.add(gateKey);
+/* ---------- babak 2: BOT — kepala robot (skill read-only) ---------- */
+const gate = new THREE.Group(); // nama variabel dipertahankan — direferensikan loop animasi & STOPS
+{
+  // kepala: kotak rounded-ish (kotak + tepi menyala)
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 1.15, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x182c46, metalness: 0.8, roughness: 0.35 }),
+  );
+  gate.add(head);
+  const headEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(head.geometry),
+    new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.6 }),
+  );
+  gate.add(headEdges);
+
+  // leher + bahu
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.2, 0.3, 10),
+    new THREE.MeshStandardMaterial({ color: 0x16273e, metalness: 0.8, roughness: 0.4 }),
+  );
+  neck.position.y = -0.72;
+  gate.add(neck);
+
+  // visor (panel wajah gelap mengilap)
+  const visor = new THREE.Mesh(
+    new THREE.BoxGeometry(1.22, 0.5, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x050b14, metalness: 0.6, roughness: 0.15 }),
+  );
+  visor.position.set(0, 0.08, 0.62);
+  gate.add(visor);
+
+  // mata: dua kapsul menyala di dalam visor (berkedip via scale)
+  const eyeGeo = new THREE.CapsuleGeometry(0.055, 0.14, 4, 10);
+  eyeGeo.rotateZ(Math.PI / 2);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.3, 0.08, 0.66);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.3, 0.08, 0.66);
+  gate.add(eyeL, eyeR);
+  gate.userData.eyes = [eyeL, eyeR];
+
+  // antena: tiang + bola beacon yang denyut
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.42, 8),
+    new THREE.MeshStandardMaterial({ color: 0x9fb2c9, metalness: 0.9, roughness: 0.3 }),
+  );
+  stem.position.set(0.42, 0.78, 0);
+  gate.add(stem);
+  const beacon = makeNode(AMBER);
+  beacon.position.set(0.42, 1.04, 0);
+  gate.add(beacon);
+  gate.userData.beacon = beacon;
+
+  // telinga/side pod
+  const podGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.16, 12);
+  podGeo.rotateZ(Math.PI / 2);
+  const podMat = new THREE.MeshStandardMaterial({ color: 0x1b3a52, metalness: 0.85, roughness: 0.35 });
+  const podL = new THREE.Mesh(podGeo, podMat);
+  podL.position.set(-0.83, 0.05, 0);
+  const podR = new THREE.Mesh(podGeo, podMat);
+  podR.position.set(0.83, 0.05, 0);
+  gate.add(podL, podR);
+
+  // cincin halo read-only mengorbit atas kepala (sisa bahasa "gate" — batasan skill)
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.4, 0.024, 10, 72),
+    new THREE.MeshBasicMaterial({ color: 0xbfeffd, transparent: true, opacity: 0.5 }),
+  );
+  halo.rotation.x = Math.PI / 1.9;
+  halo.position.y = 0.52;
+  gate.add(halo);
+  gate.userData.halo = halo;
+}
 gate.position.set(3.2, 0.2, -7);
 gate.scale.setScalar(0.72);
 scene.add(gate);
 
-/* ---------- babak 3: PAKET PESAN — helix partikel (percakapan) ---------- */
-const helix = new THREE.Group();
+/* ---------- babak 3: ASISTEN — orb + waveform + aliran Q/A (percakapan) ---------- */
+const helix = new THREE.Group(); // nama dipertahankan — direferensikan loop animasi & STOPS
 {
-  const N = MOBILE() ? 260 : 420;
-  const p = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const t = i / N;
-    const a = t * Math.PI * 6;
-    const r = 1.1 + Math.sin(t * Math.PI) * 0.55;
-    p[i * 3] = Math.cos(a) * r;
-    p[i * 3 + 1] = (t - 0.5) * 4.6;
-    p[i * 3 + 2] = Math.sin(a) * r;
+  // orb asisten: bola menyala lembut + cincin tipis (aura AI)
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 28, 20), new THREE.MeshBasicMaterial({ color: 0xa8ecff }));
+  orb.position.y = 1.0;
+  helix.add(orb);
+  // aura pemrosesan: dua arc berputar (bukan cincin penuh — hindai kesan planet)
+  const arcGeo = new THREE.TorusGeometry(0.54, 0.016, 8, 40, Math.PI * 0.7);
+  const arcMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.6 });
+  const arcA = new THREE.Mesh(arcGeo, arcMat);
+  arcA.position.y = 1.0;
+  arcA.rotation.set(Math.PI / 2.8, 0, 0);
+  const arcB = new THREE.Mesh(arcGeo, arcMat.clone());
+  arcB.position.y = 1.0;
+  arcB.rotation.set(Math.PI / 2.8, 0, Math.PI);
+  helix.add(arcA, arcB);
+  helix.userData.orb = orb;
+  helix.userData.orbAura = arcA;
+  helix.userData.orbAura2 = arcB;
+
+  // waveform: bar menari di bawah orb (jawaban yang "bersuara")
+  const bars = [];
+  const barGeo = new THREE.BoxGeometry(0.13, 1, 0.13);
+  const barMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, emissive: 0x0e4a5e, emissiveIntensity: 0.9, metalness: 0.4, roughness: 0.4 });
+  const NB = MOBILE() ? 9 : 13;
+  for (let i = 0; i < NB; i++) {
+    const bar = new THREE.Mesh(barGeo, barMat);
+    bar.position.set((i - (NB - 1) / 2) * 0.26, -0.45, 0);
+    helix.add(bar);
+    bars.push(bar);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  helix.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x67e8f9, size: 0.06, transparent: true, opacity: 0.9, depthWrite: false })));
-  const q = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  helix.add(q);
+  helix.userData.bars = bars;
+
+  // aliran percakapan: pertanyaan (amber) mengalir masuk, jawaban (cyan) keluar
+  const qPath = [new THREE.Vector3(-2.6, 1.5, 0.3), new THREE.Vector3(-0.9, 1.1, 0.1), new THREE.Vector3(-0.2, 0.95, 0)];
+  const aPath = [new THREE.Vector3(0.2, 0.8, 0), new THREE.Vector3(1.1, 0.55, 0.15), new THREE.Vector3(2.7, 0.2, 0.35)];
+  const flowMatQ = new THREE.LineBasicMaterial({ color: 0x8a5a12, transparent: true, opacity: 0.9 });
+  const flowMatA = new THREE.LineBasicMaterial({ color: 0x1e5f74, transparent: true, opacity: 0.9 });
+  helix.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(qPath), flowMatQ));
+  helix.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(aPath), flowMatA));
+
+  const flows = [];
+  for (let i = 0; i < 6; i++) {
+    const isQ = i % 2 === 0;
+    const node = makeNode(isQ ? AMBER : CYAN);
+    node.scale.setScalar(0.6);
+    node.userData = { path: isQ ? qPath : aPath, off: i / 6, sp: 0.22 + (i % 3) * 0.06 };
+    helix.add(node);
+    flows.push(node);
+  }
+  helix.userData.flows = flows;
 }
 helix.position.set(3.1, 0, -14);
 scene.add(helix);
 
-/* ---------- babak 4: KUBAH KENDALI — geodesic dome (runtime server) ---------- */
-const dome = new THREE.Group();
-const domeMesh = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(1.8, 1),
-  new THREE.MeshStandardMaterial({ color: 0x0a1424, metalness: 0.9, roughness: 0.3, transparent: true, opacity: 0.92, side: THREE.DoubleSide }),
-);
-dome.add(domeMesh);
-const domeWire = new THREE.LineSegments(
-  new THREE.EdgesGeometry(domeMesh.geometry),
-  new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.45 }),
-);
-dome.add(domeWire);
-const domeCore = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 14), new THREE.MeshBasicMaterial({ color: 0xbdf0ff }));
-dome.add(domeCore);
+/* ---------- babak 4: SERVER RACK + PADLOCK — kunci di runtime (kendali) ---------- */
+const dome = new THREE.Group(); // nama dipertahankan — direferensikan loop animasi & STOPS
+{
+  // tiga slab server bertumpuk
+  const slabGeo = new THREE.BoxGeometry(1.5, 0.34, 1.05);
+  const slabMat = new THREE.MeshStandardMaterial({ color: 0x0d1a2c, metalness: 0.85, roughness: 0.32 });
+  const edgeMat = new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.55 });
+  const leds = [];
+  for (let i = 0; i < 3; i++) {
+    const y = -0.5 + i * 0.46;
+    const slab = new THREE.Mesh(slabGeo, slabMat);
+    slab.position.y = y;
+    dome.add(slab);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), edgeMat);
+    edges.position.y = y;
+    dome.add(edges);
+    // LED aktivitas di muka slab + slot drive
+    for (let l = 0; l < 3; l++) {
+      const led = makeNode(l === 1 ? AMBER : CYAN);
+      led.scale.setScalar(0.5);
+      led.position.set(-0.5 + l * 0.16, y + 0.08, 0.54);
+      dome.add(led);
+      leds.push(led);
+    }
+    const slot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.045, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0x1b3a52 }),
+    );
+    slot.position.set(0.28, y + 0.06, 0.54);
+    dome.add(slot);
+  }
+  dome.userData.leds = leds;
+
+  // padlock melayang di depan atas rak (kunci tidak pernah keluar)
+  const lock = new THREE.Group();
+  const shackle = new THREE.Mesh(
+    new THREE.TorusGeometry(0.17, 0.045, 10, 24, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0x9fb2c9, metalness: 0.9, roughness: 0.25 }),
+  );
+  shackle.position.y = 0.14;
+  lock.add(shackle);
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.32, 0.16),
+    new THREE.MeshStandardMaterial({ color: 0x132c42, metalness: 0.75, roughness: 0.35 }),
+  );
+  lock.add(body);
+  const bodyEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(body.geometry),
+    new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.8 }),
+  );
+  lock.add(bodyEdges);
+  const keyhole = makeNode(CYAN);
+  keyhole.scale.setScalar(0.55);
+  keyhole.position.set(0, 0.02, 0.09);
+  lock.add(keyhole);
+  lock.position.set(0, 1.15, 0.55);
+  dome.add(lock);
+  dome.userData.lock = lock;
+}
 dome.position.set(3.3, 0.4, -21);
 dome.scale.setScalar(0.72);
 scene.add(dome);
+
+/* ---------- fade per babak: objek babak lain meredup (fokus satu babak, bukan diorama) ---------- */
+const FADES = [
+  { obj: core, a: -0.2, b: 1.4 },
+  { obj: gate, a: 1.4, b: 2.7 },
+  { obj: helix, a: 2.4, b: 3.7 },
+  { obj: dome, a: 3.4, b: 6.2 },
+];
+for (const fd of FADES) {
+  fd.mats = [];
+  fd.obj.traverse((o) => {
+    if (o.material && o.material.color) fd.mats.push({ m: o.material, c: o.material.color.clone() });
+  });
+}
+function applyFades(f) {
+  for (const fd of FADES) {
+    let k;
+    if (f >= fd.a && f <= fd.b) k = 1;
+    else if (f < fd.a) k = Math.max(0.08, 1 - (fd.a - f) / 0.7);
+    else k = Math.max(0.08, 1 - (f - fd.b) / 0.7);
+    for (const e of fd.mats) e.m.color.copy(e.c).multiplyScalar(k);
+  }
+}
 
 /* ---------- pilar jalan (kedalaman sepanjang perjalanan) ---------- */
 {
@@ -183,8 +413,8 @@ scene.add(dome);
 
 /* ---------- kamera per babak (posisi + lookAt, di-lerp) ---------- */
 const STOPS = [
-  { pos: [0, 0.3, 6.4], look: [0, 0.1, 0] },     // intro — core di depan
-  { pos: [2.6, 0.9, 4.6], look: [0, 0.1, 0] },   // data — orbit angle
+  { pos: [0, 1.5, 7.0], look: [1.55, -0.05, 0] },  // intro — chip kanan, copy kiri (papan terbaca)
+  { pos: [3.4, 0.9, 4.4], look: [1.05, 0.1, 0] },   // data — orbit angle
   { pos: [1.2, 0.4, -3.2], look: [1.7, 0.2, -7] },   // gate — objek kanan, copy kiri
   { pos: [1.1, 0.1, -10.0], look: [1.5, 0, -14] },   // helix
   { pos: [1.2, 0.5, -17.0], look: [1.6, 0.4, -21] }, // dome
@@ -223,7 +453,7 @@ let composer = null;
 if (renderer) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.0, 0.75, 0.78));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.8, 0.9));
   composer.addPass(new OutputPass());
 }
 
@@ -250,22 +480,57 @@ function frame() {
   const t = clock.elapsedTime;
 
   p += (pTarget - p) * Math.min(1, dt * 7);
-  applyStop(stopFloat(p));
+  const sf = stopFloat(p);
+  applyStop(sf);
+  applyFades(sf);
 
-  // hidup: rotasi konstan + orbit node + denyut inti
+  // — chip AI: rotasi + denyut inti + pulsa data menyusuri jejak sirkuit
   core.rotation.y += dt * 0.22;
-  cubeEdges.rotation.y -= dt * 0.08;
-  heart.scale.setScalar(1 + Math.sin(t * 2) * 0.08);
+  dieEdges.rotation.y -= dt * 0.05;
+  heart.scale.setScalar(1 + Math.sin(t * 2.4) * 0.12);
   coreLight.position.copy(heart.getWorldPosition(new THREE.Vector3()));
   coreLight.intensity = 16 + Math.sin(t * 1.6) * 2.4;
+  for (const pl of pulses) {
+    const u = (pl.userData.off + t * pl.userData.sp) % 1;
+    const seg = u < 0.5 ? 0 : 1;
+    pl.position.lerpVectors(pl.userData.pts[seg], pl.userData.pts[seg + 1], (u - seg * 0.5) * 2);
+  }
   for (const n of orbitNodes) {
     const a = n.userData.a + t * n.userData.sp;
     n.position.set(Math.cos(a) * n.userData.r, Math.sin(a * 1.4) * 0.8 + n.userData.tilt * 0.4, Math.sin(a) * n.userData.r);
   }
-  gate.rotation.z += dt * 0.16;
-  ringB.rotation.z -= dt * 0.24;
-  helix.rotation.y += dt * 0.4;
-  dome.rotation.y += dt * 0.12;
+
+  // — bot: sway menghadap + kedip mata + beacon denyut + halo berputar
+  gate.rotation.y = Math.sin(t * 0.5) * 0.3;
+  gate.userData.halo.rotation.z = t * 0.5;
+  const bt = t % 3.4;
+  const eyeS = bt < 3.2 ? 1 : Math.max(0.1, Math.abs(1 - (bt - 3.2) * 12));
+  for (const e of gate.userData.eyes) e.scale.y = eyeS;
+  gate.userData.beacon.scale.setScalar(1 + Math.sin(t * 3.2) * 0.3);
+
+  // — asisten: orb bernafas + aura berputar + bar waveform menari + node Q/A mengalir
+  helix.userData.orb.scale.setScalar(1 + Math.sin(t * 2.2) * 0.06);
+  helix.userData.orbAura.rotation.z = t * 0.8;
+  helix.userData.orbAura2.rotation.z = -t * 0.8 + Math.PI;
+  const bars = helix.userData.bars;
+  for (let i = 0; i < bars.length; i++) {
+    const h = 0.25 + Math.abs(Math.sin(t * 2.6 + i * 0.55)) * 0.75;
+    bars[i].scale.y = h;
+    bars[i].position.y = -0.45 + (h - 1) / 2;
+  }
+  for (const f of helix.userData.flows) {
+    const u = (f.userData.off + t * f.userData.sp) % 1;
+    const seg = u < 0.5 ? 0 : 1;
+    f.position.lerpVectors(f.userData.path[seg], f.userData.path[seg + 1], (u - seg * 0.5) * 2);
+  }
+
+  // — rak server: LED denyut bergelombang + padlock melayang (kunci tetap di runtime)
+  const leds = dome.userData.leds;
+  for (let i = 0; i < leds.length; i++) {
+    leds[i].scale.setScalar(0.35 + Math.max(0, Math.sin(t * 3 - i * 0.9)) * 0.35);
+  }
+  dome.userData.lock.position.y = 1.15 + Math.sin(t * 1.8) * 0.06;
+  dome.userData.lock.rotation.y = Math.sin(t * 0.6) * 0.25;
   stars.rotation.y = t * 0.004;
 
   if (composer) composer.render();
@@ -274,7 +539,9 @@ function frame() {
 }
 
 function renderOnce() {
-  applyStop(stopFloat(pTarget));
+  const sf = stopFloat(pTarget);
+  applyStop(sf);
+  applyFades(sf);
   if (composer) composer.render();
   else if (renderer) renderer.render(scene, camera);
 }

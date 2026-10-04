@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="id" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#040814">
+  <meta name="description" content="gRouter Copilot — perjalanan data dari aplikasi Anda hingga jawaban AI. Plugin licensed, skill read-only, kunci tidak pernah ke browser.">
+  <title>gRouter Copilot — Perjalanan Data Anda (draft story)</title>
+  <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/landing-story.css?v=t3">
+  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <a class="skip-link" href="#konten">Langsung ke konten</a>
+  <p class="draft-chip" aria-label="Halaman draft">DRAFT · STORY · review</p>
+
+  <!-- dunia 3D persisten — satu canvas sepanjang halaman -->
+  <canvas id="storyCanvas" aria-hidden="true"></canvas>
+  <div class="veil" aria-hidden="true"></div>
+
+  <!-- topbar -->
+  <header class="topbar" id="topbar">
+    <a class="brand" href="/landing-story"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="22" height="24"></span><span>gRouter <strong>Copilot</strong></span></a>
+    <nav class="topnav" aria-label="Navigasi">
+      <a href="#harga">Harga</a>
+      <a href="/login">Masuk</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="/register">Mulai Membangun</a>
+  </header>
+
+  <!-- stepper kanan (indikator babak) -->
+  <nav class="stepper" id="stepper" aria-label="Babak perjalanan">
+    <span class="step-label" id="stepLabel">INTRO</span>
+    <div class="step-dots" id="stepDots"></div>
+  </nav>
+
+  <!-- hint scroll -->
+  <p class="scroll-hint" id="scrollHint" aria-hidden="true"><i></i>SCROLL TO BEGIN THE JOURNEY</p>
+
+  <!-- ===== layer copy fixed — crossfade per babak ===== -->
+  <div class="chp-layer" id="konten">
+
+    <section class="chp on" data-step="0" data-ch="0" aria-label="Intro">
+      <p class="badge"><i aria-hidden="true"></i>GROUTER COPILOT</p>
+      <h1>Lapisan inteligensi<br>di dalam <em>aplikasi Anda</em>.</h1>
+      <p class="body">Copilot dipasang di dalam host Anda — data tetap di aplikasi,
+      akses hanya lewat skill read-only yang Anda definisikan.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="/register">Mulai Membangun</a>
+        <a class="btn btn-ghost" href="#harga">Lihat harga</a>
+      </div>
+      <div class="metrics" role="list">
+        <div class="hm" role="listitem"><b>100%</b><span>akses read-only</span></div>
+        <div class="hm" role="listitem"><b>0</b><span>kredensial di browser</span></div>
+        <div class="hm" role="listitem"><b>Ed25519</b><span>lisensi bertanda tangan</span></div>
+      </div>
+    </section>
+
+    <section class="chp" data-step="1" data-ch="1" aria-label="Data Anda">
+      <p class="badge">CHAPTER 02 — DATA ANDA</p>
+      <h2>Di dalam aplikasi Anda, ada data yang <em>sudah tahu</em> jawabannya.</h2>
+      <p class="body">CRM, POS, HRIS — data inti bisnis sudah hidup di sistem Anda.
+      Yang kurang bukan aplikasi baru, melainkan <strong>cara bertanya langsung ke sana.</strong></p>
+      <div class="chips" aria-hidden="true"><code>db.orders</code><code>db.customers</code><code>db.tickets</code><code>db.analytics</code></div>
+    </section>
+
+    <section class="chp" data-step="2" data-ch="2" aria-label="Skill read-only">
+      <p class="badge">CHAPTER 03 — SKILL READ-ONLY</p>
+      <h2>Hanya lewat pintu yang <em>Anda buka</em>.</h2>
+      <p class="body">Skill adalah satu-satunya jalur Copilot menuju data. Apa yang tidak
+      Anda expose — tidak ada. Tidak ada database scan otomatis.</p>
+      <div class="mini" aria-hidden="true">
+        <div class="mini-head"><b>SKILL REGISTRY</b><i>read-only</i></div>
+        <div class="mini-row"><code>orders.search</code><span>✓ diizinkan</span></div>
+        <div class="mini-row"><code>users.lookup</code><span>✓ diizinkan</span></div>
+        <div class="mini-row dim"><code>db.raw.write</code><span>× tidak terdaftar</span></div>
+      </div>
+    </section>
+
+    <section class="chp" data-step="3" data-ch="3" aria-label="Percakapan">
+      <p class="badge">CHAPTER 04 — PERCAKAPAN</p>
+      <h2>Pertanyaan biasa. Jawaban dari <em>data Anda</em>.</h2>
+      <div class="chat-mini" aria-hidden="true">
+        <p class="q">Which customers haven't ordered in 30 days?</p>
+        <p class="a"><b>12 customers.</b><small>skill: orders.search → db.orders · sample data</small></p>
+      </div>
+      <p class="note">Angka adalah <strong>sample data</strong> — jawaban nyata selalu dihitung dari skill aplikasi Anda.</p>
+    </section>
+
+    <section class="chp" data-step="4" data-ch="4" aria-label="Kendali">
+      <p class="badge">CHAPTER 05 — KENDALI</p>
+      <h2>Kunci tidak pernah sampai ke <em>browser</em>.</h2>
+      <p class="body">Runtime di server aplikasi Anda memegang kredensial. Browser hanya
+      berbicara dengan runtime — bukan dengan gRouter.</p>
+      <div class="ctrl" aria-hidden="true">
+        <div class="ctrl-col ok"><span>ALLOWED</span><b>✓ orders.search</b><b>✓ users.lookup</b></div>
+        <div class="ctrl-col no"><span>BLOCKED</span><b>× arbitrary DB</b><b>× writes</b></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===== track spacer — menggerakkan dunia 3D ===== -->
+  <div class="track" id="track" aria-hidden="false">
+    <div class="sp" id="sp-0" style="height:100vh"></div>
+    <div class="sp" id="sp-1" style="height:160vh"></div>
+    <div class="sp" id="sp-2" style="height:160vh"></div>
+    <div class="sp" id="sp-3" style="height:160vh"></div>
+    <div class="sp" id="sp-4" style="height:160vh"></div>
+
+    <!-- HARGA — konten nyata di dalam spacer 5 -->
+    <div class="sp sp-content" id="sp-5" style="height:auto;min-height:170vh">
+      <section class="flow-sec" id="harga" aria-labelledby="h-harga">
+        <p class="badge center">HARGA</p>
+        <h2 class="flow-h2">Pilih lisensi yang cocok untuk <em>aplikasi Anda</em>.</h2>
+        <p class="flow-sub">Harga dan entitlement dimuat dari katalog server. Tidak ada harga hardcode di halaman ini.</p>
+        <div class="plans" id="plans"><p class="plan-loading" aria-live="polite">Memuat katalog plan...</p></div>
+      </section>
+    </div>
+
+    <!-- MULAI — konten nyata di dalam spacer 6 -->
+    <div class="sp sp-content" id="sp-6" style="height:auto;min-height:100vh">
+      <section class="flow-sec final" aria-labelledby="h-final">
+        <p class="badge center">MULAI</p>
+        <h2 class="flow-h2">Beri aplikasi Anda <em>Copilot</em>.</h2>
+        <p class="flow-sub">Data tetap milik Anda. Akses tetap Anda tentukan.</p>
+        <div class="cta center">
+          <a class="btn btn-primary btn-lg" href="/register">Mulai Membangun</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/andhikanurdyansyah/grouter_copilot" target="_blank" rel="noopener">Read the Docs</a>
+        </div>
+        <p class="loop-line" aria-hidden="true">application → copilot → skills → data → grouter → application</p>
+      </section>
+      <footer class="site-footer">
+        <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="22" height="24"></span><span>gRouter <strong>Copilot</strong></span></a>
+        <nav aria-label="Footer"><a href="/landing">landing utama</a><a href="/landing-saas">draft saas</a><a href="/login">masuk</a></nav>
+        <span class="footer-note">Node.js MVP · licensed plugin · draft /landing-story</span>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/landing-story.js?v=t5"></script>
+</body>
+</html>

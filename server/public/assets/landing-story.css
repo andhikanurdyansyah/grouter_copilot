@@ -1,0 +1,202 @@
+/* ============================================================
+   gRouter Copilot — landing-story (DRAFT, rute /landing-story)
+   Pola aeronet.id: canvas WebGL fixed z-0 PERSISTEN sepanjang
+   halaman + layer copy fixed z-10 (crossfade per babak) + spacer
+   track (100–160vh per babak) yang menggerakkan kamera/objek 3D.
+   Deep-space black + starfield + core menyala + torus nodes glow.
+   ============================================================ */
+
+[hidden]{display:none!important}
+
+*{box-sizing:border-box}
+html{overflow-x:hidden}
+body{
+  margin:0;background:#040814;color:#f7f8f8;
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:16px;line-height:1.6;overflow-x:clip;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(34,211,238,.3)}
+
+/* ---------- skip + draft ---------- */
+.skip-link{position:fixed;top:-48px;left:16px;z-index:100;background:#0a1220;color:#22d3ee;border:1px solid rgba(34,211,238,.4);padding:10px 16px;border-radius:8px;font-size:13px;text-decoration:none;transition:top .2s}
+.skip-link:focus{top:12px}
+.draft-chip{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:80;margin:0;padding:6px 14px;border-radius:999px;font-family:'Fira Code',ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8a8f98;background:rgba(6,10,20,.85);border:1px solid rgba(34,211,238,.25)}
+
+/* ---------- dunia 3D ---------- */
+#storyCanvas{position:fixed;inset:0;z-index:0;display:block;width:100%;height:100%}
+.veil{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(60% 50% at 50% 42%,transparent 44%,rgba(3,6,14,.5) 100%),
+    linear-gradient(to bottom,rgba(3,6,14,.4),transparent 18% 70%,rgba(3,6,14,.55));
+}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:60;height:58px;
+  display:flex;align-items:center;gap:18px;padding:0 22px;
+  background:rgba(4,8,20,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.brand{display:inline-flex;align-items:center;gap:9px;color:#f7f8f8;text-decoration:none;font-size:14px;font-weight:500}
+.brand strong{font-weight:600}
+.brand-mark{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#f7f8f8}
+.topnav{margin-left:auto;display:flex;gap:6px}
+.topnav a{color:rgba(247,248,248,.72);text-decoration:none;font-size:13.5px;padding:7px 12px;border-radius:7px}
+.topnav a:hover{color:#fff;background:rgba(255,255,255,.06)}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:500;text-decoration:none;border-radius:999px;border:1px solid transparent;transition:opacity .15s,background-color .15s,border-color .15s}
+.btn-sm{height:34px;padding:0 15px;font-size:13px}
+.btn-lg{height:46px;padding:0 24px;font-size:14.5px}
+.btn-primary{background:#22d3ee;color:#03131c;border-color:#22d3ee}
+.btn-primary:hover{opacity:.88}
+.btn-ghost{background:rgba(255,255,255,.05);color:#f7f8f8;border-color:rgba(255,255,255,.16)}
+.btn-ghost:hover{border-color:rgba(255,255,255,.34)}
+.topbar .btn{margin-left:auto}
+.topbar .topnav + .btn{margin-left:0}
+
+/* ---------- stepper kanan ---------- */
+.stepper{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.step-label{font-family:'Fira Code',ui-monospace,monospace;font-size:9.5px;letter-spacing:.22em;color:rgba(247,248,248,.6);writing-mode:vertical-rl}
+.step-dots{display:flex;flex-direction:column;gap:10px}
+.step-dots i{display:block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.22);transition:background-color .3s,box-shadow .3s}
+.step-dots i.on{background:#22d3ee;box-shadow:0 0 10px rgba(34,211,238,.8)}
+.step-dots button{padding:0;border:0;background:none;cursor:pointer;line-height:0}
+
+/* ---------- scroll hint ---------- */
+.scroll-hint{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;margin:0;
+  font-family:'Fira Code',ui-monospace,monospace;font-size:9.5px;letter-spacing:.28em;
+  color:rgba(247,248,248,.55);display:flex;align-items:center;gap:10px;
+  transition:opacity .4s;
+}
+.scroll-hint i{display:block;width:1px;height:26px;background:linear-gradient(to bottom,transparent,#22d3ee);animation:hintDrop 1.8s ease-in-out infinite}
+@keyframes hintDrop{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+body.hint-off .scroll-hint{opacity:0}
+
+/* ---------- layer copy fixed ---------- */
+.chp-layer{position:fixed;inset:0;z-index:10;pointer-events:none}
+.chp{
+  position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+  padding:96px clamp(22px,7vw,96px);
+  opacity:0;transform:translateY(26px);
+  transition:opacity .6s cubic-bezier(.4,0,.2,1),transform .6s cubic-bezier(.4,0,.2,1);
+  visibility:hidden;
+}
+.chp.on{opacity:1;transform:none;visibility:visible;pointer-events:auto}
+.chp .btn,.chp a{pointer-events:auto}
+
+.badge{
+  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin:0 0 20px;
+  font-family:'Fira Code',ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;
+  color:rgba(247,248,248,.62);
+}
+.badge i{width:6px;height:6px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px rgba(34,211,238,.9)}
+.badge.center{align-self:center}
+
+h1{margin:0 0 20px;font-size:clamp(38px,6vw,72px);font-weight:600;line-height:1.05;letter-spacing:-.03em;max-width:12em}
+h2{margin:0 0 18px;font-size:clamp(30px,4.4vw,54px);font-weight:600;line-height:1.08;letter-spacing:-.025em;max-width:12em}
+h1 em,h2 em,.flow-h2 em{font-style:normal;color:#22d3ee}
+.body{margin:0;max-width:52ch;color:rgba(247,248,248,.72);font-size:clamp(15px,1.6vw,17.5px)}
+.body strong{color:#f7f8f8}
+
+.cta{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+.cta.center{justify-content:center}
+
+.metrics{display:flex;gap:30px;margin-top:44px;flex-wrap:wrap}
+.hm b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hm span{font-family:'Fira Code',ui-monospace,monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(247,248,248,.45)}
+
+.chips{display:flex;gap:9px;margin-top:30px;flex-wrap:wrap}
+.chips code{font-family:'Fira Code',ui-monospace,monospace;font-size:11px;color:rgba(247,248,248,.8);border:1px solid rgba(34,211,238,.3);background:rgba(34,211,238,.06);border-radius:999px;padding:7px 14px}
+
+.mini{margin-top:28px;max-width:430px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(8,14,28,.62);backdrop-filter:blur(10px);padding:14px 16px;font-family:'Fira Code',ui-monospace,monospace;font-size:12px}
+.mini-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.mini-head b{font-size:9.5px;letter-spacing:.18em;color:rgba(247,248,248,.6)}
+.mini-head i{font-style:normal;font-size:9px;letter-spacing:.12em;color:#22d3ee;border:1px solid rgba(34,211,238,.4);border-radius:999px;padding:2px 9px}
+.mini-row{display:flex;justify-content:space-between;gap:14px;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.06)}
+.mini-row:last-child{border-bottom:0}
+.mini-row span{color:#22d3ee;font-size:11px}
+.mini-row.dim code{color:rgba(247,248,248,.4)}
+.mini-row.dim span{color:rgba(230,73,128,.8)}
+
+.chat-mini{margin-top:26px;max-width:470px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(8,14,28,.62);backdrop-filter:blur(10px);padding:16px 18px}
+.chat-mini p{margin:0}
+.chat-mini .q{font-size:14.5px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.chat-mini .a{padding-top:12px;font-size:14.5px}
+.chat-mini .a b{color:#22d3ee}
+.chat-mini .a small{display:block;margin-top:5px;font-family:'Fira Code',ui-monospace,monospace;font-size:10px;color:rgba(247,248,248,.4)}
+.note{margin:14px 0 0;font-size:12.5px;color:rgba(247,248,248,.45);max-width:46ch}
+.note strong{color:rgba(247,248,248,.7)}
+
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px;max-width:470px}
+.ctrl-col{border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(8,14,28,.62);backdrop-filter:blur(10px);padding:14px 16px}
+.ctrl-col span{display:block;font-family:'Fira Code',ui-monospace,monospace;font-size:9.5px;letter-spacing:.2em;margin-bottom:8px}
+.ctrl-col.ok span{color:#4ade80}
+.ctrl-col.no span{color:#e64980}
+.ctrl-col b{display:block;font-family:'Fira Code',ui-monospace,monospace;font-weight:400;font-size:11.5px;color:rgba(247,248,248,.75);margin-top:5px}
+
+/* ---------- track: spacer + konten flow ---------- */
+.track{position:relative;z-index:2}
+.sp{position:relative}
+.flow-sec{max-width:1120px;margin:0 auto;padding:120px 22px}
+.flow-h2{margin:16px 0 14px;text-align:center;font-size:clamp(30px,4.2vw,48px);font-weight:600;letter-spacing:-.025em;line-height:1.1}
+.flow-sub{margin:0 auto;max-width:52ch;text-align:center;color:rgba(247,248,248,.68);font-size:16px}
+
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:44px}
+.plan-card{position:relative;background:rgba(10,17,32,.78);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column;backdrop-filter:blur(14px);transition:border-color .2s}
+.plan-card:hover{border-color:rgba(34,211,238,.4)}
+.plan-featured{border-color:rgba(34,211,238,.55)}
+.plan-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-family:'Fira Code',ui-monospace,monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#22d3ee;background:#071021;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:4px 12px;white-space:nowrap}
+.mono-label{font-family:'Fira Code',ui-monospace,monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(247,248,248,.4)}
+.plan-card h3{margin:8px 0 0;font-size:17px;font-weight:600}
+.plan-price{margin:16px 0 6px}
+.plan-price strong{font-size:30px;font-weight:600;letter-spacing:-.02em}
+.plan-price span{color:rgba(247,248,248,.4);font-size:12.5px;margin-left:6px}
+.plan-quota{margin:0;color:rgba(247,248,248,.65);font-size:13px}
+.plan-features{list-style:none;margin:16px 0 22px;padding:0}
+.plan-features li{position:relative;padding:5px 0 5px 22px;color:rgba(247,248,248,.68);font-size:13.5px}
+.plan-features li::before{content:'✓';position:absolute;left:0;color:#22d3ee}
+.plan-card .btn{margin-top:auto}
+.plan-loading,.plan-error{text-align:center;color:rgba(247,248,248,.45);padding:40px 0;grid-column:1/-1}
+
+.final{text-align:center}
+#sp-6{background:linear-gradient(180deg,rgba(4,9,16,0) 0%,rgba(4,9,16,.82) 34%,rgba(4,9,16,.94) 100%)}
+.loop-line{margin:44px 0 0;font-family:'Fira Code',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;color:rgba(255,255,255,.2)}
+
+.site-footer{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;
+  max-width:1120px;margin:80px auto 0;padding:26px 22px 34px;border-top:1px solid rgba(255,255,255,.08);
+  font-size:13px;
+}
+.site-footer nav{display:flex;gap:18px}
+.site-footer nav a{color:rgba(247,248,248,.55);text-decoration:none}
+.site-footer nav a:hover{color:#22d3ee}
+.footer-note{justify-self:end;color:rgba(255,255,255,.25);font-size:12px}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){
+  .topnav{display:none}
+}
+@media (max-width:640px){
+  .topbar{padding:0 14px;height:54px}
+  .chp{padding:86px 20px 96px}
+  .metrics{gap:18px}
+  .hm b{font-size:19px}
+  .stepper{right:12px}
+  .step-label{display:none}
+  .ctrl{grid-template-columns:1fr;max-width:100%}
+  .mini,.chat-mini{max-width:100%}
+  .flow-sec{padding:90px 16px}
+  .site-footer{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .footer-note{justify-self:center}
+  .scroll-hint{letter-spacing:.2em;font-size:9px}
+  .draft-chip{font-size:9px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .scroll-hint i{animation:none}
+  .chp{transition:opacity .3s}
+}

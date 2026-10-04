@@ -1,0 +1,253 @@
+/* ============================================================
+   gRouter Copilot — landing-igloo (DRAFT, rute /landing-igloo)
+   Estetika igloo.inc: arctic monokrom, iglo balok-es menyala
+   dari dalam (three.js), HUD monospace 4 sudut, kabut + salju.
+   Z-ladder: canvas 0 < vignette 1 < main 2 < hud 40 < topbar 45
+             < draft-chip 60.
+   ============================================================ */
+
+[hidden]{display:none!important}
+
+*{box-sizing:border-box}
+html{overflow-x:hidden;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+body{
+  margin:0;
+  background:#050d14;
+  color:#fff;
+  font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:16px;line-height:1.6;
+  overflow-x:clip;
+}
+
+::selection{background:rgba(126,214,243,.35)}
+
+/* ---------- skip link ---------- */
+.skip-link{
+  position:fixed;top:-48px;left:16px;z-index:100;
+  background:#0a1622;color:#7ed6f3;border:1px solid rgba(126,214,243,.4);
+  padding:10px 16px;border-radius:10px;font-size:13px;text-decoration:none;
+  transition:top .2s;
+}
+.skip-link:focus{top:12px}
+
+/* ---------- draft chip ---------- */
+.draft-chip{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;
+  margin:0;padding:6px 14px;border-radius:999px;
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(255,255,255,.75);
+  background:rgba(6,14,22,.72);border:1px solid rgba(126,214,243,.35);
+  backdrop-filter:blur(8px);
+}
+
+/* ---------- canvas 3D + vignette ---------- */
+#iglooCanvas{position:fixed;inset:0;z-index:0;display:block;width:100%;height:100%}
+.vignette{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 50% 42%,transparent 40%,rgba(3,8,13,.55) 100%),
+    linear-gradient(to bottom,rgba(3,8,13,.35),transparent 22% 66%,rgba(3,8,13,.72));
+}
+
+/* ---------- HUD (hero, 4 sudut) ---------- */
+.hud{
+  position:fixed;z-index:40;margin:0;
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:11px;line-height:1.75;letter-spacing:.06em;
+  color:rgba(255,255,255,.85);
+  transition:opacity .5s;
+}
+body.hud-off .hud{opacity:0;pointer-events:none}
+.hud-tl{top:26px;left:30px}
+.hud-tr{top:26px;right:30px;text-align:right}
+.hud-bl{bottom:26px;left:30px}
+.hud-br{bottom:26px;right:30px;text-align:right}
+
+.hud-logo{
+  margin:0 0 10px;font-weight:700;font-size:15px;letter-spacing:.14em;
+  color:#fff;
+}
+.hud-meta{margin:0;color:rgba(255,255,255,.45)}
+.hud-nav a{
+  color:#7ed6f3;text-decoration:none;letter-spacing:.12em;
+}
+.hud-nav a:hover{text-decoration:underline}
+.hud-mission{margin:12px 0 0;max-width:300px;color:rgba(255,255,255,.72)}
+.hud-scroll{margin:0;color:rgba(255,255,255,.7)}
+.hud-scroll i{display:inline-block;font-style:normal;margin-right:8px;animation:hintFloat 2.2s ease-in-out infinite}
+@keyframes hintFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+.hud-tags{margin:14px 0 0;color:rgba(255,255,255,.4);letter-spacing:.18em}
+.hud-tags i{display:inline-block;width:14px}
+.hud-tele{margin:0;color:rgba(126,214,243,.55);font-variant-numeric:tabular-nums}
+
+/* ---------- topbar (muncul setelah hero) ---------- */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:45;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 28px;
+  background:linear-gradient(to bottom,rgba(4,10,16,.88),rgba(4,10,16,0));
+  transform:translateY(-100%);transition:transform .45s cubic-bezier(.4,0,.2,1);
+}
+body.tb-on .topbar{transform:translateY(0)}
+.tb-logo{
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-weight:700;font-size:14px;letter-spacing:.14em;color:#fff;text-decoration:none;
+}
+.tb-cta{
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:#041018;background:#7ed6f3;text-decoration:none;
+  padding:9px 18px;border-radius:999px;transition:transform .15s;
+}
+.tb-cta:hover{transform:scale(1.05)}
+
+/* ---------- layout sections ---------- */
+main{position:relative;z-index:2}
+.sect{
+  min-height:110vh;display:flex;align-items:center;
+  padding:12vh 24px;
+}
+.sect-right{justify-content:flex-end}
+
+.panel{
+  width:min(680px,92vw);
+  background:rgba(9,20,31,.58);
+  border:1px solid rgba(126,214,243,.18);
+  border-radius:22px;
+  padding:clamp(28px,4.5vw,52px);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 30px 80px rgba(0,0,0,.45);
+}
+.panel-final{text-align:center;margin-inline:auto}
+
+.mono-label{
+  margin:0 0 18px;
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:#7ed6f3;
+}
+
+h1,h2{
+  margin:0 0 20px;
+  font-family:Iowan Old Style,'Iowan Old Style',Palatino,'Palatino Linotype','Book Antiqua',Georgia,serif;
+  font-weight:600;
+  font-size:clamp(30px,4.6vw,58px);
+  line-height:1.08;letter-spacing:-.01em;
+  text-wrap:balance;
+}
+h1 em,h2 em{
+  font-style:italic;color:#7ed6f3;
+}
+
+.lead{margin:0;max-width:56ch;color:rgba(233,244,250,.82);font-size:clamp(15px,1.6vw,18px)}
+.lead strong{color:#fff}
+
+.metrics{
+  margin-top:34px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
+}
+.metric b{
+  display:block;font-family:Iowan Old Style,Palatino,Georgia,serif;
+  font-size:clamp(22px,2.6vw,32px);font-weight:600;color:#fff;
+}
+.metric span{
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);
+}
+
+/* flow arsitektur */
+.flow{
+  display:flex;align-items:stretch;gap:10px;margin-top:30px;flex-wrap:nowrap;
+}
+.af-node{
+  flex:none;width:100%;min-width:0;
+  background:rgba(14,30,44,.6);border:1px solid rgba(126,214,243,.2);
+  border-radius:14px;padding:14px 12px;
+}
+.af-node b{
+  display:block;font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:10px;letter-spacing:.1em;color:#fff;
+}
+.af-node small{
+  display:block;margin-top:4px;font-size:11px;color:rgba(255,255,255,.55);
+}
+.af-core{border-color:rgba(126,214,243,.55);box-shadow:0 0 24px rgba(126,214,243,.15)}
+.af-engine{border-color:rgba(230,73,128,.4)}
+.af-arrow{align-self:center;color:rgba(126,214,243,.6);font-size:16px}
+
+.chips{margin-top:26px;display:flex;gap:10px;flex-wrap:wrap}
+.chips code{
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:10.5px;letter-spacing:.08em;color:rgba(255,255,255,.65);
+  border:1px solid rgba(126,214,243,.22);border-radius:999px;padding:6px 12px;
+}
+
+/* buttons */
+.button-glass,.button-solid,.button-ghost{
+  display:inline-block;margin-top:30px;
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  text-decoration:none;border-radius:999px;padding:13px 26px;
+  transition:transform .15s,background-color .15s;
+}
+.button-glass{color:#fff;border:1px solid rgba(126,214,243,.4);background:rgba(126,214,243,.08)}
+.button-glass:hover{background:rgba(126,214,243,.16);transform:scale(1.04)}
+.button-solid{color:#041018;background:#7ed6f3}
+.button-solid:hover{transform:scale(1.04)}
+.button-ghost{color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.25)}
+.button-ghost:hover{color:#fff;transform:scale(1.04)}
+
+.final-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.final-actions .button-glass,.final-actions .button-solid,.final-actions .button-ghost{margin-top:26px}
+
+/* hero */
+.hero{
+  min-height:100vh;display:flex;align-items:flex-end;justify-content:center;
+  padding:0 24px 13vh;position:relative;
+}
+.hero-tag{
+  margin:0;text-align:center;
+  font-family:Iowan Old Style,Palatino,Georgia,serif;
+  font-size:clamp(20px,2.8vw,30px);color:rgba(255,255,255,.92);
+}
+.hero-tag em{font-style:italic;color:#7ed6f3}
+
+/* footer */
+.foot{
+  margin-top:12vh;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+  font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.45);
+}
+.foot nav{display:flex;gap:18px}
+.foot a{color:rgba(255,255,255,.55);text-decoration:none}
+.foot a:hover{color:#7ed6f3}
+
+/* reveal */
+.js .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+.js .reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .js .reveal{opacity:1;transform:none;transition:none}
+  .hud-scroll i{animation:none}
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){
+  .hud-mission{display:none}
+  .hud-tr{top:64px}
+}
+@media (max-width:640px){
+  .hud{font-size:10px}
+  .hud-tl{top:18px;left:18px}
+  .hud-tr{right:18px;top:60px}
+  .hud-bl{bottom:18px;left:18px}
+  .hud-br{display:none}
+  .topbar{padding:12px 18px}
+  .sect{min-height:96vh;padding:10vh 16px}
+  .metrics{grid-template-columns:repeat(3,1fr);gap:10px}
+  .flow{flex-direction:column}
+  .af-arrow{transform:rotate(90deg);align-self:center}
+  .draft-chip{font-size:9px;top:10px}
+  .hud-tags{display:none}
+}

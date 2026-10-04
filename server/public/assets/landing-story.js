@@ -29,6 +29,11 @@ try {
   renderer.toneMappingExposure = 0.95;
 } catch { /* WebGL mati — copy 2D tetap terbaca */ }
 
+if (renderer) {
+  renderer.shadowMap.enabled = !MOBILE();
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+}
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x040814);
 scene.fog = new THREE.FogExp2(0x040814, 0.05);
@@ -36,15 +41,24 @@ scene.fog = new THREE.FogExp2(0x040814, 0.05);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
 
 /* ---------- lights ---------- */
-scene.add(new THREE.AmbientLight(0x2a3850, 1.35));
+scene.add(new THREE.AmbientLight(0x2a3850, 0.95));
 const rim = new THREE.DirectionalLight(0x9fd8ea, 1.05);
 rim.position.set(-5, 6, 4);
 scene.add(rim);
-const fill = new THREE.DirectionalLight(0x8fb8d8, 0.55);
+const fill = new THREE.DirectionalLight(0x8fb8d8, 0.4);
 fill.position.set(1.5, 2, 8);
 scene.add(fill);
 const coreLight = new THREE.PointLight(0x22d3ee, 1.2, 6, 2);
 scene.add(coreLight);
+// matahari bayangan — mengikuti titik pandang kamera (di-update per frame)
+const sun = new THREE.DirectionalLight(0xbfe9ff, 2.1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -3.4; sun.shadow.camera.right = 3.4;
+sun.shadow.camera.top = 3.4; sun.shadow.camera.bottom = -3.4;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 22;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun, sun.target);
 
 /* ---------- starfield ---------- */
 const starN = MOBILE() ? 380 : 850;
@@ -81,20 +95,41 @@ function makeNode(color) {
   return new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), new THREE.MeshBasicMaterial({ color }));
 }
 
+/* kotak bersudut bulat (bevel) — kunci kesan 3D nyata: bevel menangkap cahaya */
+function roundedBoxGeo(w, h, d, r, seg = 3) {
+  r = Math.max(0.01, Math.min(r, w / 2 - 0.01, h / 2 - 0.01, d / 2 - 0.01));
+  const W = w - r * 2, H = h - r * 2, hw = W / 2, hh = H / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-hw, -hh + r);
+  s.lineTo(-hw, hh - r);
+  s.quadraticCurveTo(-hw, hh, -hw + r, hh);
+  s.lineTo(hw - r, hh);
+  s.quadraticCurveTo(hw, hh, hw, hh - r);
+  s.lineTo(hw, -hh + r);
+  s.quadraticCurveTo(hw, -hh, hw - r, -hh);
+  s.lineTo(-hw + r, -hh);
+  s.quadraticCurveTo(-hw, -hh, -hw, -hh + r);
+  const g = new THREE.ExtrudeGeometry(s, { depth: d - r * 2, bevelEnabled: true, bevelThickness: r, bevelSize: r, bevelSegments: seg, steps: 1, curveSegments: 4 });
+  g.translate(0, 0, -(d - r * 2) / 2);
+  return g;
+}
+
 /* ---------- babak 0-1: CHIP AI — die + pin + jejak sirkuit (aplikasi Anda) ---------- */
 const core = new THREE.Group();
 
 const chipBody = new THREE.Mesh(
-  new THREE.BoxGeometry(1.55, 0.16, 1.55),
+  roundedBoxGeo(1.55, 0.16, 1.55, 0.05),
   new THREE.MeshStandardMaterial({ color: 0x16283f, metalness: 0.45, roughness: 0.6 }),
 );
+chipBody.castShadow = true;
 chipBody.position.y = -0.22;
 core.add(chipBody);
 
 const die = new THREE.Mesh(
-  new THREE.BoxGeometry(0.82, 0.1, 0.82),
+  roundedBoxGeo(0.82, 0.12, 0.82, 0.035),
   new THREE.MeshStandardMaterial({ color: 0x101c30, metalness: 0.35, roughness: 0.75, emissive: 0x0a3a4a, emissiveIntensity: 0.2 }),
 );
+die.castShadow = true;
 die.position.y = -0.09;
 core.add(die);
 
@@ -172,24 +207,20 @@ for (let i = 0; i < 3; i++) {
   orbitNodes.push(n);
 }
 
-core.position.set(2.0, 0.1, 0);
+core.position.set(2.0, -1.0, 0);
 core.scale.setScalar(0.92);
 scene.add(core);
 
 /* ---------- babak 2: BOT — kepala robot (skill read-only) ---------- */
 const gate = new THREE.Group(); // nama variabel dipertahankan — direferensikan loop animasi & STOPS
 {
-  // kepala: kotak rounded-ish (kotak + tepi menyala)
+  // kepala bot: kotak bevel solid (bevel menangkap cahaya — kesan 3D nyata, tanpa edges wireframe)
   const head = new THREE.Mesh(
-    new THREE.BoxGeometry(1.5, 1.15, 1.2),
+    roundedBoxGeo(1.5, 1.15, 1.2, 0.16),
     new THREE.MeshStandardMaterial({ color: 0x182c46, metalness: 0.8, roughness: 0.35 }),
   );
+  head.castShadow = true;
   gate.add(head);
-  const headEdges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(head.geometry),
-    new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.6 }),
-  );
-  gate.add(headEdges);
 
   // leher + bahu
   const neck = new THREE.Mesh(
@@ -199,12 +230,12 @@ const gate = new THREE.Group(); // nama variabel dipertahankan — direferensika
   neck.position.y = -0.72;
   gate.add(neck);
 
-  // visor (panel wajah gelap mengilap)
+  // visor: kaca gelap clearcoat (refleksi env map — terlihat solid & mengilap)
   const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(1.22, 0.5, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0x050b14, metalness: 0.6, roughness: 0.15 }),
+    roundedBoxGeo(1.22, 0.5, 0.1, 0.06),
+    new THREE.MeshPhysicalMaterial({ color: 0x050b14, metalness: 0.4, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.1 }),
   );
-  visor.position.set(0, 0.08, 0.62);
+  visor.position.set(0, 0.08, 0.6);
   gate.add(visor);
 
   // mata: dua kapsul menyala di dalam visor (berkedip via scale)
@@ -250,25 +281,64 @@ const gate = new THREE.Group(); // nama variabel dipertahankan — direferensika
   gate.add(halo);
   gate.userData.halo = halo;
 }
-gate.position.set(3.2, 0.2, -7);
+gate.position.set(3.2, -0.65, -7);
 gate.scale.setScalar(0.72);
 scene.add(gate);
 
 /* ---------- babak 3: ASISTEN — orb + waveform + aliran Q/A (percakapan) ---------- */
 const helix = new THREE.Group(); // nama dipertahankan — direferensikan loop animasi & STOPS
 {
-  // orb asisten: bola menyala lembut + cincin tipis (aura AI)
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 28, 20), new THREE.MeshBasicMaterial({ color: 0xa8ecff }));
-  orb.position.y = 1.0;
+  // companion bot mini (kerabat bot SKILL — karakter konsisten) mengapung di atas waveform
+  const bot = new THREE.Group();
+  const bhead = new THREE.Mesh(
+    roundedBoxGeo(0.7, 0.56, 0.56, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0x26456a, metalness: 0.75, roughness: 0.35 }),
+  );
+  bhead.castShadow = true;
+  bot.add(bhead);
+  const bvisor = new THREE.Mesh(
+    roundedBoxGeo(0.5, 0.2, 0.06, 0.04),
+    new THREE.MeshPhysicalMaterial({ color: 0x050b14, metalness: 0.4, roughness: 0.12, clearcoat: 1 }),
+  );
+  bvisor.position.set(0, 0.03, 0.25);
+  bot.add(bvisor);
+  const beyeGeo = new THREE.CapsuleGeometry(0.028, 0.06, 4, 8);
+  beyeGeo.rotateZ(Math.PI / 2);
+  const beyeMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
+  const beyeL = new THREE.Mesh(beyeGeo, beyeMat);
+  beyeL.position.set(-0.12, 0.03, 0.27);
+  const beyeR = new THREE.Mesh(beyeGeo, beyeMat);
+  beyeR.position.set(0.12, 0.03, 0.27);
+  bot.add(beyeL, beyeR);
+  const bstem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.16, 8),
+    new THREE.MeshStandardMaterial({ color: 0x9fb2c9, metalness: 0.9, roughness: 0.3 }),
+  );
+  bstem.position.set(0.16, 0.32, 0);
+  bot.add(bstem);
+  const bbeacon = makeNode(AMBER);
+  bbeacon.scale.setScalar(0.8);
+  bbeacon.position.set(0.16, 0.44, 0);
+  bot.add(bbeacon);
+  bot.position.set(-0.1, 1.62, 0.25);
+  bot.rotation.y = 0.35;
+  helix.add(bot);
+  helix.userData.bot = bot;
+  helix.userData.botBeacon = bbeacon;
+  helix.userData.botEyes = [beyeL, beyeR];
+
+  // orb asisten: bola menyala lembut (inti energi di bawah bot)
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 28, 20), new THREE.MeshBasicMaterial({ color: 0xa8ecff }));
+  orb.position.y = 0.78;
   helix.add(orb);
   // aura pemrosesan: dua arc berputar (bukan cincin penuh — hindai kesan planet)
-  const arcGeo = new THREE.TorusGeometry(0.54, 0.016, 8, 40, Math.PI * 0.7);
+  const arcGeo = new THREE.TorusGeometry(0.44, 0.015, 8, 40, Math.PI * 0.7);
   const arcMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.6 });
   const arcA = new THREE.Mesh(arcGeo, arcMat);
-  arcA.position.y = 1.0;
+  arcA.position.y = 0.78;
   arcA.rotation.set(Math.PI / 2.8, 0, 0);
   const arcB = new THREE.Mesh(arcGeo, arcMat.clone());
-  arcB.position.y = 1.0;
+  arcB.position.y = 0.78;
   arcB.rotation.set(Math.PI / 2.8, 0, Math.PI);
   helix.add(arcA, arcB);
   helix.userData.orb = orb;
@@ -291,8 +361,8 @@ const helix = new THREE.Group(); // nama dipertahankan — direferensikan loop a
   // aliran percakapan: pertanyaan (amber) mengalir masuk, jawaban (cyan) keluar
   const qPath = [new THREE.Vector3(-2.6, 1.5, 0.3), new THREE.Vector3(-0.9, 1.1, 0.1), new THREE.Vector3(-0.2, 0.95, 0)];
   const aPath = [new THREE.Vector3(0.2, 0.8, 0), new THREE.Vector3(1.1, 0.55, 0.15), new THREE.Vector3(2.7, 0.2, 0.35)];
-  const flowMatQ = new THREE.LineBasicMaterial({ color: 0x8a5a12, transparent: true, opacity: 0.9 });
-  const flowMatA = new THREE.LineBasicMaterial({ color: 0x1e5f74, transparent: true, opacity: 0.9 });
+  const flowMatQ = new THREE.LineBasicMaterial({ color: 0x8a5a12, transparent: true, opacity: 0.5 });
+  const flowMatA = new THREE.LineBasicMaterial({ color: 0x1e5f74, transparent: true, opacity: 0.5 });
   helix.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(qPath), flowMatQ));
   helix.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(aPath), flowMatA));
 
@@ -307,25 +377,27 @@ const helix = new THREE.Group(); // nama dipertahankan — direferensikan loop a
   }
   helix.userData.flows = flows;
 }
-helix.position.set(3.1, 0, -14);
+helix.position.set(3.1, -0.3, -14);
 scene.add(helix);
 
 /* ---------- babak 4: SERVER RACK + PADLOCK — kunci di runtime (kendali) ---------- */
 const dome = new THREE.Group(); // nama dipertahankan — direferensikan loop animasi & STOPS
 {
-  // tiga slab server bertumpuk
-  const slabGeo = new THREE.BoxGeometry(1.5, 0.34, 1.05);
-  const slabMat = new THREE.MeshStandardMaterial({ color: 0x0d1a2c, metalness: 0.85, roughness: 0.32 });
-  const edgeMat = new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.55 });
+  // tiga slab server bertumpuk — bevel + clearcoat panel depan (solid, bukan wireframe)
+  const slabGeo = roundedBoxGeo(1.5, 0.34, 1.05, 0.045);
+  const slabMat = new THREE.MeshStandardMaterial({ color: 0x0d1a2c, metalness: 0.7, roughness: 0.42 });
+  const faceMat = new THREE.MeshStandardMaterial({ color: 0x10233a, metalness: 0.5, roughness: 0.3 });
   const leds = [];
   for (let i = 0; i < 3; i++) {
     const y = -0.5 + i * 0.46;
     const slab = new THREE.Mesh(slabGeo, slabMat);
     slab.position.y = y;
+    slab.castShadow = true;
     dome.add(slab);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), edgeMat);
-    edges.position.y = y;
-    dome.add(edges);
+    // panel muka mengilap
+    const face = new THREE.Mesh(roundedBoxGeo(1.36, 0.2, 0.03, 0.03), faceMat);
+    face.position.set(0, y + 0.02, 0.5);
+    dome.add(face);
     // LED aktivitas di muka slab + slot drive
     for (let l = 0; l < 3; l++) {
       const led = makeNode(l === 1 ? AMBER : CYAN);
@@ -352,15 +424,11 @@ const dome = new THREE.Group(); // nama dipertahankan — direferensikan loop an
   shackle.position.y = 0.14;
   lock.add(shackle);
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.4, 0.32, 0.16),
-    new THREE.MeshStandardMaterial({ color: 0x132c42, metalness: 0.75, roughness: 0.35 }),
+    roundedBoxGeo(0.4, 0.32, 0.16, 0.05),
+    new THREE.MeshPhysicalMaterial({ color: 0x132c42, metalness: 0.65, roughness: 0.3, clearcoat: 0.8 }),
   );
+  body.castShadow = true;
   lock.add(body);
-  const bodyEdges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(body.geometry),
-    new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.8 }),
-  );
-  lock.add(bodyEdges);
   const keyhole = makeNode(CYAN);
   keyhole.scale.setScalar(0.55);
   keyhole.position.set(0, 0.02, 0.09);
@@ -369,7 +437,7 @@ const dome = new THREE.Group(); // nama dipertahankan — direferensikan loop an
   dome.add(lock);
   dome.userData.lock = lock;
 }
-dome.position.set(3.3, 0.4, -21);
+dome.position.set(3.3, -0.8, -21);
 dome.scale.setScalar(0.72);
 scene.add(dome);
 
@@ -393,6 +461,68 @@ function applyFades(f) {
     else if (f < fd.a) k = Math.max(0.08, 1 - (fd.a - f) / 0.7);
     else k = Math.max(0.08, 1 - (f - fd.b) / 0.7);
     for (const e of fd.mats) e.m.color.copy(e.c).multiplyScalar(k);
+  }
+}
+
+/* ---------- lingkungan & lantai: env map PBR + grid + bayangan (kedalaman nyata) ---------- */
+let envReady = false;
+if (renderer) {
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new THREE.Scene();
+    envScene.background = null;
+    envScene.add(new THREE.Mesh(
+      new THREE.SphereGeometry(40, 24, 16),
+      new THREE.MeshBasicMaterial({ color: 0x0a1428, side: THREE.BackSide }),
+    ));
+    const e1 = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12), new THREE.MeshBasicMaterial({ color: 0x2b6a80 }));
+    e1.position.set(-14, 10, -6);
+    const e2 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 12), new THREE.MeshBasicMaterial({ color: 0x8a5a1a }));
+    e2.position.set(12, -6, -14);
+    envScene.add(e1, e2);
+    const envRT = pmrem.fromScene(envScene, 0.04);
+    scene.environment = envRT.texture;
+    pmrem.dispose();
+    envReady = true;
+  } catch { /* env gagal — material tetap jalan tanpa refleksi */ }
+}
+
+const FLOOR_Y = -2.1;
+{
+  // lantai gelap menerima bayangan
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x05090f, metalness: 0.2, roughness: 0.85 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = FLOOR_Y;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // grid halus — garis perspektif yang memberi kedalaman
+  const grid = new THREE.GridHelper(80, 40, 0x123048, 0x0c2032);
+  grid.position.y = FLOOR_Y + 0.01;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.5;
+  grid.material.fog = true;
+  scene.add(grid);
+}
+
+// drifter: balok bervolume melayang sepanjang perjalanan (parallax depth saat kamera lewat)
+const drifters = [];
+{
+  const dGeos = [roundedBoxGeo(0.5, 0.5, 0.5, 0.09), roundedBoxGeo(0.34, 0.7, 0.34, 0.07), new THREE.OctahedronGeometry(0.3)];
+  const N = MOBILE() ? 10 : 18;
+  for (let i = 0; i < N; i++) {
+    const m = new THREE.Mesh(
+      dGeos[i % 3],
+      new THREE.MeshStandardMaterial({ color: 0x152440, metalness: 0.6, roughness: 0.5 }),
+    );
+    m.material.color.setHex(0x152440);
+    const side = i % 2 ? 1 : -1;
+    m.position.set(side * (3.2 + Math.random() * 3.4), -1.6 + Math.random() * 3.2, 2 - (i / N) * 32);
+    m.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    m.userData = { sp: 0.1 + Math.random() * 0.25, ph: Math.random() * Math.PI * 2, y0: m.position.y };
+    scene.add(m);
+    drifters.push(m);
   }
 }
 
@@ -421,6 +551,14 @@ const STOPS = [
   { pos: [0, 2.6, -24.5], look: [1.2, 0, -21] },   // harga — naik tinggi melihat dunia
   { pos: [0, 2.8, -27.8], look: [-2.0, 1.4, -33] }, // final — menembus keluar, dunia tinggal starfield
 ];
+// mobile: layar sempit & copy stack di atas — objek ditempatkan di sepertiga BAWAH frame
+// (look.y dinaikkan → objek turun di layar; look.x sedikit ke objek; kamera mundur)
+if (MOBILE()) {
+  for (const s of STOPS) {
+    s.pos = [s.pos[0] * 0.85, s.pos[1] + 0.25, s.pos[2] + 1.6];
+    s.look = [s.look[0] + 0.4, s.look[1] + 1.45, s.look[2]];
+  }
+}
 
 const camPos = new THREE.Vector3();
 const camLook = new THREE.Vector3();
@@ -437,6 +575,15 @@ function stopFloat(p) {
   return p * (STOPS.length - 1);
 }
 
+/* ---------- mouse parallax (desktop) — kamera hidup merespons pointer ---------- */
+const par = { x: 0, y: 0, tx: 0, ty: 0 };
+if (!REDUCED && matchMedia('(pointer:fine)').matches) {
+  addEventListener('pointermove', (e) => {
+    par.tx = (e.clientX / innerWidth - 0.5) * 2;
+    par.ty = (e.clientY / innerHeight - 0.5) * 2;
+  }, { passive: true });
+}
+
 function applyStop(f) {
   const i = Math.min(STOPS.length - 2, Math.floor(f));
   const t = f - i;
@@ -444,6 +591,13 @@ function applyStop(f) {
   camPos.lerpVectors(A, B, t);
   A.fromArray(STOPS[i].look); B.fromArray(STOPS[i + 1].look);
   camLook.lerpVectors(A, B, t);
+  // parallax offset kecil pada posisi + target (desktop)
+  par.x += (par.tx - par.x) * 0.04;
+  par.y += (par.ty - par.y) * 0.04;
+  if (!MOBILE()) {
+    camPos.x += par.x * 0.18; camPos.y += -par.y * 0.12;
+    camLook.x += par.x * 0.32; camLook.y += -par.y * 0.2;
+  }
   camera.position.copy(camPos);
   camera.lookAt(camLook);
 }
@@ -484,6 +638,11 @@ function frame() {
   applyStop(sf);
   applyFades(sf);
 
+  // matahari bayangan mengikuti titik pandang
+  sun.position.set(camPos.x - 3, camPos.y + 5.5, camPos.z - 2);
+  sun.target.position.set(camPos.x + 0.6, FLOOR_Y, camPos.z - 2.5);
+  sun.target.updateMatrixWorld();
+
   // — chip AI: rotasi + denyut inti + pulsa data menyusuri jejak sirkuit
   core.rotation.y += dt * 0.22;
   dieEdges.rotation.y -= dt * 0.05;
@@ -508,10 +667,13 @@ function frame() {
   for (const e of gate.userData.eyes) e.scale.y = eyeS;
   gate.userData.beacon.scale.setScalar(1 + Math.sin(t * 3.2) * 0.3);
 
-  // — asisten: orb bernafas + aura berputar + bar waveform menari + node Q/A mengalir
+  // — asisten: orb bernafas + arc berputar + bar waveform menari + bot mini mengapung + node Q/A mengalir
   helix.userData.orb.scale.setScalar(1 + Math.sin(t * 2.2) * 0.06);
   helix.userData.orbAura.rotation.z = t * 0.8;
   helix.userData.orbAura2.rotation.z = -t * 0.8 + Math.PI;
+  helix.userData.bot.position.y = 1.62 + Math.sin(t * 1.4) * 0.07;
+  helix.userData.bot.rotation.y = 0.35 + Math.sin(t * 0.6) * 0.22;
+  helix.userData.botBeacon.scale.setScalar(0.8 + Math.sin(t * 3.4) * 0.25);
   const bars = helix.userData.bars;
   for (let i = 0; i < bars.length; i++) {
     const h = 0.25 + Math.abs(Math.sin(t * 2.6 + i * 0.55)) * 0.75;
@@ -531,6 +693,12 @@ function frame() {
   }
   dome.userData.lock.position.y = 1.15 + Math.sin(t * 1.8) * 0.06;
   dome.userData.lock.rotation.y = Math.sin(t * 0.6) * 0.25;
+
+  // — drifter: mengapung + berputar pelan (parallax depth)
+  for (const d of drifters) {
+    d.position.y = d.userData.y0 + Math.sin(t * d.userData.sp + d.userData.ph) * 0.3;
+    d.rotation.x += dt * 0.08; d.rotation.y += dt * 0.11;
+  }
   stars.rotation.y = t * 0.004;
 
   if (composer) composer.render();

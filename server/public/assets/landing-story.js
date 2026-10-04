@@ -38,7 +38,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x040814);
 scene.fog = new THREE.FogExp2(0x040814, 0.05);
 
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
+const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 120);
 
 /* ---------- lights ---------- */
 scene.add(new THREE.AmbientLight(0x2a3850, 0.95));
@@ -518,11 +518,54 @@ const drifters = [];
     );
     m.material.color.setHex(0x152440);
     const side = i % 2 ? 1 : -1;
-    m.position.set(side * (3.2 + Math.random() * 3.4), -1.6 + Math.random() * 3.2, 2 - (i / N) * 32);
+    m.position.set(side * (2.2 + Math.random() * 2.6), -1.5 + Math.random() * 2.6, 2 - (i / N) * 32);
     m.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
     m.userData = { sp: 0.1 + Math.random() * 0.25, ph: Math.random() * Math.PI * 2, y0: m.position.y };
+    m.castShadow = true;
     scene.add(m);
     drifters.push(m);
+  }
+}
+
+/* ---------- koridor terbang: dinding blok instanced + gerbang cincin (fly-through feel) ---------- */
+const AXIS = { x: 1.2, y: -0.5 };
+let corridor = null; // hoisted — dirujuk loop animasi (sway halus)
+{
+  const N = MOBILE() ? 90 : 220;
+  const blockGeo = roundedBoxGeo(0.3, 0.3, 0.3, 0.05, 2);
+  const blockMat = new THREE.MeshStandardMaterial({ color: 0x1b3a52, metalness: 0.75, roughness: 0.32 });
+  corridor = new THREE.InstancedMesh(blockGeo, blockMat, N);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < N; i++) {
+    const z = 7 - (i / N) * 38 - Math.random() * 0.8;
+    const ang = Math.random() * Math.PI * 2;
+    const rad = 2.7 + Math.random() * 2.7;
+    dummy.position.set(
+      AXIS.x + Math.cos(ang) * rad * 1.25,
+      AXIS.y + Math.sin(ang) * rad * 0.75,
+      z,
+    );
+    dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    dummy.scale.setScalar(0.6 + Math.random() * 1.5);
+    dummy.updateMatrix();
+    corridor.setMatrixAt(i, dummy.matrix);
+  }
+  corridor.instanceMatrix.needsUpdate = true;
+  corridor.castShadow = true;
+  corridor.receiveShadow = true;
+  scene.add(corridor);
+}
+
+// cincin gerbang yang DILEWATI kamera (flyby moment antar babak)
+const gateRings = [];
+{
+  const ringMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.14 });
+  for (const z of [-3.2, -8.2, -13.2, -18.2]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.02, 8, 64), ringMat.clone());
+    ring.position.set(AXIS.x, AXIS.y, z);
+    ring.rotation.y = Math.random() * 0.4 - 0.2;
+    scene.add(ring);
+    gateRings.push(ring);
   }
 }
 
@@ -543,20 +586,20 @@ const drifters = [];
 
 /* ---------- kamera per babak (posisi + lookAt, di-lerp) ---------- */
 const STOPS = [
-  { pos: [0, 1.5, 7.0], look: [1.55, -0.05, 0] },  // intro — chip kanan, copy kiri (papan terbaca)
-  { pos: [3.4, 0.9, 4.4], look: [1.05, 0.1, 0] },   // data — orbit angle
-  { pos: [1.2, 0.4, -3.2], look: [1.7, 0.2, -7] },   // gate — objek kanan, copy kiri
-  { pos: [1.1, 0.1, -10.0], look: [1.5, 0, -14] },   // helix
-  { pos: [1.2, 0.5, -17.0], look: [1.6, 0.4, -21] }, // dome
-  { pos: [0, 2.6, -24.5], look: [1.2, 0, -21] },   // harga — naik tinggi melihat dunia
-  { pos: [0, 2.8, -27.8], look: [-2.0, 1.4, -33] }, // final — menembus keluar, dunia tinggal starfield
+  { pos: [0.0, 0.6, 7.2], look: [1.35, -0.5, -2.5] },   // intro — terbang masuk ke koridor
+  { pos: [2.6, -0.2, 1.2], look: [1.1, -0.6, -3.0] },   // data — keliling chip, menghadap lorong
+  { pos: [1.15, -0.45, -3.6], look: [1.5, -0.5, -7.5] },  // skill — bot di depan, terbang rendah
+  { pos: [1.25, -0.55, -9.4], look: [1.45, -0.5, -14.5] }, // chat — threading antar gate rings
+  { pos: [1.1, -0.7, -15.8], look: [1.55, -0.6, -21.5] },  // kendali — rak di depan
+  { pos: [0.9, 0.4, -22.8], look: [1.2, -0.4, -26.0] },   // harga — naik, dunia mengalir di bawah
+  { pos: [0.8, 1.2, -26.5], look: [-1.2, 0.2, -33.0] },   // final — keluar koridor ke ruang terbuka
 ];
 // mobile: layar sempit & copy stack di atas — objek ditempatkan di sepertiga BAWAH frame
 // (look.y dinaikkan → objek turun di layar; look.x sedikit ke objek; kamera mundur)
 if (MOBILE()) {
   for (const s of STOPS) {
-    s.pos = [s.pos[0] * 0.85, s.pos[1] + 0.25, s.pos[2] + 1.6];
-    s.look = [s.look[0] + 0.4, s.look[1] + 1.45, s.look[2]];
+    s.pos = [s.pos[0] * 0.85, s.pos[1] + 0.4, s.pos[2] + 1.6];
+    s.look = [s.look[0] + 0.4, s.look[1] + 1.6, s.look[2]];
   }
 }
 
@@ -564,6 +607,7 @@ const camPos = new THREE.Vector3();
 const camLook = new THREE.Vector3();
 const A = new THREE.Vector3();
 const B = new THREE.Vector3();
+let lastSf = 0; // kecepatan kamera utk FOV/banking
 
 function progress01() {
   const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
@@ -600,6 +644,14 @@ function applyStop(f) {
   }
   camera.position.copy(camPos);
   camera.lookAt(camLook);
+  // kecepatan → FOV melebar (sensasi terbang) + banking mengikuti arah belok (ala igloo/aeronet)
+  const vel = f - lastSf;
+  lastSf = f;
+  const targetFov = 72 + Math.min(15, Math.abs(vel) * 420);
+  camera.fov += (targetFov - camera.fov) * 0.09;
+  camera.updateProjectionMatrix();
+  const bank = Math.max(-0.12, Math.min(0.12, -vel * 160)) + Math.sin(clock.elapsedTime * 0.5) * 0.012;
+  camera.rotateZ(bank);
 }
 
 /* ---------- composer ---------- */
@@ -693,6 +745,14 @@ function frame() {
   }
   dome.userData.lock.position.y = 1.15 + Math.sin(t * 1.8) * 0.06;
   dome.userData.lock.rotation.y = Math.sin(t * 0.6) * 0.25;
+
+  // — koridor hidup: cincin spin + denyut, dinding sway halus
+  for (let i = 0; i < gateRings.length; i++) {
+    const r = gateRings[i];
+    r.rotation.z = t * (i % 2 ? 0.18 : -0.14);
+    r.material.opacity = 0.11 + Math.abs(Math.sin(t * 0.9 + i * 1.3)) * 0.1;
+  }
+  corridor.rotation.y = Math.sin(t * 0.05) * 0.025;
 
   // — drifter: mengapung + berputar pelan (parallax depth)
   for (const d of drifters) {

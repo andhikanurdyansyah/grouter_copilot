@@ -1,313 +1,1614 @@
-<!doctype html>
-<html lang="id" class="no-js">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#050d14">
-  <meta name="description" content="gRouter Copilot menambahkan lapisan inteligensi ke aplikasi yang sudah Anda jalankan. Anda menentukan data yang boleh dibaca lewat skill read-only. gRouter menyediakan mesin AI.">
-  <meta property="og:title" content="gRouter Copilot | Tambahkan AI ke aplikasi Anda">
-  <meta property="og:description" content="Data tetap di aplikasi Anda. Copilot membaca lewat skill yang Anda definisikan. gRouter menyediakan mesin AI.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://copilot.grouter.id">
-  <title>gRouter Copilot | Tambahkan AI ke aplikasi Anda</title>
-  <link rel="icon" type="image/png" href="/assets/copilot-mark.png">
-  <link rel="preload" as="image" href="/assets/landing-bot/ezgif-2c442a8b14192578-jpg/ezgif-frame-001.jpg">
-  <link rel="stylesheet" href="/assets/landing.css?v=g5">
-  <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
-</head>
-<body>
+<html lang="en"><head>
 
-  <a class="skip-link" href="#main">Lewati ke konten</a>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gRouter Copilot | Embedded AI Runtime</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<style>
+.font-sans { font-family: 'Inter', sans-serif !important; }
+.font-mono { font-family: 'JetBrains Mono', monospace !important; }
+/* Custom scrollbar matching chassis */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; border: 1px solid #3f3f46; }
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+/* Hide scrolling indicator inside chassis viewport */
+.custom-scrollbar::-webkit-scrollbar{width:0;height:0}
+.custom-scrollbar::-webkit-scrollbar-thumb{background:transparent;border:0}
+.custom-scrollbar::-webkit-scrollbar-track{background:transparent}
+/* Animation Keyframes */
+@keyframes animationIn {
+0% {
+opacity: 0;
+transform: translateY(20px);
+filter: blur(4px);
+}
+100% {
+opacity: 1;
+transform: translateY(0);
+filter: blur(0px);
+}
+}
+</style>
+<script>
+(function () {
+// Inject CSS for paused/running states
+const style = document.createElement("style");
+style.textContent = `
+/* Default: paused */
+.animate-on-scroll { animation-play-state: paused !important; }
+/* Activated by JS */
+.animate-on-scroll.animate { animation-play-state: running !important; }
+`;
+document.head.appendChild(style);
+const once = true;
+if (!window.__inViewIO) {
+window.__inViewIO = new IntersectionObserver((entries) => {
+entries.forEach((entry) => {
+if (entry.isIntersecting) {
+entry.target.classList.add("animate");
+if (once) window.__inViewIO.unobserve(entry.target);
+}
+});
+}, { threshold: 0.15, rootMargin: "0px 0px -5% 0px" });
+}
+window.initInViewAnimations = function (selector = ".animate-on-scroll") {
+document.querySelectorAll(selector).forEach((el) => {
+window.__inViewIO.observe(el);
+});
+};
+document.addEventListener("DOMContentLoaded", () => initInViewAnimations());
+})();
+</script>
+  <style>
+    /* Premium polish: preserve the Commandlayer chassis, reduce dashboard shouting. */
+    .copilot-polish-card { transition: transform .35s cubic-bezier(.16,1,.3,1), border-color .35s ease, box-shadow .35s ease; }
+    .copilot-polish-card:hover { transform: translateY(-4px); border-color: rgba(34,211,238,.28); box-shadow: 0 18px 40px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.08); }
+    .copilot-tool-orbit { animation: copilot-orbit 18s linear infinite; transform-origin: 50% 50%; }
+    .copilot-tool-orbit-reverse { animation: copilot-orbit-reverse 18s linear infinite; }
+    @keyframes copilot-orbit { to { transform: rotate(360deg); } }
+    @keyframes copilot-orbit-reverse { to { transform: rotate(-360deg); } }
+    .copilot-chat-sequence > .copilot-chat-response { animation: copilot-chat-response 8s ease-in-out infinite; }
+    @keyframes copilot-chat-response { 0%, 28% { opacity: 0; transform: translateY(8px); } 38%, 82% { opacity: 1; transform: translateY(0); } 92%, 100% { opacity: 0; transform: translateY(-5px); } }
+    @media (prefers-reduced-motion: reduce) {
+      .copilot-tool-orbit, .copilot-tool-orbit-reverse, .copilot-chat-sequence > .copilot-chat-response { animation: none; }
+      .copilot-chat-sequence > .copilot-chat-response { opacity: 1; transform: none; }
+      .copilot-polish-card:hover { transform: none; }
+    }
 
-  <header class="site-nav" id="siteNav">
-    <div class="nav-inner">
-      <a class="brand" href="/" aria-label="gRouter Copilot beranda">
-        <span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="27" height="29"></span>
-        <span>gRouter <strong>Copilot</strong></span>
-      </a>
-      <nav class="nav-pill" aria-label="Navigasi utama">
-        <a href="#produk">Produk</a>
-        <a href="#fitur">Fitur</a>
-        <a href="#cerita">Percakapan</a>
-        <a href="#arsitektur">Arsitektur</a>
-        <a href="#harga">Harga</a>
+    #view-live > div:nth-child(2) .text-3xl.font-mono { font-size: 1.25rem; line-height: 1.2; letter-spacing: .02em; }
+    #view-live > div:nth-child(2) .text-3xl.font-mono + div { font-size: .6875rem; }
+    #tickerContent, #tickerContainer > div[aria-hidden="true"] { align-items: center; }
+    #tickerContent > div, #tickerContainer > div[aria-hidden="true"] > div { min-width: 4.5rem; justify-content: center; border-right-color: rgba(63,63,70,.7); }
+    #tickerContent iconify-icon, #tickerContainer > div[aria-hidden="true"] iconify-icon { filter: drop-shadow(0 0 6px rgba(34,211,238,.24)); }
+    @media (prefers-reduced-motion: reduce) {
+      #tickerContainer { transform: none !important; }
+    }
+  </style>
+
+  <!-- Body locked to prevent full-page scroll, handling it inside the chassis mask -->
+  <body class="bg-[#0f0f11] text-[#cbd5e1] font-sans antialiased h-screen overflow-hidden relative selection:bg-cyan-500/30 selection:text-cyan-200">
+    <!-- Background Environment -->
+    <div class="fixed inset-0 z-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f0f11 60%);"></div>
+    <div class="fixed inset-0 z-0 opacity-[0.03] pointer-events-none bg-noise"></div>
+
+    <!-- SECTION 00: Fixed Navigation -->
+    <header class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-[1200px]">
+      <nav class="bg-gradient-to-b from-[#27272a] to-[#18181b] border border-[#000] shadow-[0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.5)] rounded-xl px-6 py-3 flex items-center justify-between w-full relative overflow-hidden">
+        <!-- Panel screws -->
+        <div class="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-[#0f0f11] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)] flex items-center justify-center opacity-50">
+          <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+        </div>
+        <div class="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-[#0f0f11] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)] flex items-center justify-center opacity-50">
+          <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+        </div>
+        <div class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#0f0f11] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)] flex items-center justify-center opacity-50">
+          <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+        </div>
+        <div class="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-[#0f0f11] shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)] flex items-center justify-center opacity-50">
+          <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+        </div>
+
+        <div class="flex items-center gap-4 relative z-10 pl-2">
+          <div class="flex flex-col">
+            <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+              SYS_STATUS
+            </span>
+            <div class="flex items-center gap-2">
+              <div class="relative w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_1px_rgba(6,182,212,0.5)]"></div>
+              <span class="font-mono text-xs font-medium text-slate-200 tracking-wide">
+                GROUTER COPILOT
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-8 bg-[#131315] px-6 py-1.5 rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6),0_1px_0_0_rgba(255,255,255,0.05)]">
+          <a href="#" class="text-xs font-mono uppercase tracking-widest text-slate-500 hover:text-cyan-400 transition-colors">
+            Product
+          </a>
+          <a href="#" class="text-xs font-mono uppercase tracking-widest text-slate-500 hover:text-cyan-400 transition-colors">
+            Usage
+          </a>
+          <a href="#" class="text-xs font-mono uppercase tracking-widest text-slate-500 hover:text-cyan-400 transition-colors">
+            Plans
+          </a>
+        </div>
+
+        <div class="flex items-center gap-3 relative z-10 pr-2">
+          <div class="relative">
+            <label for="languageSelect" class="sr-only">Language</label>
+            <select id="languageSelect" aria-label="Language" class="appearance-none bg-[#131315] border border-[#3f3f46] text-slate-300 text-[10px] font-mono uppercase tracking-widest rounded px-3 py-2 pr-7 focus:outline-none focus:border-cyan-500">
+              <option value="en">EN</option>
+              <option value="id">ID</option>
+            </select>
+            <span aria-hidden="true" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-cyan-400 text-[10px]">⌄</span>
+          </div>
+          <a href="/register" class="bg-gradient-to-b from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 border-t border-cyan-400/20 shadow-[0_2px_10px_-2px_rgba(6,182,212,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:translate-y-[1px] text-white px-5 py-2 rounded text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-2">
+            <iconify-icon icon="solar:bolt-linear" width="16"></iconify-icon>
+            Get Started
+          </a>
+        </div>
       </nav>
-      <div class="nav-actions">
-        <a class="nav-login" href="/login">Masuk</a>
-        <a class="button button-white" href="/register">Mulai Membangun</a>
+    </header>
+
+    <!-- Main Fixed Chassis Container Mask -->
+    <div class="fixed top-[88px] bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[1200px] bg-[#18181b] rounded-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_1px_2px_0_rgba(0,0,0,0.5),0_12px_24px_0_rgba(0,0,0,0.8)] border border-[#27272a] overflow-hidden flex flex-col">
+      <!-- Inner Scrollable Dashboard Viewport -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar relative scroll-smooth w-full flex flex-col h-full">
+        <!-- Wrapper for actual chassis content to hold the background color securely -->
+        <div class="flex-none bg-[#18181b] relative z-10 w-full">
+          <!-- SECTION 01: Hero / Display Screen Section -->
+          <section class="relative min-h-[60vh] flex flex-col bg-[#131315] shadow-[inset_0_4px_12px_rgba(0,0,0,0.8)] border-b border-[#000]">
+            <!-- Screen Grating/Scanlines -->
+            <div class="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(255,255,255,0)_50%,rgba(0,0,0,1)_50%)] bg-[length:100%_4px] z-20"></div>
+
+            <!-- Header Section -->
+            <header class="flex flex-col text-center z-10 border-[#27272a] border-b py-32 px-6 relative items-center justify-center min-h-[600px]">
+              <div class="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+                <div class="absolute inset-0 w-full h-full opacity-60 mix-blend-screen">
+                  <div data-us-project="qEL9fV2F9wyNVirYjwat" data-us-dpi="1.5" data-us-fps="60" data-us-lazyload="true" data-us-production="true" class="absolute w-full h-full left-0 top-0"></div>
+                </div>
+              </div>
+              <script>
+                (function(){if(!window.UnicornStudio){window.UnicornStudio={isInitialized:false};var script=document.createElement("script");script.src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.0-1/dist/unicornStudio.umd.js";script.onload=function(){if(!window.UnicornStudio.isInitialized){UnicornStudio.init();window.UnicornStudio.isInitialized=true;}};(document.head||document.body).appendChild(script);}})();
+              </script>
+              <!-- Digital Target Marks -->
+              <div class="absolute top-4 left-4 w-4 h-4 border-t border-l border-cyan-500/50"></div>
+              <div class="absolute top-4 right-4 w-4 h-4 border-t border-r border-cyan-500/50"></div>
+
+              <div class="flex items-center gap-2 mb-6 bg-[#18181b] px-3 py-1 rounded border border-[#3f3f46] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] relative z-10 [animation:animationIn_0.8s_ease-out_0.1s_both] animate-on-scroll">
+                <div class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div>
+                <span class="font-mono text-[10px] text-cyan-400 uppercase tracking-widest">
+                  Copilot Runtime Ready
+                </span>
+              </div>
+
+              <h1 class="text-4xl md:text-5xl font-medium tracking-tight text-slate-100 max-w-3xl mx-auto leading-[1.1] drop-shadow-md relative z-10 [animation:animationIn_0.8s_ease-out_0.3s_both] animate-on-scroll">
+                Embed AI assistance
+                <br>
+                inside your product
+              </h1>
+              <div class="h-px w-24 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mt-8 mb-6 relative z-10 [animation:animationIn_0.8s_ease-out_0.5s_both] animate-on-scroll"></div>
+              <p class="text-base text-slate-400 font-normal max-w-2xl mx-auto leading-relaxed relative z-10 [animation:animationIn_0.8s_ease-out_0.6s_both] animate-on-scroll">
+                Add a license-based AI copilot to your app with developer-defined skills,
+                server-side provider handoff, and clear runtime controls.
+              </p>
+            </header>
+
+            <!-- Ticker Stats Section (Sunken Module) -->
+            <section class="z-10 overflow-hidden shrink-0 bg-[#09090b] border-[#27272a] border-b pt-4 pb-4 relative shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] [animation:animationIn_0.8s_ease-out_0.8s_both] animate-on-scroll">
+              <div id="tickerContainer" class="flex whitespace-nowrap w-max" style="will-change: transform; transform: translateX(-0.6px);">
+                <div id="tickerContent" class="flex gap-12 px-6 items-center">
+                  <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:shield-check-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">License-based embedded runtime</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:lock-keyhole-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Read-only skills</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:document-medicine-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Signed license tokens</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:server-path-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Secure provider handoff</span></div>
+                </div>
+                <!-- Duplicated Ticker -->
+                <div class="flex gap-12 px-6 items-center" aria-hidden="true">
+                  <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:shield-check-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">License-based embedded runtime</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:lock-keyhole-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Read-only skills</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:document-medicine-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Signed license tokens</span></div>
+                                    <div class="flex items-center gap-4 pr-12 border-r border-[#27272a]"><iconify-icon icon="solar:server-path-linear" class="text-cyan-400 text-xl" aria-hidden="true"></iconify-icon><span class="sr-only">Secure provider handoff</span></div>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <!-- Main Content Bay -->
+          <div class="shrink-0 md:pl-10 md:pr-10 md:pb-10 md:pt-20 pt-10 pr-10 pb-10 pl-10">
+            <!-- SECTION 02: Intelligence Feeds -> System Signals -->
+            <div class="flex border-[#27272a] border-b mb-8 pb-6 items-end justify-between [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+              <div class="">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="px-2 py-0.5 rounded bg-[#27272a] border border-[#3f3f46] text-[10px] font-mono text-cyan-400 shadow-sm uppercase tracking-wider">
+                    SIG_01
+                  </span>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-medium text-slate-100 tracking-tight">
+                  Runtime Signals
+                </h2>
+                <p class="text-sm text-slate-500 leading-relaxed max-w-[58ch] mt-2 font-light">
+                  Review license, runtime, and provider status from one focused control
+                  surface.
+                </p>
+              </div>
+              <div class="hidden sm:flex items-center bg-[#09090b] p-1 rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)]" role="tablist">
+                <div class="relative flex items-center w-full">
+                  <div id="sig-switch-pill" class="absolute left-0 top-0 bottom-0 w-1/2 bg-[#27272a] border border-[#3f3f46] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_4px_0_rgba(0,0,0,0.3)] rounded transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"></div>
+                  <button id="btn-live" class="relative z-10 w-24 py-1.5 text-xs font-mono uppercase text-slate-200 transition-colors duration-300 hover:text-white text-center tracking-wider flex-1" onclick="switchSigView('live')" aria-selected="true" role="tab">
+                    Live
+                  </button>
+                  <button id="btn-archive" class="relative z-10 w-24 py-1.5 text-xs font-mono uppercase text-slate-500 transition-colors duration-300 hover:text-slate-300 text-center tracking-wider flex-1" onclick="switchSigView('archive')" aria-selected="false" role="tab">
+                    Archive
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-20 min-h-[400px]">
+              <div id="view-live" class="space-y-6 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] opacity-100 translate-y-0">
+                <!-- Row 1 -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                  <article class="group relative bg-[#18181b] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_1px_2px_0_rgba(0,0,0,0.5),0_4px_12px_0_rgba(0,0,0,0.5)] p-1 flex flex-col transition-transform duration-300 hover:-translate-y-0.5 lg:col-span-2 [animation:animationIn_0.8s_ease-out_0.3s_both] animate-on-scroll">
+                    <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-6 flex flex-col md:flex-row gap-6 border border-white/5 relative overflow-hidden">
+                      <div class="absolute top-3 left-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                        <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                      </div>
+                      <div class="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                        <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                      </div>
+                      <div class="relative md:w-1/2 w-full rounded border border-[#27272a] overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] bg-[#0f0f11]">
+                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/3abecb91-7a25-48a9-994b-1afb799b6db7_800w.webp" alt="Copilot runtime status" class="w-full h-48 md:h-full object-cover mix-blend-luminosity opacity-60 group-hover:opacity-100 group-hover:mix-blend-normal transition-all duration-500">
+                        <div class="absolute top-3 left-3 px-2 py-0.5 rounded bg-[#18181b] border border-[#27272a] text-[10px] font-mono text-amber-500 shadow-sm uppercase tracking-wider">
+                          ALERT
+                        </div>
+                      </div>
+                      <div class="flex flex-col justify-center md:w-1/2 relative z-10 pt-2">
+                        <h3 class="text-xl md:text-2xl font-medium text-slate-100 tracking-tight mb-3 drop-shadow-md">
+                          License validation event detected
+                        </h3>
+                        <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+                          The runtime checked the signed license and kept provider credentials on
+                          the server side. No provider key is exposed in the license token.
+                        </p>
+                        <div class="bg-[#111113] rounded border border-[#27272a] p-3 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] mt-auto">
+                          <div class="flex justify-between items-center text-xs font-mono text-slate-500">
+                            <div class="flex items-center gap-2">
+                              <iconify-icon icon="solar:danger-triangle-linear" class="text-amber-500/80"></iconify-icon>
+                              <span>LICENSE_CHECK</span>
+                            </div>
+                            <span class="text-cyan-500/80">T-02:00</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                  <article class="group relative bg-[#18181b] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_1px_2px_0_rgba(0,0,0,0.5),0_4px_12px_0_rgba(0,0,0,0.5)] p-1 flex flex-col transition-transform duration-300 hover:-translate-y-0.5 [animation:animationIn_0.8s_ease-out_0.5s_both] animate-on-scroll">
+                    <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-5 flex flex-col border border-white/5 relative overflow-hidden">
+                      <div class="absolute top-3 left-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                        <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                      </div>
+                      <div class="relative w-full rounded border border-[#27272a] overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] bg-[#0f0f11] mb-5 h-36">
+                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/variants/01649452-7e40-44c3-89cd-683f4030d473/800w.jpg" alt="Provider handoff status" class="w-full h-full object-cover mix-blend-luminosity opacity-60 group-hover:opacity-100 group-hover:mix-blend-normal transition-all duration-500">
+                        <div class="absolute top-2 left-2 px-2 py-0.5 rounded bg-[#18181b] border border-[#27272a] text-[10px] font-mono text-cyan-400 shadow-sm uppercase tracking-wider">
+                          PATCH
+                        </div>
+                      </div>
+                      <h3 class="text-base font-medium text-slate-100 tracking-tight mb-2 drop-shadow-md">
+                        Provider handoff path verified
+                      </h3>
+                      <p class="text-xs text-slate-400 mb-6 leading-relaxed flex-grow">
+                        The Copilot runtime resolved the configured provider connection without
+                        exposing its secret to the customer client.
+                      </p>
+                      <div class="bg-[#111113] rounded border border-[#27272a] p-2 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)]">
+                        <div class="flex justify-between items-center text-[10px] font-mono text-slate-500">
+                          <span class="flex items-center gap-1">
+                            <iconify-icon icon="solar:check-circle-linear" class="text-cyan-500/80"></iconify-icon>
+                            VERIFIED
+                          </span>
+                          <span class="text-slate-400">T-01:00</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+                <!-- Row 2 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <!-- Card 1 -->
+                  <div class="group relative bg-[#18181b] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_2px_8px_0_rgba(0,0,0,0.4)] p-1 flex flex-col h-full hover:border-[#3f3f46] transition-colors [animation:animationIn_0.8s_ease-out_0.6s_both] animate-on-scroll">
+                    <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-5 flex flex-col border border-white/5 relative overflow-hidden">
+                      <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                          RUNTIME_MODE
+                        </span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-[9px] font-mono text-cyan-500/80">
+                            CONTROLLED
+                          </span>
+                          <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_6px_rgba(6,182,212,0.6)]"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-end gap-2 mb-1">
+                        <div class="text-xl font-mono text-slate-100 tracking-tight">READY</div>
+                                                <div class="text-[11px] text-slate-500 font-mono mb-1.5">runtime available</div>
+                      </div>
+                      <div class="mt-4 mb-4">
+                        <div class="flex justify-between text-[9px] font-mono text-slate-500 mb-1.5">
+                          <span>LICENSE_GATE</span>
+                          <span>SIGNED</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-[#131315] rounded overflow-hidden border border-[#27272a]">
+                          <div class="h-full bg-cyan-500 w-[72%] shadow-[0_0_8px_rgba(6,182,212,0.4)]"></div>
+                        </div>
+                      </div>
+                      <div class="mt-auto grid grid-cols-2 gap-2 border-t border-[#27272a] pt-3">
+                        <div>
+                          <div class="text-[9px] text-slate-500 font-mono uppercase">
+                            Token
+                          </div>
+                          <div class="text-xs text-slate-300 font-mono">
+                            VALID
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-[9px] text-slate-500 font-mono uppercase">
+                            Key
+                          </div>
+                          <div class="text-xs text-slate-300 font-mono">
+                            SERVER
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Card 2 -->
+                  <div class="group relative bg-[#18181b] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_2px_8px_0_rgba(0,0,0,0.4)] p-1 flex flex-col h-full hover:border-[#3f3f46] transition-colors [animation:animationIn_0.8s_ease-out_0.7s_both] animate-on-scroll">
+                    <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-5 flex flex-col border border-white/5 relative overflow-hidden">
+                      <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                          SKILL_ACCESS
+                        </span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-[9px] font-mono text-amber-500/80">
+                            READ_ONLY
+                          </span>
+                          <div class="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-end gap-2 mb-1">
+                        <div class="text-xl font-mono text-slate-100 tracking-tight">DEFINED</div>
+                                                <div class="text-[11px] text-slate-500 font-mono mb-1.5">by your team</div>
+                      </div>
+                      <div class="mt-4 mb-4 space-y-2">
+                        <div class="flex items-center justify-between px-2 py-1.5 rounded bg-[#131315] border border-[#27272a]">
+                          <span class="text-[9px] font-mono text-slate-500">
+                            DATA_ACCESS
+                          </span>
+                          <span class="text-[10px] font-mono text-slate-300">
+                            APP-DEFINED
+                          </span>
+                        </div>
+                      </div>
+                      <div class="mt-auto pt-3 border-t border-[#27272a] flex items-center justify-between">
+                        <div class="flex flex-col">
+                          <span class="text-[9px] text-slate-500 font-mono uppercase">
+                            Policy
+                          </span>
+                          <span class="text-xs text-slate-300 font-mono">
+                            ENFORCED
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[10px] font-mono text-amber-500">
+                          <iconify-icon icon="solar:sort-vertical-linear"></iconify-icon>
+                          <span>No auto-scan</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Card 3 -->
+                  <div class="group relative bg-[#18181b] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_2px_8px_0_rgba(0,0,0,0.4)] p-1 flex flex-col h-full hover:border-[#3f3f46] transition-colors [animation:animationIn_0.8s_ease-out_0.8s_both] animate-on-scroll">
+                    <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-5 flex flex-col border border-white/5 relative overflow-hidden">
+                      <div class="flex items-center justify-between mb-4">
+                        <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                          AUDIT_TRACE
+                        </span>
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"></div>
+                      </div>
+                      <div class="flex items-end gap-2 mb-1">
+                        <div class="text-xl font-mono text-slate-100 tracking-tight">SIGNED</div>
+                                                <div class="text-[11px] text-slate-500 font-mono mb-1.5">license token</div>
+                      </div>
+                      <div class="mt-4 mb-4 flex items-end gap-1 h-8 px-1">
+                        <div class="w-1.5 bg-emerald-900/30 h-[40%] rounded-t-[1px]"></div>
+                        <div class="w-1.5 bg-emerald-900/30 h-[60%] rounded-t-[1px]"></div>
+                        <div class="w-1.5 bg-emerald-900/30 h-[30%] rounded-t-[1px]"></div>
+                        <div class="w-1.5 bg-emerald-500 h-[80%] rounded-t-[1px] shadow-[0_0_6px_rgba(16,185,129,0.4)]"></div>
+                        <div class="w-1.5 bg-emerald-900/30 h-[50%] rounded-t-[1px]"></div>
+                        <div class="w-1.5 bg-emerald-900/30 h-[25%] rounded-t-[1px]"></div>
+                        <div class="w-1.5 bg-emerald-900/30 h-[45%] rounded-t-[1px]"></div>
+                      </div>
+                      <div class="mt-auto pt-3 border-t border-[#27272a] flex items-center justify-between">
+                        <div>
+                          <div class="text-[9px] text-slate-500 font-mono uppercase">
+                            License
+                          </div>
+                          <div class="text-xs text-slate-300 font-mono">
+                            SERVER
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[10px] font-mono text-emerald-500">
+                          <iconify-icon icon="solar:check-circle-linear"></iconify-icon>
+                          <span>VERIFIED</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="view-archive" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] opacity-0 translate-y-4">
+                <!-- Archive Card 1 -->
+                <div class="group relative bg-[#131315] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] p-1 flex flex-col h-full opacity-80 hover:opacity-100 transition-opacity">
+                  <div class="h-full rounded-lg p-5 flex flex-col justify-between border border-white/5">
+                    <div class="flex items-center justify-between mb-6">
+                      <span class="font-mono text-[10px] uppercase tracking-widest text-slate-600">
+                        LICENSE_24H
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded bg-[#27272a] text-[9px] text-slate-400 font-mono border border-[#3f3f46]">
+                        ARCHIVED
+                      </span>
+                    </div>
+                    <div>
+                      <div class="text-xl font-mono text-slate-300 tracking-tight mb-1">
+                        Recent runtime
+                      </div>
+                      <div class="text-[11px] text-slate-600 font-mono">
+                        Activity snapshot
+                      </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-[#27272a] flex items-center justify-between text-[10px] font-mono text-slate-600">
+                      <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+                      <span>Synced</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Archive Card 2 -->
+                <div class="group relative bg-[#131315] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] p-1 flex flex-col h-full opacity-80 hover:opacity-100 transition-opacity">
+                  <div class="h-full rounded-lg p-5 flex flex-col justify-between border border-white/5">
+                    <div class="flex items-center justify-between mb-6">
+                      <span class="font-mono text-[10px] uppercase tracking-widest text-slate-600">
+                        USAGE_7D
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded bg-[#27272a] text-[9px] text-slate-400 font-mono border border-[#3f3f46]">
+                        ARCHIVED
+                      </span>
+                    </div>
+                    <div>
+                      <div class="text-xl font-mono text-slate-300 tracking-tight mb-1">
+                        Recent usage
+                      </div>
+                      <div class="text-[11px] text-slate-600 font-mono">
+                        Usage snapshot
+                      </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-[#27272a] flex items-center justify-between text-[10px] font-mono text-slate-600">
+                      <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+                      <span>Synced</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Archive Card 3 -->
+                <div class="group relative bg-[#131315] rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] p-1 flex flex-col h-full opacity-80 hover:opacity-100 transition-opacity">
+                  <div class="h-full rounded-lg p-5 flex flex-col justify-between border border-white/5">
+                    <div class="flex items-center justify-between mb-6">
+                      <span class="font-mono text-[10px] uppercase tracking-widest text-slate-600">
+                        ACCOUNT_30D
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded bg-[#27272a] text-[9px] text-slate-400 font-mono border border-[#3f3f46]">
+                        ARCHIVED
+                      </span>
+                    </div>
+                    <div>
+                      <div class="text-xl font-mono text-slate-300 tracking-tight mb-1">
+                        Account history
+                      </div>
+                      <div class="text-[11px] text-slate-600 font-mono">
+                        History snapshot
+                      </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-[#27272a] flex items-center justify-between text-[10px] font-mono text-slate-600">
+                      <iconify-icon icon="solar:clock-circle-linear"></iconify-icon>
+                      <span>Synced</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 03: Hardware Pipeline -> Execution Pipeline -->
+            <section class="mb-20">
+              <!-- Header -->
+              <div class="mb-12 flex flex-col items-center text-center border-b border-[#27272a] pb-6 [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+                <div class="flex flex-col items-center">
+                  <div class="flex items-center justify-center gap-2 mb-3">
+                    <span class="px-2 py-0.5 rounded bg-[#27272a] border border-[#3f3f46] text-[10px] font-mono text-cyan-400 shadow-sm uppercase tracking-wider">
+                      MOD_02
+                    </span>
+                  </div>
+                  <h2 class="text-2xl md:text-3xl font-medium text-slate-100 tracking-tight">
+                    Copilot Execution Pipeline
+                  </h2>
+                  <p class="text-sm text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
+                    A deterministic approach to routing inference tasks through
+                    distributed models. Telemetry pushes over secured channels.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Pipeline Container -->
+              <div class="relative max-w-4xl mx-auto py-8">
+                <!-- Center Wire/Rail -->
+                <div class="absolute left-8 md:left-1/2 top-0 bottom-0 w-4 -translate-x-1/2 bg-gradient-to-b from-[#09090b] to-[#131315] shadow-[inset_0_2px_10px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] rounded-full z-0 flex justify-center py-4 border-x border-[#27272a]">
+                  <div class="w-1 h-full bg-[#18181b] rounded-full relative overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
+                    <style>
+                      @keyframes wire-pulse {
+                        0% { transform: translateY(-100%); opacity: 0; }
+                        20% { opacity: 1; }
+                        80% { opacity: 1; }
+                        100% { transform: translateY(300%); opacity: 0; }
+                      }
+                    </style>
+                    <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-transparent via-cyan-500 to-transparent animate-[wire-pulse_3s_linear_infinite] shadow-[0_0_15px_rgba(6,182,212,0.8)]"></div>
+                  </div>
+                </div>
+
+                <!-- Pipeline Nodes -->
+                <div class="space-y-12">
+                  <!-- Node 1: Ingest (Cyan) -->
+                  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 group pl-20 md:pl-0 [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+                    <div class="md:w-1/2 md:pr-12 md:text-right w-full md:order-1 order-2 mt-4 md:mt-0">
+                      <h3 class="text-base font-medium text-slate-200 tracking-tight">
+                        Receive
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Receives the host app request and the context explicitly exposed by the
+                        developer-defined skill.
+                      </p>
+                    </div>
+                    <div class="absolute left-8 md:left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-b from-[#27272a] to-[#18181b] shadow-[0_4px_12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#3f3f46] flex items-center justify-center z-10 md:order-2 order-1">
+                      <div class="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.8)] border border-[#000]"></div>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 w-full md:order-3 order-3">
+                      <div class="bg-[#18181b] p-1 rounded-lg border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_12px_24px_-6px_rgba(0,0,0,0.6)]">
+                        <div class="bg-[#131315] rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] p-4 flex items-center gap-4">
+                          <div class="w-8 h-8 rounded bg-[#18181b] border border-[#27272a] flex items-center justify-center text-cyan-400">
+                            <iconify-icon icon="solar:server-square-linear" width="18"></iconify-icon>
+                          </div>
+                          <div class="flex-1">
+                            <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-1.5">
+                              <span>REQUEST_CONTEXT</span>
+                              <span class="text-cyan-400">APP INPUT</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-[#09090b] rounded overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] border border-[#27272a]">
+                              <div class="h-full w-3/4 bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Node 2: Validate (Orange) -->
+                  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 group pl-20 md:pl-0 [animation:animationIn_0.8s_ease-out_0.3s_both] animate-on-scroll">
+                    <div class="md:w-1/2 md:pr-12 w-full md:order-1 order-3">
+                      <div class="bg-[#18181b] p-1 rounded-lg border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_12px_24px_-6px_rgba(0,0,0,0.6)]">
+                        <div class="bg-[#131315] rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] p-4 flex items-center gap-4">
+                          <div class="flex-1 text-right">
+                            <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-1.5">
+                              <span class="text-amber-500">LICENSED</span>
+                              <span>SKILL_POLICY</span>
+                            </div>
+                            <div class="flex gap-1 justify-end">
+                              <div class="w-6 h-1 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+                              <div class="w-6 h-1 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+                              <div class="w-6 h-1 bg-[#27272a]"></div>
+                            </div>
+                          </div>
+                          <div class="w-8 h-8 rounded bg-[#18181b] border border-[#27272a] flex items-center justify-center text-amber-500">
+                            <iconify-icon icon="solar:shield-check-linear" width="18"></iconify-icon>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="absolute left-8 md:left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-b from-[#27272a] to-[#18181b] shadow-[0_4px_12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#3f3f46] flex items-center justify-center z-10 md:order-2 order-1">
+                      <div class="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)] border border-[#000]"></div>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 w-full md:order-3 order-2 mt-4 md:mt-0">
+                      <h3 class="text-base font-medium text-slate-200 tracking-tight">
+                        Authorize
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Checks the signed license and permits only the read-only skills registered
+                        by the host application.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Node 3: Route (Blue) -->
+                  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 group pl-20 md:pl-0 [animation:animationIn_0.8s_ease-out_0.4s_both] animate-on-scroll">
+                    <div class="md:w-1/2 md:pr-12 md:text-right w-full md:order-1 order-2 mt-4 md:mt-0">
+                      <h3 class="text-base font-medium text-slate-200 tracking-tight">
+                        Handoff
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Passes the approved request to the configured provider through a
+                        server-side key handoff.
+                      </p>
+                    </div>
+                    <div class="absolute left-8 md:left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-b from-[#27272a] to-[#18181b] shadow-[0_4px_12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#3f3f46] flex items-center justify-center z-10 md:order-2 order-1">
+                      <div class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] border border-[#000]"></div>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 w-full md:order-3 order-3">
+                      <div class="bg-[#18181b] p-1 rounded-lg border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_12px_24px_-6px_rgba(0,0,0,0.6)]">
+                        <div class="bg-[#131315] rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] p-4 flex items-center gap-4">
+                          <div class="w-8 h-8 rounded bg-[#18181b] border border-[#27272a] flex items-center justify-center text-blue-400">
+                            <iconify-icon icon="solar:routing-2-linear" width="18"></iconify-icon>
+                          </div>
+                          <div class="flex-1">
+                            <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-1.5">
+                              <span>PROVIDER</span>
+                              <span class="text-blue-400">RESOLVED</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-[#09090b] rounded overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] border border-[#27272a]">
+                              <div class="h-full w-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Node 4: Execute (Yellow) -->
+                  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 group pl-20 md:pl-0 [animation:animationIn_0.8s_ease-out_0.5s_both] animate-on-scroll">
+                    <div class="md:w-1/2 md:pr-12 w-full md:order-1 order-3">
+                      <div class="bg-[#18181b] p-1 rounded-lg border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_12px_24px_-6px_rgba(0,0,0,0.6)]">
+                        <div class="bg-[#131315] rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] p-4 flex items-center gap-4">
+                          <div class="flex-1 text-right">
+                            <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-1.5">
+                              <span class="text-yellow-400">BOUND</span>
+                              <span>COPILOT</span>
+                            </div>
+                            <div class="flex gap-1 justify-end text-yellow-500">
+                              <iconify-icon icon="solar:spiner-linear" class="animate-spin"></iconify-icon>
+                            </div>
+                          </div>
+                          <div class="w-8 h-8 rounded bg-[#18181b] border border-[#27272a] flex items-center justify-center text-yellow-400">
+                            <iconify-icon icon="solar:play-circle-linear" width="18"></iconify-icon>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="absolute left-8 md:left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-b from-[#27272a] to-[#18181b] shadow-[0_4px_12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#3f3f46] flex items-center justify-center z-10 md:order-2 order-1">
+                      <div class="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] border border-[#000]"></div>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 w-full md:order-3 order-2 mt-4 md:mt-0">
+                      <h3 class="text-base font-medium text-slate-200 tracking-tight">
+                        Respond
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Runs the Copilot response in the host application while preserving the
+                        customer-defined data boundary.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Node 5: Observe (Green) -->
+                  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 group pl-20 md:pl-0 [animation:animationIn_0.8s_ease-out_0.6s_both] animate-on-scroll">
+                    <div class="md:w-1/2 md:pr-12 md:text-right w-full md:order-1 order-2 mt-4 md:mt-0">
+                      <h3 class="text-base font-medium text-slate-200 tracking-tight">
+                        Audit
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Tracks license, usage, and runtime events without inventing customer data
+                        or silently scanning databases.
+                      </p>
+                    </div>
+                    <div class="absolute left-8 md:left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-b from-[#27272a] to-[#18181b] shadow-[0_4px_12px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#3f3f46] flex items-center justify-center z-10 md:order-2 order-1">
+                      <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] border border-[#000]"></div>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 w-full md:order-3 order-3">
+                      <div class="bg-[#18181b] p-1 rounded-lg border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_12px_24px_-6px_rgba(0,0,0,0.6)]">
+                        <div class="bg-[#131315] rounded border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] p-4 flex items-center gap-4">
+                          <div class="w-8 h-8 rounded bg-[#18181b] border border-[#27272a] flex items-center justify-center text-emerald-400">
+                            <iconify-icon icon="solar:eye-scan-linear" width="18"></iconify-icon>
+                          </div>
+                          <div class="flex-1">
+                            <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-1.5">
+                              <span>KEY EXPOSURE</span>
+                              <span class="text-emerald-400">BLOCKED</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-[#09090b] rounded overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] border border-[#27272a]">
+                              <div class="h-full w-[2px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse ml-4"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- SECTION 04: Copilot capabilities + chat example -->
+            <section class="mb-20" aria-labelledby="copilot-capabilities-title">
+              <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between border-b border-[#27272a] pb-6 [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+                <div>
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="px-2 py-0.5 rounded bg-[#27272a] border border-[#3f3f46] text-[10px] font-mono text-cyan-400 shadow-sm uppercase tracking-wider">COPILOT_SURFACE</span>
+                  </div>
+                  <h2 id="copilot-capabilities-title" class="text-2xl md:text-3xl font-medium text-slate-100 tracking-tight">One surface for daily AI work</h2>
+                  <p class="text-sm text-slate-500 max-w-xl mt-2 leading-relaxed">Connect the tools your team already uses, automate repeatable work, and keep runtime activity visible without exposing provider credentials.</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                <article class="copilot-polish-card overflow-hidden rounded-xl bg-[#18181b] border border-[#27272a] relative [animation:animationIn_0.8s_ease-out_0.25s_both] animate-on-scroll">
+                  <div class="h-40 relative overflow-hidden bg-[#0b1017] flex items-center justify-center">
+                    <div class="absolute inset-0 opacity-40" style="background-image:radial-gradient(rgba(34,211,238,.35) 1px,transparent 0);background-size:18px 18px"></div>
+                    <div class="relative w-36 h-36 copilot-tool-orbit">
+                      <div class="absolute inset-5 rounded-full border border-cyan-400/30"></div><div class="absolute inset-10 rounded-full border border-blue-400/40"></div>
+                      <div class="absolute inset-[60px] rounded-full bg-gradient-to-br from-cyan-300 to-blue-600 shadow-[0_0_35px_rgba(34,211,238,.55)] flex items-center justify-center text-white"><iconify-icon icon="solar:link-round-linear" width="20"></iconify-icon></div>
+                      <div class="absolute left-0 top-12 w-8 h-8 rounded-full bg-[#151c28] border border-white/15 flex items-center justify-center copilot-tool-orbit-reverse"><iconify-icon icon="logos:github-icon" width="15"></iconify-icon></div>
+                      <div class="absolute right-0 top-3 w-8 h-8 rounded-full bg-[#151c28] border border-white/15 flex items-center justify-center copilot-tool-orbit-reverse"><iconify-icon icon="solar:code-square-linear" class="text-cyan-300" width="16"></iconify-icon></div>
+                      <div class="absolute right-2 bottom-4 w-8 h-8 rounded-full bg-[#151c28] border border-white/15 flex items-center justify-center copilot-tool-orbit-reverse"><iconify-icon icon="solar:chat-round-dots-linear" class="text-blue-300" width="16"></iconify-icon></div>
+                    </div>
+                  </div>
+                  <div class="p-5 border-t border-[#27272a]"><div class="text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-2">CONNECT</div><h3 class="text-lg text-slate-100 tracking-tight">Connect your existing tools</h3><p class="text-sm text-slate-500 leading-relaxed mt-2">Bring your app context and approved skills into one controlled Copilot surface.</p></div>
+                </article>
+
+                <article class="copilot-polish-card overflow-hidden rounded-xl bg-[#18181b] border border-[#27272a] relative [animation:animationIn_0.8s_ease-out_0.35s_both] animate-on-scroll">
+                  <div class="h-40 p-5 flex flex-col justify-center gap-2 bg-[#0f1217]">
+                    <div class="flex items-center justify-between rounded-lg border border-cyan-500/20 bg-cyan-500/[.06] px-3 py-2"><span class="text-xs text-slate-200">Summarize support queue</span><span class="text-[9px] font-mono text-cyan-400">EXAMPLE</span></div>
+                    <div class="flex items-center justify-between rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><span class="text-xs text-slate-300">Draft weekly digest</span><span class="text-[9px] font-mono text-slate-500">SKILL</span></div>
+                    <div class="flex items-center justify-between rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><span class="text-xs text-slate-300">Route approved request</span><span class="text-[9px] font-mono text-slate-500">DEFINED</span></div>
+                  </div>
+                  <div class="p-5 border-t border-[#27272a]"><div class="text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-2">AUTOMATE</div><h3 class="text-lg text-slate-100 tracking-tight">Automate daily workflows</h3><p class="text-sm text-slate-500 leading-relaxed mt-2">Turn recurring requests into repeatable, developer-defined Copilot skills.</p></div>
+                </article>
+
+                <article class="copilot-polish-card overflow-hidden rounded-xl bg-[#18181b] border border-[#27272a] relative [animation:animationIn_0.8s_ease-out_0.45s_both] animate-on-scroll">
+                  <div class="h-40 p-5 bg-[#0f1217] flex items-end gap-2"><div class="w-1/6 h-[30%] bg-cyan-900/60 rounded-t"></div><div class="w-1/6 h-[45%] bg-cyan-800/70 rounded-t"></div><div class="w-1/6 h-[38%] bg-cyan-700/70 rounded-t"></div><div class="w-1/6 h-[66%] bg-cyan-500/80 rounded-t shadow-[0_0_12px_rgba(34,211,238,.3)]"></div><div class="w-1/6 h-[56%] bg-blue-500/70 rounded-t"></div><div class="w-1/6 h-[82%] bg-emerald-400/80 rounded-t shadow-[0_0_12px_rgba(52,211,153,.25)]"></div><div class="absolute mt-[-112px] ml-2 text-[10px] font-mono text-slate-500">EXAMPLE VIEW</div></div>
+                  <div class="p-5 border-t border-[#27272a]"><div class="text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-2">OBSERVE</div><h3 class="text-lg text-slate-100 tracking-tight">Track everything in real time</h3><p class="text-sm text-slate-500 leading-relaxed mt-2">See usage, license state, and runtime events from the control surface.</p></div>
+                </article>
+              </div>
+
+              <article class="copilot-polish-card rounded-xl bg-[#18181b] border border-[#27272a] overflow-hidden [animation:animationIn_0.8s_ease-out_0.55s_both] animate-on-scroll" aria-label="Copilot chatbot example">
+                <div class="p-5 md:p-6 grid grid-cols-1 lg:grid-cols-[.8fr_1.2fr] gap-6 items-center">
+                  <div><div class="text-[10px] font-mono uppercase tracking-wider text-cyan-400 mb-3">CHAT_EXAMPLE / READ_ONLY SKILL</div><h3 class="text-xl md:text-2xl text-slate-100 tracking-tight">Ask Copilot to turn context into action</h3><p class="text-sm text-slate-500 leading-relaxed mt-3">A small example of the host app experience: Copilot receives only the context the developer explicitly exposes.</p><div class="mt-4 flex items-center gap-2 text-[10px] font-mono text-emerald-400"><iconify-icon icon="solar:shield-check-linear" width="15"></iconify-icon><span>BOUNDARY ENFORCED</span></div></div>
+                  <div class="rounded-xl border border-white/10 bg-[#0d0f13] overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
+                    <div class="flex items-center justify-between border-b border-white/5 px-4 py-2.5"><span class="text-[10px] font-mono text-slate-500">COPILOT_ASSISTANT</span><span class="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>READY</span></div>
+                    <div class="copilot-chat-sequence min-h-[176px] p-4 relative text-xs leading-relaxed"><div class="flex items-start gap-2.5"><div class="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-[9px] font-bold text-white">AI</div><div class="rounded-xl rounded-tl-sm border border-white/10 bg-white/[.04] px-3 py-2 text-slate-300">What should I prepare from this week’s usage events?</div></div><div class="flex justify-end mt-4"><div class="rounded-xl rounded-tr-sm bg-gradient-to-br from-cyan-500 to-blue-600 px-3 py-2 text-white">Summarize anomalies and draft a team update.</div></div><div class="copilot-chat-response flex items-start gap-2.5 absolute left-4 right-4 top-[116px]"><div class="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-[9px] font-bold text-white">AI</div><div class="rounded-xl rounded-tl-sm border border-cyan-500/20 bg-cyan-500/[.06] px-3 py-2 text-slate-300">I can draft an update using only the telemetry exposed by your app.</div></div></div>
+                    <div class="border-t border-white/5 px-3 py-2 flex items-center gap-2"><div class="flex-1 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] text-slate-600">Ask about your Copilot runtime…</div><div class="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-cyan-400"><iconify-icon icon="solar:arrow-up-linear" width="14"></iconify-icon></div></div>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <!-- SECTION 05: Proven Operations -> Telemetry -->
+            <section class="mb-20">
+              <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between border-b border-[#27272a] pb-6 [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+                <div>
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="px-2 py-0.5 rounded bg-[#27272a] border border-[#3f3f46] text-[10px] font-mono text-emerald-400 shadow-sm uppercase tracking-wider">
+                      TELEMETRY_DATA
+                    </span>
+                  </div>
+                  <h2 class="text-2xl md:text-3xl font-medium text-slate-100 tracking-tight">
+                    Telemetry &amp; Verification
+                  </h2>
+                  <p class="text-sm text-slate-500 max-w-lg mt-2 leading-relaxed">
+                    Review product usage and license state from the Copilot control surface.
+                    Provider credentials remain server-side.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Row 1 -->
+                <!-- Main Metric -->
+                <div class="bg-[#18181b] p-1 rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_2px_8px_0_rgba(0,0,0,0.4)] lg:col-span-1 flex flex-col h-full [animation:animationIn_0.8s_ease-out_0.3s_both] animate-on-scroll">
+                  <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-6 border border-white/5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-6">
+                      <div class="w-10 h-10 rounded bg-[#131315] border border-emerald-900/30 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] flex items-center justify-center text-emerald-400">
+                        <iconify-icon icon="solar:chart-2-linear" width="20"></iconify-icon>
+                      </div>
+                      <div class="font-mono text-[10px] text-emerald-500/70 uppercase tracking-widest">
+                        License State
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-baseline gap-1">
+                        <span class="text-5xl font-mono text-white tracking-tight">
+                          ACTIVE
+                        </span>
+                        <span class="text-lg text-slate-500">%</span>
+                      </div>
+                    </div>
+                    <div class="bg-[#111113] rounded border border-[#27272a] p-3 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)]">
+                      <p class="text-[11px] font-mono text-slate-400">
+                        Signed licenses, explicit skills, and server-side provider resolution for
+                        each customer runtime.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Log Card -->
+                <div class="bg-[#18181b] p-1 rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_2px_8px_0_rgba(0,0,0,0.4)] lg:col-span-2 flex flex-col h-full [animation:animationIn_0.8s_ease-out_0.4s_both] animate-on-scroll">
+                  <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-6 border border-white/5 flex flex-col justify-between">
+                    <div class="flex items-center gap-3 mb-6">
+                      <div class="w-8 h-8 rounded bg-[#131315] border border-[#27272a] shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.6)] overflow-hidden">
+                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bd0dc97c-a094-49ac-8265-f47f1efa3939_320w.webp" class="w-full h-full object-cover grayscale mix-blend-luminosity">
+                      </div>
+                      <div>
+                        <p class="text-[11px] font-mono text-slate-300 uppercase">
+                          COPILOT OPS
+                        </p>
+                        <p class="text-[10px] font-mono text-slate-600">
+                          gRouter Copilot
+                        </p>
+                      </div>
+                      <div class="ml-auto flex gap-1 text-cyan-500/50">
+                        <iconify-icon icon="solar:star-linear" width="12"></iconify-icon>
+                        <iconify-icon icon="solar:star-linear" width="12"></iconify-icon>
+                        <iconify-icon icon="solar:star-linear" width="12"></iconify-icon>
+                        <iconify-icon icon="solar:star-linear" width="12"></iconify-icon>
+                        <iconify-icon icon="solar:star-linear" width="12"></iconify-icon>
+                      </div>
+                    </div>
+                    <p class="text-sm md:text-base text-slate-300 font-mono leading-relaxed border-l-2 border-cyan-500/30 pl-4">
+                      "gRouter Copilot gives our app a controlled AI runtime: developer-defined
+                      skills, signed licenses, and provider credentials kept server-side."
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Row 2 -->
+                <!-- Regional Latency Map -->
+                <div class="bg-[#18181b] p-1 rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_2px_8px_0_rgba(0,0,0,0.4)] lg:col-span-2 flex flex-col h-full [animation:animationIn_0.8s_ease-out_0.5s_both] animate-on-scroll">
+                  <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-6 border border-white/5 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                      <div class="flex items-center gap-2">
+                        <iconify-icon icon="solar:globe-linear" class="text-slate-500"></iconify-icon>
+                        <span class="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
+                          Provider Connection
+                        </span>
+                      </div>
+                      <span class="text-[10px] font-mono text-cyan-500 bg-cyan-950/30 px-1.5 py-0.5 rounded border border-cyan-900/50">
+                        LIVE
+                      </span>
+                    </div>
+                    <div class="space-y-4">
+                      <div class="flex items-center gap-4 text-xs font-mono">
+                        <span class="w-16 text-slate-500">PRIMARY</span>
+                        <div class="flex-1 h-1.5 bg-[#131315] rounded overflow-hidden">
+                          <div class="h-full bg-emerald-500 w-[15%] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        </div>
+                        <span class="w-12 text-right text-slate-300">CONFIGURED</span>
+                      </div>
+                      <div class="flex items-center gap-4 text-xs font-mono">
+                        <span class="w-16 text-slate-500">BACKUP</span>
+                        <div class="flex-1 h-1.5 bg-[#131315] rounded overflow-hidden">
+                          <div class="h-full bg-emerald-500 w-[24%] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        </div>
+                        <span class="w-12 text-right text-slate-300">CONFIGURED</span>
+                      </div>
+                      <div class="flex items-center gap-4 text-xs font-mono">
+                        <span class="w-16 text-slate-500">CONFIGURED</span>
+                        <div class="flex-1 h-1.5 bg-[#131315] rounded overflow-hidden">
+                          <div class="h-full bg-emerald-500 w-[42%] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        </div>
+                        <span class="w-12 text-right text-slate-300">CONFIGURED</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Error Budget -->
+                <div class="bg-[#18181b] p-1 rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_2px_8px_0_rgba(0,0,0,0.4)] lg:col-span-1 flex flex-col h-full [animation:animationIn_0.8s_ease-out_0.6s_both] animate-on-scroll">
+                  <div class="h-full bg-gradient-to-b from-[#202023] to-[#18181b] rounded-lg p-6 border border-white/5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                      <span class="font-mono text-[10px] text-slate-500 uppercase tracking-widest">
+                        License Entitlement
+                      </span>
+                      <iconify-icon icon="solar:pie-chart-linear" class="text-slate-600"></iconify-icon>
+                    </div>
+                    <div class="flex items-center justify-center py-4">
+                      <div class="relative w-24 h-24 flex items-center justify-center">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                          <path class="text-[#131315]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+                          <path class="text-cyan-500 drop-shadow-[0_0_4px_rgba(6,182,212,0.5)]" stroke-dasharray="98, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+                        </svg>
+                        <div class="absolute text-center">
+                          <div class="text-lg font-mono text-slate-100 font-medium">
+                            98%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-center">
+                      <p class="text-[10px] font-mono text-slate-500">
+                        Plan entitlement status
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Row 3 -->
+                <!-- System Logs -->
+                <div class="bg-[#18181b] p-1 rounded-xl border border-[#27272a] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_2px_8px_0_rgba(0,0,0,0.4)] lg:col-span-3 flex flex-col [animation:animationIn_0.8s_ease-out_0.7s_both] animate-on-scroll">
+                  <div class="bg-[#131315] rounded-lg p-4 border border-white/5 font-mono text-[10px] md:text-xs">
+                    <div class="flex items-center justify-between border-b border-[#27272a] pb-3 mb-3">
+                      <div class="flex items-center gap-2 text-slate-400">
+                        <iconify-icon icon="solar:terminal-linear"></iconify-icon>
+                        <span class="uppercase tracking-widest">
+                          Copilot_Event_Log
+                        </span>
+                      </div>
+                      <div class="flex gap-1.5">
+                        <div class="w-2 h-2 rounded-full bg-[#27272a]"></div>
+                        <div class="w-2 h-2 rounded-full bg-[#27272a]"></div>
+                        <div class="w-2 h-2 rounded-full bg-[#27272a]"></div>
+                      </div>
+                    </div>
+                    <div class="space-y-2 text-slate-500">
+                      <div class="flex gap-4">
+                        <span class="text-slate-600 w-20">10:42:01</span>
+                        <span class="text-cyan-600">[INFO]</span>
+                        <span class="text-slate-400">
+                          Signed license payload verified
+                        </span>
+                      </div>
+                      <div class="flex gap-4">
+                        <span class="text-slate-600 w-20">10:42:05</span>
+                        <span class="text-emerald-600">[SUCCESS]</span>
+                        <span class="text-slate-400">
+                          Developer-defined skill registry loaded
+                        </span>
+                      </div>
+                      <div class="flex gap-4">
+                        <span class="text-slate-600 w-20">10:42:12</span>
+                        <span class="text-amber-600">[WARN]</span>
+                        <span class="text-slate-400">
+                          Provider credential remains server-side
+                        </span>
+                      </div>
+                      <div class="flex gap-4">
+                        <span class="text-slate-600 w-20">10:42:15</span>
+                        <span class="text-cyan-600">[INFO]</span>
+                        <span class="text-slate-400">
+                          Runtime usage event recorded
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- SECTION 05: Pricing -> Resource Allocation -->
+            <section class="mb-20">
+              <div class="mb-12 flex flex-col items-center text-center border-b border-[#27272a] pb-6 [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+                <div>
+                  <div class="flex items-center gap-2 mb-3 justify-center">
+                    <span class="px-2 py-0.5 rounded bg-[#27272a] border border-[#3f3f46] text-[10px] font-mono text-cyan-400 shadow-sm uppercase tracking-wider">
+                      LICENSE_PLANS
+                    </span>
+                  </div>
+                  <h2 class="text-2xl md:text-3xl font-medium text-slate-100 tracking-tight">
+                    Copilot Plans
+                  </h2>
+                  <p class="text-sm text-slate-500 max-w-lg mt-2 leading-relaxed mx-auto">
+                    Choose the license entitlement that matches your embedded Copilot
+                    deployment.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Tier 1 -->
+                <div class="bg-[#18181b] rounded-xl border border-[#27272a] p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.5)] flex flex-col relative transition-transform hover:-translate-y-0.5 [animation:animationIn_0.8s_ease-out_0.3s_both] animate-on-scroll">
+                  <div class="h-full bg-[#131315] rounded-lg p-6 border border-[#27272a] shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden">
+                    <div class="absolute top-3 left-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                    </div>
+                    <div class="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                    </div>
+
+                    <h3 class="font-mono text-[11px] text-slate-400 uppercase tracking-widest mb-3">
+                      3B / 3 Months
+                    </h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                      <span class="text-4xl font-mono text-slate-100 tracking-tight">
+                        Plan
+                      </span>
+                      <span class="text-xs text-slate-600 font-mono"></span>
+                    </div>
+                    <div class="h-px w-full bg-[#27272a] mb-6 shadow-[0_1px_0_rgba(255,255,255,0.05)]"></div>
+
+                    <ul class="space-y-4 text-[13px] text-slate-400 font-mono mb-8 flex-1">
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Embedded Copilot runtime
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Developer-defined skills
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Server-side handoff
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Product support
+                      </li>
+                    </ul>
+
+                    <button class="w-full bg-[#27272a] hover:bg-[#323238] border border-[#3f3f46] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] text-slate-200 px-4 py-2.5 rounded text-xs font-mono uppercase tracking-wider transition-all mt-auto">
+                      View Plan
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Tier 2 (Highlighted) -->
+                <div class="bg-[#18181b] rounded-xl border border-cyan-500/30 p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_20px_rgba(6,182,212,0.15)] flex flex-col relative transition-transform hover:-translate-y-0.5 z-10 [animation:animationIn_0.8s_ease-out_0.4s_both] animate-on-scroll">
+                  <div class="h-full bg-gradient-to-b from-[#18181b] to-[#131315] rounded-lg p-6 border border-[#27272a] shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden">
+                    <div class="absolute top-0 left-1/2 -translate-x-1/2 bg-cyan-500/10 border border-cyan-500/30 border-t-0 rounded-b px-3 py-0.5 text-[8px] font-mono text-cyan-400 uppercase tracking-widest shadow-[0_2px_4px_rgba(6,182,212,0.2)]">
+                      Recommended
+                    </div>
+                    <div class="absolute top-3 left-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-cyan-500/50 rotate-45"></div>
+                    </div>
+                    <div class="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-cyan-500/50 rotate-45"></div>
+                    </div>
+
+                    <h3 class="font-mono text-[11px] text-cyan-400 uppercase tracking-widest mb-3 mt-2">
+                      15B / 1 Year
+                    </h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                      <span class="text-4xl font-mono text-slate-100 tracking-tight">
+                        Plan
+                      </span>
+                      <span class="text-xs text-slate-600 font-mono"></span>
+                    </div>
+                    <div class="h-px w-full bg-[#27272a] mb-6 shadow-[0_1px_0_rgba(255,255,255,0.05)]"></div>
+
+                    <ul class="space-y-4 text-[13px] text-slate-300 font-mono mb-8 flex-1">
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-bold" class="text-cyan-500 mt-0.5" width="16"></iconify-icon>
+                        Expanded entitlement
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-bold" class="text-cyan-500 mt-0.5" width="16"></iconify-icon>
+                        Controlled provider access
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-bold" class="text-cyan-500 mt-0.5" width="16"></iconify-icon>
+                        Account-bound license
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-bold" class="text-cyan-500 mt-0.5" width="16"></iconify-icon>
+                        Usage visibility
+                      </li>
+                    </ul>
+
+                    <button class="w-full bg-gradient-to-b from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 border-t border-cyan-400/20 shadow-[0_2px_10px_-2px_rgba(6,182,212,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] text-white px-4 py-2.5 rounded text-xs font-mono uppercase tracking-wider transition-all mt-auto flex items-center justify-center gap-2">
+                      Get Started
+                      <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Tier 3 -->
+                <div class="bg-[#18181b] rounded-xl border border-[#27272a] p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.5)] flex flex-col relative transition-transform hover:-translate-y-0.5 [animation:animationIn_0.8s_ease-out_0.5s_both] animate-on-scroll">
+                  <div class="h-full bg-[#131315] rounded-lg p-6 border border-[#27272a] shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] flex flex-col relative overflow-hidden">
+                    <div class="absolute top-3 left-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                    </div>
+                    <div class="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-[#0f0f11] flex items-center justify-center opacity-50">
+                      <div class="w-1 h-px bg-[#27272a] rotate-45"></div>
+                    </div>
+
+                    <h3 class="font-mono text-[11px] text-slate-400 uppercase tracking-widest mb-3">
+                      Custom
+                    </h3>
+                    <div class="flex items-baseline gap-1 mb-6">
+                      <span class="text-3xl font-mono text-slate-100 tracking-tight mt-1">
+                        Custom
+                      </span>
+                    </div>
+                    <div class="h-px w-full bg-[#27272a] mb-6 shadow-[0_1px_0_rgba(255,255,255,0.05)]"></div>
+
+                    <ul class="space-y-4 text-[13px] text-slate-400 font-mono mb-8 flex-1">
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Custom entitlements
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Deployment guidance
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Provider configuration
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <iconify-icon icon="solar:check-circle-linear" class="text-cyan-600 mt-0.5" width="16"></iconify-icon>
+                        Integration support
+                      </li>
+                    </ul>
+
+                    <button class="w-full bg-[#27272a] hover:bg-[#323238] border border-[#3f3f46] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] text-slate-200 px-4 py-2.5 rounded text-xs font-mono uppercase tracking-wider transition-all mt-auto">
+                      Contact Copilot
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- SECTION 06: Final CTA Module -->
+            <section class="bg-gradient-to-b from-[#18181b] to-[#131315] border border-[#27272a] rounded-xl p-8 md:p-16 text-center relative overflow-hidden shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] [animation:animationIn_0.8s_ease-out_0.2s_both] animate-on-scroll">
+              <div class="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+              <div class="relative z-10 max-w-2xl mx-auto">
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-[#09090b] border border-[#27272a] rounded text-[10px] font-mono text-cyan-400 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)] uppercase tracking-widest mb-6">
+                  <iconify-icon icon="solar:rocket-linear"></iconify-icon>
+                  Copilot Ready
+                </div>
+
+                <h2 class="text-3xl md:text-5xl font-medium text-slate-100 tracking-tight mb-4 drop-shadow-md">
+                  Start with gRouter Copilot
+                </h2>
+                <p class="text-sm text-slate-400 mb-8 max-w-lg mx-auto leading-relaxed">
+                  Install the embedded Copilot runtime, register your skills, and connect a
+                  licensed provider through the secure server-side handoff.
+                </p>
+
+                <button class="bg-gradient-to-b from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 border-t border-cyan-400/20 shadow-[0_2px_10px_-2px_rgba(6,182,212,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:translate-y-[1px] text-white px-8 py-4 rounded text-xs font-mono uppercase tracking-wider transition-all inline-flex items-center gap-3">
+                  Get Started
+                  <iconify-icon icon="solar:arrow-right-linear" class="text-cyan-200"></iconify-icon>
+                </button>
+
+                <div class="mt-8 flex items-center justify-center gap-4 text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  <span class="flex items-center gap-1.5">
+                    <iconify-icon icon="solar:shield-check-linear"></iconify-icon>
+                    Signed licenses
+                  </span>
+                  <span class="w-1 h-1 rounded-full bg-[#3f3f46]"></span>
+                  <span class="flex items-center gap-1.5">
+                    <iconify-icon icon="solar:server-path-linear"></iconify-icon>
+                    Read-only skills
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="bg-[#0f0f11] bg-noise relative z-20 w-full border-t border-[#000] shadow-[inset_0_16px_24px_-16px_rgba(0,0,0,0.9)] mt-auto shrink-0 flex flex-col">
+          <!-- System Terminal Header Bar -->
+          <div class="border-b border-[#27272a] bg-[#09090b]/80 backdrop-blur-sm">
+            <div class="px-6 py-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <iconify-icon icon="solar:terminal-linear" class="text-slate-600 text-[10px]"></iconify-icon>
+                <span class="font-mono text-[10px] text-slate-500 uppercase tracking-widest">
+                  SYS_TERMINAL
+                </span>
+              </div>
+              <div class="flex gap-1.5 opacity-50">
+                <div class="w-1 h-1 bg-slate-600 rounded-full"></div>
+                <div class="w-1 h-1 bg-slate-600 rounded-full"></div>
+                <div class="w-1 h-1 bg-slate-600 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-16 lg:py-20 w-full">
+            <div class="flex flex-col lg:flex-row gap-12 lg:gap-24">
+              <!-- Zone 1: System Header -->
+              <div class="lg:w-64 shrink-0 flex flex-col">
+                <div class="flex items-center gap-2 mb-4">
+                  <div class="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]"></div>
+                  <h3 class="text-sm font-mono text-slate-200 tracking-wider uppercase">
+                    Copilot Registry
+                  </h3>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed font-mono mb-6">
+                  Documentation, integration guidance, license controls, and runtime
+                  references for the gRouter Copilot product.
+                </p>
+                <div class="mt-auto">
+                  <div class="inline-flex items-center gap-2 text-[10px] font-mono text-slate-400 border border-[#27272a] rounded px-2 py-1 bg-[#131315]">
+                    <span class="relative flex h-1.5 w-1.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                    </span>
+                    <span>LICENSED RUNTIME</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Zone 2: Navigation Grid -->
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-10 gap-x-8 flex-1">
+                <!-- Platform -->
+                <div class="flex flex-col gap-4">
+                  <h4 class="font-mono text-[10px] uppercase text-slate-500 tracking-widest border-b border-[#27272a] pb-2 mb-1 w-max">
+                    Product
+                  </h4>
+                  <ul class="space-y-2.5 text-xs text-slate-400 font-sans">
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Integration
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Skill Registry
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Runtime Flow
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Provider Handoff
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        License Controls
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <!-- Runtime -->
+                <div class="flex flex-col gap-4">
+                  <h4 class="font-mono text-[10px] uppercase text-slate-500 tracking-widest border-b border-[#27272a] pb-2 mb-1 w-max">
+                    Copilot Runtime
+                  </h4>
+                  <ul class="space-y-2.5 text-xs text-slate-400 font-sans">
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Embedded Runtime
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Skill Access
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Runtime Events
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Data Boundary
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Provider Resolution
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <!-- Documentation -->
+                <div class="flex flex-col gap-4">
+                  <h4 class="font-mono text-[10px] uppercase text-slate-500 tracking-widest border-b border-[#27272a] pb-2 mb-1 w-max">
+                    Resources
+                  </h4>
+                  <ul class="space-y-2.5 text-xs text-slate-400 font-sans">
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Installation
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        CLI Install
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        API Contract
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Integration
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Configuration
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <!-- Observability -->
+                <div class="flex flex-col gap-4">
+                  <h4 class="font-mono text-[10px] uppercase text-slate-500 tracking-widest border-b border-[#27272a] pb-2 mb-1 w-max">
+                    Verification
+                  </h4>
+                  <ul class="space-y-2.5 text-xs text-slate-400 font-sans">
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Usage Events
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        License Metrics
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Runtime Logs
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Audit Trail
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Status
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <!-- Security -->
+                <div class="flex flex-col gap-4">
+                  <h4 class="font-mono text-[10px] uppercase text-slate-500 tracking-widest border-b border-[#27272a] pb-2 mb-1 w-max">
+                    Controls
+                  </h4>
+                  <ul class="space-y-2.5 text-xs text-slate-400 font-sans">
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Skill Policies
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Signed Tokens
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Server-side Secrets
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Data Boundary
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="hover:text-cyan-400 transition-colors flex items-center gap-1 group">
+                        <span class="opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-cyan-500/50">
+                          ›
+                        </span>
+                        Audit Events
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Zone 3: Status Bar -->
+          <div class="border-t border-[#27272a] bg-[#09090b]/50 px-6 py-3 relative z-10">
+            <div class="w-full flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+              <div class="flex items-center gap-6">
+                <span class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_4px_rgba(16,185,129,0.5)]"></span>
+                  COPILOT_STATUS: ONLINE
+                </span>
+                <span class="hidden sm:inline flex items-center gap-2">
+                  <span class="w-1 h-1 bg-slate-700 rounded-full"></span>
+                  LICENSE: VERIFIED
+                </span>
+                <span class="hidden sm:inline flex items-center gap-2">
+                  <span class="w-1 h-1 bg-slate-700 rounded-full"></span>
+                  SKILLS: EXPLICIT
+                </span>
+              </div>
+              <div class="flex items-center gap-6">
+                <span>HANDOFF: SERVER-SIDE</span>
+                <span class="text-slate-600 border-l border-[#27272a] pl-6">
+                  MODE: READ-ONLY SKILLS
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Row -->
+          <div class="border-t border-[#000] px-6 py-6 bg-[#0c0c0e]">
+            <div class="w-full flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500 font-mono">
+              <div class="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+                <span class="text-slate-400">© gRouter Copilot</span>
+                <span class="hidden md:inline text-[#27272a]">|</span>
+                <span>Embedded AI Runtime</span>
+              </div>
+              <div class="flex items-center gap-6">
+                <a href="#" class="hover:text-cyan-400 transition-colors">
+                  Docs
+                </a>
+                <a href="#" class="hover:text-cyan-400 transition-colors">
+                  GitHub
+                </a>
+                <a href="#" class="hover:text-cyan-400 transition-colors">
+                  Changelog
+                </a>
+                <a href="#" class="hover:text-cyan-400 transition-colors">
+                  Status
+                </a>
+                <a href="#" class="hover:text-cyan-400 transition-colors">
+                  Support
+                </a>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
-      <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileMenu">Menu</button>
-    </div>
-    <div class="mobile-menu" id="mobileMenu" hidden>
-      <a href="#produk">Produk</a>
-      <a href="#fitur">Fitur</a>
-      <a href="#cerita">Percakapan</a>
-      <a href="#arsitektur">Arsitektur</a>
-      <a href="#harga">Harga</a>
-      <a href="/login">Masuk</a>
-      <a class="button button-primary" href="/register">Mulai Membangun</a>
-    </div>
-  </header>
-
-  <main id="main">
-
-    <!-- ============ THE JOURNEY: 300-frame scroll scrub ============
-         Canvas fixed menggambar frame 1→300 mengikuti scroll.
-         4 babak sinematik di atasnya: copy KIRI (scrim), visual KANAN.
-         Pagination 01–04 + vertical tags ala referensi. -->
-    <div class="scrub" aria-hidden="true">
-      <canvas id="scrubCanvas"></canvas>
-      <div class="scrub-vignette"></div>
     </div>
 
-    <div class="journey" id="journey">
+    <script>
+      (() => {
+        const translations = {
+          en: { product: 'Product', usage: 'Usage', plans: 'Plans', start: 'Get Started', hero: 'Embed AI assistance inside your product', language: 'EN' },
+          id: { product: 'Produk', usage: 'Penggunaan', plans: 'Paket', start: 'Mulai', hero: 'Sematkan bantuan AI di dalam produk Anda', language: 'ID' },
+        };
+        const original = {};
+        const nodes = { product: document.querySelectorAll('nav a')[0], usage: document.querySelectorAll('nav a')[1], plans: document.querySelectorAll('nav a')[2], start: document.querySelector('header nav > div:last-child a'), hero: document.querySelector('h1') };
+        Object.entries(nodes).forEach(([key, node]) => { if (node) original[key] = node.textContent.trim(); });
+        const button = document.querySelector('#languageSelect');
+        function setLanguage(lang) { const t = translations[lang]; Object.entries(nodes).forEach(([key, node]) => { if (!node) return; node.textContent = lang === 'en' ? original[key] : t[key]; }); document.documentElement.lang = lang; button.value = lang; localStorage.setItem('copilot-language', lang); }
+        button.addEventListener('change', () => setLanguage(button.value));
+        setLanguage(localStorage.getItem('copilot-language') === 'id' ? 'id' : 'en');
+      })();
+    </script>
+    <script>
+      async function loadPlans() {
+        const cards = [...document.querySelectorAll('section')].find(s => s.innerText.includes('Copilot Plans'))?.querySelector('.grid');
+        if (!cards) return;
+        try {
+          const response = await fetch('/api/plans', { headers: { accept: 'application/json' } });
+          const data = await response.json();
+          const plans = Array.isArray(data.plans) ? data.plans : [];
+          const tierCards = [...cards.children];
+          plans.slice(0, 3).forEach((plan, index) => {
+            const card = tierCards[index]; if (!card) return;
+            const heading = card.querySelector('h3'); if (heading) heading.textContent = plan.name;
+            const price = card.querySelector('.text-4xl, .text-3xl'); if (price) price.textContent = Number(plan.amount) > 0 ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: plan.currency || 'IDR', maximumFractionDigits: 0 }).format(plan.amount) : 'Contact sales';
+            const detail = card.querySelector('ul'); if (detail && plan.quota) { const li = document.createElement('li'); li.className = 'flex items-start gap-2'; li.textContent = `${plan.quota} · ${plan.expiresInDays} days`; detail.prepend(li); }
+            const action = card.querySelector('button'); if (action && Number(plan.amount) <= 0) { action.textContent = plan.key === 'custom' ? 'Contact Copilot' : 'Set price in Admin'; action.disabled = true; action.setAttribute('aria-disabled', 'true'); }
+          });
+        } catch (_) { /* keep canonical fallback copy when API is unavailable */ }
+      }
+      document.addEventListener('DOMContentLoaded', loadPlans);
+    </script>
+    <script>
+      // Ticker Logic
+      const ticker = document.getElementById('tickerContainer');
+      const tickerContent = document.getElementById('tickerContent');
+      let tickerPos = 0;
+      function animateTicker() {
+          tickerPos -= 0.5;
+          if (Math.abs(tickerPos) >= tickerContent.offsetWidth) {
+              tickerPos = 0;
+          }
+          ticker.style.transform = `translateX(${tickerPos}px)`;
+          requestAnimationFrame(animateTicker);
+      }
+      animateTicker();
+    </script>
 
-      <!-- 01 · MASUK — terowongan data → core cyan -->
-      <section class="jch" id="hero" data-frame="5" aria-label="gRouter Copilot">
-        <span class="ch-bignum" aria-hidden="true">01</span>
-        <div class="copy">
-          <p class="ch-meta reveal"><span class="ch-num">01</span><span class="ch-label">Masuk · terowongan data</span></p>
-          <p class="eyebrow reveal" data-d="60">Aplikasi Anda. Data Anda. Copilot Anda.</p>
-          <h1 class="reveal" data-d="120">Di dalam aplikasi Anda, ada data yang <em class="orb">sudah tahu</em> jawabannya.</h1>
-          <p class="lead reveal" data-d="200">CRM, POS, HRIS — data inti bisnis sudah hidup di sistem Anda. Yang kurang bukan aplikasi baru, melainkan <strong>cara bertanya langsung ke sana.</strong></p>
-          <div class="hero-actions reveal" data-d="280">
-            <a class="button button-primary button-lg" href="#fitur">Jelajahi Perjalanan</a>
-            <a class="button button-white button-lg" href="/register">Mulai Membangun</a>
-          </div>
-          <div class="metrics reveal" data-d="360" role="list">
-            <div class="metric" role="listitem"><b>100%</b><span>akses read-only</span></div>
-            <div class="metric" role="listitem"><b>0</b><span>kredensial di browser</span></div>
-            <div class="metric" role="listitem"><b>Ed25519</b><span>lisensi bertanda tangan</span></div>
-          </div>
-          <p class="hero-note reveal" data-d="440"><span class="signal"></span> Data tetap di aplikasi Anda. Tidak ada database scan otomatis.</p>
-        </div>
-        <p class="ch-cap reveal" data-d="520">Gulir — kita masuk ke inti data Anda.</p>
-      </section>
-
-      <!-- KINETIC 1 — title card antar babak -->
-      <section class="kine" aria-hidden="true">
-        <p class="kine-p"><span class="kw">Lalu</span> <span class="kw">sebuah</span> <span class="kw">lapisan</span> <span class="kw">baru</span> <span class="kw accent">menyala.</span></p>
-      </section>
-
-      <!-- 02 · LAPISAN INTELIGENSI — flip: copy kanan, angka raksasa kiri -->
-      <section class="jch flip" id="produk" data-frame="95" aria-label="Tentang produk">
-        <span class="ch-bignum" aria-hidden="true">02</span>
-        <div class="copy">
-          <p class="ch-meta reveal"><span class="ch-num">02</span><span class="ch-label">Lapisan inteligensi</span></p>
-          <p class="eyebrow reveal" data-d="60">Selamat datang di lapisan inteligensi</p>
-          <h2 class="reveal" data-d="120">Copilot menyala di dalam aplikasi yang <em class="orb">sudah berjalan</em>.</h2>
-          <p class="lead reveal" data-d="200">Plugin, bukan SaaS terpisah. Copilot dipasang di dalam host Anda — aplikasi tetap memegang data dan alur bisnisnya, Copilot menambahkan percakapan di atasnya.</p>
-          <div class="strip reveal" data-d="280">
-            <div class="strip-cell card3d"><b>plugin</b><span>bukan SaaS terpisah</span></div>
-            <div class="strip-cell card3d"><b>read-only</b><span>skill yang Anda definisikan</span></div>
-            <div class="strip-cell card3d"><b>server-side</b><span>kunci tidak ke browser</span></div>
-            <div class="strip-cell card3d"><b>licensed</b><span>Ed25519 · KlikQRIS</span></div>
-          </div>
-        </div>
-        <p class="ch-cap reveal" data-d="360">Bukan aplikasi baru — lapisan baru di atas yang sudah Anda punya.</p>
-      </section>
-
-      <!-- KINETIC 2 -->
-      <section class="kine" aria-hidden="true">
-        <p class="kine-p"><span class="kw">Ia</span> <span class="kw">bisa</span> <span class="kw">Anda</span> <span class="kw">ajak</span> <span class="kw accent">bicara.</span></p>
-      </section>
-
-      <!-- 03 · PERCAKAPAN — robot masuk dari kiri -->
-      <section class="jch" id="ask" data-frame="195" aria-label="Percakapan dengan aplikasi Anda">
-        <span class="ch-bignum" aria-hidden="true">03</span>
-        <div class="copy">
-          <p class="ch-meta reveal"><span class="ch-num">03</span><span class="ch-label">Percakapan</span></p>
-          <p class="eyebrow reveal" data-d="60">ask your application</p>
-          <h2 class="reveal" data-d="120">Pertanyaan biasa. Jawaban dari <em class="orb">data Anda</em>.</h2>
-          <p class="reveal body-p" data-d="200">Di perjalanan ini, Copilot membaca aplikasi Anda lewat skill yang Anda izinkan — lalu menjawab dalam bahasa manusia. Contoh percakapan utuhnya ada di bawah.</p>
-          <p class="ask-link reveal" data-d="280"><a class="button button-glass" href="#cerita">Lihat contoh percakapan</a></p>
-        </div>
-        <p class="ch-cap reveal" data-d="360">Pendamping AI Anda siap — ia hanya boleh membaca.</p>
-      </section>
-
-      <!-- KINETIC 3 -->
-      <section class="kine" aria-hidden="true">
-        <p class="kine-p"><span class="kw">Tanpa</span> <span class="kw">pernah</span> <span class="kw">menyerahkan</span> <span class="kw accent">kunci</span> <span class="kw accent">Anda.</span></p>
-      </section>
-
-      <!-- 04 · KENDALI — terowongan keluar, jalur data -->
-      <section class="jch" id="arsitektur" data-frame="295" aria-label="Arsitektur server-side">
-        <span class="ch-bignum" aria-hidden="true">04</span>
-        <div class="copy arch-copy">
-          <p class="ch-meta reveal"><span class="ch-num">04</span><span class="ch-label">Kendali · arsitektur</span></p>
-          <p class="eyebrow reveal" data-d="60">Server-side architecture</p>
-          <h2 class="reveal" data-d="120">Kunci tidak pernah sampai ke <em class="orb">browser</em>.</h2>
-          <div class="flow reveal" data-d="200" role="img" aria-label="Customer application, copilot runtime, skill resolver, gRouter, AI engine">
-            <div class="af-node card3d"><b>CUSTOMER APPLICATION</b><small>your source of truth</small></div>
-            <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node card3d af-core"><b>COPILOT RUNTIME</b><small>key stays here</small></div>
-            <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node card3d"><b>SKILL RESOLVER</b><small>allowed skills only</small></div>
-            <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node card3d af-engine"><b>GROUTER</b><small>AI supplier</small></div>
-            <span class="af-arrow" aria-hidden="true">→</span>
-            <div class="af-node card3d"><b>AI ENGINE</b><small>generates the answer</small></div>
-          </div>
-          <div class="arch-chips reveal" data-d="280" aria-hidden="true"><code>license · signed Ed25519</code><code>usage · check-usage</code><code>key handoff · server-side</code></div>
-        </div>
-        <p class="ch-cap reveal" data-d="360">Jalur tertutup: aplikasi → runtime → skill → gRouter → jawaban.</p>
-      </section>
-
-      <!-- kontrol journey: pagination 01–04 (klik = pindah babak) -->
-      <div class="ch-pagination" role="tablist" aria-label="Babak perjalanan">
-        <button type="button" role="tab" data-target="hero" aria-label="Babak 1">01</button>
-        <button type="button" role="tab" data-target="produk" aria-label="Babak 2">02</button>
-        <button type="button" role="tab" data-target="ask" aria-label="Babak 3">03</button>
-        <button type="button" role="tab" data-target="arsitektur" aria-label="Babak 4">04</button>
-        <i id="chPagLine" aria-hidden="true"></i>
-      </div>
-
-      <p class="v-tags" aria-hidden="true">READ-ONLY<i></i>SERVER-SIDE<i></i>SIGNED<i></i>LICENSED</p>
-
-      <div class="scroll-hint" aria-hidden="true"><i>↓</i><span>Gulir untuk menjelajah</span></div>
-
-    </div>
-
-    <!-- ============ GROUND: komponen menyatu dari frame 300 ============ -->
-    <div class="ground">
-
-      <!-- FITUR — bento -->
-      <section class="gsec" id="fitur" aria-label="Fitur">
-        <div class="features-head">
-          <p class="eyebrow reveal">Into the intelligence layer</p>
-          <h2 class="reveal" data-d="80">Fitur yang bekerja di dalam <em class="orb">arsitektur</em> Anda</h2>
-        </div>
-        <div class="bento">
-          <article class="cell cell-wide card3d reveal">
-            <div class="cell-body">
-              <h3>Skill read-only yang Anda definisikan</h3>
-              <p>Skill adalah satu-satunya pintu Copilot menuju data aplikasi. Apa yang tidak Anda expose — tidak ada.</p>
-            </div>
-            <div class="mini registry-mini" aria-hidden="true">
-              <div class="mini-head"><b>SKILL REGISTRY</b><i>read-only</i></div>
-              <div class="mini-row"><code>orders.search</code><span>readOnly: true</span></div>
-              <div class="mini-row"><code>users.lookup</code><span>readOnly: true</span></div>
-              <div class="mini-row"><code>analytics.rollup</code><span>readOnly: true</span></div>
-              <div class="mini-foot"><code>run(args, ctx)</code></div>
-            </div>
-          </article>
-          <article class="cell card3d reveal" data-d="80">
-            <div class="cell-body">
-              <h3>Data mengalir lewat jalur yang terlihat</h3>
-              <p>Skill → runtime → data aplikasi. Tidak ada jalur tersembunyi.</p>
-            </div>
-            <div class="mini stream-mini" aria-hidden="true">
-              <div class="mini-row st-skill"><code>orders.search</code><i>run()</i></div>
-              <div class="st-drop"><i></i><i></i><i></i></div>
-              <div class="mini-row st-store"><code>db.orders</code><i>read-only</i></div>
-              <div class="st-branch">↳ db.customers · db.tickets</div>
-            </div>
-          </article>
-          <article class="cell card3d reveal">
-            <div class="cell-body">
-              <h3>Percakapan yang grounded</h3>
-              <p>Jawaban dihitung dari skill terdaftar — bukan tebakan model.</p>
-            </div>
-            <div class="mini chat-mini" aria-hidden="true">
-              <div class="mini-row cm-user">Which customers haven't ordered in the last 30 days?</div>
-              <div class="mini-row cm-bot"><b>12 customers.</b><small>skill: orders.search → db.orders · sample data</small></div>
-            </div>
-          </article>
-          <article class="cell card3d reveal" data-d="80">
-            <div class="cell-body">
-              <h3>Kendali default enterprise</h3>
-              <p>Read-only default. Tulis butuh kontrol terpisah, bukan izin diam-diam.</p>
-            </div>
-            <div class="mini ctrl-mini" aria-hidden="true">
-              <div class="ctrl-col ok"><span>ALLOWED</span><b>✓ orders.search</b><b>✓ users.lookup</b></div>
-              <div class="ctrl-col no"><span>BLOCKED</span><b>× arbitrary DB</b><b>× writes</b></div>
-              <div class="ctrl-audit">AUDIT · skill → runtime → AI</div>
-            </div>
-          </article>
-          <article class="cell card3d reveal">
-            <div class="cell-body">
-              <h3>Kunci tidak pernah ke browser</h3>
-              <p>Runtime di server aplikasi Anda memanggil skill dan gRouter.</p>
-            </div>
-            <div class="mini pipe-mini" aria-hidden="true">
-              <div class="pipe-row"><b>APP</b><span>your data</span></div>
-              <div class="pipe-row core"><b>RUNTIME</b><span>key stays here</span></div>
-              <div class="pipe-row engine"><b>GROUTER</b><span>AI supplier</span></div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- CERITA — panel chat -->
-      <section class="gsec gsec-chat" id="cerita" aria-label="Percakapan dengan aplikasi Anda">
-        <div class="chat-wrap">
-          <p class="eyebrow reveal">ask your application</p>
-          <h2 class="reveal" data-d="80">Percakapan yang grounded di <em class="orb">data</em> Anda.</h2>
-          <div class="chat-panel card3d reveal" data-d="160" aria-hidden="true">
-            <div class="chat-head"><span class="chat-avatar">C</span><span class="chat-id"><b>Copilot</b><small>via orders.search</small></span><i>read-only</i></div>
-            <div class="chat-msg cm-user">Which customers haven't ordered in the last 30 days?</div>
-            <div class="chat-msg cm-bot"><p>12 customers haven't placed an order in the last 30 days.</p><small>skill: orders.search → db.orders · sample data</small></div>
-            <div class="chat-msg cm-user">Summarize sales this quarter.</div>
-            <div class="chat-msg cm-bot"><p>Rp 482M across 1,284 orders.</p><small>skill: sales.analytics · sample data</small></div>
-            <div class="chat-foot">orders.search → db.orders → answer</div>
-          </div>
-          <p class="story-cap reveal" data-d="240">Angka pada panel adalah <strong>sample data</strong> untuk demonstrasi — jawaban nyata selalu dihitung dari skill aplikasi Anda.</p>
-        </div>
-      </section>
-
-      <!-- HARGA -->
-      <section class="pricing-section" id="harga">
-        <div class="pricing-inner">
-          <div class="pricing-copy">
-            <p class="eyebrow">Available plans</p>
-            <h2>Pilih lisensi yang cocok untuk aplikasi Anda.</h2>
-            <p>Harga dan entitlement dimuat dari katalog server. Tidak ada harga hardcode di halaman ini.</p>
-          </div>
-          <div class="plans" id="plans"><div class="plan-loading" aria-live="polite">Memuat katalog plan...</div></div>
-        </div>
-      </section>
-
-      <!-- CTA — halo cyan, penutup perjalanan -->
-      <section class="gsec gsec-final" id="mulai" aria-label="Mulai membangun">
-        <div class="halo" aria-hidden="true"></div>
-        <div class="final-inner">
-          <p class="eyebrow reveal">destination</p>
-          <h2 class="reveal" data-d="80">Beri aplikasi Anda <em class="orb">Copilot</em>.</h2>
-          <p class="lead center reveal" data-d="160">Copilot enterprise untuk aplikasi yang sudah berjalan. Data tetap milik Anda. Akses tetap Anda tentukan.</p>
-          <div class="hero-actions reveal" data-d="240">
-            <a class="button button-primary button-lg" href="/register">Mulai Membangun</a>
-            <a class="button button-outline button-lg" href="https://github.com/andhikanurdyansyah/grouter_copilot" target="_blank" rel="noopener">Read the Docs</a>
-          </div>
-          <p class="loop-line reveal" data-d="320" aria-hidden="true">application → copilot → skills → data → grouter → application</p>
-        </div>
-      </section>
-
-    </div>
-
-  </main>
-
-  <footer class="site-footer">
-    <div>
-      <a class="brand" href="/"><span class="brand-mark"><img src="/assets/copilot-mark.png" alt="" width="27" height="29"></span><span>gRouter <strong>Copilot</strong></span></a>
-      <p>AI tersemat untuk aplikasi yang sudah Anda jalankan.</p>
-    </div>
-    <nav aria-label="Tautan footer">
-      <a href="#produk">Produk</a><a href="#fitur">Fitur</a><a href="#arsitektur">Arsitektur</a><a href="#harga">Harga</a><a href="/login">Masuk</a>
-    </nav>
-    <span class="footer-note">Node.js MVP · licensed plugin</span>
-  </footer>
-
-  <script>
-  (function(){
-    'use strict';
-    var menu=document.getElementById('menuButton'),mobileMenu=document.getElementById('mobileMenu');
-    if(menu&&mobileMenu){menu.addEventListener('click',function(){var open=mobileMenu.hidden;mobileMenu.hidden=!open;menu.setAttribute('aria-expanded',String(open));});mobileMenu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mobileMenu.hidden=true;menu.setAttribute('aria-expanded','false');});});}
-    var plans=document.getElementById('plans');
-    function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-    function money(v){return 'Rp '+Number(v).toLocaleString('id-ID');}
-    if(plans){fetch('/api/plans').then(function(r){if(!r.ok)throw new Error('plans');return r.json();}).then(function(data){var list=(data.plans||[]).filter(function(p){return p.active!==false;});if(!list.length)throw new Error('empty');plans.innerHTML=list.map(function(p,i){return '<article class="plan-card card3d'+(i===1?' plan-featured':'')+'">'+(i===1?'<span class="plan-badge">Direkomendasikan</span>':'')+'<span class="mono-label">'+esc(p.key||'')+'</span><h3>'+esc(p.name||p.key)+'</h3><div class="plan-price"><strong>'+esc(money(p.amount))+'</strong>'+(p.expiresInDays?'<span>/ '+esc(p.expiresInDays)+' hari</span>':'')+'</div><p class="plan-quota">'+esc(p.quota||'')+'</p><ul class="plan-features">'+(p.features||[]).slice(0,5).map(function(f){return '<li>'+esc(f)+'</li>';}).join('')+'</ul><a class="button '+(i===1?'button-primary':'button-outline')+' button-block" href="/register" aria-label="Pilih paket '+esc(p.name||p.key)+'">Pilih paket</a></article>';}).join('');}).catch(function(){plans.innerHTML='<p class="plan-error">Katalog plan belum tersedia. Silakan coba lagi nanti.</p>';});}
-  })();
-  </script>
-  <script src="/assets/landing.js?v=g4" defer></script>
-</body>
-</html>
+    <script>
+      function switchSigView(e){const t=document.getElementById("btn-live"),s=document.getElementById("btn-archive"),l=document.getElementById("sig-switch-pill"),a=document.getElementById("view-live"),c=document.getElementById("view-archive");"live"===e?(l.style.transform="translateX(0)",t.className=t.className.replace("text-slate-500","text-slate-200"),s.className=s.className.replace("text-slate-200","text-slate-500"),t.setAttribute("aria-selected","true"),s.setAttribute("aria-selected","false"),c.classList.add("opacity-0","translate-y-4"),setTimeout((()=>{c.classList.add("hidden"),a.classList.remove("hidden"),void a.offsetWidth,a.classList.remove("opacity-0","translate-y-4")}),300)):(l.style.transform="translateX(100%)",s.className=s.className.replace("text-slate-500","text-slate-200"),t.className=t.className.replace("text-slate-200","text-slate-500"),s.setAttribute("aria-selected","true"),t.setAttribute("aria-selected","false"),a.classList.add("opacity-0","translate-y-4"),setTimeout((()=>{a.classList.add("hidden"),c.classList.remove("hidden"),void c.offsetWidth,c.classList.remove("opacity-0","translate-y-4")}),300))}
+    </script>
+    <script>
+      // The query route is only the intro transition target. Normalize the
+      // visible URL once the real landing is active, without a reload.
+      if (location.search === '?qa=capabilities-v2' && history.replaceState) {
+        history.replaceState(null, document.title, `${location.origin}/`);
+      }
+    </script>
+</body></html>

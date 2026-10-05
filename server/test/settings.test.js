@@ -49,8 +49,21 @@ test('defaults reflect documented behaviour (plans, license, limits)', () => {
   assert.deepEqual(DEFAULT_SETTINGS.license.defaultFeatures, ['core']);
   assert.equal(DEFAULT_SETTINGS.limits.maxContextBytes, 32000);
   assert.equal(DEFAULT_SETTINGS.plans.length, 3);
-  const pro = DEFAULT_SETTINGS.plans.find((p) => p.key === 'pro');
-  assert.equal(pro.amount, 249000);
+  const quota3b = DEFAULT_SETTINGS.plans.find((p) => p.key === 'quota-3b-90d');
+  const quota15b = DEFAULT_SETTINGS.plans.find((p) => p.key === 'quota-15b-365d');
+  const custom = DEFAULT_SETTINGS.plans.find((p) => p.key === 'custom');
+  assert.deepEqual(
+    [quota3b.quota, quota3b.expiresInDays, quota3b.amount],
+    ['3B usage', 90, 0],
+  );
+  assert.deepEqual(
+    [quota15b.quota, quota15b.expiresInDays, quota15b.amount],
+    ['15B usage', 365, 0],
+  );
+  assert.deepEqual(
+    [custom.quota, custom.expiresInDays, custom.amount],
+    ['Custom usage', 365, 0],
+  );
 });
 
 test('precedence: defaults < env seeds < store', () => {

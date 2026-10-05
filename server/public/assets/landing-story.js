@@ -19,24 +19,48 @@ import { UnrealBloomPass } from '/assets/vendor/three-addons/postprocessing/Unre
 import { OutputPass } from '/assets/vendor/three-addons/postprocessing/OutputPass.js';
 
 const canvas = document.getElementById('storyCanvas');
-const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* precision cursor: spring-following ring, disabled naturally on coarse/mobile */
+const cursorDot = document.getElementById('cursor');
+const cursorRing = document.getElementById('ring');
+const cursorState = { x: innerWidth / 2, y: innerHeight / 2, rx: innerWidth / 2, ry: innerHeight / 2 };
+if (cursorDot && cursorRing && matchMedia('(pointer:fine)').matches) {
+  addEventListener('pointermove', (event) => { cursorState.x = event.clientX; cursorState.y = event.clientY; }, { passive: true });
+  document.addEventListener('pointerover', (event) => {
+    document.body.classList.toggle('cursor-hot', Boolean(event.target.closest('a,button,.mini,.chat-mini,.ctrl-col,.plan-card')));
+  });
+  const cursorFrame = () => {
+    cursorState.rx += (cursorState.x - cursorState.rx) * 0.18;
+    cursorState.ry += (cursorState.y - cursorState.ry) * 0.18;
+    cursorDot.style.transform = `translate(${cursorState.x}px,${cursorState.y}px) translate(-50%,-50%)`;
+    cursorRing.style.transform = `translate(${cursorState.rx}px,${cursorState.ry}px) translate(-50%,-50%)`;
+    requestAnimationFrame(cursorFrame);
+  };
+  cursorFrame();
+}
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = motionQuery.matches;
 const MOBILE = () => innerWidth < 640;
+const coarsePointer = matchMedia('(pointer: coarse)').matches;
+const lowPower = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const quality = MOBILE() || coarsePointer || lowPower ? 'low' : 'high';
+const QUALITY = quality === 'low'
+  ? { dpr: 1.25, bloomScale: 0.65, stars: 260, drifters: 6, corridor: 120, pillars: 14 }
+  : { dpr: 1.75, bloomScale: 1, stars: 480, drifters: 9, corridor: 190, pillars: 14 };
 
 let renderer = null;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  renderer.toneMappingExposure = 0.88;
 } catch { /* WebGL mati — copy 2D tetap terbaca */ }
 
 if (renderer) {
-  renderer.shadowMap.enabled = !MOBILE();
+  renderer.shadowMap.enabled = quality === 'high';
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 }
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x040814);
-scene.fog = new THREE.FogExp2(0x040814, 0.05);
+scene.fog = new THREE.FogExp2(0x040814, 0.072);
 
 const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 120);
 
@@ -50,6 +74,31 @@ fill.position.set(1.5, 2, 8);
 scene.add(fill);
 const coreLight = new THREE.PointLight(0x22d3ee, 1.2, 6, 2);
 scene.add(coreLight);
+/* aurora backdrop ala pola populer 21st.dev (Dark Aurora / Silk Aurora):
+   glow LEBAR, lembut, opacity rendah — menggantikan kesan "lampu strobo" */
+const auroraCanvas = document.createElement('canvas');
+auroraCanvas.width = 512; auroraCanvas.height = 512;
+{
+  const ac = auroraCanvas.getContext('2d');
+  const g1 = ac.createRadialGradient(150, 200, 0, 150, 200, 260);
+  g1.addColorStop(0, 'rgba(34,211,238,0.30)');
+  g1.addColorStop(1, 'rgba(34,211,238,0)');
+  ac.fillStyle = g1; ac.fillRect(0, 0, 512, 512);
+  const g2 = ac.createRadialGradient(380, 320, 0, 380, 320, 300);
+  g2.addColorStop(0, 'rgba(58,120,178,0.22)');
+  g2.addColorStop(1, 'rgba(58,120,178,0)');
+  ac.fillStyle = g2; ac.fillRect(0, 0, 512, 512);
+  const g3 = ac.createRadialGradient(300, 120, 0, 300, 120, 220);
+  g3.addColorStop(0, 'rgba(16,90,110,0.18)');
+  g3.addColorStop(1, 'rgba(16,90,110,0)');
+  ac.fillStyle = g3; ac.fillRect(0, 0, 512, 512);
+}
+const aurora = new THREE.Mesh(
+  new THREE.PlaneGeometry(46, 26),
+  new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(auroraCanvas), transparent: true, opacity: 0.5, depthWrite: false, fog: false }),
+);
+aurora.position.set(1.2, -0.5, -34); // lurus di ujung koridor (koordinat literal — AXIS dideklarasi di bawah)
+scene.add(aurora);
 // matahari bayangan — mengikuti titik pandang kamera (di-update per frame)
 const sun = new THREE.DirectionalLight(0xbfe9ff, 2.1);
 sun.castShadow = true;
@@ -61,7 +110,7 @@ sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
 
 /* ---------- starfield ---------- */
-const starN = MOBILE() ? 380 : 850;
+const starN = QUALITY.stars;
 const starGeo = new THREE.BufferGeometry();
 {
   const p = new Float32Array(starN * 3);
@@ -73,7 +122,7 @@ const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(p, 3));
 }
 const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
-  color: 0x9fb2c9, size: 0.05, transparent: true, opacity: 0.8, depthWrite: false,
+  color: 0x9fb2c9, size: 0.042, transparent: true, opacity: 0.55, depthWrite: false,
 }));
 scene.add(stars);
 
@@ -285,47 +334,79 @@ gate.position.set(3.2, -0.65, -7);
 gate.scale.setScalar(0.72);
 scene.add(gate);
 
+/* bot mini reusable — karakter copilot yang konsisten di seluruh scene */
+function makeMiniBot(s = 1) {
+  const g = new THREE.Group();
+  const head = new THREE.Mesh(
+    roundedBoxGeo(0.7, 0.56, 0.56, 0.1),
+    // metalness rendah — metal tinggi memantulkan env gelap = siluet; diffuse + emissive membuat bot terbaca
+    new THREE.MeshStandardMaterial({ color: 0x2f5086, metalness: 0.4, roughness: 0.5, emissive: 0x0e3a5c, emissiveIntensity: 0.6 }),
+  );
+  head.castShadow = true;
+  g.add(head);
+  const visor = new THREE.Mesh(
+    roundedBoxGeo(0.5, 0.2, 0.06, 0.04),
+    new THREE.MeshPhysicalMaterial({ color: 0x050b14, metalness: 0.4, roughness: 0.12, clearcoat: 1 }),
+  );
+  visor.position.set(0, 0.03, 0.25);
+  g.add(visor);
+  const eyeGeo = new THREE.CapsuleGeometry(0.036, 0.075, 4, 8);
+  eyeGeo.rotateZ(Math.PI / 2);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xcafaff });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.12, 0.03, 0.27);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.12, 0.03, 0.27);
+  g.add(eyeL, eyeR);
+  // wajah glow additive — bot tetap terbaca di balik scrim/veil gelap (trik bloom murah igloo)
+  const gcv = document.createElement('canvas');
+  gcv.width = 64; gcv.height = 64;
+  const gc = gcv.getContext('2d');
+  const grd = gc.createRadialGradient(32, 32, 2, 32, 32, 30);
+  grd.addColorStop(0, 'rgba(160,240,255,0.9)');
+  grd.addColorStop(0.45, 'rgba(103,232,249,0.35)');
+  grd.addColorStop(1, 'rgba(103,232,249,0)');
+  gc.fillStyle = grd;
+  gc.fillRect(0, 0, 64, 64);
+  const faceGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(gcv), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  faceGlow.position.set(0, 0.03, 0.3);
+  faceGlow.scale.setScalar(0.62);
+  g.add(faceGlow);
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.62, 0.014, 8, 48),
+    new THREE.MeshBasicMaterial({ color: 0xbfeffd, transparent: true, opacity: 0.55 }),
+  );
+  halo.rotation.x = Math.PI / 1.9;
+  halo.position.y = 0.26;
+  g.add(halo);
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.16, 8),
+    new THREE.MeshStandardMaterial({ color: 0x9fb2c9, metalness: 0.9, roughness: 0.3 }),
+  );
+  stem.position.set(0.16, 0.32, 0);
+  g.add(stem);
+  const beacon = makeNode(AMBER);
+  beacon.scale.setScalar(0.8);
+  beacon.position.set(0.16, 0.44, 0);
+  g.add(beacon);
+  g.scale.setScalar(s);
+  return { g, eyes: [eyeL, eyeR], beacon, halo };
+}
+
 /* ---------- babak 3: ASISTEN — orb + waveform + aliran Q/A (percakapan) ---------- */
 const helix = new THREE.Group(); // nama dipertahankan — direferensikan loop animasi & STOPS
 {
   // companion bot mini (kerabat bot SKILL — karakter konsisten) mengapung di atas waveform
-  const bot = new THREE.Group();
-  const bhead = new THREE.Mesh(
-    roundedBoxGeo(0.7, 0.56, 0.56, 0.1),
-    new THREE.MeshStandardMaterial({ color: 0x26456a, metalness: 0.75, roughness: 0.35 }),
-  );
-  bhead.castShadow = true;
-  bot.add(bhead);
-  const bvisor = new THREE.Mesh(
-    roundedBoxGeo(0.5, 0.2, 0.06, 0.04),
-    new THREE.MeshPhysicalMaterial({ color: 0x050b14, metalness: 0.4, roughness: 0.12, clearcoat: 1 }),
-  );
-  bvisor.position.set(0, 0.03, 0.25);
-  bot.add(bvisor);
-  const beyeGeo = new THREE.CapsuleGeometry(0.028, 0.06, 4, 8);
-  beyeGeo.rotateZ(Math.PI / 2);
-  const beyeMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
-  const beyeL = new THREE.Mesh(beyeGeo, beyeMat);
-  beyeL.position.set(-0.12, 0.03, 0.27);
-  const beyeR = new THREE.Mesh(beyeGeo, beyeMat);
-  beyeR.position.set(0.12, 0.03, 0.27);
-  bot.add(beyeL, beyeR);
-  const bstem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, 0.16, 8),
-    new THREE.MeshStandardMaterial({ color: 0x9fb2c9, metalness: 0.9, roughness: 0.3 }),
-  );
-  bstem.position.set(0.16, 0.32, 0);
-  bot.add(bstem);
-  const bbeacon = makeNode(AMBER);
-  bbeacon.scale.setScalar(0.8);
-  bbeacon.position.set(0.16, 0.44, 0);
-  bot.add(bbeacon);
+  const mini = makeMiniBot(1);
+  const bot = mini.g;
   bot.position.set(-0.1, 1.62, 0.25);
   bot.rotation.y = 0.35;
   helix.add(bot);
   helix.userData.bot = bot;
-  helix.userData.botBeacon = bbeacon;
-  helix.userData.botEyes = [beyeL, beyeR];
+  helix.userData.botBeacon = mini.beacon;
+  helix.userData.botEyes = mini.eyes;
 
   // orb asisten: bola menyala lembut (inti energi di bawah bot)
   const orb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 28, 20), new THREE.MeshBasicMaterial({ color: 0xa8ecff }));
@@ -510,7 +591,7 @@ const FLOOR_Y = -2.1;
 const drifters = [];
 {
   const dGeos = [roundedBoxGeo(0.5, 0.5, 0.5, 0.09), roundedBoxGeo(0.34, 0.7, 0.34, 0.07), new THREE.OctahedronGeometry(0.3)];
-  const N = MOBILE() ? 10 : 18;
+  const N = QUALITY.drifters;
   for (let i = 0; i < N; i++) {
     const m = new THREE.Mesh(
       dGeos[i % 3],
@@ -531,22 +612,22 @@ const drifters = [];
 const AXIS = { x: 1.2, y: -0.5 };
 let corridor = null; // hoisted — dirujuk loop animasi (sway halus)
 {
-  const N = MOBILE() ? 90 : 220;
-  const blockGeo = roundedBoxGeo(0.3, 0.3, 0.3, 0.05, 2);
-  const blockMat = new THREE.MeshStandardMaterial({ color: 0x1b3a52, metalness: 0.75, roughness: 0.32 });
+  const N = QUALITY.corridor;
+  const blockGeo = roundedBoxGeo(0.34, 0.34, 0.34, 0.055, 2);
+  const blockMat = new THREE.MeshStandardMaterial({ color: 0x14293e, metalness: 0.65, roughness: 0.4 });
   corridor = new THREE.InstancedMesh(blockGeo, blockMat, N);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < N; i++) {
     const z = 7 - (i / N) * 38 - Math.random() * 0.8;
     const ang = Math.random() * Math.PI * 2;
-    const rad = 2.7 + Math.random() * 2.7;
+    const rad = 3.2 + Math.random() * 2.6;
     dummy.position.set(
       AXIS.x + Math.cos(ang) * rad * 1.25,
       AXIS.y + Math.sin(ang) * rad * 0.75,
       z,
     );
     dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-    dummy.scale.setScalar(0.6 + Math.random() * 1.5);
+    dummy.scale.setScalar(0.55 + Math.random() * 1.2);
     dummy.updateMatrix();
     corridor.setMatrixAt(i, dummy.matrix);
   }
@@ -571,7 +652,7 @@ const gateRings = [];
 
 /* ---------- pilar jalan (kedalaman sepanjang perjalanan) ---------- */
 {
-  const N = 26;
+  const N = 14;
   for (let i = 0; i < N; i++) {
     const z = 4 - i * 1.6;
     const pillar = new THREE.Mesh(
@@ -583,6 +664,112 @@ const gateRings = [];
     scene.add(pillar);
   }
 }
+
+/* ---------- tema produk: chat bubble koridor + modul plugin + panel enterprise + copilot ---------- */
+
+// chat bubble 3D melayang di dinding koridor — pertanyaan (amber redup) & jawaban (cyan menyala)
+const bubbles = [];
+{
+  const N = MOBILE() ? 7 : 12;
+  const geoB = roundedBoxGeo(0.36, 0.24, 0.12, 0.09, 2);
+  for (let i = 0; i < N; i++) {
+    const isA = i % 2 === 0;
+    const mat = isA
+      ? new THREE.MeshStandardMaterial({ color: 0x0a2a3a, emissive: 0x35b9d8, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.45 })
+      : new THREE.MeshStandardMaterial({ color: 0x241a08, emissive: 0x8a5a12, emissiveIntensity: 0.45, metalness: 0.35, roughness: 0.5 });
+    const b = new THREE.Mesh(geoB, mat);
+    const side = i % 2 ? 1 : -1;
+    const z = 5 - (i / N) * 34 - Math.random() * 1.4;
+    // kedua sisi KELUAR jalur terbang (kanan sedikit lebih dekat) — bubble jangan pernah menabrak kamera
+    const xoff = side > 0 ? 2.3 + Math.random() * 1.8 : -(4.6 + Math.random() * 1.6);
+    const by = side > 0 ? AXIS.y + 0.2 + Math.random() * 1.7 : AXIS.y + 2.4 + Math.random() * 1.6;
+    b.position.set(AXIS.x + xoff, by, z);
+    b.rotation.y = (Math.random() - 0.5) * 0.6; // default menghadap jalur terbang + sedikit acak
+    b.rotation.z = (Math.random() - 0.5) * 0.3;
+    b.userData = { ph: Math.random() * Math.PI * 2, sp: 0.3 + Math.random() * 0.5, y0: b.position.y, ry0: b.rotation.y };
+    scene.add(b);
+    bubbles.push(b);
+  }
+}
+
+// modul plugin: kubus edge-glow "terpasang" di dinding kanan dekat babak SKILL — pulsa aktif bergelombang
+const pluginMods = [];
+{
+  const N = MOBILE() ? 5 : 7;
+  const geoP = roundedBoxGeo(0.38, 0.38, 0.38, 0.07, 2);
+  for (let i = 0; i < N; i++) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x0e2236, metalness: 0.7, roughness: 0.35, emissive: 0x0a3a4a, emissiveIntensity: 0.12 });
+    const m = new THREE.Mesh(geoP, mat);
+    const col = i % 2, row = (i / 2) | 0;
+    m.position.set(AXIS.x + 4.6, AXIS.y + 1.5 - row * 0.66, -5.2 - col * 0.78 - row * 0.1);
+    m.rotation.y = -0.55;
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geoP),
+      new THREE.LineBasicMaterial({ color: CYAN, transparent: true, opacity: 0.25 }),
+    );
+    m.add(edges);
+    m.userData = { edges, mat, ph: i * 0.75 };
+    scene.add(m);
+    pluginMods.push(m);
+  }
+}
+
+// panel dashboard hologram (enterprise) — abstrak: frame + bar + sparkline, TANPA angka/klaim metrik
+function holoTexture(seed) {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 160;
+  const c = cv.getContext('2d');
+  c.strokeStyle = 'rgba(126,214,243,0.9)';
+  c.strokeRect(4.5, 4.5, 247, 151);
+  c.fillStyle = 'rgba(126,214,243,0.55)';
+  c.fillRect(16, 16, 64, 5);
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 9; i++) {
+    const h = 18 + rnd() * 62;
+    c.fillStyle = i === 4 ? 'rgba(244,180,80,0.8)' : 'rgba(126,214,243,0.6)';
+    c.fillRect(20 + i * 24, 140 - h, 13, h);
+  }
+  c.strokeStyle = 'rgba(126,214,243,0.85)';
+  c.beginPath();
+  for (let i = 0; i <= 12; i++) {
+    const x = 16 + i * 18.6, y = 40 + rnd() * 26;
+    if (i) c.lineTo(x, y); else c.moveTo(x, y);
+  }
+  c.stroke();
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 2;
+  return tex;
+}
+const holos = [];
+{
+  const geoH = new THREE.PlaneGeometry(1.7, 1.06);
+  const defs = [
+    { x: -1.6, y: 0.9, z: -24.5, ry: 0.35 },  // kendali — dalam-dalam di belakang rak, dekat pusat
+    { x: 5.2, y: 1.1, z: -24.6, ry: -0.55 },  // harga — kanan jauh
+  ];
+  for (let i = 0; i < defs.length; i++) {
+    const d = defs[i];
+    const m = new THREE.Mesh(geoH, new THREE.MeshBasicMaterial({
+      map: holoTexture(11 + i * 7), transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false,
+    }));
+    m.position.set(d.x, d.y, d.z);
+    m.rotation.y = d.ry;
+    m.userData = { ph: i * 1.7, y0: d.y };
+    scene.add(m);
+    holos.push(m);
+  }
+}
+
+// COPILOT COMPANION — bot mini yang mengawani perjalanan di samping kamera, menoleh ke penonton
+const comp = makeMiniBot(MOBILE() ? 0.62 : 1.0);
+// halo ikut berputar pelan + glow lembut menempel di bot — hadir di scene gelap sekalipun (trik bloom igloo)
+const compGlow = new THREE.PointLight(0x67e8f9, 2.2, 2.6, 2);
+compGlow.position.set(0, 0.15, 0.45);
+comp.g.add(compGlow);
+scene.add(comp.g);
+// QA hook: inspeksi live posisi bot/kamera dari console (tidak dipakai runtime)
+window.__grStory = { comp, camera };
 
 /* ---------- kamera per babak (posisi + lookAt, di-lerp) ---------- */
 const STOPS = [
@@ -607,11 +794,18 @@ const camPos = new THREE.Vector3();
 const camLook = new THREE.Vector3();
 const A = new THREE.Vector3();
 const B = new THREE.Vector3();
+const heartWorldPosition = new THREE.Vector3();
+const _ndc = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _tgt = new THREE.Vector3();
 let lastSf = 0; // kecepatan kamera utk FOV/banking
 
 function progress01() {
-  const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-  return Math.min(1, Math.max(0, window.scrollY / max));
+  const track = document.getElementById('track');
+  if (!track) return 0;
+  const start = track.offsetTop;
+  const end = Math.max(start, start + track.offsetHeight - innerHeight);
+  return Math.min(1, Math.max(0, (window.scrollY - start) / Math.max(1, end - start)));
 }
 
 // progress 0..1 → segmen STOPS (0..6) kontinyu
@@ -621,7 +815,7 @@ function stopFloat(p) {
 
 /* ---------- mouse parallax (desktop) — kamera hidup merespons pointer ---------- */
 const par = { x: 0, y: 0, tx: 0, ty: 0 };
-if (!REDUCED && matchMedia('(pointer:fine)').matches) {
+if (!reduced && matchMedia('(pointer:fine)').matches) {
   addEventListener('pointermove', (e) => {
     par.tx = (e.clientX / innerWidth - 0.5) * 2;
     par.ty = (e.clientY / innerHeight - 0.5) * 2;
@@ -647,11 +841,13 @@ function applyStop(f) {
   // kecepatan → FOV melebar (sensasi terbang) + banking mengikuti arah belok (ala igloo/aeronet)
   const vel = f - lastSf;
   lastSf = f;
-  const targetFov = 72 + Math.min(15, Math.abs(vel) * 420);
+  const targetFov = 72 + Math.min(9, Math.abs(vel) * 260);
   camera.fov += (targetFov - camera.fov) * 0.09;
   camera.updateProjectionMatrix();
-  const bank = Math.max(-0.12, Math.min(0.12, -vel * 160)) + Math.sin(clock.elapsedTime * 0.5) * 0.012;
-  camera.rotateZ(bank);
+  const bank = Math.max(-0.07, Math.min(0.07, -vel * 100)) + Math.sin(clock.elapsedTime * 0.5) * 0.008;
+  // lookAt resets the camera orientation each frame; assign the bank instead
+  // of rotating from the previous frame, which otherwise accumulates drift.
+  camera.rotation.z = bank;
 }
 
 /* ---------- composer ---------- */
@@ -659,14 +855,14 @@ let composer = null;
 if (renderer) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.8, 0.9));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth * QUALITY.bloomScale, innerHeight * QUALITY.bloomScale), 0.42, 0.8, 1.0));
   composer.addPass(new OutputPass());
 }
 
 function resize() {
   const w = innerWidth, h = innerHeight;
   if (renderer) {
-    renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE() ? 1.75 : 2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY.dpr));
     renderer.setSize(w, h, false);
   }
   camera.aspect = w / h;
@@ -685,7 +881,7 @@ function frame() {
   const dt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
 
-  p += (pTarget - p) * Math.min(1, dt * 7);
+  p += (pTarget - p) * Math.min(1, dt * 3.2); // lambat & lapang — premium glide, bukan rollercoaster
   const sf = stopFloat(p);
   applyStop(sf);
   applyFades(sf);
@@ -699,8 +895,11 @@ function frame() {
   core.rotation.y += dt * 0.22;
   dieEdges.rotation.y -= dt * 0.05;
   heart.scale.setScalar(1 + Math.sin(t * 2.4) * 0.12);
-  coreLight.position.copy(heart.getWorldPosition(new THREE.Vector3()));
-  coreLight.intensity = 16 + Math.sin(t * 1.6) * 2.4;
+  heart.getWorldPosition(heartWorldPosition);
+  coreLight.position.copy(heartWorldPosition);
+  // Keep the chip's key light local to its chapter; elsewhere it should not wash out the scene.
+  const chipFocus = Math.max(0, 1 - Math.abs(sf - 1) / 1.25);
+  coreLight.intensity = 1.4 + chipFocus * 7.2 + Math.sin(t * 1.6) * (0.25 + chipFocus * 0.65);
   for (const pl of pulses) {
     const u = (pl.userData.off + t * pl.userData.sp) % 1;
     const seg = u < 0.5 ? 0 : 1;
@@ -741,7 +940,7 @@ function frame() {
   // — rak server: LED denyut bergelombang + padlock melayang (kunci tetap di runtime)
   const leds = dome.userData.leds;
   for (let i = 0; i < leds.length; i++) {
-    leds[i].scale.setScalar(0.35 + Math.max(0, Math.sin(t * 3 - i * 0.9)) * 0.35);
+    leds[i].scale.setScalar(0.3 + Math.max(0, Math.sin(t * 3 - i * 0.9)) * 0.18);
   }
   dome.userData.lock.position.y = 1.15 + Math.sin(t * 1.8) * 0.06;
   dome.userData.lock.rotation.y = Math.sin(t * 0.6) * 0.25;
@@ -750,7 +949,7 @@ function frame() {
   for (let i = 0; i < gateRings.length; i++) {
     const r = gateRings[i];
     r.rotation.z = t * (i % 2 ? 0.18 : -0.14);
-    r.material.opacity = 0.11 + Math.abs(Math.sin(t * 0.9 + i * 1.3)) * 0.1;
+    r.material.opacity = 0.06 + Math.abs(Math.sin(t * 0.9 + i * 1.3)) * 0.05;
   }
   corridor.rotation.y = Math.sin(t * 0.05) * 0.025;
 
@@ -761,18 +960,92 @@ function frame() {
   }
   stars.rotation.y = t * 0.004;
 
+  // — tema produk: bubble melayang, modul plugin pulsa, panel hologram bernafas
+  for (const b of bubbles) {
+    b.position.y = b.userData.y0 + Math.sin(t * b.userData.sp + b.userData.ph) * 0.09;
+    b.rotation.y = b.userData.ry0 + Math.sin(t * 0.5 + b.userData.ph) * 0.18; // osilasi — jangan spin penuh (edge-on)
+  }
+  for (const m of pluginMods) {
+    const k = Math.max(0, Math.sin(t * 1.15 - m.userData.ph));
+    m.userData.edges.material.opacity = 0.1 + k * 0.3;
+    m.userData.mat.emissiveIntensity = 0.06 + k * 0.28;
+  }
+  for (const h of holos) {
+    h.material.opacity = 0.32 + Math.abs(Math.sin(t * 0.7 + h.userData.ph)) * 0.14;
+    h.position.y = h.userData.y0 + Math.sin(t * 0.5 + h.userData.ph) * 0.05;
+  }
+
+  // — copilot companion: mengikuti kamera dengan lag halus, menoleh ke penonton
+  updateComp(t, sf);
+
   if (composer) composer.render();
   else if (renderer) renderer.render(scene, camera);
-  rafId = requestAnimationFrame(frame);
+  if (!reduced && !document.hidden && trackVisible) rafId = requestAnimationFrame(frame);
+}
+
+// — copilot companion: ANCHOR SCREEN-SPACE — bot selalu di titik layar yang sama (kebal pitch/banking kamera)
+function updateComp(t) {
+  // kanan-atas = zona veil #sp-6 paling tipis (headline/CTA dilindungi veil tebal di tengah-bawah)
+  _ndc.set(MOBILE() ? 0.3 : 0.66, MOBILE() ? 0.5 : 0.6, 0.5).unproject(camera);
+  _dir.copy(_ndc).sub(camera.position).normalize();
+  _tgt.copy(camera.position).addScaledVector(_dir, MOBILE() ? 1.5 : 1.45);
+  // snap saat jauh (lompatan stepper/scroll instan) — jangan biarkan bot terbang melintasi dunia
+  if (comp.g.position.distanceTo(_tgt) > 2.5) comp.g.position.copy(_tgt);
+  else comp.g.position.lerp(_tgt, 0.05);
+  comp.g.position.y += Math.sin(t * 1.5) * 0.045;
+  comp.g.lookAt(camera.position);
+  comp.g.rotation.z = Math.sin(t * 0.8) * 0.05;
+  comp.halo.rotation.z = t * 0.7;
+  const bt2 = (t + 1.9) % 3.4;
+  const es2 = bt2 < 3.2 ? 1 : Math.max(0.1, Math.abs(1 - (bt2 - 3.2) * 12));
+  for (const e of comp.eyes) e.scale.y = es2;
+  comp.beacon.scale.setScalar(0.8 + Math.sin(t * 3.1) * 0.25);
 }
 
 function renderOnce() {
   const sf = stopFloat(pTarget);
   applyStop(sf);
   applyFades(sf);
+  updateComp(clock.elapsedTime, sf);
   if (composer) composer.render();
   else if (renderer) renderer.render(scene, camera);
 }
+
+function stopLoop() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = 0;
+}
+
+function startLoop() {
+  if (!reduced && !document.hidden && trackVisible && !rafId) rafId = requestAnimationFrame(frame);
+}
+
+// Pause the persistent fixed canvas when its story track is offscreen.
+// Intersection is measured against the viewport, not the canvas's fixed box.
+const storyTrack = document.getElementById('track');
+let trackVisible = true;
+const storyObserver = 'IntersectionObserver' in window && storyTrack
+  ? new IntersectionObserver(([entry]) => {
+      trackVisible = entry.isIntersecting;
+      if (!trackVisible) stopLoop();
+      else if (reduced) renderOnce();
+      else startLoop();
+    }, { root: null, threshold: 0 })
+  : null;
+if (storyObserver) storyObserver.observe(storyTrack);
+
+motionQuery.addEventListener('change', (event) => {
+  reduced = event.matches;
+  stopLoop();
+  if (reduced) renderOnce();
+  else startLoop();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopLoop();
+  else if (reduced) renderOnce();
+  else startLoop();
+});
 
 /* ---------- UI: layer copy crossfade + stepper + hint ---------- */
 const chps = [...document.querySelectorAll('.chp')];
@@ -789,7 +1062,7 @@ const dotBtns = LABELS.map((lab, i) => {
   const d = document.createElement('i');
   b.appendChild(d);
   b.addEventListener('click', () => {
-    document.getElementById(SP_IDS[i]).scrollIntoView({ behavior: REDUCED ? 'instant' : 'smooth', block: i <= 4 ? 'start' : 'start' });
+    document.getElementById(SP_IDS[i]).scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'start' });
   });
   dotsEl.appendChild(b);
   return b;
@@ -821,6 +1094,8 @@ function updateUI() {
       const on = i === active && active < FIXED_STEPS;
       chps[i].classList.toggle('on', on);
       chps[i].classList.toggle('visible', on);
+      chps[i].setAttribute('aria-hidden', String(!on));
+      chps[i].inert = !on;
     }
     dotBtns.forEach((b, i) => b.firstChild.classList.toggle('on', i === active));
     if (stepLabel) stepLabel.textContent = LABELS[active];
@@ -829,7 +1104,7 @@ function updateUI() {
 }
 
 addEventListener('scroll', updateUI, { passive: true });
-addEventListener('resize', () => { resize(); if (REDUCED) renderOnce(); });
+addEventListener('resize', () => { resize(); if (reduced) renderOnce(); });
 
 /* ---------- init ---------- */
 resize();
@@ -837,7 +1112,7 @@ pTarget = progress01();
 p = pTarget;
 updateUI();
 
-if (REDUCED) {
+if (reduced) {
   renderOnce();
   // tetap update copy layer saat scroll (tanpa animasi 3D kontinyu)
   addEventListener('scroll', () => { pTarget = progress01(); renderOnce(); }, { passive: true });

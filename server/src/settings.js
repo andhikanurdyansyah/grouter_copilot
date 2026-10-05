@@ -46,9 +46,9 @@ export const DEFAULT_SETTINGS = {
     currency: 'IDR',
   },
   plans: [
-    { key: 'basic', name: 'Basic', amount: 99000, currency: 'IDR', quota: '5M tokens', features: ['core'], expiresInDays: 365, active: true },
-    { key: 'pro', name: 'Pro', amount: 249000, currency: 'IDR', quota: '15M tokens', features: ['core', 'pro'], expiresInDays: 365, active: true },
-    { key: 'enterprise', name: 'Enterprise', amount: 749000, currency: 'IDR', quota: '50M tokens', features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
+    { key: 'quota-3b-90d', name: '3B · 3 months', amount: 0, currency: 'IDR', quota: '3B usage', features: ['core'], expiresInDays: 90, active: true },
+    { key: 'quota-15b-365d', name: '15B · 1 year', amount: 0, currency: 'IDR', quota: '15B usage', features: ['core', 'pro'], expiresInDays: 365, active: true },
+    { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
   ],
   payment: {
     provider: 'klikqris',

@@ -93,8 +93,15 @@ async function req(baseUrl, method, p, body, cookie) {
 }
 
 test('A1: body amount/description are rejected; price is resolved server-side', async () => {
-  const { baseUrl, server } = await startServer();
+  const { baseUrl, server, store } = await startServer();
   try {
+    // This checkout test explicitly retains a priced fixture; launch defaults are zero-priced.
+    const { validateSettings } = await import('../src/settings.js');
+    store.updateSettings(validateSettings({ plans: [
+      { key: 'quota-3b-90d', name: '3B · 3 months', amount: 0, currency: 'IDR', quota: '3B usage', features: ['core'], expiresInDays: 90, active: true },
+      { key: 'quota-15b-365d', name: '15B · 1 year', amount: 0, currency: 'IDR', quota: '15B usage', features: ['core', 'pro'], expiresInDays: 365, active: true },
+      { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', features: ['core', 'pro'], expiresInDays: 365, active: true },
+    ] }));
     const cookie = await signUp(baseUrl, `a1-${Date.now()}@gmail.com`);
 
     // A client-supplied amount must never be honoured.
@@ -109,7 +116,31 @@ test('A1: body amount/description are rejected; price is resolved server-side', 
     const unknown = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'nope' }, cookie);
     assert.equal(unknown.status, 400);
 
-    // Legit checkout: the order carries the PLAN's amount (Rp249.000), not client input.
+    store.updateSettings(validateSettings({ plans: [
+      { key: 'quota-3b-90d', name: '3B · 3 months', amount: 0, currency: 'IDR', quota: '3B usage', features: ['core'], expiresInDays: 90, active: true },
+      { key: 'quota-15b-365d', name: '15B · 1 year', amount: 0, currency: 'IDR', quota: '15B usage', features: ['core', 'pro'], expiresInDays: 365, active: true },
+      { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
+    ] }));
+    const zeroPrice = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'quota-3b-90d' }, cookie);
+    assert.equal(zeroPrice.status, 409);
+    assert.match(String(zeroPrice.json.error), /price is not configured/i);
+    const custom = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'custom' }, cookie);
+    assert.equal(custom.status, 409);
+    assert.match(String(custom.json.error), /sales quote/i);
+
+    store.updateSettings(validateSettings({ plans: [
+      { key: 'basic', name: 'Basic', amount: 99000, currency: 'IDR', quota: '5M tokens', features: ['core'], expiresInDays: 365, active: true },
+      { key: 'pro', name: 'Pro', amount: 249000, currency: 'IDR', quota: '15M tokens', features: ['core', 'pro'], expiresInDays: 365, active: true },
+      { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
+    ] }));
+
+    // Restore priced legacy test fixture to prove server-side plan resolution.
+    store.updateSettings(validateSettings({ plans: [
+      { key: 'basic', name: 'Basic', amount: 99000, currency: 'IDR', quota: '5M tokens', features: ['core'], expiresInDays: 365, active: true },
+      { key: 'pro', name: 'Pro', amount: 249000, currency: 'IDR', quota: '15M tokens', features: ['core', 'pro'], expiresInDays: 365, active: true },
+    ] }));
+
+    // Legit checkout: the order carries the configured plan amount (server-resolved).
     const ok = await req(baseUrl, 'POST', '/api/orders', { packageKey: 'pro' }, cookie);
     assert.equal(ok.status, 201);
     assert.equal(ok.json.order.amount, 249000);

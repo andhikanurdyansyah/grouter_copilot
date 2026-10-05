@@ -20,18 +20,18 @@ test('widget exposes a bottom-left accessible draggable launcher, configurable w
 
 test('customer install guidance remains consistent with the current license-only runtime contract', () => {
   assert.match(success, /license/i);
-  assert.match(landing, /runtime chat, skill registry/);
-  assert.match(landing, /Yang sedang dibangun/);
+  assert.match(landing, /Embed AI assistance/);
+  assert.match(landing, /Copilot Plans/);
+  assert.match(landing, /languageSelect|languageToggle/);
   assert.ok(pkg.files.includes('bin'));
 });
 
-test('landing v4 scene stays product-shaped (app host, skills, boundary, license), not abstract decoration', () => {
-  assert.match(landing, /drawApp/);
-  assert.match(landing, /drawCopilot/);
-  assert.match(landing, /drawSkill/);
-  assert.match(landing, /drawLicense/);
-  assert.match(landing, /Aplikasi Anda — Orders/);
-  assert.match(landing, /billing\.write/);
-  assert.match(landing, /Ed25519/);
+test('commandlayer landing keeps the approved product chassis and runtime controls', () => {
+  assert.match(landing, /data-us-project=/);
+  assert.match(landing, /Developer-defined skill registry loaded/);
+  assert.match(landing, /Provider credential remains server-side/);
+  assert.match(landing, /Signed license payload verified/);
+  assert.match(landing, /fetch\('\/api\/plans'/);
+  assert.match(landing, /Sematkan bantuan AI/);
   assert.doesNotMatch(landing, /IcosahedronGeometry|TorusGeometry|CapsuleGeometry/);
 });

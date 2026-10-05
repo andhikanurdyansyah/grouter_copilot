@@ -4,10 +4,12 @@
  * Detects framework and scaffolds config, skills, route, widget, and .env.
  */
 
-import { mkdirSync, writeFileSync, readFileSync, appendFileSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 
+const require = createRequire(import.meta.url);
+const { mkdirSync, writeFileSync, readFileSync, appendFileSync, existsSync } = require('node:fs');
 const cwd = process.cwd();
 
 function readPkg() {
@@ -77,6 +79,10 @@ export default {
     maxRows: 500,
     maxContextBytes: 32000,
     maxTokens: 2000
+  },
+  adapter: {
+    apiKey: process.env.GROUTER_API_KEY,
+    baseUrl: process.env.GROUTER_BASE_URL
   }
 };
 `;
@@ -163,7 +169,7 @@ function runInit(opts = {}, { silent = false } = {}) {
     }
     console.log('');
     console.log('Next:');
-    console.log('  1. Set GROUTER_API_KEY in .env');
+    console.log('  1. Verify GROUTER_LICENSE and GROUTER_LICENSE_SERVER in .env');
     console.log('  2. Mount <CopilotChat /> in your UI');
     console.log('  3. Edit skills/example.js to expose your data');
   }
@@ -199,9 +205,7 @@ function parseFlags(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = argv[i + 1];
-    if (a === '--base-url' || a === '--baseUrl') opts.baseUrl = next;
-    else if (a === '--api-key' || a === '--apiKey') opts.apiKey = next;
-    else if (a === '--license') opts.license = next;
+    if (a === '--license') opts.license = next;
     else if (a === '--license-server' || a === '--licenseServer') opts.licenseServerUrl = next;
   }
   return opts;
@@ -211,8 +215,12 @@ function main() {
   const cmd = process.argv[2];
   const argv = process.argv.slice(3);
 
-  if (!cmd || cmd === 'init') {
-    runInit(parseFlags(argv));
+  if (cmd === 'init') {
+    runInit();
+    return;
+  }
+  if (!cmd) {
+    runInit();
     return;
   }
   if (cmd === 'install') {
@@ -221,8 +229,8 @@ function main() {
   }
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
     console.log('Usage:');
-    console.log('  grouter-copilot init [--base-url <url> --api-key <key> --license <license>]');
-    console.log('  grouter-copilot install [--base-url <url> --api-key <key> --license <license>]');
+    console.log('  grouter-copilot init');
+    console.log('  grouter-copilot install --license <license-token> [--license-server <url>]');
     return;
   }
   console.error(`Unknown command: ${cmd}`);
@@ -230,39 +238,53 @@ function main() {
 }
 
 /**
- * Install mode: scaffold + write credentials (base url, api key, license) to .env.
- * License is mandatory; without it, Copilot will refuse to run.
+ * Install mode: scaffold, exchange the Copilot license for a server-resolved
+ * provider credential, and persist credentials in the server-side app .env.
  */
-function runInstall(opts = {}) {
-  const results = runInit(opts, { silent: true });
-
+async function runInstall(opts = {}) {
   const missing = [];
-  if (!opts.baseUrl) missing.push('--base-url');
-  if (!opts.apiKey) missing.push('--api-key');
   if (!opts.license) missing.push('--license');
-  if (!opts.licenseServerUrl) missing.push('--license-server');
+  const licenseServerUrl = opts.licenseServerUrl || process.env.GROUTER_LICENSE_SERVER || 'https://copilot.grouter.id';
+  if (missing.length) {
+    console.error('Usage: grouter-copilot install --license <license-token> [--license-server <url>]');
+    console.error(`Missing required option: ${missing.join(', ')}`);
+    process.exitCode = 1;
+    return;
+  }
 
+  let resolved;
+  try {
+    const response = await fetch(new URL('/api/resolve', licenseServerUrl), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: opts.license }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || typeof body.apiKey !== 'string' || !body.apiKey || typeof body.baseUrl !== 'string' || !body.baseUrl) {
+      throw new Error(response.status === 404 ? 'This license is not activated yet. Contact support.' : 'License verification failed. Check the license and try again.');
+    }
+    resolved = body;
+  } catch (err) {
+    console.error(`License verification failed: ${err.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const results = runInit({}, { silent: true });
   console.log('gRouter Copilot — install');
   console.log('');
-  for (const r of results) {
-    console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
-  }
+  for (const r of results) console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
 
-  if (missing.length) {
-    console.log('');
-    console.log('Missing (will be stored in .env):');
-    for (const m of missing) console.log(`  ${m}`);
-    console.log('');
-    console.log('Example:');
-    console.log('  npx grouter-copilot install --base-url https://api.grouter.io --api-key sk-... --license <license-token> --license-server https://license.grouter.io');
-    process.exit(1);
-  }
-
-  const envResult = writeEnv(opts);
-  if (envResult) console.log(`✔ Saved credentials to ${envResult.rel}`);
-
+  const envResult = writeEnv({
+    baseUrl: resolved.baseUrl,
+    apiKey: resolved.apiKey,
+    license: opts.license,
+    licenseServerUrl,
+  });
+  if (envResult) console.log(`✔ Saved server-side app credentials to ${envResult.rel}`);
   console.log('');
-  console.log('Done. Mount <CopilotChat /> in your UI and define skills to expose data.');
+  console.log('Done. Provider credentials were resolved by the Copilot license server and were not printed.');
+  console.log('Mount <CopilotChat /> in your UI and define your read-only skills.');
 }
 
 main();

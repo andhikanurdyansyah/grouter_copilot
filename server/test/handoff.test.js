@@ -9,11 +9,11 @@ import path from 'node:path';
 function startServer({ fakeFetch } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-server-'));
   const dataFile = path.join(dir, 'store.json');
-  const { server, service, keys } = createCopilotServer({ dataFile, ...(fakeFetch ? { fetch: fakeFetch } : {}) });
+  const { server, service, keys, settings } = createCopilotServer({ dataFile, ...(fakeFetch ? { fetch: fakeFetch } : {}) });
   return new Promise((resolve) => {
     server.listen(0, () => {
       const { port } = server.address();
-      resolve({ baseUrl: `http://127.0.0.1:${port}`, server, service, keys });
+      resolve({ baseUrl: `http://127.0.0.1:${port}`, server, service, keys, settings });
     });
   });
 }
@@ -47,6 +47,7 @@ test('key handoff: issue → bind → resolve returns api key; license list neve
     const resolve = await req(baseUrl, 'POST', '/api/resolve', { token: rawToken });
     assert.equal(resolve.status, 200);
     assert.equal(resolve.json.apiKey, 'gRouter-abc123');
+    assert.equal(resolve.json.baseUrl, 'https://prod.grouter.web.id');
 
     // license list does not expose api key
     const list = await req(baseUrl, 'GET', '/api/admin/licenses');

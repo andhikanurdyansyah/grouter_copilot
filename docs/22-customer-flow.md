@@ -1,79 +1,36 @@
 # Customer Flow — gRouter Copilot
 
-## End-to-end flow
+## Supported customer path
 
 ```text
-Landing page (copilot.grouter.id)
-  → documentation, how-to, integration guide, pricing, license model
-        ↓
-Register (customer account)
-        ↓
-Dashboard
-  → manage license, purchase, monitor usage/quota
-        ↓
-Purchase license (include quota/tier)
-        ↓
-Receive LICENSE KEY (the ONLY customer credential)
-        ↓
-npx @grouter/copilot install
-  → prompted for LICENSE KEY (not api key)
-        ↓
-Plugin resolves gRouter api key from license (server-side key handoff)
-        ↓
-Chat runs; usage recorded; dashboard shows quota via gRouter /check-usage
+Landing → account → purchase from server plan catalogue → LICENSE KEY
+→ run `npx @grouter/copilot install --license <LICENSE_KEY>` in a Node.js app
+→ installer POSTs the license to the Copilot license server `/api/resolve`
+→ server verifies signature/revocation and returns the bound provider credential over TLS
+→ installer writes it to the host application's server-side `.env`
+→ developer defines read-only skills and mounts the chat UI
 ```
 
-## Implemented (done)
+The only credential the customer supplies is the Copilot license. A gRouter provider key is never requested from the customer, included in the signed license token, printed by the installer, or sent to browser code. The provider key remains a secret in the server-side host app environment after handoff. Keep `.env` out of source control.
 
-| Component | Status |
-|---|---|
-| License server (issue/revoke/validate) | ✅ `server/src/licenseService.js` |
-| Heartbeat (install counting) | ✅ `POST /api/heartbeat` |
-| Key handoff (license → api key) | ✅ `POST /api/resolve` + `bind` |
-| Usage resolution (gRouter /check-usage) | ✅ `server/src/usageResolver.js` + `GET /api/admin/usage` |
-| Admin dashboard | ✅ `server/public/dashboard.html` |
-| Landing page | ✅ `server/public/landing.html` (`/landing`) |
-| gRouter API contract (verified) | ✅ `docs/23-grouter-api-contract.md` |
+## Activation dependency
 
-## Verified live (2026-09-30)
+D-016 defers automatic gRouter key provisioning. Therefore a paid license does not necessarily resolve immediately: an operator must bind an existing provider key to that license first. Until bound, `/api/resolve` returns 404 and the installer stops before writing scaffold files. Do not describe checkout as fully self-service until provisioning/operations have been addressed.
 
-```text
-issue license (bound to real gRouter key)
-  → POST /api/resolve  → apiKey prefix gRouter-...
-  → UsageResolver.fetchUsage  → { status:active, 353672/15000000 tokens, 115 req, 41 models }
-```
+## Verified repository components
 
-## Api key resolution (Option A: key handoff)
+- License server issue/revoke/validate: `server/src/licenseService.js`
+- Heartbeat/install counting: `POST /api/heartbeat`
+- Provider key handoff: `POST /api/resolve` and admin bind
+- Usage reporting: `server/src/usageResolver.js`
+- CLI scaffold and license-based install: `bin/grouter-copilot.js`
+- React chat panel: `src/widget/CopilotChat.jsx`
 
-```text
-plugin install
-  → send license key (TLS)
-  → backend validate signature + revocation
-  → backend return bound gRouter api key
-  → plugin write to customer .env (server-only)
-  → plugin calls gRouter directly
-```
+## Not yet verified or implemented
 
-- Customer never types an api key.
-- App keeps working if license server is down (hybrid offline).
+- Published npm package install via `npx` from the public registry.
+- Customer purchase → operator binding → installer against a real issued license.
+- Draggable launcher, configurable welcome message, and first-use setup modal.
+- Full host-app install → configured skill → successful live chat.
 
-## Usage / quota (verified)
-
-`GET /api/admin/usage` → for each bound license, consume gRouter `/check-usage` (read-only), cache, aggregate.
-
-Contract documented in `docs/23-grouter-api-contract.md`.
-
-## Deferred (do NOT build yet)
-
-- **Auto-provisioning:** on license purchase, auto-generate gRouter api key. Deferred until the gRouter provisioning contract is clear.
-- Admin maps license → existing gRouter api key manually (via `POST /api/admin/licenses/:id/bind`).
-
-## Open questions (semua sudah terjawab — diperbarui I5, 2026-10-01)
-
-1. ~~gRouter api key generation endpoint (future auto-provision).~~ → DEFERRED (D-016); admin bind manual.
-2. ~~Registration/auth mechanism.~~ → Better Auth email/password + Google OAuth kondisional (D-019), organization plugin.
-3. ~~Payment flow.~~ → KlikQRIS end-to-end LIVE (sandbox): checkout `{packageKey}` (harga server-side, A1) → QR → webhook terverifikasi/admin settle → license (D-018, doc 26).
-4. ~~License server + dashboard deployment (single vs separate).~~ → SINGLE public origin `copilot.grouter.id`; frontend :4601 proxy `/api/*` → backend :4600 (docs/27).
-
-Status implementasi lengkap per komponen: lihat `docs/25-pending-implementations.md`
-(P-001..P-005 sudah ditinjau ulang) dan `docs/29-backend-api-contract.md`.
+Treat these as pending; do not market the product as production-ready until a repeatable isolated E2E passes. Payment remains KlikQRIS sandbox per the current handoff.

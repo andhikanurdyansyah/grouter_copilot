@@ -1,7 +1,7 @@
 {
   "name": "@grouter/copilot",
   "version": "0.1.0",
-  "description": "Drop-in AI copilot plugin for existing apps. Install with one command, expose data via skills, chat over your gRouter API key.",
+  "description": "License-based AI copilot plugin for Node.js apps with developer-defined data skills.",
   "type": "module",
   "main": "src/index.js",
   "exports": {

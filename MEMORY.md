@@ -6,7 +6,7 @@
 
 ## START DI SINI
 
-- **Terminologi landing terkunci:** “intro page” berarti `server/public/intro.html`, yaitu halaman pembuka yang sebelumnya berasal dari `comingsoon`. “Landing” berarti halaman produk utama Commandlayer di `https://copilot.grouter.id/?qa=capabilities-v2`; secara product-flow ini adalah root landing, sedangkan `/` tanpa query menyajikan intro terlebih dahulu. Intro scroll sampai bawah lalu same-origin `location.replace()` menuju `/?qa=capabilities-v2`.
+- **Terminologi landing terkunci:** “intro page” berarti `server/public/intro.html`, yaitu halaman pembuka yang sebelumnya berasal dari `comingsoon`. “Landing” berarti halaman produk utama Commandlayer di `https://copilot.grouter.id/copilot`; secara product-flow ini adalah root landing, sedangkan `/` tanpa query menyajikan intro terlebih dahulu. Intro scroll sampai bawah lalu same-origin `location.replace()` menuju `/copilot`.
 
 - **Baca `docs/handoff-2026-10-02.md` DULU** (status terbaru: UI v3 + routing real-path, pushed).
   Baseline lama: `docs/handoff-2026-10-01.md` (safety rules + gotcha §8 masih berlaku).

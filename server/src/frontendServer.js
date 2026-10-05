@@ -36,6 +36,7 @@ const MIME = {
 // Route map: path → html file
 const PAGES = {
   '/': 'intro.html',
+  '/copilot': 'landing.html',
   '/landing': 'landing.html',
   '/register': 'register.html',
   '/login': 'register.html',
@@ -97,9 +98,7 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
 
     // Pages (exact map)
     if (req.method === 'GET' && PAGES[url.pathname]) {
-      const page = url.pathname === '/' && url.searchParams.get('qa') === 'capabilities-v2'
-        ? 'landing.html'
-        : PAGES[url.pathname];
+      const page = PAGES[url.pathname];
       const file = path.join(PUBLIC_DIR, page);
       if (existsSync(file)) {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });

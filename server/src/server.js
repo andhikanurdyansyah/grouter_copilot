@@ -94,8 +94,7 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && url.pathname === '/') {
-      const file = url.searchParams.get('qa') === 'capabilities-v2' ? 'landing.html' : 'intro.html';
-      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', file), 'utf8'));
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'intro.html'), 'utf8'));
     }
 
     // Admin console is a SEPARATE surface from the customer site: it lives at
@@ -105,7 +104,7 @@ export function createCopilotServer({
       return sendHtml(res, 200, renderDashboardHtml(service));
     }
 
-    if (req.method === 'GET' && url.pathname === '/landing') {
+    if (req.method === 'GET' && (url.pathname === '/copilot' || url.pathname === '/landing')) {
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8'));
     }
 

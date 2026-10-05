@@ -1604,11 +1604,4 @@ document.addEventListener("DOMContentLoaded", () => initInViewAnimations());
     <script>
       function switchSigView(e){const t=document.getElementById("btn-live"),s=document.getElementById("btn-archive"),l=document.getElementById("sig-switch-pill"),a=document.getElementById("view-live"),c=document.getElementById("view-archive");"live"===e?(l.style.transform="translateX(0)",t.className=t.className.replace("text-slate-500","text-slate-200"),s.className=s.className.replace("text-slate-200","text-slate-500"),t.setAttribute("aria-selected","true"),s.setAttribute("aria-selected","false"),c.classList.add("opacity-0","translate-y-4"),setTimeout((()=>{c.classList.add("hidden"),a.classList.remove("hidden"),void a.offsetWidth,a.classList.remove("opacity-0","translate-y-4")}),300)):(l.style.transform="translateX(100%)",s.className=s.className.replace("text-slate-500","text-slate-200"),t.className=t.className.replace("text-slate-200","text-slate-500"),s.setAttribute("aria-selected","true"),t.setAttribute("aria-selected","false"),a.classList.add("opacity-0","translate-y-4"),setTimeout((()=>{a.classList.add("hidden"),c.classList.remove("hidden"),void c.offsetWidth,c.classList.remove("opacity-0","translate-y-4")}),300))}
     </script>
-    <script>
-      // The query route is only the intro transition target. Normalize the
-      // visible URL once the real landing is active, without a reload.
-      if (location.search === '?qa=capabilities-v2' && history.replaceState) {
-        history.replaceState(null, document.title, `${location.origin}/`);
-      }
-    </script>
 </body></html>

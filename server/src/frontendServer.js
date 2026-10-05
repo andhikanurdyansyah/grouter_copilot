@@ -12,7 +12,7 @@
 
 import { createServer, request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,11 +27,15 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.jfif': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.mp4': 'video/mp4',
 };
 
 // Route map: path → html file
 const PAGES = {
-  '/': 'landing.html',
+  '/': 'intro.html',
   '/landing': 'landing.html',
   '/register': 'register.html',
   '/login': 'register.html',
@@ -51,11 +55,41 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
     }
 
     // Static assets
+    if (req.method === 'GET' && url.pathname === '/favicon.ico') {
+      const file = path.join(PUBLIC_DIR, 'favicon.ico');
+      if (existsSync(file)) {
+        res.writeHead(200, { 'content-type': 'image/x-icon' });
+        return res.end(readFileSync(file));
+      }
+    }
     if (url.pathname.startsWith('/assets/')) {
       const file = path.join(PUBLIC_DIR, url.pathname);
       if (existsSync(file)) {
         const ext = path.extname(file).toLowerCase();
-        res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream' });
+        const type = MIME[ext] || 'application/octet-stream';
+        if (ext === '.mp4') {
+          const size = statSync(file).size;
+          const range = req.headers.range;
+          if (range) {
+            const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+            if (match) {
+              const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]) - 1);
+              const end = match[2] ? Math.min(size - 1, Number(match[2])) : size - 1;
+              if (start <= end && start < size) {
+                res.writeHead(206, {
+                  'content-type': type, 'content-length': end - start + 1,
+                  'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes',
+                });
+                return createReadStream(file, { start, end }).pipe(res);
+              }
+            }
+            res.writeHead(416, { 'content-range': `bytes */${size}` });
+            return res.end();
+          }
+          res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+          return createReadStream(file).pipe(res);
+        }
+        res.writeHead(200, { 'content-type': type });
         return res.end(readFileSync(file));
       }
       res.writeHead(404); return res.end('not found');
@@ -63,9 +97,12 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
 
     // Pages (exact map)
     if (req.method === 'GET' && PAGES[url.pathname]) {
-      const file = path.join(PUBLIC_DIR, PAGES[url.pathname]);
+      const page = url.pathname === '/' && url.searchParams.get('qa') === 'capabilities-v2'
+        ? 'landing.html'
+        : PAGES[url.pathname];
+      const file = path.join(PUBLIC_DIR, page);
       if (existsSync(file)) {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
         return res.end(readFileSync(file, 'utf8'));
       }
     }
@@ -75,14 +112,14 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
     if (req.method === 'GET' && (url.pathname === '/user' || url.pathname.startsWith('/user/'))) {
       const file = path.join(PUBLIC_DIR, 'user-dashboard.html');
       if (existsSync(file)) {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
         return res.end(readFileSync(file, 'utf8'));
       }
     }
     if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) {
       const file = path.join(PUBLIC_DIR, 'dashboard.html');
       if (existsSync(file)) {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
         return res.end(readFileSync(file, 'utf8'));
       }
     }

@@ -94,7 +94,8 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && url.pathname === '/') {
-      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8'));
+      const file = url.searchParams.get('qa') === 'capabilities-v2' ? 'landing.html' : 'intro.html';
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', file), 'utf8'));
     }
 
     // Admin console is a SEPARATE surface from the customer site: it lives at
@@ -191,7 +192,8 @@ export function createCopilotServer({
         if (!apiKey) {
           return sendJson(res, 404, { error: 'no api key bound to this license' });
         }
-        return sendJson(res, 200, { apiKey, baseUrl: body.baseUrl ?? null });
+        const eff = resolveSettings(store.getSettings());
+        return sendJson(res, 200, { apiKey, baseUrl: body.baseUrl ?? eff.provider.baseUrl });
       });
     }
 
@@ -364,6 +366,12 @@ export function createCopilotServer({
         const plan = findPlan(eff, body.packageKey);
         if (!plan || plan.active === false) {
           return sendJson(res, 400, { error: 'unknown or inactive package' });
+        }
+        if (plan.key === 'custom') {
+          return sendJson(res, 409, { error: 'custom plans require a sales quote' });
+        }
+        if (plan.amount <= 0) {
+          return sendJson(res, 409, { error: 'plan price is not configured; please contact sales' });
         }
         try {
           const { order, qr } = await payment.createOrder({ plan, accountId: account.id });

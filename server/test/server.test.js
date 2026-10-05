@@ -114,15 +114,19 @@ test('admin console renders at /admin with placeholders replaced', async () => {
   }
 });
 
-test('customer root is the landing page, not the admin gate', async () => {
+test('customer root is the intro page, while the query route is the canonical landing', async () => {
   const { baseUrl, server } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    // A customer hitting / (e.g. an OAuth error redirect) must NOT see the admin gate.
-    assert.ok(!html.includes('Masuk sebagai Admin'));
-    assert.ok(!html.includes('ADMIN_TOKEN'));
+    assert.match(html, /Intelligent App Navigation/);
+    assert.match(html, /location\.origin.*capabilities-v2/);
+    const landing = await fetch(`${baseUrl}/?qa=capabilities-v2`);
+    const landingHtml = await landing.text();
+    assert.equal(landing.status, 200);
+    assert.match(landingHtml, /Connect your existing tools/);
+    assert.match(landingHtml, /Copilot Plans/);
   } finally {
     server.close();
   }

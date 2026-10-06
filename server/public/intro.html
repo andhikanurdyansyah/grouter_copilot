@@ -254,13 +254,13 @@
       <div class="copy">
         <div class="kicker">
           <span class="rule"></span>
-          <span>01 — INITIATE</span>
+          <span>01 — CONNECT</span>
         </div>
-        <h1>Intelligent routing, simplified.</h1>
+        <h1>Intelligence inside the product you already run.</h1>
         <p class="body">
-          Step into the future of app navigation. G-Router Copilot anticipates
-          your routing needs, analyzes structure, and configures pathways before
-          complexity even forms.
+          gRouter Copilot embeds an AI assistant into your application without
+          taking ownership of its data. Your team defines what the assistant can
+          read, explain, and surface through explicit skills.
         </p>
         <div class="cta">
           <span class="ring">→</span>
@@ -275,28 +275,28 @@
         <div class="cell">
           <span class="num">01</span>
           <span class="cap">
-            Automated route generation and seamless deep linking.
+            Developer-defined skills and focused context.
             <span class="jp">構成</span>
           </span>
         </div>
         <div class="cell">
           <span class="num">02</span>
           <span class="cap">
-            Smart pathfinding for modern app architectures.
+            Read-only access by default.
             <span class="jp">探索</span>
           </span>
         </div>
         <div class="cell">
           <span class="num">03</span>
           <span class="cap">
-            Declarative routing configuration with zero guesswork.
+            Server-side AI runtime.
             <span class="jp">設定</span>
           </span>
         </div>
         <div class="cell">
           <span class="num">04</span>
           <span class="cap">
-            Continuous state monitoring and error handling.
+            Licensed from the start.
             <span class="jp">監視</span>
           </span>
         </div>
@@ -310,28 +310,27 @@
           <span class="rule"></span>
           <span>02 — ARCHITECTURE</span>
         </div>
-        <h1>Thousands of screens, one clear path.</h1>
+        <h1>Your data stays in your application.</h1>
         <p class="body">
-          Your app expands until manual routing stops being possible. Every
-          screen is managed by an AI that understands your navigation
-          stack—evaluating every transition so you don't have to.
+          Copilot does not scan your database or guess what it should access.
+          Developers expose focused, read-only skills, then the runtime builds
+          context only from the data those skills return.
         </p>
       </div>
       <div class="stats">
         <div>
-          <span class="v">10,000</span>
-          <span class="k">ROUTES</span>
+          <span class="v">EXPLICIT</span>
+          <span class="k">SKILL SCOPE</span>
         </div>
         <div>
           <span class="v">
-            4.2
-            <small>ms</small>
+            READ-ONLY
           </span>
-          <span class="k">TRANSITIONS</span>
+          <span class="k">DEFAULT ACCESS</span>
         </div>
         <div>
-          <span class="v">100</span>
-          <span class="k">% COVERAGE</span>
+          <span class="v">SCOPED</span>
+          <span class="k">CONTEXT</span>
         </div>
       </div>
     </div>
@@ -341,23 +340,24 @@
       <div class="copy">
         <div class="kicker">
           <span class="rule"></span>
-          <span>03 — GENERATE</span>
+          <span>03 — EMBED</span>
         </div>
-        <h1>Code, config, and nothing else.</h1>
+        <h1>Add an assistant without rebuilding your product.</h1>
         <p class="body">
-          A seamless integration into your Flutter infrastructure. G-Router
-          Copilot is not a black box—it is a transparent assistant that
-          generates clean, reviewable navigation logic.
+          Mount the Copilot widget inside your existing application, define the
+          skills your team approves, and keep provider credentials on the
+          server. The runtime connects your product context to gRouter without
+          exposing secrets to the browser.
         </p>
       </div>
       <div class="stats">
         <div>
-          <span class="v">15</span>
-          <span class="k">SECONDS</span>
+          <span class="v">EMBEDDED</span>
+          <span class="k">WIDGET</span>
         </div>
         <div>
-          <span class="v">0</span>
-          <span class="k">BOILERPLATE</span>
+          <span class="v">REVIEWABLE</span>
+          <span class="k">RUNTIME</span>
         </div>
       </div>
     </div>
@@ -369,21 +369,22 @@
           <span class="rule"></span>
           <span>04 — VALIDATE</span>
         </div>
-        <h1>Seamless transitions at scale.</h1>
+        <h1>Useful answers start with a boundary you can trust.</h1>
         <p class="body">
-          Push changes to production with absolute confidence. Our automated
-          validation ensures that your navigation tree is mathematically sound
-          before a single user navigates.
+          Every request passes through the runtime's license and skill boundaries
+          before it reaches the model. Read-only access stays explicit, provider
+          credentials stay server-side, and the application remains the source
+          of truth.
         </p>
       </div>
       <div class="stats">
         <div>
-          <span class="v">100</span>
-          <span class="k">% TYPE SAFE</span>
+          <span class="v">SIGNED</span>
+          <span class="k">LICENSE</span>
         </div>
         <div>
-          <span class="v">0</span>
-          <span class="k">DEAD LINKS</span>
+          <span class="v">AUDITABLE</span>
+          <span class="k">REQUEST FLOW</span>
         </div>
       </div>
     </div>
@@ -394,12 +395,12 @@
         <div>
           <div class="jpbig jp">自動化</div>
           <div class="big">COPILOT</div>
-          <div class="sub">NAVIGATION IS NOW EFFORTLESS</div>
+          <div class="sub">EMBEDDED INTELLIGENCE, WITHIN BOUNDS</div>
         </div>
         <div class="foot">
           <span class="jp">自動化 — G-ROUTER</span>
-          <span>INITIATE · ARCHITECTURE · GENERATE · VALIDATE</span>
-          <span>POWERED BY AI</span>
+          <span>CONNECT · SCOPE · EMBED · VERIFY</span>
+          <span>POWERED BY YOUR APPLICATION CONTEXT</span>
         </div>
       </div>
     </div>
@@ -3613,14 +3614,26 @@
     </script>
     <script>
       (() => {
-        const LANDING_URL = `${location.origin}/copilot`;
+        const LANDING_URL = '/copilot';
         let transitioning = false;
         const gate = document.body;
-        const goToLanding = () => {
+        const goToLanding = async () => {
           if (transitioning) return;
           transitioning = true;
           gate.classList.add('gate-transitioning');
-          setTimeout(() => location.replace(LANDING_URL), 720);
+          try {
+            const response = await fetch(LANDING_URL, { headers: { accept: 'text/html' }, cache: 'no-store' });
+            if (!response.ok) throw new Error(`Landing unavailable: ${response.status}`);
+            const landingHtml = await response.text();
+            history.replaceState(null, '', '/');
+            document.open();
+            document.write(landingHtml);
+            document.close();
+          } catch (error) {
+            transitioning = false;
+            gate.classList.remove('gate-transitioning');
+            console.error('Unable to open landing page', error);
+          }
         };
         const nearEnd = () => {
           const max = document.documentElement.scrollHeight - innerHeight;

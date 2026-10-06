@@ -121,7 +121,7 @@ test('customer root is the intro page, while /copilot is the canonical landing',
     const html = await res.text();
     assert.equal(res.status, 200);
     assert.match(html, /Intelligent App Navigation/);
-    assert.match(html, /location\.origin.*\/copilot/);
+    assert.match(html, /\/copilot/);
     const landing = await fetch(`${baseUrl}/copilot`);
     const landingHtml = await landing.text();
     assert.equal(landing.status, 200);

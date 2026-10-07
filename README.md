@@ -4,7 +4,7 @@ License-based AI copilot plugin for Node.js apps. Developers control data access
 
 ## Install
 
-A license must be activated (an existing gRouter provider key bound by an operator) before installation can complete. In the host application's server environment, run:
+A license must be activated (an existing gRouter provider key bound by an operator) before installation can complete. The command below is the target CLI flow; the public npm package and registry install have not yet been verified. For a local tarball smoke, run it from the extracted package instead. In the host application's server environment, run:
 
 ```bash
 npx @grouter/copilot install --license <YOUR_COPILOT_LICENSE>

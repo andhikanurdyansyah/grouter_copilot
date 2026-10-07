@@ -96,3 +96,64 @@ test('server wiring: KlikQris + UsageResolver are configured FROM resolved setti
     server.close();
   }
 });
+
+test('server wiring: stored payment credentials reach KlikQRIS fetch headers without being exposed', async () => {
+  const { createCopilotServer } = await import('../src/server.js');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-payment-settings-'));
+  const dataFile = path.join(dir, 'store.json');
+  const { JsonStore } = await import('../src/store.js');
+  const store = new JsonStore(dataFile);
+  const paymentApiKey = 'synthetic-test-payment-key';
+  const merchantId = 'synthetic-test-merchant';
+  store.updateSettings({ payment: { apiKey: paymentApiKey, merchantId } });
+
+  let capturedRequest;
+  const fetchImpl = async (url, options) => {
+    capturedRequest = { url, options };
+    return new Response(JSON.stringify({ status: true, data: { order_id: 'test-order', status: 'PENDING' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  const { server, klikqris } = createCopilotServer({ dataFile, fetch: fetchImpl });
+
+  try {
+    assert.equal(klikqris.configured, true);
+    await klikqris.createQris({ orderId: 'test-order', amount: 100 });
+    assert.equal(capturedRequest.options.headers['x-api-key'], paymentApiKey);
+    assert.equal(capturedRequest.options.headers.id_merchant, merchantId);
+    assert.equal(capturedRequest.url, 'https://klikqris.com/qris/create');
+  } finally {
+    server.close();
+  }
+});
+
+test('server wiring: stored license audience is used for issued-token validation', async () => {
+  const { createCopilotServer } = await import('../src/server.js');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-license-audience-'));
+  const dataFile = path.join(dir, 'store.json');
+  const { JsonStore } = await import('../src/store.js');
+  const store = new JsonStore(dataFile);
+  store.updateSettings({ license: { audience: 'custom-test-audience' } });
+  const { server, service, keys } = createCopilotServer({ dataFile });
+
+  try {
+    const { token } = service.issue({ customer: 'Audience test' });
+    assert.equal(service.validate(token, keys.publicKeyPem).status, 'valid');
+    const { validateLicense } = await import('../../src/license/validate.js');
+    assert.notEqual(validateLicense(token, {
+      publicKeyPem: keys.publicKeyPem,
+      requiredAudience: 'grouter-copilot',
+    }).status, 'valid');
+  } finally {
+    server.close();
+  }
+});

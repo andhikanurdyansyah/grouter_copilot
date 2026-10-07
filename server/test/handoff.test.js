@@ -28,7 +28,7 @@ async function req(baseUrl, method, p, body) {
 }
 
 test('key handoff: issue → bind → resolve returns api key; license list never leaks it', async () => {
-  const { baseUrl, server } = await startServer();
+  const { baseUrl, server, keys } = await startServer();
   try {
     const issued = await req(baseUrl, 'POST', '/api/admin/licenses', { customer: 'CRM', features: ['core'] });
     const { id, token } = issued.json.license;
@@ -44,10 +44,11 @@ test('key handoff: issue → bind → resolve returns api key; license list neve
     assert.equal(bind.json.license.grouterApiKey, undefined); // sanitized
 
     // resolve returns the api key (server-side handoff)
-    const resolve = await req(baseUrl, 'POST', '/api/resolve', { token: rawToken });
+    const resolve = await req(baseUrl, 'POST', '/api/resolve', { token: rawToken, baseUrl: 'https://attacker.invalid' });
     assert.equal(resolve.status, 200);
     assert.equal(resolve.json.apiKey, 'gRouter-abc123');
     assert.equal(resolve.json.baseUrl, 'https://prod.grouter.web.id');
+    assert.equal(resolve.json.licensePublicKey, keys.publicKeyPem);
 
     // license list does not expose api key
     const list = await req(baseUrl, 'GET', '/api/admin/licenses');

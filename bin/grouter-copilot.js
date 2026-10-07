@@ -185,11 +185,21 @@ function writeEnv(opts = {}) {
   if (opts.apiKey) lines.push(`GROUTER_API_KEY=${opts.apiKey}`);
   if (opts.license) lines.push(`GROUTER_LICENSE=${opts.license}`);
   if (opts.licenseServerUrl) lines.push(`GROUTER_LICENSE_SERVER=${opts.licenseServerUrl}`);
+  if (opts.licensePublicKey) lines.push(`GROUTER_LICENSE_PUBLIC_KEY=${opts.licensePublicKey.replace(/\n/g, '\\n')}`);
   if (lines.length === 0) return null;
 
   if (existsSync(full)) {
+    // Exact-key match only: a substring check would treat GROUTER_LICENSE as
+    // "already present" when only GROUTER_LICENSE_PUBLIC_KEY exists, silently
+    // dropping the license on install/renewal.
     const existing = readFileSync(full, 'utf8');
-    const added = lines.filter((l) => !existing.includes(l.split('=')[0]));
+    const existingKeys = new Set(
+      existing.split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith('#') && l.includes('='))
+        .map((l) => l.split('=')[0].trim()),
+    );
+    const added = lines.filter((l) => !existingKeys.has(l.split('=')[0]));
     if (added.length) {
       appendFileSync(full, '\n' + added.join('\n') + '\n', 'utf8');
       return { rel, skipped: false };
@@ -260,7 +270,7 @@ async function runInstall(opts = {}) {
       body: JSON.stringify({ token: opts.license }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok || typeof body.apiKey !== 'string' || !body.apiKey || typeof body.baseUrl !== 'string' || !body.baseUrl) {
+    if (!response.ok || typeof body.apiKey !== 'string' || !body.apiKey || typeof body.baseUrl !== 'string' || !body.baseUrl || typeof body.licensePublicKey !== 'string' || !body.licensePublicKey) {
       throw new Error(response.status === 404 ? 'This license is not activated yet. Contact support.' : 'License verification failed. Check the license and try again.');
     }
     resolved = body;
@@ -280,6 +290,7 @@ async function runInstall(opts = {}) {
     apiKey: resolved.apiKey,
     license: opts.license,
     licenseServerUrl,
+    licensePublicKey: resolved.licensePublicKey,
   });
   if (envResult) console.log(`✔ Saved server-side app credentials to ${envResult.rel}`);
   console.log('');

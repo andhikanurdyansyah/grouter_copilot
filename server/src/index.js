@@ -6,6 +6,7 @@
 
 import { loadEnv } from './loadEnv.js';
 import { loadPersistedKeys } from './loadKeys.js';
+import { evaluateProductionReadiness, formatReadinessReport } from './readiness.js';
 
 loadEnv(); // MUST run before importing server.js / auth.js (dash reads BETTER_AUTH_API_KEY at init)
 const keys = loadPersistedKeys();
@@ -20,6 +21,14 @@ const { server } = createCopilotServer({
   publicKeyPem: keys.publicKeyPem,
   ...(process.env.DATA_FILE ? { dataFile: process.env.DATA_FILE } : {}),
 });
+
+// Advisory readiness report: logs which go-live gates are open. Hard failures
+// (no admin token / no persisted keypair in production) already refuse to boot
+// inside createCopilotServer; this surfaces the remaining advisory items.
+console.log(formatReadinessReport(evaluateProductionReadiness({
+  licenseKeysPersisted: keys.persisted,
+  paymentMode: process.env.KLIKQRIS_MODE || 'sandbox',
+})));
 
 server.listen(port, () => {
   console.log(`gRouter Copilot license server listening on http://localhost:${port}`);

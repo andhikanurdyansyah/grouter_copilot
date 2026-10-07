@@ -19,7 +19,7 @@
     "templates"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "NODE_ENV=test node --test"
   },
   "keywords": [
     "grouter",

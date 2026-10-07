@@ -31,6 +31,51 @@ import {
 } from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
+function normalizeHeartbeatBaseUrl(value) {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fixed-window in-memory rate limiter for unauthenticated license-exchange
+ * surfaces (/api/resolve, /api/heartbeat, KlikQRIS webhook). Zero-dependency:
+ * a plain Map with periodic prune. Generous limits — real plugins heartbeat
+ * rarely; the intent is to blunt credential-stuffing/flood, not to throttle
+ * legitimate traffic.
+ */
+const RATE_LIMITS = new Map([
+  ['/api/resolve', { windowMs: 60_000, max: 30 }],
+  ['/api/heartbeat', { windowMs: 60_000, max: 60 }],
+  ['/api/payment/klikqris/webhook', { windowMs: 60_000, max: 60 }],
+]);
+const rateBuckets = new Map();
+let lastRatePrune = Date.now();
+
+function isRateLimited(ip, pathname) {
+  const rule = RATE_LIMITS.get(pathname);
+  if (!rule) return false;
+  const now = Date.now();
+  if (now - lastRatePrune > 300_000) {
+    for (const [k, v] of rateBuckets) {
+      if (now - v.windowStart > rule.windowMs * 10) rateBuckets.delete(k);
+    }
+    lastRatePrune = now;
+  }
+  const key = `${pathname}|${ip}`;
+  const bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.windowStart >= rule.windowMs) {
+    rateBuckets.set(key, { windowStart: now, count: 1 });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > rule.max;
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const authHandler = toNodeHandler(auth.handler);
 
@@ -40,18 +85,34 @@ export function createCopilotServer({
   privateKeyPem = null,
   publicKeyPem = null,
   adminToken = process.env.ADMIN_TOKEN || null,
+  allowUnauthenticatedAdmin = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development',
   checkUsageUrl = process.env.GROUTER_CHECK_USAGE_URL || undefined,
   fetch = globalThis.fetch,
+  requirePersistedLicenseKeys = process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development',
 } = {}) {
+  const devMode = allowUnauthenticatedAdmin || !requirePersistedLicenseKeys;
   // Generate a keypair if not provided (ephemeral for local dev; production must persist).
   let keys = { privateKeyPem, publicKeyPem };
   if (!keys.privateKeyPem || !keys.publicKeyPem) {
+    if (requirePersistedLicenseKeys) {
+      // Production startup gate: an ephemeral keypair silently invalidates every
+      // issued license on restart, so without persisted material we refuse to
+      // boot instead of issuing licenses that die with the process.
+      throw new Error(
+        'License keypair is not persisted. Set LICENSE_PRIVATE_KEY_PEM/LICENSE_PUBLIC_KEY_PEM '
+        + '(or place server/data/keys/license-{private,public}.pem), or run with NODE_ENV=development/test for ephemeral keys.',
+      );
+    }
     keys = generateKeyPair();
   }
 
   const store = new JsonStore(dataFile);
   const effSettings = resolveSettings(store.getSettings());
-  const service = new LicenseService({ store, privateKeyPem: keys.privateKeyPem });
+  const service = new LicenseService({
+    store,
+    privateKeyPem: keys.privateKeyPem,
+    audience: effSettings.license.audience,
+  });
   // Settings SSOT (D-020): the usage URL/TTL and the KlikQRIS mode/base URL are
   // read from the resolved settings (defaults <- env seeds <- store), with the
   // explicit constructor args (used by tests) winning over everything else.
@@ -62,6 +123,8 @@ export function createCopilotServer({
   });
   const klikqris = new KlikQris({
     fetchImpl: fetch,
+    apiKey: effSettings.payment.apiKey,
+    merchantId: effSettings.payment.merchantId,
     mode: effSettings.payment.mode,
     baseUrl: effSettings.payment.klikqrisBaseUrl || effSettings.payment.baseUrl,
   });
@@ -71,6 +134,19 @@ export function createCopilotServer({
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
     const route = `${req.method} ${url.pathname}`;
+
+    // Security headers on every response (small static set; CSP stays permissive
+    // because the dashboards use inline scripts).
+    res.setHeader('x-content-type-options', 'nosniff');
+    res.setHeader('x-frame-options', 'DENY');
+    res.setHeader('referrer-policy', 'no-referrer');
+    res.setHeader('x-permitted-cross-domain-policies', 'none');
+
+    // In-memory fixed-window rate limit (zero-dependency) for unauthenticated
+    // license-exchange surfaces. Per-IP, generous enough for real plugins.
+    if (isRateLimited(req.socket?.remoteAddress ?? 'unknown', url.pathname)) {
+      return sendJson(res, 429, { error: 'too many requests' });
+    }
 
     // Better Auth: hand off all /api/auth/* routes.
     if (url.pathname.startsWith('/api/auth')) {
@@ -139,19 +215,20 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && url.pathname === '/api/admin/stats') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return sendJson(res, 200, service.stats());
     }
 
     if (req.method === 'GET' && url.pathname === '/api/admin/licenses') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const list = service.list().map(sanitizeLicense);
       return sendJson(res, 200, { licenses: list });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/admin/licenses') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         const { record, token } = service.issue({
           customer: body.customer,
           accountId: body.accountId ?? null,
@@ -165,9 +242,10 @@ export function createCopilotServer({
 
     // Bind a gRouter api key to a license (admin).
     if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/bind$/.test(url.pathname)) {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const id = url.pathname.split('/')[4];
       return readBody(req).then((body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         const bound = service.bindApiKey(id, body.grouterApiKey);
         if (!bound) return sendJson(res, 404, { error: 'not found' });
         return sendJson(res, 200, { license: sanitizeLicense(bound), bound: true });
@@ -179,6 +257,10 @@ export function createCopilotServer({
     // exposed to a browser. In production this is called by the CLI/installer.
     if (req.method === 'POST' && url.pathname === '/api/resolve') {
       return readBody(req).then((body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
+        if (typeof body.token !== 'string' || !body.token) {
+          return sendJson(res, 400, { error: 'token is required' });
+        }
         const result = service.validate(body.token, keys.publicKeyPem);
         if (result.status !== 'valid') {
           return sendJson(res, 403, { error: result.error ?? 'invalid license' });
@@ -192,12 +274,16 @@ export function createCopilotServer({
           return sendJson(res, 404, { error: 'no api key bound to this license' });
         }
         const eff = resolveSettings(store.getSettings());
-        return sendJson(res, 200, { apiKey, baseUrl: body.baseUrl ?? eff.provider.baseUrl });
+        return sendJson(res, 200, {
+          apiKey,
+          baseUrl: eff.provider.baseUrl,
+          licensePublicKey: keys.publicKeyPem,
+        });
       });
     }
 
     if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/revoke$/.test(url.pathname)) {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const id = url.pathname.split('/')[4];
       const revoked = service.revoke(id);
       if (!revoked) return sendJson(res, 404, { error: 'not found' });
@@ -206,6 +292,7 @@ export function createCopilotServer({
 
     if (req.method === 'POST' && url.pathname === '/api/heartbeat') {
       return readBody(req).then((body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         // Validate the license offline (we have the public key) before recording.
         const result = service.validate(body.token, keys.publicKeyPem);
         if (result.status !== 'valid') {
@@ -219,7 +306,7 @@ export function createCopilotServer({
         store.recordHeartbeat({
           licenseId: result.payload.lic,
           installId: body.installId ?? 'unknown',
-          baseUrl: body.baseUrl ?? null,
+          baseUrl: normalizeHeartbeatBaseUrl(body.baseUrl),
         });
         return sendJson(res, 200, { ok: true });
       });
@@ -228,7 +315,7 @@ export function createCopilotServer({
     // Usage endpoint (admin): fetch gRouter /check-usage for each license with a
     // bound api key. Read-only consumption of gRouter.
     if (req.method === 'GET' && url.pathname === '/api/admin/usage') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return (async () => {
         const licenses = service.list();
         const results = [];
@@ -275,15 +362,16 @@ export function createCopilotServer({
 
     // Admin: read the effective settings (secrets masked, never raw).
     if (req.method === 'GET' && url.pathname === '/api/admin/settings') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const eff = resolveSettings(store.getSettings());
       return sendJson(res, 200, { settings: maskSettings(eff) });
     }
 
     // Admin: patch settings (validated; masked/empty secrets are kept as-is).
     if (req.method === 'PATCH' && url.pathname === '/api/admin/settings') {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         try {
           const clean = stripMaskedSecrets(body);
           const patch = validateSettings(clean);
@@ -332,7 +420,7 @@ export function createCopilotServer({
 
     // Admin: manually settle an order (ops/testing; same verified path as webhook).
     if (req.method === 'POST' && /^\/api\/admin\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
-      if (!requireAdmin(req, adminToken)) return sendJson(res, 401, { error: 'unauthorized' });
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const orderId = url.pathname.split('/')[4];
       return payment.settlePaid(orderId).then(({ order, license }) => {
         if (!order) return sendJson(res, 404, { error: 'order not found' });
@@ -352,6 +440,7 @@ export function createCopilotServer({
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
         const body = await readBody(req);
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         if (body.amount !== undefined) {
           return sendJson(res, 400, { error: 'amount is resolved server-side; send packageKey only' });
         }
@@ -387,6 +476,7 @@ export function createCopilotServer({
     // settling, so a forged {status:"PAID"} request cannot issue a license.
     if (req.method === 'POST' && url.pathname === '/api/payment/klikqris/webhook') {
       return readBody(req).then(async (body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         const orderId = body?.order_id ?? body?.data?.order_id ?? null;
         const claimed = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
         if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
@@ -455,21 +545,39 @@ function sanitizeOrder(o) {
   };
 }
 
-function requireAdmin(req, adminToken) {
-  if (!adminToken) return true; // dev: no auth
+function requireAdmin(req, adminToken, allowUnauthenticatedAdmin = false) {
+  if (!adminToken) {
+    // Fail closed: without a configured token, admin access is allowed ONLY in
+    // an explicitly declared dev/test environment (NODE_ENV=test|development).
+    // An unset NODE_ENV (the default) is treated as production.
+    return allowUnauthenticatedAdmin;
+  }
   const auth = req.headers.authorization ?? '';
   return auth === `Bearer ${adminToken}`;
 }
 
-function readBody(req) {
+const MAX_BODY_BYTES = 64 * 1024;
+
+function readBody(req, { maxBytes = MAX_BODY_BYTES } = {}) {
   return new Promise((resolve) => {
     let data = '';
-    req.on('data', (c) => (data += c));
+    let overflow = false;
+    req.on('data', (c) => {
+      data += c;
+      if (Buffer.byteLength(data, 'utf8') > maxBytes) {
+        // Keep draining but remember the overflow; the route rejects below.
+        overflow = true;
+      }
+    });
     req.on('end', () => {
+      if (overflow) {
+        resolve({ __error: 'payload_too_large' });
+        return;
+      }
       try {
         resolve(data ? JSON.parse(data) : {});
       } catch {
-        resolve({});
+        resolve({ __error: 'invalid_json' });
       }
     });
   });

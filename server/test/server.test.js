@@ -14,7 +14,10 @@ process.env.KLIKQRIS_MERCHANT_ID ||= 'test-merchant';
 function startServer() {
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-server-'));
   const dataFile = path.join(dir, 'store.json');
-  const { server, service } = createCopilotServer({ dataFile });
+  const { server, service } = createCopilotServer({
+    dataFile,
+    allowUnauthenticatedAdmin: true,
+  });
   return new Promise((resolve) => {
     server.listen(0, () => {
       const { port } = server.address();
@@ -63,6 +66,26 @@ test('heartbeat validates a real license and records an install', async () => {
 
     const stats = await req(baseUrl, 'GET', '/api/admin/stats');
     assert.equal(stats.json.totalInstalls, 1);
+  } finally {
+    server.close();
+  }
+});
+
+test('heartbeat normalizes telemetry baseUrl and rejects non-http values', async () => {
+  const { baseUrl, server, service } = await startServer();
+  try {
+    const issued = await req(baseUrl, 'POST', '/api/admin/licenses', { customer: 'Telemetry', features: ['core'] });
+    const token = issued.json.token;
+    const valid = await req(baseUrl, 'POST', '/api/heartbeat', { token, installId: 'valid', baseUrl: 'https://api.example.test/path' });
+    assert.equal(valid.status, 200);
+    const invalid = await req(baseUrl, 'POST', '/api/heartbeat', { token, installId: 'invalid', baseUrl: 'javascript:alert(1)' });
+    assert.equal(invalid.status, 200);
+    const invalidRecord = service.store.data.heartbeats.at(-1);
+    assert.equal(invalidRecord.baseUrl, null);
+    // The valid half of the claim: the http(s) URL is kept as normalized href.
+    const validRecord = service.store.data.heartbeats.at(-2);
+    assert.equal(validRecord.baseUrl, 'https://api.example.test/path');
+    assert.equal(validRecord.installId, 'valid');
   } finally {
     server.close();
   }
@@ -239,6 +262,55 @@ test('webhook still twin-accepts legacy PAID claim', async () => {
     const second = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: 'ord_paid', status: 'PAID' });
     assert.equal(second.status, 200);
     assert.equal(service.list().length, before, 'idempotent: no duplicate license');
+  } finally {
+    server.close();
+  }
+});
+
+test('admin auth fails closed when token is absent unless explicitly enabled for local tests', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-admin-closed-'));
+  const { server } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), adminToken: null, allowUnauthenticatedAdmin: false });
+  await new Promise((resolve) => server.listen(0, resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/admin/stats`);
+    assert.equal(response.status, 401);
+  } finally {
+    server.close();
+  }
+});
+
+test('admin auth sweep: every admin route rejects missing and wrong tokens', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-sweep-'));
+  const { createCopilotServer: build } = await import('../src/server.js');
+  const { server } = build({ dataFile: path.join(dir, 'store.json'), adminToken: 'sweep-token-1' });
+  await new Promise((r) => server.listen(0, r));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const routes = [
+      ['GET', '/api/admin/stats', undefined],
+      ['GET', '/api/admin/licenses', undefined],
+      ['POST', '/api/admin/licenses', { customer: 'X' }],
+      ['POST', '/api/admin/licenses/lic_x/bind', {}],
+      ['POST', '/api/admin/licenses/lic_x/revoke', {}],
+      ['POST', '/api/admin/orders/ord_x/settle', {}],
+      ['GET', '/api/admin/settings', undefined],
+      ['PATCH', '/api/admin/settings', {}],
+      ['GET', '/api/admin/usage', undefined],
+    ];
+    const send = (method, p, body, token) => fetch(`${baseUrl}${p}`, {
+      method,
+      headers: {
+        ...(body ? { 'content-type': 'application/json' } : {}),
+        ...(token ? { authorization: token } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    for (const [method, p, body] of routes) {
+      assert.equal((await send(method, p, body)).status, 401, `${method} ${p} must 401 without a token`);
+      assert.equal((await send(method, p, body, 'Bearer wrong')).status, 401, `${method} ${p} must 401 with a wrong token`);
+    }
+    assert.equal((await send('GET', '/api/admin/stats', undefined, 'Bearer sweep-token-1')).status, 200);
+    assert.equal((await send('GET', '/api/admin/usage', undefined, 'Bearer sweep-token-1')).status, 200);
   } finally {
     server.close();
   }

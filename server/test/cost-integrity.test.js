@@ -43,6 +43,14 @@ async function startServer() {
   // Fake KlikQRIS upstream (same pattern as the webhook tests): createQris
   // succeeds and reports the requested amount; nothing leaves the machine.
   const fakeFetch = async (url, init) => {
+    const endpoint = String(url);
+    if (endpoint.includes('/qris/status/')) {
+      const orderId = decodeURIComponent(endpoint.split('/qris/status/')[1]);
+      return new Response(
+        JSON.stringify({ status: true, data: { order_id: orderId, amount: '12345.00', status: 'SUCCESS', paid_at: '2026-10-07 00:00:00' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
     const body = JSON.parse(init?.body || '{}');
     return new Response(
       JSON.stringify({
@@ -178,9 +186,9 @@ test('A1+A3: verified payment issues a license with the PLAN entitlement', async
     const orderId = order.json.order.id;
     assert.equal(order.json.order.amount, 12345);
 
-    // Simulate the (verified) upstream payment path: settle via the admin route,
-    // the same settlePaid() the webhook calls after re-verifying KlikQRIS.
-    const settle = await req(baseUrl, 'POST', `/api/admin/orders/${orderId}/settle`, {});
+    // Simulate the verified payment callback; test server upstream reports the
+    // matching order as paid, so webhook verification remains in the path.
+    const settle = await req(baseUrl, 'POST', '/api/payment/klikqris/webhook', { order_id: orderId, status: 'SUCCESS' });
     assert.equal(settle.status, 200, `settle failed: ${JSON.stringify(settle.json)}`);
 
     // The license must carry the plan entitlement (A3), not hardcoded values.

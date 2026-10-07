@@ -171,6 +171,58 @@ export async function copilotHandler(req, res) {
 }
 `;
 
+const HEALTH_APP_TEMPLATE = `// Host-local Copilot health (Next.js App Router).
+import { NextResponse } from "next/server";
+import { createCopilot, getCopilotHealth } from "@grouter/copilot";
+import path from "node:path";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const copilot = await createCopilot({ configPath: path.join(process.cwd(), "copilot.config.js") });
+    const health = getCopilotHealth(copilot, process.env.GROUTER_LICENSE);
+    return NextResponse.json(health, { status: health.status === "ok" ? 200 : 503, headers: { "cache-control": "no-store" } });
+  } catch {
+    return NextResponse.json({ status: "unavailable" }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+}
+`;
+
+const HEALTH_PAGES_TEMPLATE = `// Host-local Copilot health (Next.js Pages Router).
+import { createCopilot, getCopilotHealth } from "@grouter/copilot";
+import path from "node:path";
+
+export default async function handler(req, res) {
+  res.setHeader("cache-control", "no-store");
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const copilot = await createCopilot({ configPath: path.join(process.cwd(), "copilot.config.js") });
+    const health = getCopilotHealth(copilot, process.env.GROUTER_LICENSE);
+    return res.status(health.status === "ok" ? 200 : 503).json(health);
+  } catch {
+    return res.status(503).json({ status: "unavailable" });
+  }
+}
+`;
+
+const HEALTH_NODE_TEMPLATE = `// Host-local Copilot health. Mount this GET handler at /api/copilot/health.
+import { createCopilot, getCopilotHealth } from "@grouter/copilot";
+import path from "node:path";
+
+export async function copilotHealthHandler(req, res) {
+  res.setHeader("cache-control", "no-store");
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const copilot = await createCopilot({ configPath: path.join(process.cwd(), "copilot.config.js") });
+    const health = getCopilotHealth(copilot, process.env.GROUTER_LICENSE);
+    return res.status(health.status === "ok" ? 200 : 503).json(health);
+  } catch {
+    return res.status(503).json({ status: "unavailable" });
+  }
+}
+`;
+
 function runInit(opts = {}, { silent = false } = {}) {
   const framework = detectFramework();
   const results = [];
@@ -193,6 +245,13 @@ function runInit(opts = {}, { silent = false } = {}) {
   ensureDir(path.dirname(target));
   results.push(writeIfMissing(target, template));
 
+  const healthTarget = framework.name === 'next'
+    ? (framework.appRouter ? 'app/api/copilot/health/route.js' : path.join(path.dirname(target), 'health.js'))
+    : framework.name === 'express' ? 'routes/copilot-health.js' : 'src/copilot-health.js';
+  ensureDir(path.dirname(healthTarget));
+  results.push(writeIfMissing(healthTarget, framework.name === 'next'
+    ? (framework.appRouter ? HEALTH_APP_TEMPLATE : HEALTH_PAGES_TEMPLATE) : HEALTH_NODE_TEMPLATE));
+
   if (framework.name === 'next') {
     ensureDir('components');
     results.push(writeIfMissing('components/CopilotWidget.jsx', WIDGET_TEMPLATE));
@@ -211,6 +270,7 @@ function runInit(opts = {}, { silent = false } = {}) {
     console.log('  1. Verify GROUTER_LICENSE and GROUTER_LICENSE_SERVER in .env');
     console.log('  2. Mount <CopilotWidget /> from components/CopilotWidget.jsx in your app layout');
     console.log('  3. Edit skills/example.js to expose your data');
+    if (framework.name !== 'next') console.log('  4. Mount copilotHealthHandler at GET /api/copilot/health in your host server');
   }
 
   return results;

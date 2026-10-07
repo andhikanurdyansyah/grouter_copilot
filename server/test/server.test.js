@@ -216,7 +216,8 @@ test('webhook cannot forge a PAID: unverified order is ignored (no license)', as
     JSON.stringify({ status: true, data: { order_id: 'ord_forge', status: 'PENDING' } }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
-  const { server } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
+  const { server, store } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
+  store.addOrder({ id: 'ord_forge', accountId: 'acc_forge', packageKey: 'basic', amount: 1000, status: 'PENDING', createdAt: Date.now() });
   await new Promise((r) => server.listen(0, r));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -234,7 +235,7 @@ test('webhook settles a verified SUCCESS (KlikQRIS uses SUCCESS, not PAID)', asy
   // Real KlikQRIS reports a completed payment as SUCCESS — accepting only PAID
   // would silently drop every real payment (no license issued).
   const fakeFetch = async () => new Response(
-    JSON.stringify({ status: true, data: { order_id: 'ord_ok', status: 'SUCCESS', paid_at: '2026-10-01 11:27:35' } }),
+    JSON.stringify({ status: true, data: { order_id: 'ord_ok', amount: '249000.00', status: 'SUCCESS', paid_at: '2026-10-01 11:27:35' } }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
   const { server, store } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });
@@ -255,7 +256,7 @@ test('webhook still twin-accepts legacy PAID claim', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-paid-'));
   // KlikQRIS is the source of truth: report the order PAID.
   const fakeFetch = async () => new Response(
-    JSON.stringify({ status: true, data: { order_id: 'ord_paid', status: 'PAID', paid_at: '2026-10-01 11:27:35' } }),
+    JSON.stringify({ status: true, data: { order_id: 'ord_paid', amount: '99000.00', status: 'PAID', paid_at: '2026-10-01 11:27:35' } }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
   const { server, service, store } = createCopilotServer({ dataFile: path.join(dir, 'store.json'), fetch: fakeFetch });

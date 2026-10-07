@@ -14,6 +14,7 @@ export const CHAT_PROTOCOL_VERSION = '1.0.0';
 export const SKILL_CONTRACT_VERSION = '1.0.0';
 export const ADAPTER_CONTRACT_VERSION = '1.0.0';
 export { LicenseGate, DEFAULT_PUBLIC_KEY, LICENSE_AUDIENCE } from './license/gate.js';
+export { getCopilotHealth } from './health.js';
 import { loadCopilotConfig } from './config.js';
 import { GrouterAdapter } from './adapter/grouter.js';
 import { SkillRegistry } from './skills/registry.js';

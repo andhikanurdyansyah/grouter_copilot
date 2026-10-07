@@ -25,6 +25,16 @@ test('widget launches bottom-right, opens first-use setup on demand, persists co
   assert.doesNotMatch(widget, /GROUTER_API_KEY|apiKey|license key/i);
 });
 
+test('first-use setup requires a fresh complete host-health response before persisting', () => {
+  assert.match(widget, /healthEndpoint = '\/api\/copilot\/health'/);
+  assert.match(widget, /responseOk && data\?\.status === 'ok'/);
+  assert.match(widget, /checks\?\.license === true && checks\?\.skills === true && checks\?\.provider === true/);
+  assert.match(widget, /await fetch\(healthEndpoint/);
+  assert.match(widget, /if \(!isReadyHealth\(data, res\.ok\)\) \{ setHealth\(\{ status: 'unavailable'/);
+  assert.match(widget, /healthCheckRef\.current \|\| !event\.currentTarget\.parentElement\.querySelector\('input'\)\.checked/);
+  assert.match(widget, /useState\(!firstUseSetup\)/);
+});
+
 test('customer install guidance remains consistent with the current license-only runtime contract', () => {
   assert.match(success, /license/i);
   assert.match(landing, /Embed AI assistance/);

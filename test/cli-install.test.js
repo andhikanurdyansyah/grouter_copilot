@@ -90,3 +90,27 @@ test('init generates a Pages Router handler in the detected router without overw
     assert.match(readFileSync(path.join(dir, 'components/CopilotWidget.jsx'), 'utf8'), /CopilotChat firstUseSetup/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+for (const { name, dependencies, setup, target } of [
+  { name: 'Next App Router', dependencies: { next: '14.0.0' }, setup: 'app', target: 'app/api/copilot/health/route.js' },
+  { name: 'Next Pages Router', dependencies: { next: '14.0.0' }, setup: 'pages', target: 'pages/api/copilot/health.js' },
+  { name: 'Express', dependencies: { express: '4.0.0' }, target: 'routes/copilot-health.js' },
+]) {
+  test(`init creates host-local health route for ${name} without replacing existing files`, () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'copilot-cli-health-'));
+    try {
+      writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies }));
+      if (setup) mkdirSync(path.join(dir, setup));
+      const run = () => spawnSync(process.execPath, [path.join(root, 'bin/grouter-copilot.js'), 'init'], { cwd: dir, encoding: 'utf8' });
+      assert.equal(run().status, 0);
+      const source = readFileSync(path.join(dir, target), 'utf8');
+      assert.match(source, /getCopilotHealth/);
+      assert.match(source, /GROUTER_LICENSE/);
+      assert.match(source, /503/);
+      assert.doesNotMatch(source, /\/api\/health/);
+      writeFileSync(path.join(dir, target), 'user route');
+      assert.equal(run().status, 0);
+      assert.equal(readFileSync(path.join(dir, target), 'utf8'), 'user route');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+}

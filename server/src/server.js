@@ -31,6 +31,13 @@ import {
 } from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
+function amountMatchesOrder(upstreamAmount, localAmount) {
+  if (upstreamAmount === null || upstreamAmount === undefined || upstreamAmount === ''
+    || localAmount === null || localAmount === undefined) return false;
+  const parsed = Number(upstreamAmount);
+  return Number.isFinite(parsed) && parsed === Number(localAmount);
+}
+
 function normalizeHeartbeatBaseUrl(value) {
   if (typeof value !== 'string' || value.length > 2048) return null;
   try {
@@ -433,14 +440,25 @@ export function createCopilotServer({
       })();
     }
 
-    // Admin: manually settle an order (ops/testing; same verified path as webhook).
+    // Admin reconciliation uses the same upstream verification as the webhook.
     if (req.method === 'POST' && /^\/api\/admin\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const orderId = url.pathname.split('/')[4];
-      return payment.settlePaid(orderId).then(({ order, license }) => {
-        if (!order) return sendJson(res, 404, { error: 'order not found' });
+      return (async () => {
+        if (!payment.store.getOrder(orderId)) return sendJson(res, 404, { error: 'order not found' });
+        let status;
+        try {
+          status = await klikqris.checkStatus(orderId);
+        } catch {
+          return sendJson(res, 502, { error: 'unable to verify payment status' });
+        }
+        if (status.orderId !== orderId || !isPaidStatus(status.status)
+          || !amountMatchesOrder(status.raw?.amount, payment.store.getOrder(orderId)?.amount)) {
+          return sendJson(res, 409, { error: 'payment is not verified for this order' });
+        }
+        const { license } = await payment.settlePaid(orderId);
         return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
-      });
+      })();
     }
 
     // Create a payment order (customer checkout). Returns KlikQRIS QR.
@@ -496,6 +514,11 @@ export function createCopilotServer({
         const claimed = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
         if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
 
+        // Resolve the local order first. Never let an upstream response for a
+        // different transaction authorize settlement of the requested order.
+        const localOrder = payment.store.getOrder(orderId);
+        if (!localOrder) return sendJson(res, 404, { error: 'order not found' });
+
         // Ignore non-paid claims outright (accept SUCCESS/PAID/SETTLEMENT).
         if (!isPaidStatus(claimed)) {
           return sendJson(res, 200, { ok: true, ignored: claimed || 'unknown' });
@@ -505,6 +528,12 @@ export function createCopilotServer({
         let verifiedStatus = null;
         try {
           const status = await klikqris.checkStatus(orderId);
+          if (status.orderId !== orderId) {
+            return sendJson(res, 200, { ok: true, ignored: 'unverified:order_id_mismatch' });
+          }
+          if (!amountMatchesOrder(status.raw?.amount, localOrder.amount)) {
+            return sendJson(res, 200, { ok: true, ignored: 'unverified:amount_mismatch' });
+          }
           verifiedStatus = String(status.status || '').toUpperCase();
         } catch (err) {
           return sendJson(res, 502, { error: 'unable to verify payment status' });

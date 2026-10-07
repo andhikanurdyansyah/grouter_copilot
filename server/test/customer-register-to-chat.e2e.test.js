@@ -97,6 +97,7 @@ function makeFakeKlikqris() {
           status: true,
           data: {
             order_id: orderId,
+            amount: '99000.00',
             status: upstreamStatus,
             paid_at: upstreamStatus === 'PENDING' ? null : '2026-10-07 00:00:00',
           },

@@ -13,6 +13,12 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+function isReadyHealth(data, responseOk) {
+  const checks = data?.checks;
+  return responseOk && data?.status === 'ok' &&
+    checks?.license === true && checks?.skills === true && checks?.provider === true;
+}
+
 export function CopilotChat({
   endpoint = '/api/copilot/chat',
   userId,
@@ -20,7 +26,7 @@ export function CopilotChat({
   title = 'Copilot',
   welcomeMessage = '',
   firstUseSetup = false,
-  healthEndpoint = '/api/health',
+  healthEndpoint = '/api/copilot/health',
   theme = {},
 }) {
   const [messages, setMessages] = useState([]);
@@ -29,12 +35,12 @@ export function CopilotChat({
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [open, setOpen] = useState(false);
-  const [setupDone, setSetupDone] = useState(() => {
-    if (!firstUseSetup) return true;
-    try { return typeof window !== 'undefined' && window.localStorage.getItem('grouter-copilot-setup-done') === 'true'; } catch { return false; }
-  });
+  // Stored completion is trusted only after a fresh host-health check.
+  const [setupDone, setSetupDone] = useState(!firstUseSetup);
   const [setupOpen, setSetupOpen] = useState(false);
   const [health, setHealth] = useState(null);
+  const [checkingHealth, setCheckingHealth] = useState(false);
+  const healthCheckRef = useRef(false);
   const [position, setPosition] = useState(null);
   const dragRef = useRef(null);
   const bottomRef = useRef(null);
@@ -57,8 +63,13 @@ export function CopilotChat({
     let cancelled = false;
     fetch(healthEndpoint).then(async (res) => {
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Health check failed');
-      if (!cancelled) setHealth(data);
+      if (!cancelled) {
+        const ready = isReadyHealth(data, res.ok);
+        setHealth(ready ? data : { status: 'unavailable', checks: data?.checks });
+        if (ready) {
+          try { if (window.localStorage.getItem('grouter-copilot-setup-done') === 'true') setSetupDone(true); } catch { /* Storage may be disabled. */ }
+        }
+      }
     }).catch(() => { if (!cancelled) setHealth({ status: 'unavailable' }); });
     return () => { cancelled = true; };
   }, [firstUseSetup, setupDone, healthEndpoint]);
@@ -141,9 +152,18 @@ export function CopilotChat({
               <p>Pastikan license aktif, route chat sudah dipasang di server aplikasi, dan minimal satu skill baca-saja sudah terdaftar.</p>
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}><input type="checkbox" required /> <span>Saya sudah menambahkan license ke environment server, bukan browser.</span></label>
               <p>Welcome message: {welcomeMessage || 'Halo! Apa yang ingin Anda cari?'}</p>
-              {health && <p role="status">Status server: {health.status === 'ok' ? 'siap' : 'belum tersedia'}</p>}
-              <button type="button" onClick={(event) => {
-                if (!event.currentTarget.parentElement.querySelector('input').checked) return;
+              {health && <p role="status">Status server: {isReadyHealth(health, true) ? 'siap' : 'belum tersedia'}</p>}
+              <button type="button" disabled={checkingHealth} onClick={async (event) => {
+                if (healthCheckRef.current || !event.currentTarget.parentElement.querySelector('input').checked) return;
+                healthCheckRef.current = true;
+                setCheckingHealth(true);
+                try {
+                  const res = await fetch(healthEndpoint, { cache: 'no-store' });
+                  const data = await res.json();
+                  if (!isReadyHealth(data, res.ok)) { setHealth({ status: 'unavailable', checks: data?.checks }); return; }
+                  setHealth(data);
+                } catch { setHealth({ status: 'unavailable' }); return; }
+                finally { healthCheckRef.current = false; setCheckingHealth(false); }
                 try { window.localStorage.setItem('grouter-copilot-setup-done', 'true'); } catch { /* Storage may be disabled. */ }
                 setSetupDone(true); setSetupOpen(false);
               }} style={{ marginTop: 16 }}>Selesai</button>

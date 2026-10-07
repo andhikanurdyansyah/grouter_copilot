@@ -50,7 +50,7 @@ test('buildContext fails closed when maxContextBytes cannot fit the envelope', (
   }), /maxContextBytes is too small/);
 });
 test('redact strips known secret keys and sk- tokens', () => {
-  const out = redact({ apiKey: '«reda...…»', password: 'hunter2', name: 'bob' });
+  const out = redact({ apiKey: 'sk-abc123456789', password: 'hunter2', name: 'bob' });
   assert.equal(out.apiKey, '[REDACTED]');
   assert.equal(out.password, '[REDACTED]');
   assert.equal(out.name, 'bob');

@@ -10,11 +10,15 @@ A license must be activated (an existing gRouter provider key bound by an operat
 npx @grouter/copilot install --license <YOUR_COPILOT_LICENSE>
 ```
 
-The CLI sends the Copilot license to the configured license server over HTTPS, receives the server-resolved provider credential, stores it in the host app's server-side `.env`, and does not print it. Never expose `.env` values to browser code or commit `.env` to version control. The customer does not provide a gRouter API key.
+The CLI sends the Copilot license to the configured license server over HTTPS, receives the server-resolved provider credential plus the public license verifier key, stores both in the host app's server-side `.env`, and does not print them. The public verifier key is non-sensitive; the provider credential remains protected. Never expose `.env` values to browser code or commit `.env` to version control. The customer does not provide a gRouter API key.
 
 To target a non-default license server, pass `--license-server <URL>`. Default: `https://copilot.grouter.id`.
 
 If install reports the license is not activated, contact the operator/support; automatic provider-key provisioning is not implemented (D-016).
+
+### Re-install / renewal
+
+Re-running `install` with a new license adds the new values to the existing `.env` without removing other entries. If the runtime still reports a missing or invalid license after a renewal, check that `.env` contains exactly one current `GROUTER_LICENSE=` line — a stale copy from an earlier install takes precedence over the new one appended below it.
 
 ## Initialize only
 
@@ -24,9 +28,11 @@ After installation, edit the example skill to read only the application data you
 
 ## Development tests
 
+Production gates are enforced when `NODE_ENV` is unset (fail-closed admin auth, persisted-license-keypair requirement), so tests declare `NODE_ENV=test` explicitly:
+
 ```bash
-node --test
-cd server && node --test
+npm test                      # root plugin suite (sets NODE_ENV=test)
+cd server && npm test         # backend suite (sets NODE_ENV=test)
 ```
 
 Payment remains sandbox and the complete public npm install/customer chat path has not yet been certified as production-ready.

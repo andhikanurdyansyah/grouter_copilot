@@ -43,7 +43,7 @@ yang dipakai frontend:
 | `GET /api/orders/latest` | order terakhir akun + license yang terbit bersamanya |
 | `GET /api/orders/:id` | order milik akun saja (404 untuk akun lain) |
 | `POST /api/heartbeat` `{token,installId,baseUrl?}` | plugin; validasi offline signature + revocation; 403 invalid/revoked |
-| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{apiKey, baseUrl}` via TLS; key stays in server-side host app config, never license token/browser; 403 invalid/revoked; 404 without bound key |
+| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{apiKey, baseUrl, licensePublicKey}` via TLS; `baseUrl` is always resolved from server settings (client override ignored); `licensePublicKey` is public verifier material, while the provider key stays server-side host config and never enters the license token/browser; 403 invalid/revoked; 404 without bound key |
 
 ### Admin (`Authorization: Bearer`)
 

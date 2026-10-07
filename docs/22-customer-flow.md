@@ -6,8 +6,8 @@
 Landing → account → purchase from server plan catalogue → LICENSE KEY
 → run `npx @grouter/copilot install --license <LICENSE_KEY>` in a Node.js app
 → installer POSTs the license to the Copilot license server `/api/resolve`
-→ server verifies signature/revocation and returns the bound provider credential over TLS
-→ installer writes it to the host application's server-side `.env`
+→ server verifies signature/revocation and returns the bound provider credential plus the public verifier key over TLS
+→ installer writes the provider credential and verifier key to the host application's server-side `.env`
 → developer defines read-only skills and mounts the chat UI
 ```
 

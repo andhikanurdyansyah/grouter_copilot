@@ -140,6 +140,15 @@ export default async function handler(req, res) {
 }
 `;
 
+const WIDGET_TEMPLATE = `"use client";
+
+import { CopilotChat } from "@grouter/copilot/widget";
+
+export default function CopilotWidget() {
+  return <CopilotChat firstUseSetup />;
+}
+`;
+
 const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route (Express).
 import { createCopilot } from "@grouter/copilot";
 import path from "node:path";
@@ -184,6 +193,11 @@ function runInit(opts = {}, { silent = false } = {}) {
   ensureDir(path.dirname(target));
   results.push(writeIfMissing(target, template));
 
+  if (framework.name === 'next') {
+    ensureDir('components');
+    results.push(writeIfMissing('components/CopilotWidget.jsx', WIDGET_TEMPLATE));
+  }
+
   const envResult = writeEnv(opts);
   if (envResult) results.push(envResult);
 
@@ -195,7 +209,7 @@ function runInit(opts = {}, { silent = false } = {}) {
     console.log('');
     console.log('Next:');
     console.log('  1. Verify GROUTER_LICENSE and GROUTER_LICENSE_SERVER in .env');
-    console.log('  2. Mount <CopilotChat /> in your UI');
+    console.log('  2. Mount <CopilotWidget /> from components/CopilotWidget.jsx in your app layout');
     console.log('  3. Edit skills/example.js to expose your data');
   }
 
@@ -335,7 +349,7 @@ async function runInstall(opts = {}) {
   console.log('');
   console.log('Done. Provider credentials were resolved by the Copilot license server and were not printed.');
   console.log('✔ Detected framework and generated a server-side chat route');
-  console.log('Next: edit skills/example.js with explicitly approved read-only data, mount CopilotChat, and connect the generated route from your server.');
+  console.log('Next: edit skills/example.js with explicitly approved read-only data, mount CopilotWidget from components/CopilotWidget.jsx in your app layout, and connect the generated route from your server.');
 }
 
 main();

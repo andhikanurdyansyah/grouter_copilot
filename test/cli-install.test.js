@@ -87,5 +87,6 @@ test('init generates a Pages Router handler in the detected router without overw
     assert.equal(readFileSync(path.join(dir, 'src/pages/index.js'), 'utf8'), 'keep');
     assert.equal(existsSync(path.join(dir, 'app/api/copilot/chat/route.js')), false);
     assert.match(readFileSync(path.join(dir, 'src/pages/api/copilot/chat.js'), 'utf8'), /Next\.js Pages Router/);
+    assert.match(readFileSync(path.join(dir, 'components/CopilotWidget.jsx'), 'utf8'), /CopilotChat firstUseSetup/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

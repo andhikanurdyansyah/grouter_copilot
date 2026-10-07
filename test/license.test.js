@@ -71,6 +71,12 @@ test('LicenseGate.enforce throws when no public key compiled in', () => {
   assert.throws(() => gate.enforce('anything'), (e) => e instanceof CopilotError && e.code === 'NOT_CONFIGURED');
 });
 
+test('LicenseGate accepts an env-safe escaped PEM verifier key', () => {
+  const { publicKeyPem, privateKeyPem } = generateKeyPair();
+  const token = mintLicense({ privateKeyPem, payload: { aud: 'grouter-copilot', features: ['core'] } });
+  const gate = new LicenseGate({ publicKeyPem: publicKeyPem.replace(/\n/g, '\\n') });
+  assert.equal(gate.enforce(token).aud, 'grouter-copilot');
+});
 test('LicenseGate.enforce accepts a valid license', () => {
   const { publicKeyPem, privateKeyPem } = makePair();
   const token = mintLicense({ privateKeyPem, payload: { aud: 'grouter-copilot', features: ['core'] } });

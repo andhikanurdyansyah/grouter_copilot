@@ -111,3 +111,47 @@ test('runtime.streamChat blocks mutating skill', async () => {
   assert.ok(failed);
   assert.equal(failed.code, 'SCOPE_DENIED');
 });
+
+test('unknown adapter failure becomes INTERNAL_ERROR without internals', async () => {
+  const runtime = new CopilotRuntime({
+    config: normalizeConfig({ skills: [customersSkill] }),
+    adapter: { async complete() { throw new Error('connect ECONNREFUSED 127.0.0.1:5432'); } },
+  });
+  const out = await runtime.chat({ message: 'list customers', userId: 'u1' });
+  assert.equal(out.status, 'error');
+  assert.equal(out.code, 'INTERNAL_ERROR');
+  assert.equal(out.message, 'An unexpected error occurred.');
+  assert.doesNotMatch(JSON.stringify(out), /ECONNREFUSED/);
+});
+
+test('unknown stream failure yields a safe run.failed envelope', async () => {
+  // streamChat requires .complete() to exist only after skill resolution — a
+  // stream-only adapter is enough here because the failure happens inside stream().
+  const runtime = new CopilotRuntime({
+    config: normalizeConfig({ skills: [customersSkill] }),
+    adapter: { async *stream() { throw new Error('socket hang up'); } },
+  });
+  const events = [];
+  for await (const e of runtime.streamChat({ message: 'list customers', userId: 'u1' })) {
+    events.push(e);
+  }
+  const failed = events.find((e) => e.type === 'run.failed');
+  assert.ok(failed);
+  assert.equal(failed.code, 'INTERNAL_ERROR');
+  assert.doesNotMatch(JSON.stringify(events), /socket hang up/);
+});
+
+test('skill failure surfaces SKILL_FAILED without the underlying error text', async () => {
+  const broken = {
+    name: 'broken-skill',
+    description: 'A skill that fails',
+    parameters: { type: 'object', properties: {}, required: [] },
+    readOnly: true,
+    async run() { throw new Error('db down'); },
+  };
+  const runtime = makeRuntime([broken]);
+  const out = await runtime.chat({ message: 'broken skill', userId: 'u1' });
+  assert.equal(out.status, 'error');
+  assert.equal(out.code, 'SKILL_FAILED');
+  assert.doesNotMatch(JSON.stringify(out), /db down/);
+});

@@ -33,8 +33,9 @@ export class LicenseGate {
       // No public key compiled in — fail closed (can never run unlicensed).
       throw new CopilotError(ErrorCode.NOT_CONFIGURED, 'License verifier is not configured.', { status: 500 });
     }
+    const verifierKey = typeof this.publicKeyPem === 'string' ? this.publicKeyPem.replace(/\\n/g, '\n') : this.publicKeyPem;
     const result = validateLicense(token, {
-      publicKeyPem: this.publicKeyPem,
+      publicKeyPem: verifierKey,
       now: this.now,
       requiredAudience: this.requiredAudience,
     });

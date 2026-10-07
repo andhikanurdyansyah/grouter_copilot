@@ -15,8 +15,7 @@
   },
   "files": [
     "bin",
-    "src",
-    "templates"
+    "src"
   ],
   "scripts": {
     "test": "NODE_ENV=test node --test"

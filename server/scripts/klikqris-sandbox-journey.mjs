@@ -13,6 +13,15 @@ const keys = new Set(['version', 'mode', 'orderId', 'amount', 'plan', 'createdAt
 const boundaries = new Set(['dry_run', 'create_attempted', 'created', 'adopted', 'status_checked', 'simulator_unavailable', 'simulator_token_missing', 'simulator_login', 'simulator_form_invalid', 'simulator_signature_missing', 'simulator_timeout', 'simulator_failed', 'poll_timeout', 'upstream_terminal', 'upstream_paid', 'webhook_failed', 'verification_failed', 'complete', 'request_failed', 'invalid_upstream']);
 const orderPattern = /^ord_[a-zA-Z0-9_-]{1,100}$/;
 const artifactPlan = (p) => ({ key: p.key, name: p.name, features: p.features, quota: p.quota, expiresInDays: p.expiresInDays });
+const safeErrorCode = (err) => {
+  const text = String(err?.message || err || '').toUpperCase();
+  if (/SIGNUP|AUTH|BETTER.AUTH|SENTINEL|DASH|ORIGIN|CSRF|COOKIE/.test(text)) return 'AUTH_SIGNUP_FAILED';
+  if (/SQLITE|DATABASE|SCHEMA|SQL/.test(text)) return 'AUTH_DATABASE_FAILED';
+  if (/TRANSACTION.*NOT.*FOUND|ORDER.*NOT.*FOUND|NOT_FOUND/.test(text)) return 'SANDBOX_TRANSACTION_NOT_FOUND';
+  if (/TIMEOUT|FETCH|SOCKET|NETWORK|TLS|DNS/.test(text)) return 'EXTERNAL_NETWORK_FAILED';
+  if (/SIMULATOR/.test(text)) return 'SIMULATOR_FAILED';
+  return 'JOURNEY_FAILED';
+};
 
 export function parseArgs(argv) {
   const out = { dryRun: false, amount: 10000, requestTimeoutMs: 15000, pollTimeoutMs: 60000, pollIntervalMs: 3000, simulate: true };
@@ -264,7 +273,8 @@ export async function run(argv = process.argv.slice(2)) {
     const cookie = signup.cookies.map((x) => x.split(';', 1)[0]).join('; ');
     if (signup.code !== 200 || !cookie) {
       const reason = signup.body?.code || signup.body?.error || signup.body?.message;
-      throw new Error(`SIGNUP_FAILED${reason ? `_${String(reason).replace(/[^A-Z0-9_-]/gi, '').slice(0, 40)}` : ''}`);
+      const safe = String(reason || 'UNKNOWN').toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 40);
+      throw new Error(`AUTH_SIGNUP_FAILED_${signup.code}_${safe}`);
     }
     const me = await request('GET', '/api/me', null, cookie);
     if (me.code !== 200 || !me.body.account?.id || me.body.licenses?.length !== 0) throw new Error(`SIGNUP_FAILED_ME_${me.code}`);
@@ -309,7 +319,7 @@ export async function run(argv = process.argv.slice(2)) {
   } catch (err) {
     data.boundary = err.message === 'INVALID_UPSTREAM' ? 'invalid_upstream' : 'request_failed';
     if (artifactOwned && data.orderId) updateArtifact(opts.artifact, data);
-    return { success: false, boundary: data.boundary, mode: 'sandbox', orderId: data.orderId, status: data.status, code: /^[A-Z_]+$/.test(err.message) ? err.message : 'JOURNEY_FAILED' };
+    return { success: false, boundary: data.boundary, mode: 'sandbox', orderId: data.orderId, status: data.status, code: safeErrorCode(err), diagnostic: String(err?.message || err?.code || err?.name || 'UNKNOWN_ERROR').toUpperCase().replace(/[^A-Z0-9_]+/g, '_').slice(0, 80) };
   } finally {
     if (server?.listening) await new Promise((resolve) => server.close(resolve));
     rmSync(dir, { recursive: true, force: true });
@@ -318,7 +328,7 @@ export async function run(argv = process.argv.slice(2)) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   run().then((result) => { console.log(JSON.stringify(result)); if (!result.success) process.exitCode = 1; }, (err) => {
-    console.log(JSON.stringify({ success: false, mode: 'sandbox', code: /^[A-Z_]+$/.test(err.message) ? err.message : 'JOURNEY_FAILED' }));
+    console.log(JSON.stringify({ success: false, mode: 'sandbox', code: safeErrorCode(err) }));
     process.exitCode = 1;
   });
 }

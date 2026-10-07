@@ -35,6 +35,19 @@ async function req(baseUrl, method, p, body) {
   return { status: res.status, json: await res.json() };
 }
 
+test('public health contract reports prerequisites without secrets', async () => {
+  const { baseUrl, server } = await startServer();
+  try {
+    const res = await req(baseUrl, 'GET', '/api/health');
+    assert.equal(res.status, 200);
+    assert.equal(res.json.status, 'ok');
+    assert.equal(res.json.contractVersion, 1);
+    assert.equal(res.json.checks.licenseService, true);
+    const raw = JSON.stringify(res.json);
+    assert.doesNotMatch(raw, /apiKey|token|secret|grouterApiKey/i);
+  } finally { server.close(); }
+});
+
 test('issue → list → stats reflects the license', async () => {
   const { baseUrl, server } = await startServer();
   try {

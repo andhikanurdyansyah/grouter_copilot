@@ -332,6 +332,21 @@ export function createCopilotServer({
       })();
     }
 
+    // Public health contract for host onboarding. It reports capability state only;
+    // never return provider credentials or license tokens from this endpoint.
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      const eff = resolveSettings(store.getSettings());
+      return sendJson(res, 200, {
+        status: 'ok',
+        contractVersion: 1,
+        checks: {
+          licenseService: true,
+          providerConfigured: Boolean(eff.provider?.baseUrl),
+          paymentConfigured: Boolean(klikqris.configured),
+        },
+      });
+    }
+
     // Public config: which auth providers are enabled (for the frontend UI).
     if (req.method === 'GET' && url.pathname === '/api/config') {
       const googleEnabled = Boolean(

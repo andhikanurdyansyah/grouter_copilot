@@ -20,6 +20,7 @@ export function CopilotChat({
   title = 'Copilot',
   welcomeMessage = '',
   firstUseSetup = false,
+  healthEndpoint = '/api/health',
   theme = {},
 }) {
   const [messages, setMessages] = useState([]);
@@ -33,6 +34,7 @@ export function CopilotChat({
     try { return typeof window !== 'undefined' && window.localStorage.getItem('grouter-copilot-setup-done') === 'true'; } catch { return false; }
   });
   const [setupOpen, setSetupOpen] = useState(false);
+  const [health, setHealth] = useState(null);
   const [position, setPosition] = useState(null);
   const dragRef = useRef(null);
   const bottomRef = useRef(null);
@@ -49,6 +51,17 @@ export function CopilotChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!firstUseSetup || setupDone) return undefined;
+    let cancelled = false;
+    fetch(healthEndpoint).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Health check failed');
+      if (!cancelled) setHealth(data);
+    }).catch(() => { if (!cancelled) setHealth({ status: 'unavailable' }); });
+    return () => { cancelled = true; };
+  }, [firstUseSetup, setupDone, healthEndpoint]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -128,6 +141,7 @@ export function CopilotChat({
               <p>Pastikan license aktif, route chat sudah dipasang di server aplikasi, dan minimal satu skill baca-saja sudah terdaftar.</p>
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}><input type="checkbox" required /> <span>Saya sudah menambahkan license ke environment server, bukan browser.</span></label>
               <p>Welcome message: {welcomeMessage || 'Halo! Apa yang ingin Anda cari?'}</p>
+              {health && <p role="status">Status server: {health.status === 'ok' ? 'siap' : 'belum tersedia'}</p>}
               <button type="button" onClick={(event) => {
                 if (!event.currentTarget.parentElement.querySelector('input').checked) return;
                 try { window.localStorage.setItem('grouter-copilot-setup-done', 'true'); } catch { /* Storage may be disabled. */ }

@@ -31,6 +31,6 @@ D-016 defers automatic gRouter key provisioning. Therefore a paid license does n
 - Published npm package install via `npx` from the public registry.
 - Customer purchase → operator binding → installer against a real issued license.
 - Draggable launcher, configurable welcome message, and first-use setup modal.
-- Full host-app install → configured skill → successful live chat.
+- Full host-app install → configured skill → successful live chat against a real supplier.
 
-Treat these as pending; do not market the product as production-ready until a repeatable isolated E2E passes. Payment remains KlikQRIS sandbox per the current handoff.
+The isolated register → purchase → verified fake settlement → operator binding → CLI install → FakeSupplier chat path is covered by `server/test/customer-register-to-chat.e2e.test.js`. Real payment, real supplier traffic, and public-registry installation remain pending. Do not market the product as production-ready while KlikQRIS remains sandbox.

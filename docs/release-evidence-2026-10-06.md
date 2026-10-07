@@ -12,6 +12,7 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 - Context redaction: `gRouter-` provider keys (digit-bearing) scrubbed from skill data before the model sees them; product name `gRouter-copilot` unaffected.
 - streamChat license gate: `run.failed`/`SCOPE_DENIED` with zero prior events when unlicensed; complete stream when licensed.
 - CLI install: failure path exits 1 with no scaffold; reinstall over a public-key-only `.env` still writes `GROUTER_LICENSE` (exact-key matching).
+- Local package tarball verification: `npm pack --dry-run` lists 14 self-contained runtime files; extracted package imports successfully and CLI `init` scaffolds a clean Node app without installing dependencies.
 - Isolated customer E2E: `server/test/customer-register-to-chat.e2e.test.js` — 1 passed, 0 failed; register → server-priced checkout → upstream-verified settlement → operator binding → real CLI HTTP install → heartbeat → FakeSupplier chat, all without live payment/supplier calls.
 - Changed JavaScript syntax checks — passed.
 - `git diff --check` — pass.
@@ -51,8 +52,8 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 | npm dependency audit | not established | blocked | `ENOLOCK`, no lockfile | release gate pending |
 
 
-- Runtime PM2 restart on the current host is verified; production deployment/cutover and live-domain smoke remain pending.
-- Live domain smoke against `copilot.grouter.id` is pending; no production supplier/payment call was made.
+- Runtime PM2 restart on the current host is verified; production deployment/cutover remains pending.
+- Live-domain smoke against `copilot.grouter.id` (root, `/copilot`, and `/api/plans`) returned HTTP 200; no production supplier/payment call was made.
 - Public npm package publish/clean external install remains unverified.
 - Isolated customer purchase→install→host chat E2E is now proven by `server/test/customer-register-to-chat.e2e.test.js` using fake KlikQRIS/FakeSupplier; real payment/domain E2E remains pending.
 - KlikQRIS production credentials/mode and Better Auth production configuration remain operator-owned gates.

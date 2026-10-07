@@ -212,7 +212,13 @@ export async function run(argv = process.argv.slice(2)) {
   if (process.env.KLIKQRIS_MODE && process.env.KLIKQRIS_MODE !== 'sandbox') throw new Error('PRODUCTION_REJECTED');
   if (process.env.KLIKQRIS_BASE_URL || process.env.KLIKQRIS_URL || process.env.KLIKQRIS_API_URL) throw new Error('ENDPOINT_OVERRIDE_REJECTED');
   if (!process.env.KLIKQRIS_API_KEY || !process.env.KLIKQRIS_MERCHANT_ID) throw new Error('PAYMENT_NOT_CONFIGURED');
-  for (const key of ['BETTER_AUTH_API_KEY', 'BETTER_AUTH_API_URL', 'BETTER_AUTH_KV_URL', 'BETTER_AUTH_COOKIE_DOMAIN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'LICENSE_PRIVATE_KEY_PEM', 'LICENSE_PUBLIC_KEY_PEM']) delete process.env[key];
+  // Keep Better Auth configuration from the existing server/.env so the
+  // deterministic dummy customer uses the real auth security path. Only
+  // isolate the database/key material below; never weaken auth checks.
+  for (const key of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'LICENSE_PRIVATE_KEY_PEM', 'LICENSE_PUBLIC_KEY_PEM']) delete process.env[key];
+  process.env.BETTER_AUTH_URL ||= 'http://127.0.0.1:4600';
+  process.env.BETTER_AUTH_TRUSTED_ORIGINS ||= 'http://localhost:4601,http://127.0.0.1:4601,http://127.0.0.1:4600';
+  process.env.BETTER_AUTH_COOKIE_DOMAIN = '';
   const scratch = process.env.TMPDIR;
   if (!scratch || !path.isAbsolute(scratch)) throw new Error('TMPDIR_REQUIRED');
   const dir = mkdtempSync(path.join(scratch, 'copilot-sandbox-'));
@@ -254,11 +260,14 @@ export async function run(argv = process.argv.slice(2)) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const local = `http://127.0.0.1:${server.address().port}`;
     const request = (method, route, body, cookie) => jsonRequest(fetch, local + route, opts.requestTimeoutMs, { method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(cookie ? { cookie } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
-    const signup = await jsonRequest(fetch, local + '/api/auth/sign-up/email', opts.requestTimeoutMs, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:4601' }, body: JSON.stringify({ name: 'Sandbox Runner', email: `sandbox-${randomBytes(12).toString('hex')}@example.com`, password: randomBytes(24).toString('base64url') + 'Aa1!' }) });
+    const signup = await jsonRequest(fetch, local + '/api/auth/sign-up/email', opts.requestTimeoutMs, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:4601' }, body: JSON.stringify({ name: 'Sandbox Runner', email: `sandbox-${randomBytes(12).toString('hex')}@gmail.com`, password: randomBytes(24).toString('base64url') + 'Aa1!' }) });
     const cookie = signup.cookies.map((x) => x.split(';', 1)[0]).join('; ');
-    if (signup.code !== 200 || !cookie) throw new Error('SIGNUP_FAILED');
+    if (signup.code !== 200 || !cookie) {
+      const reason = signup.body?.code || signup.body?.error || signup.body?.message;
+      throw new Error(`SIGNUP_FAILED${reason ? `_${String(reason).replace(/[^A-Z0-9_-]/gi, '').slice(0, 40)}` : ''}`);
+    }
     const me = await request('GET', '/api/me', null, cookie);
-    if (me.code !== 200 || !me.body.account?.id || me.body.licenses?.length !== 0) throw new Error('SIGNUP_FAILED');
+    if (me.code !== 200 || !me.body.account?.id || me.body.licenses?.length !== 0) throw new Error(`SIGNUP_FAILED_ME_${me.code}`);
     if (data.orderId) {
       const result = await app.klikqris.checkStatus(data.orderId);
       const upstreamAmount = Number(result.raw?.amount);

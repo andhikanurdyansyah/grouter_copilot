@@ -40,7 +40,22 @@
             <div class="done-kv"><span class="k">Paket</span><span class="v" id="dvPkg">—</span></div>
             <div class="done-kv"><span class="k">Jumlah</span><span class="v" id="dvAmount">—</span></div>
             <div class="done-kv"><span class="k">Order</span><span class="v mono" id="dvOrder" style="font-size:12px">—</span></div>
-            <div class="done-kv" id="dvLicRow" hidden><span class="k">License</span><span class="v mono" id="dvLic" style="font-size:12px">—</span></div>
+            <div class="done-kv" id="dvLicRow" hidden><span class="k">License ID</span><span class="v mono" id="dvLic" style="font-size:12px">—</span></div>
+          </div>
+
+          <div id="installGuide" hidden style="margin-top:20px">
+            <h2 style="font-size:1rem;margin:0 0 8px">Langkah instalasi</h2>
+            <p class="sub" style="margin:0 0 10px">Masuk ke source code aplikasi Anda, jalankan command berikut, lalu ikuti output CLI.</p>
+            <div style="display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.22);border:1px solid var(--grx-line,rgba(255,255,255,.08));padding:10px;border-radius:8px">
+              <code class="mono" id="installCommand" style="font-size:11px;overflow-wrap:anywhere;flex:1">npx @grouter/copilot install --license …</code>
+              <button class="btn btn-ghost" type="button" id="copyInstall" style="white-space:nowrap">Salin</button>
+            </div>
+            <ol class="sub" style="padding-left:20px;margin:12px 0 0">
+              <li>Pastikan license disimpan di environment server, bukan browser.</li>
+              <li>Edit <code>skills/example.js</code> menjadi skill baca-saja untuk data aplikasi.</li>
+              <li>Mount <code>CopilotChat</code> pada UI dan jalankan route chat yang dibuat CLI.</li>
+            </ol>
+            <p class="sub" id="copyStatus" role="status" aria-live="polite" style="margin:8px 0 0"></p>
           </div>
 
           <div class="done-actions">
@@ -68,8 +83,21 @@
         order: document.getElementById('dvOrder'),
         licRow: document.getElementById('dvLicRow'),
         lic: document.getElementById('dvLic'),
+        guide: document.getElementById('installGuide'),
+        command: document.getElementById('installCommand'),
+        copy: document.getElementById('copyInstall'),
+        copyStatus: document.getElementById('copyStatus'),
         status: document.getElementById('doneStatus'),
       };
+
+      els.copy.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(els.command.textContent);
+          els.copyStatus.textContent = 'Command berhasil disalin.';
+        } catch {
+          els.copyStatus.textContent = 'Salin command secara manual dari kotak di atas.';
+        }
+      });
 
       function rupiah(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); }
 
@@ -86,6 +114,10 @@
         els.amount.textContent = rupiah(order.amount);
         els.order.textContent = order.id;
         if (license && license.id) { els.licRow.hidden = false; els.lic.textContent = license.id; }
+        if (license && license.token) {
+          els.guide.hidden = false;
+          els.command.textContent = 'npx @grouter/copilot install --license ' + license.token;
+        }
       }
 
       var tries = 0;

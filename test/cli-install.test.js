@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -72,4 +72,20 @@ test('reinstall over an env that only has the public key still writes the licens
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test('init generates a Pages Router handler in the detected router without overwriting project files', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-cli-pages-'));
+  try {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies: { next: '14.0.0' } }));
+    mkdirSync(path.join(dir, 'src/pages/api/copilot'), { recursive: true });
+    writeFileSync(path.join(dir, 'src/pages/index.js'), 'keep');
+    const run = spawnSync(process.execPath, [path.join(root, 'bin/grouter-copilot.js'), 'init'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    assert.match(run.stdout, /Pages Router layout/);
+    assert.equal(readFileSync(path.join(dir, 'src/pages/index.js'), 'utf8'), 'keep');
+    assert.equal(existsSync(path.join(dir, 'app/api/copilot/chat/route.js')), false);
+    assert.match(readFileSync(path.join(dir, 'src/pages/api/copilot/chat.js'), 'utf8'), /Next\.js Pages Router/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -13,6 +13,7 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 - streamChat license gate: `run.failed`/`SCOPE_DENIED` with zero prior events when unlicensed; complete stream when licensed.
 - CLI install: failure path exits 1 with no scaffold; reinstall over a public-key-only `.env` still writes `GROUTER_LICENSE` (exact-key matching).
 - Local package tarball verification: `npm pack --dry-run` lists 14 self-contained runtime files; extracted package imports successfully and CLI `init` scaffolds a clean Node app without installing dependencies.
+- Success page install handoff exposes the signed license token only through the authenticated purchaser's latest-order response; public `/api/me`, admin license listings, and bind responses remain token-free.
 - Isolated customer E2E: `server/test/customer-register-to-chat.e2e.test.js` — 1 passed, 0 failed; register → server-priced checkout → upstream-verified settlement → operator binding → real CLI HTTP install → heartbeat → FakeSupplier chat, all without live payment/supplier calls.
 - Changed JavaScript syntax checks — passed.
 - `git diff --check` — pass.

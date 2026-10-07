@@ -24,6 +24,7 @@ D-016 defers automatic gRouter key provisioning. Therefore a paid license does n
 - Provider key handoff: `POST /api/resolve` and admin bind
 - Usage reporting: `server/src/usageResolver.js`
 - CLI scaffold and license-based install: `bin/grouter-copilot.js`
+- Customer success page: authenticated `/api/orders/latest` returns the signed license token for the purchaser only; `/success` renders a copyable install command and next steps.
 - React chat panel: `src/widget/CopilotChat.jsx`
 
 ## Not yet verified or implemented

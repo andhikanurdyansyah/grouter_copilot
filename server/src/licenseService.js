@@ -44,7 +44,9 @@ export class LicenseService {
       installIds: [],
       lastSeenAt: null,
       grouterApiKey: grouterApiKey ?? null, // bound gRouter api key (secret, server-side)
-      // NOTE: raw token is returned to the operator ONCE at issue time; not persisted.
+      // The signed license token is customer-facing material, not a provider credential.
+      // Persist it so an authenticated purchaser can retrieve it after payment.
+      token,
     };
 
     this.store.addLicense(record);

@@ -46,6 +46,16 @@ function writeIfMissing(rel, content) {
   return { rel, skipped: false };
 }
 
+function routeTarget(framework) {
+  if (framework.name === 'next') {
+    if (framework.appRouter) return 'app/api/copilot/chat/route.js';
+    const pagesDir = existsSync(path.join(cwd, 'src/pages')) ? 'src/pages' : 'pages';
+    return path.join(pagesDir, 'api/copilot/chat.js');
+  }
+  if (framework.name === 'express') return 'routes/copilot.js';
+  return 'src/copilot-route.js';
+}
+
 const SKILL_TEMPLATE = (name) => `// ${name} skill — example read-only skill.
 export default {
   name: "${name}",
@@ -111,6 +121,25 @@ export async function POST(request) {
 }
 `;
 
+const ROUTE_PAGES_TEMPLATE = `// gRouter Copilot chat API route (Next.js Pages Router).
+import { createCopilot } from "@grouter/copilot";
+import path from "node:path";
+
+let copilot;
+async function getCopilot() {
+  if (!copilot) copilot = await createCopilot({ configPath: path.join(process.cwd(), "copilot.config.js") });
+  return copilot;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const { runtime } = await getCopilot();
+  const result = await runtime.chat(req.body ?? {});
+  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 500) : 200;
+  return res.status(status).json(result);
+}
+`;
+
 const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route (Express).
 import { createCopilot } from "@grouter/copilot";
 import path from "node:path";
@@ -148,16 +177,12 @@ function runInit(opts = {}, { silent = false } = {}) {
   ensureDir('skills');
   results.push(writeIfMissing('skills/example.js', SKILL_TEMPLATE('example')));
 
-  if (framework.name === 'next') {
-    ensureDir('app/api/copilot/chat');
-    results.push(writeIfMissing('app/api/copilot/chat/route.js', ROUTE_APP_TEMPLATE));
-  } else if (framework.name === 'express') {
-    ensureDir('routes');
-    results.push(writeIfMissing('routes/copilot.js', ROUTE_EXPRESS_TEMPLATE));
-  } else {
-    ensureDir('src');
-    results.push(writeIfMissing('src/copilot-route.js', ROUTE_EXPRESS_TEMPLATE));
-  }
+  const target = routeTarget(framework);
+  const template = framework.name === 'next' && !framework.appRouter
+    ? ROUTE_PAGES_TEMPLATE
+    : framework.name === 'next' ? ROUTE_APP_TEMPLATE : ROUTE_EXPRESS_TEMPLATE;
+  ensureDir(path.dirname(target));
+  results.push(writeIfMissing(target, template));
 
   const envResult = writeEnv(opts);
   if (envResult) results.push(envResult);
@@ -189,19 +214,33 @@ function writeEnv(opts = {}) {
   if (lines.length === 0) return null;
 
   if (existsSync(full)) {
-    // Exact-key match only: a substring check would treat GROUTER_LICENSE as
-    // "already present" when only GROUTER_LICENSE_PUBLIC_KEY exists, silently
-    // dropping the license on install/renewal.
     const existing = readFileSync(full, 'utf8');
-    const existingKeys = new Set(
-      existing.split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#') && l.includes('='))
-        .map((l) => l.split('=')[0].trim()),
-    );
-    const added = lines.filter((l) => !existingKeys.has(l.split('=')[0]));
-    if (added.length) {
-      appendFileSync(full, '\n' + added.join('\n') + '\n', 'utf8');
+    const keys = new Set(lines.map((line) => line.slice(0, line.indexOf('='))));
+    const updated = [];
+    let changed = false;
+    const seen = new Set();
+    for (const line of existing.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+      const key = match?.[1];
+      if (!key || !keys.has(key)) {
+        updated.push(line);
+        continue;
+      }
+      if (seen.has(key)) {
+        changed = true;
+        continue;
+      }
+      seen.add(key);
+      const replacement = lines.find((entry) => entry.startsWith(`${key}=`));
+      updated.push(replacement);
+      changed ||= line.trim() !== replacement;
+    }
+    for (const line of lines) {
+      const key = line.slice(0, line.indexOf('='));
+      if (!seen.has(key)) { updated.push(line); changed = true; }
+    }
+    if (changed) {
+      writeFileSync(full, updated.join('\n').replace(/\n*$/, '\n'), 'utf8');
       return { rel, skipped: false };
     }
     return null;
@@ -295,7 +334,8 @@ async function runInstall(opts = {}) {
   if (envResult) console.log(`✔ Saved server-side app credentials to ${envResult.rel}`);
   console.log('');
   console.log('Done. Provider credentials were resolved by the Copilot license server and were not printed.');
-  console.log('Mount <CopilotChat /> in your UI and define your read-only skills.');
+  console.log('✔ Detected framework and generated a server-side chat route');
+  console.log('Next: edit skills/example.js with explicitly approved read-only data, mount CopilotChat, and connect the generated route from your server.');
 }
 
 main();

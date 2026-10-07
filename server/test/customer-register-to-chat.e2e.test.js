@@ -244,6 +244,7 @@ test('E2E: register → purchase → verified payment → license → install �
     assert.equal(latest.status, 200);
     assert.equal(latest.json.order.status, 'PAID');
     assert.equal(latest.json.license?.id, issued.record.id);
+    assert.equal(latest.json.license?.token, issued.token, 'authenticated purchaser must receive the license key for install');
 
     // The admin license list must never leak the raw token or the api key.
     const rawMe = JSON.stringify(me.json);

@@ -398,7 +398,7 @@ export function createCopilotServer({
           .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
         return sendJson(res, 200, {
           order: sanitizeOrder(order),
-          license: license ? sanitizeLicense(license) : null,
+          license: license ? sanitizeLicense(license, { includeToken: true }) : null,
         });
       })();
     }
@@ -516,7 +516,7 @@ export function createCopilotServer({
   };
 }
 
-function sanitizeLicense(l) {
+function sanitizeLicense(l, { includeToken = false } = {}) {
   return {
     id: l.id,
     customer: l.customer,
@@ -527,6 +527,7 @@ function sanitizeLicense(l) {
     revokedAt: l.revokedAt,
     installCount: l.installIds?.length ?? 0,
     lastSeenAt: l.lastSeenAt,
+    ...(includeToken && l.token ? { token: l.token } : {}),
   };
 }
 

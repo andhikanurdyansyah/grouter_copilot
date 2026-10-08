@@ -186,22 +186,38 @@ async function jsonRequest(fetchImpl, url, timeoutMs, options = {}) {
   return { code: res.status, body: await res.json().catch(() => ({})), cookies: res.headers.getSetCookie?.() || [] };
 }
 
+const safeReason = (value, fallback) => {
+  const text = String(value ?? '').toUpperCase().replace(/[^A-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+  return /^[A-Z0-9_]{1,40}$/.test(text) && text ? text : fallback;
+};
+
 export async function paidContinuation({ request, orderId, plan, cookie }) {
+  const fail = (reason) => ({ success: false, boundary: 'verification_failed', reason });
   const webhook = () => request('POST', '/api/payment/klikqris/webhook', { order_id: orderId, status: 'SUCCESS' });
   const first = await webhook();
-  if (first.code !== 200 || first.body.ok !== true || first.body.ignored) return { success: false, boundary: 'webhook_failed' };
+  if (first.code !== 200 || first.body?.ok !== true || first.body?.ignored) {
+    return { success: false, boundary: 'webhook_failed', reason: first.code !== 200 ? `HTTP_${safeReason(first.code, 0)}` : safeReason(first.body?.ignored, 'WEBHOOK_REJECTED') };
+  }
   const latest = await request('GET', '/api/orders/latest', null, cookie);
   const me = await request('GET', '/api/me', null, cookie);
   const lic = latest.body?.license;
   const matching = me.body?.licenses?.filter((x) => x.id === lic?.id) || [];
-  if (latest.code !== 200 || latest.body?.order?.id !== orderId || latest.body.order.status !== 'PAID' ||
-      !lic?.token || me.code !== 200 || matching.length !== 1 || me.body.licenses.length !== 1 ||
-      matching[0].accountId !== me.body.account?.id || JSON.stringify(matching[0].features) !== JSON.stringify(plan.features) ||
-      matching[0].quota !== plan.quota) return { success: false, boundary: 'verification_failed' };
+  if (latest.code !== 200) return fail(`LATEST_HTTP_${safeReason(latest.code, 0)}`);
+  if (latest.body?.order?.id !== orderId) return fail('LATEST_ORDER_MISMATCH');
+  if (latest.body?.order?.status !== 'PAID') return fail(`LATEST_STATUS_${safeReason(latest.body?.order?.status, 'UNKNOWN')}`);
+  if (!lic) return fail('LICENSE_NOT_RETURNED');
+  if (!lic.token) return fail('LICENSE_TOKEN_MISSING');
+  if (me.code !== 200) return fail(`ME_HTTP_${safeReason(me.code, 0)}`);
+  if (matching.length !== 1) return fail('LICENSE_NOT_IN_ME');
+  if (me.body.licenses?.length !== 1) return fail('UNEXPECTED_LICENSE_COUNT');
+  if (matching[0].accountId !== me.body.account?.id) return fail('ACCOUNT_MISMATCH');
+  if (JSON.stringify(matching[0].features) !== JSON.stringify(plan.features)) return fail('FEATURES_MISMATCH');
+  if (matching[0].quota !== plan.quota) return fail('QUOTA_MISMATCH');
   const again = await webhook();
+  if (again.code !== 200 || again.body?.ok !== true || again.body?.licenseId !== null) return fail('REPLAY_NOT_IDEMPOTENT');
   const after = await request('GET', '/api/me', null, cookie);
-  if (again.code !== 200 || again.body.ok !== true || again.body.licenseId !== null ||
-      after.code !== 200 || after.body.licenses?.length !== 1 || after.body.licenses[0].id !== lic.id) return { success: false, boundary: 'verification_failed' };
+  if (after.code !== 200) return fail(`AFTER_HTTP_${safeReason(after.code, 0)}`);
+  if (after.body?.licenses?.length !== 1 || after.body.licenses[0].id !== lic.id) return fail('REPLAY_STATE_CHANGED');
   return { success: true, boundary: 'complete', licenseId: lic.id };
 }
 
@@ -307,15 +323,16 @@ export async function run(argv = process.argv.slice(2)) {
     }
     const polled = await pollStatus(app.klikqris, data.orderId, data.amount, { timeoutMs: opts.pollTimeoutMs, intervalMs: opts.pollIntervalMs });
     data.status = polled.status;
+    let continuation = null;
     if (['SUCCESS', 'PAID', 'SETTLEMENT'].includes(data.status)) {
       data.boundary = 'upstream_paid';
-      const result = await paidContinuation({ request, orderId: data.orderId, plan: data.plan, cookie });
-      data.boundary = result.boundary;
-      data.licenseId = result.licenseId ?? null;
+      continuation = await paidContinuation({ request, orderId: data.orderId, plan: data.plan, cookie });
+      data.boundary = continuation.boundary;
+      data.licenseId = continuation.licenseId ?? null;
     } else if (data.status === 'TIMEOUT') data.boundary = 'poll_timeout';
     else data.boundary = 'upstream_terminal';
     if (artifactOwned) updateArtifact(opts.artifact, data);
-    return { success: data.boundary === 'complete', boundary: data.boundary, mode: 'sandbox', orderId: data.orderId, status: data.status, licenseId: data.licenseId, callback: 'local_webhook_replay; actual_upstream_callback_not_observed', adoption: Boolean(opts.orderId || opts.reuse) };
+    return { success: data.boundary === 'complete', boundary: data.boundary, mode: 'sandbox', orderId: data.orderId, status: data.status, licenseId: data.licenseId, reason: continuation?.reason ?? null, callback: 'local_webhook_replay; actual_upstream_callback_not_observed', adoption: Boolean(opts.orderId || opts.reuse) };
   } catch (err) {
     data.boundary = err.message === 'INVALID_UPSTREAM' ? 'invalid_upstream' : 'request_failed';
     if (artifactOwned && data.orderId) updateArtifact(opts.artifact, data);

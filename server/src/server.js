@@ -566,6 +566,7 @@ function sanitizeLicense(l, { includeToken = false } = {}) {
     customer: l.customer,
     accountId: l.accountId ?? null,
     features: l.features,
+    quota: l.quota ?? null,
     createdAt: l.createdAt,
     expiresAt: l.expiresAt,
     revokedAt: l.revokedAt,

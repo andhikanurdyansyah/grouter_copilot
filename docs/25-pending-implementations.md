@@ -22,16 +22,16 @@ Google adalah operasi ops (docs/28).
 
 ## P-002 — Auto-provisioning gRouter api key
 
-**Status:** DEFERRED (unchanged, D-016).
+**Status:** REJECTED for MVP (D-021, 2026-10-08) — supersedes DEFERRED (D-016 tetap dicatat
+sebagai keputusan historis).
 
-**Why:** purchase → auto-generate gRouter api key requires a gRouter
-provisioning endpoint contract that does not exist yet.
+**Why:** Arsitektur target = Copilot memanggil gRouter dengan **SATU service credential**
+(`GROUTER_API_KEY` di Copilot backend). Tidak ada provisioning per-customer yang dibutuhkan
+untuk MVP; "purchase → create gRouter customer → create api key → attach" bukan bagian dari
+payment lifecycle.
 
-**Current workaround:** admin binds an existing gRouter api key to a license
-manually (`POST /api/admin/licenses/:id/bind`), or at issue time
-(`grouterApiKey` field).
-
-**Unblock when:** gRouter exposes a documented api-key-generation endpoint.
+**If revisited:** hanya saat kebutuhan bisnis per-tenant identity muncul (future evolution,
+`docs/04-solution-architecture.md` §10) dan gRouter punya provisioning endpoint terdokumentasi.
 
 ---
 
@@ -77,8 +77,10 @@ kredensial produksi saat go-live.
 ```text
 Account (customer, from Better Auth session — ensureAccount)
   └── License 1..N
-        └── { id, features[], quota, expiresAt, bound gRouter api key, installs }
+        └── { id, features[], quota, expiresAt, installs }
 ```
+*(Field `grouterApiKey` per-license masih ada di store sebagai legacy pra-D-021 — jangan
+dipakai untuk integrasi baru; arsitektur target memakai satu service credential di backend.)*
 
 ---
 

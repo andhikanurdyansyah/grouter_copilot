@@ -15,7 +15,9 @@ Bangun plugin secara vertikal & minimal: satu bahasa (Node.js/Next.js), satu alu
 - runtime chat route.
 - gRouter adapter (fake supplier untuk test).
 - widget `CopilotChat`.
-- `.env` handling (`GROUTER_API_KEY`).
+- `.env` handling di sisi plugin: TANPA kredensial provider — installer hanya menulis
+  konfigurasi non-secret (`baseUrl` Copilot backend, public license key); `GROUTER_API_KEY`
+  hanya ada di Copilot backend (D-021).
 
 **Gate:** install → tulis 1 skill → chat bekerja, key tidak bocor, test contract lulus. ✅
 

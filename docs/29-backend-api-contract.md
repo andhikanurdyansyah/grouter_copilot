@@ -43,7 +43,7 @@ yang dipakai frontend:
 | `GET /api/orders/latest` | order terakhir akun + license yang terbit bersamanya |
 | `GET /api/orders/:id` | order milik akun saja (404 untuk akun lain) |
 | `POST /api/heartbeat` `{token,installId,baseUrl?}` | plugin; validasi offline signature + revocation; 403 invalid/revoked |
-| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{apiKey, baseUrl, licensePublicKey}` via TLS; `baseUrl` is always resolved from server settings (client override ignored); `licensePublicKey` is public verifier material, while the provider key stays server-side host config and never enters the license token/browser; 403 invalid/revoked; 404 without bound key |
+| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{apiKey?, baseUrl, licensePublicKey}` via TLS. **LEGACY (pra-D-021):** pengembalian `apiKey` = pola key-handoff lama (per-customer key). Target D-021: resolve HANYA `{baseUrl, licensePublicKey}` — provider key TIDAK pernah keluar dari Copilot backend (satu service credential, server-side); 403 invalid/revoked; 404 without bound key (legacy path) |
 
 ### Admin (`Authorization: Bearer`)
 
@@ -54,7 +54,7 @@ yang dipakai frontend:
 | `POST /api/admin/licenses` | issue `{customer, accountId?, features?, expiresInDays?, quota?, grouterApiKey?}` → 201 `{license, token}` (token sekali tampil) |
 | `POST /api/admin/licenses/:id/revoke` | revoke |
 | `POST /api/admin/licenses/:id/bind` | bind gRouter api key `{grouterApiKey}` |
-| `GET /api/admin/usage` | consume gRouter `/check-usage` (read-only) per key ter-bound |
+| `GET /api/admin/usage` | consume gRouter `/check-usage` (read-only) **dimensi infrastructure per service credential** — bukan kuota per customer (D-021) |
 | `GET /api/admin/settings` | settings efektif (secrets di-mask `••••<last4>`) |
 | `PATCH /api/admin/settings` | patch tervalidasi; section tak dikenal → 400; masked/empty secret = keep |
 | `POST /api/admin/orders/:id/settle` | settle manual (jalur sama dengan webhook setelah verifikasi upstream) |
@@ -76,6 +76,11 @@ Section: `plans` · `branding` · `payment` · `usage` · `provider` · `limits`
 `license` · `auth`. Resolusi: `DEFAULT_SETTINGS ← env seeds ← store.settings`
 (D-020). Plans/branding/usage/provider/limits HOT; `auth` + mode payment
 dibaca saat boot → butuh `pm2 restart copilot-backend --update-env`.
+
+**`GROUTER_API_KEY` BUKAN store setting (D-021):** kredensial gRouter hanya hidup sebagai
+env var server-side (`server/.env`, gitignored) — tidak pernah masuk `store.settings`,
+tidak pernah di-PATCH via admin, dan tidak pernah dikembalikan oleh `GET /api/admin/settings`
+yang hanya menampung secret payment yang di-mask.
 
 ## Urutan flow pembayaran (A1-safe)
 

@@ -41,7 +41,7 @@ Setiap jawaban non-trivial harus jelas: periode data, source category, freshness
 ✔ Created app/api/copilot/chat/route.js
 ✔ Created components/CopilotChat.js
 ✔ Added widget mount
-→ Next: isi GROUTER_API_KEY di .env
+→ Next: sambungkan license (install --license) — provider key tidak pernah disentuh app customer (D-021)
 ```
 
 Error skill saat boot harus jelas: nama skill, file, alasan validasi gagal.

@@ -1,5 +1,10 @@
 # Security, Privacy & Threat Model — gRouter Copilot
 
+> **D-021 (2026-10-08):** kredensial gRouter kini = **SATU service credential yang hanya hidup
+> di Copilot backend**. Ia tidak pernah ada di host app customer, installer, browser, license
+> token, respons API, log, diagnostik, error message, atau UI. Bagian di bawah yang masih
+> menyebut "key di server env [host app]" merujuk pola lama; batas target dijelaskan di §1a.
+
 ## 1. Security objectives
 
 1. Key gRouter tidak pernah ke browser.
@@ -7,6 +12,23 @@
 3. Prompt injection tidak bisa memanggil skill/aksi di luar izin.
 4. Data sensitif tidak bocor lewat context/log/error.
 5. Developer mengontrol scope data per skill.
+
+## 1a. Credential boundary (D-021 — kanonik)
+
+`GROUTER_API_KEY` (satu service credential) BOLEH hanya ada di:
+
+- `server/.env` Copilot backend (gitignored) untuk local dev;
+- env/secret store server staging & production (pm2 env / secret manager).
+
+TIDAK BOLEH: dikirim ke browser, ada di frontend JS/bundle, ter-embed installer, disimpan
+`.env` aplikasi customer, dikembalikan respons API (`/api/resolve` legacy TIDAK lagi
+mengembalikan provider key di arsitektur target), disimpan license token, di-commit, di-log,
+dicetak diagnostik, muncul di error, atau tampil di UI admin/customer.
+
+Verifikasi yang sudah ada: `/api/me` & `/api/admin/licenses` meng-sanitize license (tanpa
+token raw/grouterApiKey), admin settings menyamarkan secret, adapter fail-closed tanpa key,
+error upstream di-redact (`src/adapter/errors.js`). Celah implementasi terbuka dicatat di
+audit GAP (usage ledger backend belum ada; enforcement quota backend belum ada).
 
 ## 2. Threats & controls
 

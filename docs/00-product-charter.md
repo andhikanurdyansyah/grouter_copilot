@@ -11,7 +11,9 @@ gRouter Copilot adalah **package yang di-install ke aplikasi customer**, bukan p
 - di-install lewat satu command (`npx @grouter/copilot init`);
 - menambahkan chatbot UI + runtime;
 - membaca data aplikasi lewat **developer-defined skills**;
-- memakai **API key gRouter** yang tersimpan di `.env` customer (self-contained);
+- memanggil AI via **Copilot backend** yang memegang SATU service credential gRouter —
+  kredensial provider tidak pernah tersimpan di `.env` customer (D-021; D-002 tetap berlaku
+  untuk data aplikasi yang tetap self-contained);
 - tidak menyimpan data aplikasi di server Copilot manapun.
 
 ## 3. Problem

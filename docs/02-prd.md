@@ -15,8 +15,11 @@ Bangun plugin npm `@grouter/copilot` (Node.js/Next.js) yang menambah AI copilot 
 ### Journey A: install
 1. Developer jalankan `npx @grouter/copilot init`.
 2. Plugin detect framework (Next.js App Router / Express / etc), bahasa (TS/JS), package manager.
-3. Plugin generate: `copilot.config.js`, `.env` (placeholder `GROUTER_API_KEY`), `skills/`, API route, widget mount.
-4. Developer isi `GROUTER_API_KEY`.
+3. Plugin generate: `copilot.config.js`, `skills/`, API route, widget mount. Plugin TIDAK
+   menghasilkan placeholder `GROUTER_API_KEY` di aplikasi customer — kredensial provider
+   tidak pernah menjadi konfigurasi aplikasi customer (D-021).
+4. Developer menghubungkan chat route ke Copilot backend (license token); provider key
+   hidup hanya di Copilot backend (D-021).
 5. Developer jalankan app → widget muncul.
 
 ### Journey B: definisikan skill

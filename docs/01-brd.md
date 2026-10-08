@@ -31,7 +31,7 @@ gRouter existing menyediakan AI usage; Copilot menambah nilai integrasi dan skil
 | BR-02 | Plugin detect framework & generate scaffold | P0 |
 | BR-03 | Developer expose data lewat skill | P0 |
 | BR-04 | Chatbot menjawab dari data aplikasi | P0 |
-| BR-05 | AI consume API key gRouter (self-contained) | P0 |
+| BR-05 | AI consume gRouter via SATU service credential di Copilot backend (D-021) — kredensial tidak pernah di app customer | P0 |
 | BR-06 | Key gRouter tidak pernah ke browser | P0 |
 | BR-07 | Read-only default; mutasi butuh kontrol terpisah | P0 |
 | BR-08 | Tidak ada backend Copilot wajib di v1 | P0 |

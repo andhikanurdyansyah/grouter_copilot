@@ -53,6 +53,13 @@ Authorization: Bearer <gRouter-api-key>
 
 ## Notes for Copilot
 
-- Copilot consumes this READ-ONLY for quota display in its dashboard.
-- Copilot maps its own `licenseId → gRouter api key` (server-side secret).
-- Auto-provisioning (generate api key) is a SEPARATE, not-yet-mapped endpoint — deferred.
+> **D-021 (2026-10-08):** Copilot memakai **SATU service credential gRouter** untuk seluruh
+> service — bukan satu api key per customer/license. Pemetaan `licenseId → gRouter api key`
+> di bawah adalah pola LAMA (disuperse-kan). `/check-usage` membaca pemakaian infrastructure
+> SELURUH service credential, bukan kuota satu customer Copilot.
+
+- Copilot consumes this READ-ONLY for **infrastructure usage** observability (per service
+  credential, bukan per customer). Copilot customer usage diukur usage ledger Copilot sendiri.
+- ~~Copilot maps its own `licenseId → gRouter api key` (server-side secret).~~ (legacy, D-021)
+- Auto-provisioning (generate api key) is a SEPARATE, not-yet-mapped endpoint — deferred
+  (D-016) **dan ditolak untuk MVP oleh D-021** (per-customer key bukan arsitektur target).

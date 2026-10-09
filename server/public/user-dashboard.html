@@ -6,309 +6,344 @@
   <title>Dashboard — gRouter Copilot</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/grx.css" />
-  <link rel="stylesheet" href="/assets/grx-v3.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/cd.css" />
   <style>
-    /* page-local: routing views + plan tier cards (hanya token grx) */
+    /* page-local Console Midnight */
     [hidden] { display: none !important; }
-    button.avatar { border: none; cursor: pointer; padding: 0; }
-    button.avatar:focus-visible { outline: 2px solid var(--grx-cyan); outline-offset: 2px; }
-    #accountMenu .nav-item { display: flex; align-items: center; gap: 8px; padding: var(--sp-2) var(--sp-3); font-size: 14px; }
-    #accountMenu .nav-item:hover { background: var(--grx-steel-3); }
-    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
-    .plan-card { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); position: relative; }
-    .plan-card--featured { border-color: rgba(34, 211, 238, 0.35); }
-    .plan-card__name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
-    .plan-card__price { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
-    .plan-card__quota { font-size: 13px; color: var(--grx-ink-dim); }
-    .plan-card__features { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
-    .plan-card__features li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--grx-ink-dim); }
-    .plan-card__features li svg { width: 14px; height: 14px; color: var(--grx-cyan); flex-shrink: 0; margin-top: 3px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--cd-s3); }
+    .plan-card { border: 1px solid var(--cd-line); border-radius: var(--cd-r); background: var(--cd-bg-deep); padding: var(--cd-s4); display: flex; flex-direction: column; gap: var(--cd-s3); }
+    .plan-card--featured { border-color: rgba(126, 214, 243, 0.45); }
+    .plan-card__key { font-family: var(--cd-mono); font-size: var(--cd-t-2xs); color: var(--cd-ink-4); text-transform: uppercase; letter-spacing: 0.1em; }
+    .plan-card__name { font-size: var(--cd-t-lg); font-weight: 600; }
+    .plan-card__price { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .plan-card__quota { font-size: var(--cd-t-xs); color: var(--cd-ink-3); }
+    .plan-card__features { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; }
+    .plan-card__features li { display: flex; gap: 8px; align-items: flex-start; font-size: var(--cd-t-xs); color: var(--cd-ink-2); }
+    .plan-card__features li svg { width: 13px; height: 13px; color: var(--cd-accent); flex-shrink: 0; margin-top: 3px; }
+    /* Account menu (dropdown dari topbar) */
+    .cd-account { position: relative; }
+    .cd-account-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: 1px solid transparent; border-radius: var(--cd-r); padding: 4px 8px 4px 4px; cursor: pointer; color: var(--cd-ink); font-family: var(--cd-font); }
+    .cd-account-btn:hover { background: var(--cd-hover); }
+    .cd-account-btn:focus-visible { outline: none; box-shadow: var(--cd-focus); }
+    .cd-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--cd-accent), #2b8db3); color: var(--cd-accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+    .cd-account-name { font-size: var(--cd-t-sm); font-weight: 500; text-align: right; line-height: 1.2; }
+    .cd-account-email { font-size: var(--cd-t-2xs); color: var(--cd-ink-4); text-align: right; line-height: 1.2; }
+    .cd-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 224px; z-index: 90; background: var(--cd-sheet); border: 1px solid var(--cd-line-hi); border-radius: var(--cd-r); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.65); padding: var(--cd-s2); }
+    .cd-menu-head { padding: var(--cd-s2) var(--cd-s3); }
+    .cd-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 7px 10px; border-radius: var(--cd-r-sm); color: var(--cd-ink-2); text-decoration: none; font-size: var(--cd-t-sm); background: none; border: none; cursor: pointer; font-family: var(--cd-font); }
+    .cd-menu-item:hover { background: var(--cd-hover); color: var(--cd-ink); }
+    .cd-menu-item:focus-visible { outline: none; box-shadow: var(--cd-focus); }
+    .cd-menu-item--danger { color: var(--cd-err); }
+    .cd-menu-sep { border: none; border-top: 1px solid var(--cd-line); margin: var(--cd-s1) 0; }
+    /* Chart colors mengikuti ice-cyan */
+    .chart .line { stroke: var(--cd-accent); stroke-width: 2; fill: none; }
+    .chart .area { fill: url(#grxCyanArea); }
+    .chart .grid-line { stroke: var(--cd-line); stroke-width: 1; }
+    .chart .axis-label { fill: var(--cd-ink-4); font-size: 10px; font-family: var(--cd-mono); }
+    .chart .dot { fill: var(--cd-accent); }
+    .cd-legend { display: inline-flex; align-items: center; gap: 6px; font-size: var(--cd-t-2xs); color: var(--cd-ink-3); }
+    .cd-legend i { width: 10px; height: 2px; background: var(--cd-accent); display: inline-block; border-radius: 1px; }
+    .cd-chart-value { font-size: var(--cd-t-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .cd-qr { width: min(240px, 100%); height: auto; display: block; margin: var(--cd-s4) auto; background: #fff; padding: 8px; border: 1px solid var(--cd-line-hi); border-radius: var(--cd-r); }
+    .cd-order-meta { font-family: var(--cd-mono); font-size: var(--cd-t-xs); color: var(--cd-ink-3); }
+    .cd-amount { font-size: 1.375rem; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; }
+    .cd-center { text-align: center; }
+    .cd-status-loading { padding: var(--cd-s5); color: var(--cd-ink-3); font-size: var(--cd-t-sm); }
   </style>
 </head>
-<body class="grx-v3">
-  <a class="skip-link" href="#main">Lewati ke konten utama</a>
+<body>
+  <a class="cd-skip" href="#cd-main">Lewati ke konten utama</a>
 
-  <div class="grx-surface">
-    <div class="shell">
-      <nav class="sidebar" id="sidebar" aria-label="Navigasi utama">
-        <a class="brand" href="/user">
-          <span class="brand-mark" aria-hidden="true">G</span>
-          <span>Copilot</span>
-        </a>
-        <span class="nav-section">Akun</span>
-        <a class="nav-item" data-route="overview" href="/user">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="12" width="7" height="9" rx="1.5"/></svg>
+  <div class="cd-shell">
+    <div class="cd-scrim" id="cdScrim" aria-hidden="true"></div>
+
+    <!-- ===== RAIL ===== -->
+    <nav class="cd-rail" id="cdRail" aria-label="Navigasi utama">
+      <a class="cd-brand" href="/user">
+        <span class="cd-brand-mark" aria-hidden="true">G</span>
+        <span>
+          <span class="cd-brand-name">Copilot</span><br>
+          <span class="cd-brand-sub">gRouter</span>
+        </span>
+      </a>
+      <div class="cd-nav">
+        <a class="cd-nav-item" data-route="overview" href="/user">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="12" width="7" height="9" rx="1.5"/></svg>
           Ringkasan
         </a>
-        <a class="nav-item" data-route="licenses" href="/user/licenses">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="16" r="4"/><path d="M11 13L21 3M16 8l3 3"/></svg>
-          Lisensi
+        <div class="cd-nav-group" id="navgrp-akun">Lisensi</div>
+        <a class="cd-nav-item" data-route="licenses" href="/user/licenses" aria-describedby="navgrp-akun">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="16" r="4"/><path d="M11 13L21 3M16 8l3 3"/></svg>
+          Lisensi &amp; Install
         </a>
-        <a class="nav-item" data-route="organization" href="/user/organization">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <a class="cd-nav-item" data-route="organization" href="/user/organization">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Organisasi
         </a>
-      </nav>
+      </div>
+      <div class="cd-rail-foot">
+        <a class="cd-nav-item" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Halaman produk
+        </a>
+      </div>
+    </nav>
 
-      <main class="main" id="main">
-        <header class="topbar">
-          <div class="row">
-            <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="sidebar" aria-label="Buka navigasi">
-              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
-                <path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-              </svg>
-            </button>
-            <div>
-              <div class="page-title" id="pageTitle">Ringkasan</div>
-              <div class="page-sub" id="pageSub">Kelola lisensi dan pantau penggunaan Anda</div>
+    <!-- ===== MAIN ===== -->
+    <div class="cd-main">
+      <header class="cd-topbar">
+        <button class="cd-btn cd-btn--ghost cd-menutoggle" id="cdNavToggle" type="button" aria-expanded="false" aria-controls="cdRail" aria-label="Buka navigasi">
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <span class="cd-topbar-title" id="cdCrumb">Ringkasan</span>
+        <span class="cd-topbar-spacer"></span>
+        <div class="cd-account">
+          <button class="cd-account-btn" id="avatarMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="accountMenu">
+            <span>
+              <span class="cd-account-name" id="accountName">Memuat…</span><br>
+              <span class="cd-account-email" id="accountEmail"></span>
+            </span>
+            <span class="cd-avatar" id="avatar" aria-hidden="true">U</span>
+          </button>
+          <div class="cd-menu" id="accountMenu" role="menu" aria-label="Menu akun" hidden>
+            <div class="cd-menu-head">
+              <div style="font-size:var(--cd-t-sm);font-weight:600" id="menuAccountName">—</div>
+              <div style="font-size:var(--cd-t-2xs);color:var(--cd-ink-4)" id="menuAccountEmail"></div>
             </div>
+            <hr class="cd-menu-sep" />
+            <a role="menuitem" class="cd-menu-item" href="/user/licenses">Lisensi saya</a>
+            <a role="menuitem" class="cd-menu-item" href="/user/organization">Organisasi</a>
+            <hr class="cd-menu-sep" />
+            <button role="menuitem" class="cd-menu-item cd-menu-item--danger" id="signOutBtn" type="button">Keluar</button>
           </div>
-          <div class="row" style="position:relative">
-            <div style="text-align:right">
-              <div class="panel-title" id="accountName">Memuat…</div>
-              <div class="sub" id="accountEmail"></div>
-            </div>
-            <button class="avatar" id="avatarMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="accountMenu" aria-label="Menu akun">
-              <span id="avatar" aria-hidden="true">U</span>
-            </button>
-            <div id="accountMenu" role="menu" aria-label="Menu akun" hidden
-                 style="position:absolute;top:calc(100% + 8px);right:0;min-width:220px;z-index:60;
-                        background:var(--grx-steel-2);border:1px solid var(--grx-steel-hi);border-radius:var(--r);
-                        box-shadow:var(--shadow-3);padding:var(--sp-2)">
-              <div style="padding:var(--sp-2) var(--sp-3)">
-                <div class="panel-title" id="menuAccountName" style="font-size:14px">—</div>
-                <div class="sub" id="menuAccountEmail" style="font-size:12px"></div>
-              </div>
-              <hr style="border:none;border-top:1px solid var(--grx-steel-hi);margin:var(--sp-1) 0" />
-              <a role="menuitem" class="nav-item" href="/user/licenses" style="border-radius:var(--r-sm)">Lisensi saya</a>
-              <a role="menuitem" class="nav-item" href="/user/organization" style="border-radius:var(--r-sm)">Organisasi</a>
-              <hr style="border:none;border-top:1px solid var(--grx-steel-hi);margin:var(--sp-1) 0" />
-              <button role="menuitem" class="nav-item" id="signOutBtn" type="button" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;color:var(--grx-err);border-radius:var(--r-sm)">Keluar</button>
-            </div>
-          </div>
-        </header>
+        </div>
+      </header>
 
+      <main class="cd-content" id="cd-main">
         <p class="sr-only" id="liveStatus" role="status" aria-live="polite"></p>
 
-        <div class="stack">
-          <!-- ===== VIEW: OVERVIEW (/user) ===== -->
-          <div id="view-overview">
-          <!-- Stats -->
-          <section class="grid grid-3" aria-label="Ringkasan akun">
-            <div class="metal-panel stat-card">
-              <div class="stat-label">Lisensi aktif</div>
-              <div class="stat-value cyan" id="statLicenses">0</div>
-              <div class="stat-delta" id="statLicDelta">—</div>
+        <!-- ===== VIEW: OVERVIEW (/user) ===== -->
+        <div id="view-overview">
+          <div class="cd-page-head">
+            <div>
+              <h1 class="cd-page-title" id="pageTitle">Ringkasan</h1>
+              <p class="cd-page-desc" id="pageSub">Kelola lisensi dan pantau penggunaan Anda</p>
             </div>
-            <div class="metal-panel stat-card">
-              <div class="stat-label">Install</div>
-              <div class="stat-value" id="statInstalls">0</div>
-              <div class="stat-delta" id="statInstDelta">—</div>
+            <div class="cd-page-actions">
+              <button class="cd-btn cd-btn--primary" id="purchaseBtn" data-purchase type="button">Beli Lisensi</button>
             </div>
-            <div class="metal-panel stat-card">
-              <div class="stat-label">Organisasi</div>
-              <div class="stat-value" id="statOrgs">0</div>
-              <div class="stat-delta" id="statOrgDelta">ruang kerja tim</div>
+          </div>
+
+          <div class="cd-statstrip" aria-label="Ringkasan akun">
+            <div class="cd-stat">
+              <div class="cd-stat-label">Lisensi aktif</div>
+              <div class="cd-stat-value cd-stat-value--accent" id="statLicenses">0</div>
+              <div class="cd-stat-meta" id="statLicDelta">—</div>
+            </div>
+            <div class="cd-stat">
+              <div class="cd-stat-label">Total install</div>
+              <div class="cd-stat-value" id="statInstalls">0</div>
+              <div class="cd-stat-meta" id="statInstDelta">—</div>
+            </div>
+            <div class="cd-stat">
+              <div class="cd-stat-label">Organisasi</div>
+              <div class="cd-stat-value" id="statOrgs">0</div>
+              <div class="cd-stat-meta" id="statOrgDelta">ruang kerja tim</div>
+            </div>
+          </div>
+
+          <section class="cd-section" aria-labelledby="usageTitle">
+            <div class="cd-section-head">
+              <div>
+                <div class="cd-section-title" id="usageTitle">Pemakaian AI &amp; kuota</div>
+                <div class="cd-section-desc">Token terpakai per lisensi, dari ledger server-side.</div>
+              </div>
+            </div>
+            <div class="cd-table-wrap">
+              <table class="cd-table">
+                <caption class="sr-only">Pemakaian AI per lisensi: token terpakai dan sisa kuota</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Lisensi</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="num">Request</th>
+                    <th scope="col" class="num">Tokens terpakai</th>
+                    <th scope="col">Kuota</th>
+                    <th scope="col">Sisa</th>
+                  </tr>
+                </thead>
+                <tbody id="usageRows">
+                  <tr><td colspan="6"><div class="cd-skeleton"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="cd-empty" id="usageEmpty" style="display:none">
+              <div class="cd-empty-title">Belum ada pemakaian AI</div>
+              <p class="cd-empty-desc">Request AI pertama Anda akan tercatat di sini beserta sisa kuotanya.</p>
             </div>
           </section>
 
-          <!-- License terbaru (compact — detail penuh di /user/licenses) -->
-          <section class="metal-panel panel" aria-labelledby="usageTitle">
-            <div class="panel-head">
+          <section class="cd-section" aria-labelledby="licensesTitle">
+            <div class="cd-section-head">
               <div>
-                <span class="panel-title" id="usageTitle">Pemakaian AI &amp; kuota</span>
-                <div class="sub">Token terpakai per lisensi, dari ledger server-side (real-time saat request AI).</div>
+                <div class="cd-section-title" id="licensesTitle">Lisensi terbaru</div>
+                <div class="cd-section-desc">5 lisensi terakhir — kelola semuanya di <a href="/user/licenses" style="color:var(--cd-accent)">halaman Lisensi</a>.</div>
               </div>
             </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table>
-                  <caption class="sr-only">Pemakaian AI per lisensi: token terpakai dan sisa kuota</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Label</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Request</th>
-                      <th scope="col">Tokens terpakai</th>
-                      <th scope="col">Kuota</th>
-                      <th scope="col">Sisa</th>
-                    </tr>
-                  </thead>
-                  <tbody id="usageRows">
-                    <tr><td colspan="6"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="empty" id="usageEmpty" style="display:none">Belum ada pemakaian AI tercatat.</div>
+            <div class="cd-table-wrap">
+              <table class="cd-table">
+                <caption class="sr-only">Lima lisensi terakhir milik akun Anda</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Lisensi</th>
+                    <th scope="col" class="num">Install</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Berlaku sampai</th>
+                  </tr>
+                </thead>
+                <tbody id="licenseRows">
+                  <tr><td colspan="4"><div class="cd-skeleton"></div></td></tr>
+                </tbody>
+              </table>
             </div>
           </section>
 
-          <section class="metal-panel panel" aria-labelledby="licensesTitle">
-            <div class="panel-head">
+          <section class="cd-section" id="trend" aria-labelledby="trendTitle">
+            <div class="cd-section-head">
               <div>
-                <span class="panel-title" id="licensesTitle">Lisensi terbaru</span>
-                <div class="sub">5 lisensi terakhir — kelola semuanya di <a class="chip-cyan" href="/user/licenses">halaman Lisensi</a>.</div>
+                <div class="cd-section-title" id="trendTitle">Tren lisensi terbit</div>
+                <div class="cd-section-desc">Akumulasi lisensi per bulan, dari tanggal terbit lisensi Anda.</div>
               </div>
             </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table>
-                  <caption class="sr-only">Lima lisensi terakhir milik akun Anda</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Label</th>
-                      <th scope="col">Install</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Expires</th>
-                    </tr>
-                  </thead>
-                  <tbody id="licenseRows">
-                    <tr><td colspan="4"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-
-          <!-- Premium SVG chart -->
-          <section class="metal-panel panel" id="trend" aria-labelledby="trendTitle">
-            <div class="panel-head">
-              <div>
-                <span class="panel-title" id="trendTitle">Tren lisensi terbit</span>
-                <div class="sub">Akumulasi lisensi per bulan, dari tanggal terbit lisensi Anda.</div>
-              </div>
-            </div>
-            <div class="panel-body">
-              <div class="chart-head">
-                <div class="chart-value" id="chartValue">—</div>
-                <div class="legend">
-                  <span class="legend-item"><span class="legend-swatch" aria-hidden="true"></span> Lisensi kumulatif</span>
-                </div>
+            <div class="cd-section-body">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--cd-s3)">
+                <div class="cd-chart-value" id="chartValue">—</div>
+                <span class="cd-legend"><i aria-hidden="true"></i> Lisensi kumulatif</span>
               </div>
               <div id="chartHost" aria-live="polite">
-                <div class="status-loading">Memuat tren…</div>
+                <div class="cd-status-loading">Memuat tren…</div>
               </div>
             </div>
           </section>
+        </div><!-- /view-overview -->
 
-          </div><!-- /view-overview -->
-
-          <!-- ===== VIEW: LICENSES (/user/licenses) ===== -->
-          <div id="view-licenses" hidden>
-          <section class="metal-panel panel">
-            <div class="panel-head">
-              <div>
-                <span class="panel-title">Lisensi Anda</span>
-                <div class="sub">Install, status, dan masa berlaku setiap lisensi.</div>
-              </div>
-              <div class="row wrap">
-                <div class="field" style="margin:0">
-                  <label class="sr-only" for="licFilter">Filter status lisensi</label>
-                  <select id="licFilter">
-                    <option value="all">Semua status</option>
-                    <option value="active">Aktif</option>
-                    <option value="expired">Kedaluwarsa</option>
-                    <option value="revoked">Dicabut</option>
-                  </select>
-                </div>
-                <button class="btn btn-primary btn-sm" id="purchaseBtn" type="button">Beli Lisensi</button>
-              </div>
+        <!-- ===== VIEW: LICENSES (/user/licenses) ===== -->
+        <div id="view-licenses" hidden>
+          <div class="cd-page-head">
+            <div>
+              <h1 class="cd-page-title" id="pageTitleLic">Lisensi</h1>
+              <p class="cd-page-desc" id="pageSubLic">Install, status, dan masa berlaku setiap lisensi.</p>
             </div>
-            <div class="panel-body">
-              <div class="table-wrap">
-                <table>
-                  <caption class="sr-only">Daftar lisensi milik akun Anda</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Label</th>
-                      <th scope="col">Install</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Expires</th>
-                    </tr>
-                  </thead>
-                  <tbody id="licenseRowsFull">
-                    <tr><td colspan="4"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></td></tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="cd-page-actions">
+              <label class="sr-only" for="licFilter">Filter status lisensi</label>
+              <select class="cd-select" id="licFilter" style="width:auto">
+                <option value="all">Semua status</option>
+                <option value="active">Aktif</option>
+                <option value="expired">Kedaluwarsa</option>
+                <option value="revoked">Dicabut</option>
+              </select>
+              <button class="cd-btn cd-btn--primary" id="purchaseBtnLic" data-purchase type="button">Beli Lisensi</button>
+            </div>
+          </div>
+          <section class="cd-section">
+            <div class="cd-table-wrap">
+              <table class="cd-table">
+                <caption class="sr-only">Daftar lisensi milik akun Anda</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Lisensi</th>
+                    <th scope="col" class="num">Install</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Berlaku sampai</th>
+                  </tr>
+                </thead>
+                <tbody id="licenseRowsFull">
+                  <tr><td colspan="4"><div class="cd-skeleton"></div></td></tr>
+                </tbody>
+              </table>
             </div>
           </section>
-          </div><!-- /view-licenses -->
+        </div><!-- /view-licenses -->
 
-          <!-- ===== VIEW: ORGANIZATION (/user/organization) ===== -->
-          <div id="view-organization" hidden>
-          <section class="metal-panel panel">
-            <div class="panel-head">
-              <div>
-                <span class="panel-title">Organisasi</span>
-                <div class="sub">Kelola organisasi &amp; anggota tim Anda.</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" id="orgCreateBtn" type="button">+ Buat Organisasi</button>
+        <!-- ===== VIEW: ORGANIZATION (/user/organization) ===== -->
+        <div id="view-organization" hidden>
+          <div class="cd-page-head">
+            <div>
+              <h1 class="cd-page-title" id="pageTitleOrg">Organisasi</h1>
+              <p class="cd-page-desc" id="pageSubOrg">Kelola organisasi &amp; anggota tim Anda.</p>
             </div>
-            <div class="panel-body">
-              <div id="orgForm" hidden>
-                <div class="row wrap" style="gap:12px;align-items:flex-end">
-                  <div class="field" style="flex:1;min-width:180px;margin:0">
-                    <label for="orgName">Nama organisasi</label>
-                    <input id="orgName" type="text" placeholder="mis. PT Contoh Jaya" autocomplete="organization" />
+            <div class="cd-page-actions">
+              <button class="cd-btn" id="orgCreateBtn" type="button">Buat Organisasi</button>
+            </div>
+          </div>
+          <section class="cd-section">
+            <div class="cd-section-body">
+              <div id="orgForm" hidden style="margin-bottom:var(--cd-s4)">
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+                  <div class="cd-field" style="flex:1;min-width:180px;margin:0">
+                    <label class="cd-label" for="orgName">Nama organisasi</label>
+                    <input class="cd-input" id="orgName" type="text" placeholder="mis. PT Contoh Jaya" autocomplete="organization" />
                   </div>
-                  <div class="field" style="flex:1;min-width:180px;margin:0">
-                    <label for="orgSlug">Slug</label>
-                    <input id="orgSlug" type="text" placeholder="pt-contoh-jaya" autocomplete="off" />
+                  <div class="cd-field" style="flex:1;min-width:180px;margin:0">
+                    <label class="cd-label" for="orgSlug">Slug</label>
+                    <input class="cd-input" id="orgSlug" type="text" placeholder="pt-contoh-jaya" autocomplete="off" />
                   </div>
-                  <button class="btn btn-primary btn-sm" id="orgSubmitBtn" type="button">Buat</button>
-                  <button class="btn btn-ghost btn-sm" id="orgCancelBtn" type="button">Batal</button>
+                  <button class="cd-btn cd-btn--primary" id="orgSubmitBtn" type="button">Buat</button>
+                  <button class="cd-btn cd-btn--ghost" id="orgCancelBtn" type="button">Batal</button>
                 </div>
-                <p id="orgError" class="chip-err sub" role="alert" hidden style="margin-top:8px"></p>
+                <p id="orgError" class="cd-hint" role="alert" hidden style="margin-top:8px;color:var(--cd-err)"></p>
               </div>
               <div id="orgHost" aria-live="polite">
-                <div class="status-loading">Memuat organisasi…</div>
+                <div class="cd-status-loading">Memuat organisasi…</div>
               </div>
             </div>
           </section>
-          </div><!-- /view-organization -->
-        </div>
+        </div><!-- /view-organization -->
       </main>
     </div>
   </div>
 
   <!-- Toast region -->
-  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+  <div class="cd-toasts" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
 
-  <!-- Purchase modal -->
-  <div class="modal-backdrop" id="modal">
-    <div class="modal" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
-      <div class="row-between" style="margin-bottom:16px">
-        <h3 class="panel-title" id="modalTitle">Pilih Paket</h3>
-        <button class="modal-close" id="modalClose" type="button" aria-label="Tutup dialog">&times;</button>
+  <!-- Purchase dialog -->
+  <div class="cd-backdrop" id="modal">
+    <div class="cd-dialog" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+      <div class="cd-dialog-head">
+        <h2 class="cd-dialog-title" id="modalTitle">Pilih Paket</h2>
+        <button class="cd-btn cd-btn--ghost cd-btn--sm" id="modalClose" type="button" aria-label="Tutup dialog">&times;</button>
       </div>
 
       <div id="pickerView">
-        <p class="sub" style="margin-bottom:16px">Setelah pembayaran terkonfirmasi, lisensi otomatis aktif di akun Anda.</p>
-        <div class="plan-grid" id="pkgGrid"></div>
-        <p id="pkgError" class="chip-err sub" hidden></p>
-        <div class="modal-actions">
-          <button class="btn btn-ghost" id="closePicker" type="button" style="flex:1">Batal</button>
+        <div class="cd-dialog-body">
+          <p class="cd-hint" style="margin-bottom:var(--cd-s4)">Setelah pembayaran terkonfirmasi, lisensi otomatis aktif di akun Anda.</p>
+          <div class="plan-grid" id="pkgGrid"></div>
+          <p id="pkgError" class="cd-hint" hidden style="color:var(--cd-err);margin-top:var(--cd-s3)"></p>
+        </div>
+        <div class="cd-dialog-foot">
+          <button class="cd-btn" id="closePicker" type="button">Batal</button>
         </div>
       </div>
 
       <div id="qrView" hidden>
-        <p class="mono sub" id="qrOrderId"></p>
-        <img id="qrImage" alt="Kode QR untuk pembayaran order" style="width:min(240px,100%);height:auto;display:block;margin:14px auto;background:#fff;padding:8px;border:1px solid var(--grx-steel-hi);border-radius:var(--r)" />
-        <div class="chart-value" id="qrAmount" style="text-align:center"></div>
-        <div class="row" style="justify-content:center;margin-top:8px"><span class="badge pending" id="qrStatus">PENDING</span></div>
-        <p class="sub" id="qrNote" style="margin-top:14px">Setelah pembayaran dikonfirmasi, lisensi akan otomatis terbit. Klik <strong>Muat ulang</strong> untuk melihat lisensi baru Anda.</p>
-        <div class="modal-actions">
-          <button class="btn btn-primary" id="refreshBtn" type="button" style="flex:1">Muat ulang</button>
-          <button class="btn btn-ghost" id="closeQr" type="button" style="flex:1">Tutup</button>
+        <div class="cd-dialog-body cd-center">
+          <p class="cd-order-meta" id="qrOrderId"></p>
+          <img id="qrImage" alt="Kode QR untuk pembayaran order" class="cd-qr" />
+          <div class="cd-amount" id="qrAmount"></div>
+          <div style="margin-top:6px"><span class="cd-badge cd-badge--warn" id="qrStatus">PENDING</span></div>
+          <p class="cd-hint" id="qrNote" style="margin-top:var(--cd-s4)">Setelah pembayaran dikonfirmasi, lisensi akan otomatis terbit. Klik <strong>Muat ulang</strong> untuk melihat lisensi baru Anda.</p>
+        </div>
+        <div class="cd-dialog-foot">
+          <button class="cd-btn cd-btn--primary" id="refreshBtn" type="button">Muat ulang</button>
+          <button class="cd-btn" id="closeQr" type="button">Tutup</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
+
     (function () {
       'use strict';
 
@@ -316,8 +351,8 @@
       var POLL_MS = 5000;
 
       var els = {
-        sidebar: document.getElementById('sidebar'),
-        navToggle: document.getElementById('navToggle'),
+        sidebar: document.getElementById('cdRail'),
+        navToggle: document.getElementById('cdNavToggle'),
         accountName: document.getElementById('accountName'),
         accountEmail: document.getElementById('accountEmail'),
         avatar: document.getElementById('avatar'),
@@ -327,8 +362,6 @@
         statInstDelta: document.getElementById('statInstDelta'),
         licenseRows: document.getElementById('licenseRows'),
         licenseRowsFull: document.getElementById('licenseRowsFull'),
-        pageTitle: document.getElementById('pageTitle'),
-        pageSub: document.getElementById('pageSub'),
         licFilter: document.getElementById('licFilter'),
         liveStatus: document.getElementById('liveStatus'),
         chartHost: document.getElementById('chartHost'),
@@ -390,7 +423,7 @@
 
       function toast(msg, kind) {
         var t = document.createElement('div');
-        t.className = 'toast ' + (kind || '');
+        t.className = 'cd-toast' + (kind ? ' cd-toast--' + kind : '');
         t.setAttribute('role', 'status');
         t.textContent = msg;
         els.toastRegion.appendChild(t);
@@ -422,13 +455,13 @@
         try {
           res = await fetch('/api/me', { credentials: 'same-origin' });
         } catch (e) {
-          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data. Coba refresh halaman.</td></tr>';
+          els.licenseRows.innerHTML = '<tr><td colspan="4" class="cd-empty">Gagal memuat data. Coba refresh halaman.</td></tr>';
           els.liveStatus.textContent = 'Gagal memuat data.';
           return;
         }
         if (res.status === 401) { location.href = '/login'; return; }
         if (!res.ok) {
-          els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data (' + res.status + ').</td></tr>';
+          els.licenseRows.innerHTML = '<tr><td colspan="4" class="cd-empty">Gagal memuat data (' + res.status + ').</td></tr>';
           els.liveStatus.textContent = 'Gagal memuat data (' + res.status + ').';
           return;
         }
@@ -479,7 +512,7 @@
           var reqs = Number(u.requestCount) || 0;
           var limitTxt, remainTxt;
           if (u.quotaLimit === null || u.quotaLimit === undefined) {
-            limitTxt = '<span class="badge neutral">unlimited</span>';
+            limitTxt = '<span class="cd-badge cd-badge--accent">unlimited</span>';
             remainTxt = '—';
           } else {
             var remain = Math.max(0, u.quotaLimit - used);
@@ -489,7 +522,7 @@
           }
           return '<tr>' +
             '<td>' + escapeHtml(l.customer || u.licenseId) + '</td>' +
-            '<td><span class="badge ' + st + '">' + st + '</span></td>' +
+            '<td><span class="cd-badge cd-badge--' + ({active:'ok',expired:'warn',revoked:'err'}[st] || 'muted') + '">' + st + '</span></td>' +
             '<td class="mono">' + reqs + '</td>' +
             '<td class="mono">' + used.toLocaleString('id-ID') + '</td>' +
             '<td class="mono">' + limitTxt + '</td>' +
@@ -509,14 +542,14 @@
          halaman full (/user/licenses); overview menampilkan apa adanya. */
       function renderLicenses(list, tbody, filterable) {
         if (!state.licenses.length) {
-          tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada lisensi. Beli lisensi untuk mulai.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="cd-empty">Belum ada lisensi. Beli lisensi untuk mulai.</td></tr>';
           return;
         }
         if (filterable && state.filter !== 'all') {
           list = list.filter(function (l) { return licenseStatus(l) === state.filter; });
         }
         if (!list.length) {
-          tbody.innerHTML = '<tr><td colspan="4" class="empty">Tidak ada lisensi dengan status ini.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="cd-empty">Tidak ada lisensi dengan status ini.</td></tr>';
           return;
         }
 
@@ -525,7 +558,7 @@
           return '<tr>' +
             '<td>' + escapeHtml(l.customer || l.id) + '</td>' +
             '<td class="mono">' + (Number(l.installCount) || 0) + '</td>' +
-            '<td><span class="badge ' + st + '">' + st + '</span></td>' +
+            '<td><span class="cd-badge cd-badge--' + ({active:'ok',expired:'warn',revoked:'err'}[st] || 'muted') + '">' + st + '</span></td>' +
             '<td>' + escapeHtml(fmtDate(l.expiresAt)) + '</td>' +
           '</tr>';
         }).join('');
@@ -572,7 +605,7 @@
         if (valid < 2 || keys.length < 2) {
           els.chartValue.textContent = licenses.length ? licenses.length + ' license' : '—';
           els.chartHost.innerHTML =
-            '<div class="empty">Belum cukup data untuk menampilkan tren.<br>' +
+            '<div class="cd-empty">Belum cukup data untuk menampilkan tren.<br>' +
             '<span class="sub">Grafik muncul setelah ada license pada minimal dua bulan berbeda.</span></div>';
           return;
         }
@@ -643,9 +676,9 @@
             '<desc id="grxChartDesc">' + desc + '</desc>' +
             '<defs>' +
               '<linearGradient id="grxCyanArea" x1="0" y1="0" x2="0" y2="1">' +
-                '<stop offset="0%" stop-color="#22d3ee" stop-opacity="0.38" />' +
-                '<stop offset="60%" stop-color="#22d3ee" stop-opacity="0.10" />' +
-                '<stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />' +
+                '<stop offset="0%" stop-color="#7ed6f3" stop-opacity="0.32" />' +
+                '<stop offset="60%" stop-color="#7ed6f3" stop-opacity="0.08" />' +
+                '<stop offset="100%" stop-color="#7ed6f3" stop-opacity="0" />' +
               '</linearGradient>' +
             '</defs>' +
             grid +
@@ -662,7 +695,7 @@
       function renderPackages() {
         var plans = state.plans;
         if (!plans.length) {
-          els.pkgGrid.innerHTML = '<div class="empty">Katalog paket tidak tersedia saat ini. Coba refresh halaman.</div>';
+          els.pkgGrid.innerHTML = '<div class="cd-empty">Katalog paket tidak tersedia saat ini. Coba refresh halaman.</div>';
           return;
         }
         els.pkgGrid.innerHTML = plans
@@ -719,7 +752,7 @@
         stopPolling();
         state.lastOrderId = null;
         els.qrStatus.textContent = 'PENDING';
-        els.qrStatus.className = 'badge pending';
+        els.qrStatus.className = 'cd-badge cd-badge--warn';
         els.refreshBtn.textContent = 'Refresh';
         els.refreshBtn.removeAttribute('data-go-success');
         els.modalTitle.textContent = 'Pilih Paket';
@@ -759,7 +792,7 @@
           els.qrStatus.textContent = st;
           if (st === 'PAID') {
             stopPolling();
-            els.qrStatus.className = 'badge cyan';
+            els.qrStatus.className = 'cd-badge cd-badge--ok';
             els.qrNote.innerHTML = '<strong>Pembayaran berhasil.</strong> License Anda sudah diterbitkan.';
             els.refreshBtn.textContent = 'Lihat License';
             els.refreshBtn.setAttribute('data-go-success', order.id);
@@ -767,7 +800,7 @@
             loadMe();
           } else if (st === 'EXPIRED' || st === 'FAILED') {
             stopPolling();
-            els.qrStatus.className = 'badge expired';
+            els.qrStatus.className = 'cd-badge cd-badge--err';
             els.qrNote.textContent = st === 'EXPIRED' ? 'QR kedaluwarsa. Buat order baru.' : 'Pembayaran gagal. Buat order baru.';
           }
         }, POLL_MS);
@@ -841,11 +874,11 @@
         try {
           res = await authFetch('/api/auth/organization/list');
         } catch (e) {
-          els.orgHost.innerHTML = '<div class="empty">Gagal memuat organisasi.</div>';
+          els.orgHost.innerHTML = '<div class="cd-empty">Gagal memuat organisasi.</div>';
           return;
         }
         if (!res.ok) {
-          els.orgHost.innerHTML = '<div class="empty">Gagal memuat organisasi (' + res.status + ').</div>';
+          els.orgHost.innerHTML = '<div class="cd-empty">Gagal memuat organisasi (' + res.status + ').</div>';
           return;
         }
         var orgs = await res.json();
@@ -865,7 +898,7 @@
       function renderOrgs() {
         var orgs = state.orgs || [];
         if (!orgs.length) {
-          els.orgHost.innerHTML = '<div class="empty">Belum ada organisasi. Buat satu untuk mulai berkolaborasi.</div>';
+          els.orgHost.innerHTML = '<div class="cd-empty">Belum ada organisasi. Buat satu untuk mulai berkolaborasi.</div>';
           return;
         }
         var rows = orgs.map(function (o) {
@@ -890,23 +923,23 @@
       async function loadOrgDetail(orgId) {
         var host = document.getElementById('orgDetail');
         if (!host) return;
-        host.innerHTML = '<div class="status-loading">Memuat detail…</div>';
+        host.innerHTML = '<div class="cd-status-loading">Memuat detail…</div>';
         var res = await authFetch('/api/auth/organization/get-full-organization?organizationId=' + encodeURIComponent(orgId));
-        if (!res.ok) { host.innerHTML = '<div class="empty">Gagal memuat detail (' + res.status + ').</div>'; return; }
+        if (!res.ok) { host.innerHTML = '<div class="cd-empty">Gagal memuat detail (' + res.status + ').</div>'; return; }
         var data = await res.json();
         var members = Array.isArray(data.members) ? data.members : [];
         var rows = members.map(function (m) {
           var u = m.user || {};
           return '<tr><td>' + escapeHtml(u.name || u.email || m.userId) + '</td>' +
             '<td class="mono">' + escapeHtml(u.email || '—') + '</td>' +
-            '<td><span class="badge ' + (m.role === 'owner' ? 'cyan' : 'neutral') + '">' + escapeHtml(m.role || 'member') + '</span></td></tr>';
+            '<td><span class="cd-badge cd-badge--' + (m.role === 'owner' ? 'accent' : 'muted') + '">' + escapeHtml(m.role || 'member') + '</span></td></tr>';
         }).join('');
         host.innerHTML =
           '<div class="panel-title" style="margin-bottom:10px">' + escapeHtml(data.name || 'Organisasi') + '</div>' +
           '<div class="table-wrap"><table>' +
           '<caption class="sr-only">Anggota organisasi</caption>' +
           '<thead><tr><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Peran</th></tr></thead>' +
-          '<tbody>' + (rows || '<tr><td colspan="3" class="empty">Belum ada anggota.</td></tr>') + '</tbody></table></div>';
+          '<tbody>' + (rows || '<tr><td colspan="3" class="cd-empty">Belum ada anggota.</td></tr>') + '</tbody></table></div>';
       }
 
       async function createOrg() {
@@ -968,8 +1001,8 @@
           if (on) a.setAttribute('aria-current', 'page');
           else a.removeAttribute('aria-current');
         });
-        els.pageTitle.textContent = r.title;
-        els.pageSub.textContent = r.sub;
+        var crumb = document.getElementById('cdCrumb');
+        if (crumb) crumb.textContent = r.title;
         document.title = r.title + ' — gRouter Copilot';
       }
 
@@ -986,13 +1019,13 @@
         setSidebar(!els.sidebar.classList.contains('open'));
       });
 
-      Array.prototype.forEach.call(els.sidebar.querySelectorAll('.nav-item'), function (a) {
+      Array.prototype.forEach.call(els.sidebar.querySelectorAll('.cd-nav-item'), function (a) {
         a.addEventListener('click', function () { setSidebar(false); });
       });
 
       /* ---------------- events ---------------- */
 
-      Array.prototype.forEach.call(document.querySelectorAll('#purchaseBtn'), function (b) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-purchase]'), function (b) {
         b.addEventListener('click', openModal);
       });
       document.getElementById('orgCreateBtn').addEventListener('click', function () {
@@ -1100,6 +1133,7 @@
       loadMe();
       loadOrgs();
     })();
+  
   </script>
 </body>
 </html>

@@ -7,9 +7,10 @@
   <title>gRouter Copilot — Admin Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/grx.css" />
-  <link rel="stylesheet" href="/assets/grx-v3.css" />
+  <link rel="stylesheet" href="/assets/cd.css" />
+  <link rel="stylesheet" href="/assets/cd-bridge.css" />
   <style>
     /* ---- page-local glue only (design tokens/classes come from grx.css) ---- */
     [hidden] { display: none !important; }
@@ -202,9 +203,9 @@
                 <div class="mono-label">dari data lisensi aktual</div>
               </div>
               <div class="legend" id="chartLegend" aria-hidden="true">
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-ok)"></span> Aktif</span>
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-warn)"></span> Kedaluwarsa</span>
-                <span class="legend-item"><span class="legend-swatch" style="background:var(--grx-err)"></span> Dicabut</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--cd-ok)"></span> Aktif</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--cd-warn)"></span> Kedaluwarsa</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--cd-err)"></span> Dicabut</span>
               </div>
             </div>
             <div class="panel-body">
@@ -336,12 +337,12 @@
               <button class="btn btn-ghost btn-sm" type="button" id="refreshLedger">Muat ulang</button>
             </div>
             <div class="panel-body">
-              <form id="ledgerFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px" aria-label="Filter ledger">
-                <div>
+              <form id="ledgerFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px" aria-label="Filter ledger">
+                <div style="display:flex;flex-direction:column;gap:4px">
                   <label class="mono-label" for="ledgerFCustomer">Customer</label>
                   <input id="ledgerFCustomer" type="text" placeholder="semua" autocomplete="off" style="max-width:140px" />
                 </div>
-                <div>
+                <div style="display:flex;flex-direction:column;gap:4px">
                   <label class="mono-label" for="ledgerFStatus">Status</label>
                   <select id="ledgerFStatus" style="max-width:140px">
                     <option value="">semua</option>
@@ -351,11 +352,11 @@
                     <option value="rejected">rejected</option>
                   </select>
                 </div>
-                <div>
+                <div style="display:flex;flex-direction:column;gap:4px">
                   <label class="mono-label" for="ledgerFModel">Model</label>
                   <input id="ledgerFModel" type="text" placeholder="semua" autocomplete="off" style="max-width:160px" />
                 </div>
-                <div>
+                <div style="display:flex;flex-direction:column;gap:4px">
                   <label class="mono-label" for="ledgerFLicense">License ID</label>
                   <input id="ledgerFLicense" type="text" placeholder="lic_…" autocomplete="off" style="max-width:180px" />
                 </div>
@@ -971,9 +972,9 @@
       var box = $('chartBox');
       var tally = statusTally(licenses);
       var bars = [
-        { key: 'active',  label: 'Aktif',  value: tally.active,  color: '#34d399' },
-        { key: 'expired', label: 'Kedaluwarsa', value: tally.expired, color: '#fbbf24' },
-        { key: 'revoked', label: 'Dicabut', value: tally.revoked, color: '#f87171' }
+        { key: 'active',  label: 'Aktif',  value: tally.active,  color: '#7fe0b0' },
+        { key: 'expired', label: 'Kedaluwarsa', value: tally.expired, color: '#f5c56b' },
+        { key: 'revoked', label: 'Dicabut', value: tally.revoked, color: '#ff9b9b' }
       ];
       var totalLicenses = licenses.length;
       $('chartTotal').textContent = fmtNum(totalLicenses);
@@ -1013,14 +1014,14 @@
                tally.revoked + ' dicabut dari total ' + totalLicenses + ' lisensi.</desc>');
       svg.push('<defs>');
       svg.push('  <linearGradient id="grxCyanArea" x1="0" y1="0" x2="0" y2="1">' +
-               '<stop offset="0%" stop-color="#67e8f9" stop-opacity="0.95"/>' +
-               '<stop offset="100%" stop-color="#0891b2" stop-opacity="0.55"/></linearGradient>');
+               '<stop offset="0%" stop-color="#7ed6f3" stop-opacity="0.95"/>' +
+               '<stop offset="100%" stop-color="#2b8db3" stop-opacity="0.55"/></linearGradient>');
       svg.push('  <linearGradient id="grxBarActive" x1="0" y1="0" x2="0" y2="1">' +
-               '<stop offset="0%" stop-color="#6ee7b7"/><stop offset="100%" stop-color="#059669"/></linearGradient>');
+               '<stop offset="0%" stop-color="#7fe0b0"/><stop offset="100%" stop-color="#2f9e6e"/></linearGradient>');
       svg.push('  <linearGradient id="grxBarExpired" x1="0" y1="0" x2="0" y2="1">' +
-               '<stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#b45309"/></linearGradient>');
+               '<stop offset="0%" stop-color="#f5c56b"/><stop offset="100%" stop-color="#a9752c"/></linearGradient>');
       svg.push('  <linearGradient id="grxBarRevoked" x1="0" y1="0" x2="0" y2="1">' +
-               '<stop offset="0%" stop-color="#fca5a5"/><stop offset="100%" stop-color="#b91c1c"/></linearGradient>');
+               '<stop offset="0%" stop-color="#ff9b9b"/><stop offset="100%" stop-color="#b91c1c"/></linearGradient>');
       svg.push('</defs>');
 
       // gridlines + y axis labels
@@ -1602,15 +1603,15 @@
           '<td class="mono">' + escapeHtml(p.key || '(baris ' + (i + 1) + ')') + '</td>' +
           '<td style="text-align:center"><input type="checkbox" data-ai="enabled" data-i="' + i + '"' + (enabled ? ' checked' : '') + ' aria-label="AI access plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
           '<td><select data-ai="provider" data-i="' + i + '" aria-label="Provider plan ' + escapeHtml(p.key || String(i + 1)) + '">' +
-            '<option value="grouter"' + (provider === 'grouter' ? ' selected' : '') + '>grouter (aktif)</option>' +
+            '<option value="grouter"' + (provider === 'grouter' ? ' selected' : '') + '>grouter</option>' +
           '</select></td>' +
-          '<td><input class="cell-in mono" data-ai="allowedModels" data-i="' + i + '" value="' + escapeHtml(models) + '" placeholder="mis. DeepSeek-V4-Flash, kimi-k3" autocomplete="off" spellcheck="false" aria-label="Allowed models plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
+          '<td><input class="cell-in mono" data-ai="allowedModels" data-i="' + i + '" value="' + escapeHtml(models) + '" placeholder="model-a, model-b" autocomplete="off" spellcheck="false" aria-label="Allowed models plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
           '<td><select data-ai="defaultModel" data-i="' + i + '" aria-label="Default model plan ' + escapeHtml(p.key || String(i + 1)) + '">' +
             (enabled
-              ? (modelOpts || '<option value="">— atur allowed models dulu —</option>')
+              ? (modelOpts || '<option value="">— pilih model —</option>')
               : '<option value="">AI disabled</option>') +
           '</select></td>' +
-          '<td><input class="cell-in mono" data-ai="quotaTokens" data-i="' + i + '" value="' + escapeHtml(quota) + '" placeholder="ikut Quota plan" autocomplete="off" inputmode="numeric" aria-label="Token quota plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
+          '<td><input class="cell-in mono" data-ai="quotaTokens" data-i="' + i + '" value="' + escapeHtml(quota) + '" placeholder="ikut plan" autocomplete="off" inputmode="numeric" aria-label="Token quota plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
         '</tr>';
       }).join('');
 

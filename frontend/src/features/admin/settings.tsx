@@ -102,16 +102,16 @@ export function AdminSettings() {
                 <p className='label-mono'>Service health</p>
                 <div className='mt-1.5 flex items-center gap-2'>
                   {healthOk ? (
-                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-400'>
+                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-700'>
                       <span className='relative flex size-2'>
-                        <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60' />
-                        <span className='relative inline-flex size-2 rounded-full bg-emerald-400' />
+                        <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60' />
+                        <span className='relative inline-flex size-2 rounded-full bg-emerald-500' />
                       </span>
                       Sehat
                     </span>
                   ) : (
-                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-red-400'>
-                      <span className='size-2 rounded-full bg-red-400' /> Tak terjangkau
+                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-red-600'>
+                      <span className='size-2 rounded-full bg-red-500' /> Tak terjangkau
                     </span>
                   )}
                 </div>
@@ -123,7 +123,7 @@ export function AdminSettings() {
                 <RefreshCw className='size-3.5' />
               </Button>
             </div>
-            <div className='chassis-well px-3 py-2.5 font-mono text-xs text-muted-foreground'>
+            <div className='rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-xs text-muted-foreground'>
               {health.isError ? 'Gagal menghubungi /api/health' : 'GET /api/health → 200 OK'}
             </div>
           </CardContent>

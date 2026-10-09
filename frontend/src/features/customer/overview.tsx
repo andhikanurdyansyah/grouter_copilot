@@ -69,7 +69,7 @@ export function CustomerOverview() {
       {!anyLicense ? (
         <Card className='overflow-hidden'>
           <CardContent className='p-0'>
-            <div className='flex flex-col items-center gap-1.5 px-6 pb-6 pt-10 text-center'>
+            <div className='flex flex-col items-center gap-1.5 px-6 pb-6 pt-8 text-center'>
               <div className='flex size-12 items-center justify-center rounded-2xl bg-primary/10'>
                 <Sparkles className='size-6 text-primary' aria-hidden />
               </div>

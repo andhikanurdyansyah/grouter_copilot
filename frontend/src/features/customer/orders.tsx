@@ -202,7 +202,9 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
       <CardContent className='flex flex-1 flex-col p-5'>
         <div className='flex items-baseline justify-between gap-2'>
           <h3 className='text-base font-medium'>{plan.name}</h3>
-          {unpriced ? (
+          {salesOnly ? (
+            <p className='text-2xl font-semibold tracking-tight text-muted-foreground'>Custom</p>
+          ) : unpriced ? (
             <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400'>harga menyusul</Badge>
           ) : (
             <p className='text-2xl font-semibold tabular-nums tracking-tight'>{formatIDR(plan.amount)}</p>
@@ -212,12 +214,12 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
 
         <ul className='mt-4 flex-1 space-y-2.5 text-sm'>
           <li className='flex items-center gap-2'>
-            {ai ? <Check className='size-4 text-emerald-400' aria-hidden /> : <HelpCircle className='size-4 text-muted-foreground' aria-hidden />}
-            {ai
-              ? (tokens === null || tokens === undefined
-                  ? 'AI unlimited'
-                  : <>AI hingga <strong className='tabular-nums'>{tokens.toLocaleString('id-ID')}</strong> token</>)
-              : 'Tanpa fitur AI'}
+            {tokens !== null && tokens !== undefined
+              ? <Check className='size-4 text-emerald-500' aria-hidden />
+              : <HelpCircle className='size-4 text-muted-foreground' aria-hidden />}
+            {tokens === null || tokens === undefined
+              ? 'Kuota AI ditetapkan saat aktivasi'
+              : <>AI hingga <strong className='tabular-nums'>{tokens.toLocaleString('id-ID')}</strong> token</>}
           </li>
           {ai && tokens !== null && tokens !== undefined && (
             <li className='flex items-center gap-2 text-muted-foreground'>

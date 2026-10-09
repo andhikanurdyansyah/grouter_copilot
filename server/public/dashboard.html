@@ -126,8 +126,12 @@
             Lisensi
           </a>
           <a class="nav-item" type="button" data-view="usage" href="/admin/usage">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18V8M10 18V5M16 18v-7M22 18V9"/><path d="M2 21h20"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
             Usage &amp; Kuota
+          </a>
+          <a class="nav-item" type="button" data-view="ledger" href="/admin/ledger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M8 8h9M8 12h9M8 16h5"/></svg>
+            AI Ledger
           </a>
           <a class="nav-item" type="button" data-view="settings" href="/admin/settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -286,6 +290,76 @@
               </div>
               <div class="status-loading" id="usageLoading">Memuat usage…</div>
               <div class="empty" id="usageEmpty" style="display:none">Belum ada license dengan api key bound.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== AI LEDGER (customer usage, D-021) ===================== -->
+        <section class="view" id="view-ledger" aria-labelledby="ledgerHeading" tabindex="-1">
+          <h2 class="sr-only" id="ledgerHeading">AI Ledger</h2>
+          <div class="metal-panel panel" id="ledger">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">AI Ledger — usage pelanggan (D-021)</div>
+                <div class="mono-label">dimensi customer per lisensi · bukan infrastruktur gRouter</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" id="refreshLedger">Muat ulang</button>
+            </div>
+            <div class="panel-body">
+              <form id="ledgerFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px" aria-label="Filter ledger">
+                <div>
+                  <label class="mono-label" for="ledgerFCustomer">Customer</label>
+                  <input id="ledgerFCustomer" type="text" placeholder="semua" autocomplete="off" style="max-width:140px" />
+                </div>
+                <div>
+                  <label class="mono-label" for="ledgerFStatus">Status</label>
+                  <select id="ledgerFStatus" style="max-width:140px">
+                    <option value="">semua</option>
+                    <option value="ok">ok</option>
+                    <option value="error">error</option>
+                    <option value="reserved">reserved</option>
+                    <option value="rejected">rejected</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mono-label" for="ledgerFModel">Model</label>
+                  <input id="ledgerFModel" type="text" placeholder="semua" autocomplete="off" style="max-width:160px" />
+                </div>
+                <div>
+                  <label class="mono-label" for="ledgerFLicense">License ID</label>
+                  <input id="ledgerFLicense" type="text" placeholder="lic_…" autocomplete="off" style="max-width:180px" />
+                </div>
+                <button class="btn btn-sm" type="submit">Terapkan</button>
+                <button class="btn btn-ghost btn-sm" type="button" id="ledgerReset">Reset</button>
+              </form>
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Ledger permintaan AI per lisensi: waktu, model, status, token, kuota</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Waktu</th>
+                      <th scope="col">Customer</th>
+                      <th scope="col" class="hide-sm">Model</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">In / Out</th>
+                      <th scope="col" class="hide-sm">Total</th>
+                      <th scope="col" class="hide-sm">Kuota terpakai</th>
+                      <th scope="col" class="hide-sm">Error</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ledgerRows"></tbody>
+                </table>
+              </div>
+              <div class="status-loading" id="ledgerLoading">Memuat ledger…</div>
+              <div class="empty" id="ledgerEmpty" style="display:none">Belum ada permintaan AI tercatat.</div>
+              <div class="err" id="ledgerError" style="display:none" role="alert"></div>
+              <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px">
+                <span class="mono-label" id="ledgerMeta"></span>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-ghost btn-sm" type="button" id="ledgerPrev" disabled>&larr; Sebelumnya</button>
+                  <button class="btn btn-ghost btn-sm" type="button" id="ledgerNext" disabled>Berikutnya &rarr;</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -554,13 +628,15 @@
     var VIEW_META = {
       overview: { title: 'Ringkasan', sub: 'Monitor lisensi, install, dan quota plugin gRouter Copilot.', heading: 'Ringkasan' },
       licenses: { title: 'Lisensi', sub: 'Terbitkan, bind, dan revoke lisensi pelanggan.', heading: 'Lisensi' },
-      usage:    { title: 'Usage & Kuota', sub: 'Pemakaian token harian per lisensi terikat.', heading: 'Usage & Kuota' },
+      usage:    { title: 'Usage & Kuota', sub: 'Pemakaian infrastruktur gRouter (service credential).', heading: 'Usage & Kuota' },
+      ledger:   { title: 'AI Ledger', sub: 'Usage AI pelanggan per lisensi — dimensi customer (D-021).', heading: 'AI Ledger' },
       settings: { title: 'Pengaturan', sub: 'Konfigurasi runtime — plans, branding, payment, provider & limits.', heading: 'Pengaturan' }
     };
 
     function routeFromPath(path) {
       if (path === '/admin/licenses') return 'licenses';
       if (path === '/admin/usage') return 'usage';
+      if (path === '/admin/ledger') return 'ledger';
       if (path === '/admin/settings') return 'settings';
       return 'overview';
     }
@@ -739,6 +815,7 @@
       document.title = 'gRouter Copilot — ' + meta.heading;
       closeSidebar();
       if (name === 'settings') loadSettingsOnce();
+      if (name === 'ledger') loadLedger();
     }
 
     var navToggle = $('navToggle');
@@ -1020,6 +1097,101 @@
     function loadUsage() {
       return apiFetch('/api/admin/usage').then(function (data) { renderUsage((data && data.usage) || []); });
     }
+
+    /* ------------------------------------------------------------------
+       AI Ledger (customer usage, D-021) — server-side ledger only
+    ------------------------------------------------------------------ */
+    var ledgerState = { offset: 0, limit: 50, total: 0 };
+
+    function ledgerQuery() {
+      var p = new URLSearchParams();
+      var c = ($('ledgerFCustomer').value || '').trim();
+      var s = $('ledgerFStatus').value || '';
+      var m = ($('ledgerFModel').value || '').trim();
+      var lic = ($('ledgerFLicense').value || '').trim();
+      if (c) p.set('customer', c);
+      if (s) p.set('status', s);
+      if (m) p.set('model', m);
+      if (lic) p.set('licenseId', lic);
+      p.set('limit', String(ledgerState.limit));
+      p.set('offset', String(ledgerState.offset));
+      return p.toString();
+    }
+
+    function loadLedger() {
+      $('ledgerLoading').style.display = '';
+      $('ledgerEmpty').style.display = 'none';
+      $('ledgerError').style.display = 'none';
+      return apiFetch('/api/admin/ledger?' + ledgerQuery()).then(function (data) {
+        renderLedger(data || {});
+      }).catch(function (e) {
+        $('ledgerLoading').style.display = 'none';
+        if (e && e.status === 401) return; // apiFetch already showed the gate
+        var box = $('ledgerError');
+        box.textContent = 'Ledger gagal dimuat: ' + (e && e.message ? e.message : 'error');
+        box.style.display = 'block';
+      });
+    }
+
+    function renderLedger(data) {
+      $('ledgerLoading').style.display = 'none';
+      ledgerState.total = data.total || 0;
+      var rows = data.records || [];
+      var body = $('ledgerRows');
+      if (!rows.length) { body.innerHTML = ''; $('ledgerEmpty').style.display = 'block'; }
+      else {
+        $('ledgerEmpty').style.display = 'none';
+        body.innerHTML = rows.map(function (u) {
+          var st = String(u.status || '—');
+          var stCls = st === 'ok' ? 'active' : (st === 'reserved' ? 'pending' : (st === 'error' || st === 'rejected' ? 'revoked' : 'neutral'));
+          var inTok = u.inputTokens, outTok = u.outputTokens, tot = u.totalTokens;
+          var inOut = (inTok == null && outTok == null) ? '—' : (fmtNum(inTok || 0) + ' / ' + fmtNum(outTok || 0));
+          var q = u.quota || {};
+          var used = q.usedTokens != null ? fmtNum(q.usedTokens) + (q.limit != null ? ' / ' + fmtNum(q.limit) : ' (unlimited)') : '—';
+          var errTxt = u.errorClassification ? escapeHtml(u.errorClassification) + (u.errorCode ? ' · ' + escapeHtml(u.errorCode) : '') : '—';
+          var when = u.createdAt ? fmtRelative(u.createdAt) : '—';
+          var whenTitle = u.createdAt ? new Date(u.createdAt).toLocaleString('id-ID') : '';
+          return '<tr>' +
+            '<td title="' + escapeHtml(whenTitle) + '">' + escapeHtml(when) + '</td>' +
+            '<td>' + escapeHtml(u.customer || u.licenseId || '—') + '</td>' +
+            '<td class="mono hide-sm">' + escapeHtml(u.model || '—') + '</td>' +
+            '<td><span class="badge ' + stCls + '">' + escapeHtml(st) + '</span></td>' +
+            '<td class="mono">' + inOut + '</td>' +
+            '<td class="mono hide-sm">' + (tot == null ? '—' : fmtNum(tot)) + '</td>' +
+            '<td class="mono hide-sm">' + escapeHtml(used) + '</td>' +
+            '<td class="hide-sm mono" style="font-size:12px">' + errTxt + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+      $('ledgerMeta').textContent = 'Total ' + fmtNum(ledgerState.total) + ' record' +
+        ' · menampilkan ' + rows.length + ' (offset ' + ledgerState.offset + ')';
+      $('ledgerPrev').disabled = ledgerState.offset <= 0;
+      $('ledgerNext').disabled = (ledgerState.offset + ledgerState.limit) >= ledgerState.total;
+    }
+
+    $('refreshLedger').addEventListener('click', function () { ledgerState.offset = 0; loadLedger(); });
+    $('ledgerFilters').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      ledgerState.offset = 0;
+      loadLedger();
+    });
+    $('ledgerReset').addEventListener('click', function () {
+      $('ledgerFCustomer').value = ''; $('ledgerFStatus').value = '';
+      $('ledgerFModel').value = ''; $('ledgerFLicense').value = '';
+      ledgerState.offset = 0;
+      loadLedger();
+    });
+    $('ledgerPrev').addEventListener('click', function () {
+      ledgerState.offset = Math.max(0, ledgerState.offset - ledgerState.limit);
+      loadLedger();
+    });
+    $('ledgerNext').addEventListener('click', function () {
+      if (ledgerState.offset + ledgerState.limit < ledgerState.total) {
+        ledgerState.offset += ledgerState.limit;
+        loadLedger();
+      }
+    });
+
     function loadAll() {
       renderSkeletons();
       return Promise.all([

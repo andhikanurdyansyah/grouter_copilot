@@ -5,7 +5,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -26,6 +26,9 @@ const TINY_PLANS = {
     { key: 'micro', name: 'Micro', amount: 0, currency: 'IDR', quota: 'micro', quotaTokens: 20, features: ['core'], expiresInDays: 90, active: true },
   ],
 };
+
+// Default gateway model (settings SSOT, D-020) used by tests that omit model.
+const DEFAULT_MODEL = 'DeepSeek-V4-Flash';
 
 function makeServer({ fetchImpl, apiKey = null, settingsPatch = null } = {}) {
   // The gateway adapter reads the credential from the server-side env AT
@@ -59,7 +62,7 @@ function okProvider({ answer = 'total is 42', usage = { prompt_tokens: 12, compl
     assert.equal(url, 'https://prod.grouter.web.id/v1/chat/completions');
     assert.ok(String(init.headers.authorization || '').startsWith('Bearer '), 'provider call must carry the service credential');
     assert.ok(!String(init.headers.authorization).includes('undefined'), 'credential must be resolved');
-    assert.equal(body.model, 'grouter-default');
+    assert.equal(body.model, DEFAULT_MODEL);
     return new Response(
       JSON.stringify({ choices: [{ message: { content: answer } }], usage }),
       { status: 200, headers: { 'content-type': 'application/json' } },
@@ -274,6 +277,176 @@ test('gateway: HTTP surface — status mapping, sanitized bodies, no credential 
   }
 });
 
+
+test('gateway: default model resolves from settings (SSOT) and can be overridden per request', async () => {
+  let seenModels = [];
+  const fetchImpl = async (url, init) => {
+    seenModels.push(JSON.parse(init.body).model);
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: 'ok' } }], usage: { prompt_tokens: 5, completion_tokens: 3 } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const env = makeServer({ fetchImpl, apiKey: 'test-key', settingsPatch: TINY_PLANS });
+  try {
+    const issued = await fetch(`${env.baseUrl}/api/admin/licenses`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-admin' },
+      body: JSON.stringify({ customer: 'M', planKey: 'tiny' }),
+    });
+    const { token } = await issued.json();
+
+    // No model in request → settings provider.model (DeepSeek-V4-Flash).
+    let res = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, messages: MESSAGES, requestId: `req_${Date.now()}a` }),
+    });
+    assert.equal(res.status, 200);
+    // Explicit model wins over the default.
+    res = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, messages: MESSAGES, model: 'kimi-k3', requestId: `req_${Date.now()}b` }),
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(seenModels, [DEFAULT_MODEL, 'kimi-k3']);
+  } finally { env.cleanup(); }
+});
+
+test('gateway: no configured model fails closed as NOT_CONFIGURED (never charged)', async () => {
+  const settings = { plans: TINY_PLANS.plans, provider: { model: '' } };
+  const env = makeServer({
+    fetchImpl: async () => { throw new Error('provider must NOT be called without a model'); },
+    apiKey: 'test-key', settingsPatch: settings,
+  });
+  try {
+    const issued = await fetch(`${env.baseUrl}/api/admin/licenses`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-admin' },
+      body: JSON.stringify({ customer: 'M', planKey: 'tiny' }),
+    });
+    const { token } = await issued.json();
+    const res = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, messages: MESSAGES, requestId: `req_${Date.now()}c` }),
+    });
+    assert.equal(res.status, 503);
+    const body = await res.json();
+    assert.equal(body.code, 'NOT_CONFIGURED');
+  } finally { env.cleanup(); }
+});
+
+
+test('admin ledger endpoint: auth required, filters, pagination, customer summary in /api/me', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-ledger-'));
+  const prevKey = process.env.GROUTER_API_KEY;
+  process.env.GROUTER_API_KEY = 'ledger-test-key'; // read at server construction
+  const seenModels = [];
+  const fakeFetch = async (url, init) => {
+    if (String(url).endsWith('/v1/chat/completions')) {
+      const body = JSON.parse(init.body);
+      seenModels.push(body.model);
+      if (body.messages?.[0]?.content === 'boom') {
+        return new Response(JSON.stringify({ error: 'upstream exploded' }), { status: 500, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: 'hi' } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    throw new Error('unexpected fetch ' + url);
+  };
+  try {
+    const { server, store, keys } = createCopilotServer({
+      dataFile: path.join(dir, 'store.json'),
+      fetch: fakeFetch,
+      initialSettings: { plans: [{ key: 'tiny', name: 'Tiny', amount: 0, currency: 'IDR', quota: 't', quotaTokens: 3000, features: ['core'], expiresInDays: 90, active: true }] },
+    });
+    await new Promise((r) => server.listen(0, r));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const issue = await req(base, 'POST', '/api/admin/licenses', { customer: 'LedgerCo', planKey: 'tiny' });
+      const { token, license } = issue.json;
+
+      // 1) Ledger requires admin. In NODE_ENV=test the server allows
+      // unauthenticated admin by default, so prove the gate by constructing the
+      // server with an explicit adminToken instead.
+      const gated = createCopilotServer({
+        dataFile: path.join(dir, 'store-gated.json'),
+        fetch: fakeFetch,
+        adminToken: 'secret-admin-token',
+        allowUnauthenticatedAdmin: false,
+      });
+      gated.server.listen(0, () => {});
+      try {
+        const gatedBase = `http://127.0.0.1:${gated.server.address().port}`;
+        const noAuth = await req(gatedBase, 'GET', '/api/admin/ledger');
+        assert.equal(noAuth.status, 401, 'ledger must never be accessible without the admin token');
+        const withAuth = await req(gatedBase, 'GET', '/api/admin/ledger', null, 'secret-admin-token');
+        assert.equal(withAuth.status, 200);
+      } finally {
+        gated.server.close();
+      }
+
+      // 2) 2 ok requests + 1 upstream error (fake provider 500) — error row must
+      // appear in the ledger WITHOUT being charged.
+      for (const rid of ['req_l1', 'req_l2']) {
+        const res = await req(base, 'POST', '/api/copilot/chat', { token, messages: [{ role: 'user', content: 'x' }], requestId: rid });
+        assert.equal(res.json.status, 'ok');
+      }
+      const bad = await req(base, 'POST', '/api/copilot/chat', { token, messages: [{ role: 'user', content: 'boom' }], requestId: 'req_l3' });
+      assert.equal(bad.json.status, 'error');
+
+      // 3) Authenticated ledger lists records with sanitized fields only.
+      const list = await req(base, 'GET', '/api/admin/ledger');
+      assert.equal(list.status, 200);
+      assert.ok(list.json.total >= 3);
+      const rec = list.json.records[0];
+      for (const key of ['requestId', 'licenseId', 'customer', 'status', 'inputTokens', 'outputTokens', 'totalTokens', 'createdAt']) {
+        assert.ok(key in rec, 'record exposes ' + key);
+      }
+      assert.ok(!('answer' in rec), 'prompt/completion bodies are never exposed');
+      assert.ok(!JSON.stringify(list.json).includes('gRouter-') && !JSON.stringify(list.json).includes('apiKey'), 'no credentials in ledger response');
+
+      // 4) Filters work.
+      const okOnly = await req(base, 'GET', '/api/admin/ledger?status=ok');
+      assert.ok(okOnly.json.records.every((r) => r.status === 'ok'));
+      const errOnly = await req(base, 'GET', '/api/admin/ledger?status=error');
+      assert.ok(errOnly.json.records.length >= 1 && errOnly.json.records.every((r) => r.status === 'error'));
+      const byCustomer = await req(base, 'GET', '/api/admin/ledger?customer=ledgerco');
+      assert.ok(byCustomer.json.total >= 3);
+      const byLicense = await req(base, 'GET', `/api/admin/ledger?licenseId=${license.id}`);
+      assert.equal(byLicense.json.total, byCustomer.json.total);
+      const noMatch = await req(base, 'GET', '/api/admin/ledger?customer=nobody');
+      assert.equal(noMatch.json.total, 0);
+
+      // 5) Pagination is bounded and stable.
+      const p1 = await req(base, 'GET', '/api/admin/ledger?limit=2&offset=0');
+      assert.equal(p1.json.records.length, 2);
+      const p2 = await req(base, 'GET', '/api/admin/ledger?limit=2&offset=2');
+      assert.ok(p2.json.records.length >= 1);
+      const ids = new Set([...p1.json.records, ...p2.json.records].map((r) => r.requestId));
+      assert.equal(ids.size, p1.json.records.length + p2.json.records.length, 'no page overlap');
+      const capped = await req(base, 'GET', '/api/admin/ledger?limit=9999');
+      assert.ok(capped.json.records.length <= 200, 'limit is capped at 200');
+
+      // 6) Quota view per record reflects the plan (server-side catalogue).
+      assert.equal(p1.json.records[0].quota.unit, 'tokens');
+      assert.equal(p1.json.records[0].quota.limit, 3000);
+      assert.ok(p1.json.records[0].quota.usedTokens >= 30); // 2 ok × 15 tokens
+
+      // 7) /api/me includes the account's usage summary (auth-scoped).
+      //    (Direct check: usageTotals for this license matches ledger.)
+      const totals = store.usageTotals(license.id);
+      assert.equal(totals.requestCount, 2);
+      assert.equal(totals.usedTokens, 30);
+    } finally {
+      server.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (prevKey === undefined) delete process.env.GROUTER_API_KEY;
+    else process.env.GROUTER_API_KEY = prevKey;
+  }
+});
+
 test('createGateway: reads the credential from server-side env only (fail closed)', () => {
   const store = new JsonStore(path.join(tmpdir(), `copilot-cg-${Date.now()}.json`));
   const service = new LicenseService({ store, privateKeyPem: '-----BEGIN PRIVATE KEY-----x', publicKeyPem: '-----BEGIN PUBLIC KEY-----x' });
@@ -283,10 +456,13 @@ test('createGateway: reads the credential from server-side env only (fail closed
   assert.equal(gw2.configured, true);
 });
 
-async function req(baseUrl, method, p, body) {
+async function req(baseUrl, method, p, body, adminToken) {
   const res = await fetch(`${baseUrl}${p}`, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : {},
+    headers: {
+      ...(body ? { 'content-type': 'application/json' } : {}),
+      ...(adminToken ? { authorization: `Bearer ${adminToken}` } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   return { status: res.status, json: await res.json() };

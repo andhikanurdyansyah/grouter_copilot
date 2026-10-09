@@ -198,9 +198,25 @@ export function createCopilotServer({
         }
         const account = accounts.ensureAccount(session.user);
         const licenses = store.licensesByAccount(account.id).map(sanitizeLicense);
+        // Customer usage summary (D-021 ledger, server-side): per-license token
+        // totals as CHARGED by Copilot — never browser-supplied numbers, never
+        // the gRouter infrastructure dimension.
+        const usage = licenses.map((l) => ({
+          licenseId: l.id,
+          ...store.usageTotals(l.id),
+        }));
+        const eff = resolveSettings(store.getSettings());
+        const plansByKey = new Map((eff.plans || []).map((p) => [p.key, p]));
+        for (const u of usage) {
+          const rec = store.getLicense(u.licenseId);
+          const plan = plansByKey.get(rec?.planKey ?? '');
+          u.quotaLimit = plan?.quotaTokens ?? null; // null = unlimited
+          u.quotaUnit = 'tokens';
+        }
         return sendJson(res, 200, {
           account: { id: account.id, name: account.name, email: account.email },
           licenses,
+          usage,
         });
       })();
     }
@@ -364,9 +380,76 @@ export function createCopilotServer({
       });
     }
 
+    // Customer usage LEDGER (admin, D-021 customer dimension). Served from the
+    // server-side gateway ledger — never from browser-supplied numbers. This is
+    // a DIFFERENT accounting dimension from /api/admin/usage (infrastructure
+    // usage of the single gRouter service credential): the two are never summed.
+    // Query: licenseId, customer, status, model, from, to (ms epoch), limit
+    // (default 50, max 200), offset. Secrets and prompt/completion bodies are
+    // never included.
+    if (req.method === 'GET' && url.pathname === '/api/admin/ledger') {
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
+      const q = url.searchParams;
+      const customerFilter = (q.get('customer') || '').trim().toLowerCase();
+      const statusFilter = (q.get('status') || '').trim();
+      const modelFilter = (q.get('model') || '').trim().toLowerCase();
+      const licenseFilter = (q.get('licenseId') || '').trim();
+      const from = Number.isFinite(Number(q.get('from'))) && q.get('from') !== null && q.get('from') !== '' ? Number(q.get('from')) : null;
+      const to = Number.isFinite(Number(q.get('to'))) && q.get('to') !== null && q.get('to') !== '' ? Number(q.get('to')) : null;
+      let limit = parseInt(q.get('limit') ?? '50', 10);
+      if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+      limit = Math.min(limit, 200);
+      let offset = parseInt(q.get('offset') ?? '0', 10);
+      if (!Number.isSafeInteger(offset) || offset < 0) offset = 0;
+
+      const customerByLicense = new Map(store.listLicenses().map((l) => [l.id, l.customer]));
+      const planByLicense = new Map(store.listLicenses().map((l) => [l.id, l.planKey ?? null]));
+      const eff = resolveSettings(store.getSettings());
+      const plansByKey = new Map((eff.plans || []).map((p) => [p.key, p]));
+
+      let rows = store.listUsage();
+      if (licenseFilter) rows = rows.filter((u) => u.licenseId === licenseFilter);
+      if (customerFilter) rows = rows.filter((u) => String(customerByLicense.get(u.licenseId) || '').toLowerCase().includes(customerFilter));
+      if (statusFilter) rows = rows.filter((u) => u.status === statusFilter);
+      if (modelFilter) rows = rows.filter((u) => String(u.model || '').toLowerCase().includes(modelFilter));
+      if (from !== null) rows = rows.filter((u) => (u.createdAt ?? 0) >= from);
+      if (to !== null) rows = rows.filter((u) => (u.createdAt ?? 0) <= to);
+      rows = rows.slice().sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+      const total = rows.length;
+      const page = rows.slice(offset, offset + limit).map((u) => {
+        const plan = plansByKey.get(planByLicense.get(u.licenseId) ?? '');
+        const quotaTokens = plan?.quotaTokens ?? null; // null/undefined = unlimited
+        const totals = store.usageTotals(u.licenseId);
+        return {
+          requestId: u.requestId,
+          licenseId: u.licenseId,
+          customer: customerByLicense.get(u.licenseId) ?? null,
+          model: u.model ?? null,
+          status: u.status, // reserved | ok | error | rejected
+          inputTokens: u.inputTokens ?? null,
+          outputTokens: u.outputTokens ?? null,
+          totalTokens: u.totalTokens ?? null,
+          reservedTokens: u.reservedTokens ?? 0,
+          errorClassification: u.errorClassification ?? null,
+          errorCode: u.errorCode ?? null,
+          createdAt: u.createdAt ?? null,
+          completedAt: u.completedAt ?? null,
+          quota: {
+            planKey: planByLicense.get(u.licenseId) ?? null,
+            unit: 'tokens',
+            limit: quotaTokens, // null = unlimited
+            usedTokens: totals.usedTokens,
+            requestCount: totals.requestCount,
+          },
+        };
+      });
+      return sendJson(res, 200, { records: page, total, limit, offset });
+    }
+
     // Usage endpoint (admin). D-021: /check-usage describes INFRASTRUCTURE usage
     // of the single service credential (server-side env) — never a customer's
-    // entitlement (that lives in the gateway usage ledger).
+    // entitlement (that lives in the gateway usage ledger, /api/admin/ledger).
     if (req.method === 'GET' && url.pathname === '/api/admin/usage') {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return (async () => {
@@ -611,6 +694,7 @@ function sanitizeLicense(l, { includeToken = false } = {}) {
     id: l.id,
     customer: l.customer,
     accountId: l.accountId ?? null,
+    planKey: l.planKey ?? null, // links to the plan catalogue (quotaTokens); non-secret
     features: l.features,
     quota: l.quota ?? null,
     createdAt: l.createdAt,

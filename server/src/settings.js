@@ -68,6 +68,11 @@ export const DEFAULT_SETTINGS = {
     // gRouter base WITHOUT the /v1 prefix — the adapter appends /v1/chat/completions.
     baseUrl: 'https://prod.grouter.web.id',
     timeoutMs: 60000,
+    // Default model when the request does not specify one. MUST be a model the
+    // gRouter service credential can actually call — verified live 2026-10-09
+    // (grouter-default is NOT available on this credential: 403
+    // insufficient_quota; DeepSeek-V4-Flash answered successfully).
+    model: 'DeepSeek-V4-Flash',
     // D-021 gateway: the service credential itself is server-side env-only
     // (GROUTER_API_KEY in server/.env), never a store setting.
     gateway: {
@@ -253,7 +258,7 @@ export function validateSettings(patch) {
   }
   if (p.usage?.checkUsageUrl !== undefined) validStr(p.usage.checkUsageUrl, 'usage.checkUsageUrl');
   if (p.provider?.baseUrl !== undefined) validStr(p.provider.baseUrl, 'provider.baseUrl');
-  if (p.provider?.timeoutMs !== undefined) assertInt(p.provider.timeoutMs, 'provider.timeoutMs', { min: 1000 });
+  if (p.provider?.model !== undefined) validStr(p.provider.model, 'provider.model');
   if (p.provider?.gateway !== undefined) {
     const g = p.provider.gateway;
     if (!isPlainObject(g)) throw fail('provider.gateway must be an object.');

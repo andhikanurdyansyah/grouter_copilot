@@ -144,9 +144,22 @@ export class CopilotGateway {
     this.store.addUsageRecord(this._ledgerEntry({ requestId, lic, status: 'reserved', reservation }));
 
     // 7. Call gRouter via the server-side adapter, then reconcile.
+    // Default model comes from settings (SSOT, D-020): provider.model, never a
+    // hardcoded call-site value.
+    const effModel = model || this.resolveSettings().provider?.model || null;
+    if (!effModel) {
+      this.store.updateUsageRecord(requestId, {
+        status: 'error',
+        completedAt: Date.now(),
+        reservedTokens: 0,
+        errorClassification: 'not_configured',
+        errorStatus: 503, errorCode: 'NOT_CONFIGURED',
+      });
+      return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'No model configured for the AI gateway.', retryable: false, licenseId: lic.id };
+    }
     try {
       const { answer, usage } = await this.adapter.complete({
-        model: model || 'grouter-default',
+        model: effModel,
         messages,
         maxTokens,
       });
@@ -154,7 +167,7 @@ export class CopilotGateway {
       const outputTokens = Number.isSafeInteger(usage?.outputTokens) ? usage.outputTokens : 0;
       this.store.updateUsageRecord(requestId, {
         status: 'ok',
-        model: model || 'grouter-default',
+        model: effModel,
         inputTokens,
         outputTokens,
         totalTokens: inputTokens + outputTokens,

@@ -130,6 +130,10 @@ export class JsonStore {
     return this.data.usage.find((u) => u.requestId === requestId) ?? null;
   }
 
+  listUsage() {
+    return this.data.usage;
+  }
+
   addUsageRecord(record) {
     this.data.usage.push(record);
     this._save();

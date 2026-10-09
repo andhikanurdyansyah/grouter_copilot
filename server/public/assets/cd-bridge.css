@@ -80,7 +80,8 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--cd-hover); }
 td.mono, .mono { font-family: var(--cd-mono); font-size: 12px; }
 .nowrap { white-space: nowrap; }
-.row-actions { display: inline-flex; gap: 6px; }
+.row-actions { display: inline-flex; gap: 8px; }
+.row-actions .btn { min-height: 30px; }
 
 /* ---- Buttons ---- */
 .btn {
@@ -177,7 +178,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--cd-accent); }
 .status-loading { padding: 20px; color: var(--cd-ink-3); font-size: 13px; }
 .identity { display: flex; align-items: center; gap: 10px; }
 .identity .who .n { font-size: 13px; font-weight: 500; color: var(--cd-ink); }
-.identity .who .r { font-size: 11px; color: var(--cd-ink-4); }
+.identity .who .r { font-size: 11px; color: var(--cd-ink-3); }
 .identity .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--cd-accent), #2b8db3); color: var(--cd-accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
 .license-token { color: var(--cd-accent); }
 .chart-value { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }

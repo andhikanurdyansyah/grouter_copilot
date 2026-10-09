@@ -239,8 +239,8 @@
               <div class="row" style="gap:var(--sp-2)">
                 <div class="field" style="margin:0;flex-direction:row;align-items:center;gap:6px">
                   <label class="sr-only" for="licSearch">Cari customer atau license ID</label>
-                  <input id="licSearch" type="search" placeholder="Cari customer / lic_…" autocomplete="off"
-                         style="width:200px;padding:4px 10px;font-size:12px" aria-describedby="licCount" />
+                  <input id="licSearch" type="search" placeholder="Cari customer / ID…" autocomplete="off"
+                         style="width:230px;padding:4px 10px;font-size:12px" aria-describedby="licCount" />
                 </div>
                 <select id="licStatusFilter" aria-label="Filter status lisensi" style="width:auto;padding:4px 28px 4px 10px;font-size:12px">
                   <option value="all">Semua status</option>
@@ -897,6 +897,8 @@
       if (name === 'settings') loadSettingsOnce();
       if (name === 'licenses') loadSettingsOnce(); // untuk kolom Package/AI
       if (name === 'ledger') loadLedger();
+      var issueTop = $('issueBtn');
+      if (issueTop) issueTop.style.display = (name === 'licenses') ? '' : 'none';
     }
 
     var navToggle = $('navToggle');

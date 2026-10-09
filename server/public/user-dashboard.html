@@ -95,6 +95,36 @@
           </section>
 
           <!-- License terbaru (compact — detail penuh di /user/licenses) -->
+          <section class="metal-panel panel" aria-labelledby="usageTitle">
+            <div class="panel-head">
+              <div>
+                <span class="panel-title" id="usageTitle">Pemakaian AI &amp; kuota</span>
+                <div class="sub">Token terpakai per lisensi, dari ledger server-side (real-time saat request AI).</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Pemakaian AI per lisensi: token terpakai dan sisa kuota</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Label</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Request</th>
+                      <th scope="col">Tokens terpakai</th>
+                      <th scope="col">Kuota</th>
+                      <th scope="col">Sisa</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageRows">
+                    <tr><td colspan="6"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="empty" id="usageEmpty" style="display:none">Belum ada pemakaian AI tercatat.</div>
+            </div>
+          </section>
+
           <section class="metal-panel panel" aria-labelledby="licensesTitle">
             <div class="panel-head">
               <div>
@@ -406,8 +436,53 @@
 
         renderLicenses(licenses.slice(0, 5), els.licenseRows, false);
         renderLicenses(licenses, els.licenseRowsFull, true);
+        renderUsage(data.usage || [], licenses);
         renderChart(licenses);
         els.liveStatus.textContent = licenses.length + ' lisensi dimuat, ' + active.length + ' aktif.';
+      }
+
+      /* renderUsage: pemakaian AI per lisensi dari usage[] server-side (/api/me).
+         Quota null = unlimited (eksplisit di backend); aiEnabled false = AI
+         dimatikan di package. Semua angka dari ledger server — bukan browser. */
+      function renderUsage(usage, licenses) {
+        var tbody = document.getElementById('usageRows');
+        var empty = document.getElementById('usageEmpty');
+        if (!tbody) return;
+        var byLicense = {};
+        (usage || []).forEach(function (u) { byLicense[u.licenseId] = u; });
+        var byId = {};
+        (licenses || []).forEach(function (l) { byId[l.id] = l; });
+        var rows = (usage || []).map(function (u) {
+          var l = byId[u.licenseId] || {};
+          var st = licenseStatus(l);
+          var used = Number(u.usedTokens) || 0;
+          var reqs = Number(u.requestCount) || 0;
+          var limitTxt, remainTxt;
+          if (u.quotaLimit === null || u.quotaLimit === undefined) {
+            limitTxt = '<span class="badge neutral">unlimited</span>';
+            remainTxt = '—';
+          } else {
+            var remain = Math.max(0, u.quotaLimit - used);
+            limitTxt = u.quotaLimit.toLocaleString('id-ID') + ' tokens';
+            remainTxt = remain.toLocaleString('id-ID') + ' tokens';
+            if (u.aiEnabled === false) remainTxt += ' (AI off)';
+          }
+          return '<tr>' +
+            '<td>' + escapeHtml(l.customer || u.licenseId) + '</td>' +
+            '<td><span class="badge ' + st + '">' + st + '</span></td>' +
+            '<td class="mono">' + reqs + '</td>' +
+            '<td class="mono">' + used.toLocaleString('id-ID') + '</td>' +
+            '<td class="mono">' + limitTxt + '</td>' +
+            '<td class="mono">' + remainTxt + '</td>' +
+          '</tr>';
+        });
+        if (!rows.length) {
+          tbody.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        tbody.innerHTML = rows.join('');
       }
 
       /* renderLicenses: isi satu tabel license. Filter + empty-state khusus
@@ -438,10 +513,10 @@
 
       /* ---------------- premium SVG chart ---------------- */
       /* Data source (honest): real licenses[].createdAt from /api/me.
-         No usage/quota numbers exist in /api/me, so the chart shows only
-         cumulative licence count per month. If fewer than two distinct
-         months exist, a clearly labelled empty state is rendered instead
-         of inventing a trend. */
+         The chart shows cumulative licence count per month (usage numbers
+         live in the dedicated AI usage panel above). If fewer than two
+         distinct months exist, a clearly labelled empty state is rendered
+         instead of inventing a trend. */
 
       function niceStep(x) {
         if (!(x > 0)) return 1;

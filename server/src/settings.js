@@ -397,15 +397,22 @@ export function maskSettings(eff) {
 export function publicPlans(eff) {
   return (eff.plans || [])
     .filter((p) => p.active !== false)
-    .map((p) => ({
-      key: p.key,
-      name: p.name,
-      amount: p.amount,
-      currency: p.currency || eff.branding?.currency || 'IDR',
-      quota: p.quota ?? null,
-      features: p.features ?? [],
-      expiresInDays: p.expiresInDays ?? eff.license?.defaultExpiresInDays ?? 365,
-    }));
+    .map((p) => {
+      const policy = resolvePlanAiPolicy(p, eff);
+      return {
+        key: p.key,
+        name: p.name,
+        amount: p.amount,
+        currency: p.currency || eff.branding?.currency || 'IDR',
+        quota: p.quota ?? null,
+        features: p.features ?? [],
+        expiresInDays: p.expiresInDays ?? eff.license?.defaultExpiresInDays ?? 365,
+        // Customer-visible AI entitlement summary (non-secret): whether AI is
+        // included and the effective token quota. Never the raw policy object
+        // or anything provider-internal.
+        ai: { enabled: policy.enabled, quotaTokens: policy.quotaTokens },
+      };
+    });
 }
 
 /** Find a plan by key (active or not). */

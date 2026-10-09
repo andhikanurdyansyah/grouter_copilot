@@ -276,6 +276,22 @@ export function createCopilotServer({
       return sendJson(res, 200, service.stats());
     }
 
+    // Admin orders view (read-only): payment lifecycle visibility for the
+    // operator — order status, amount, package, timestamps. Never exposes
+    // payment credentials; settlement itself stays in the webhook/admin flow.
+    if (req.method === 'GET' && url.pathname === '/api/admin/orders') {
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
+      const q = url.searchParams;
+      const statusFilter = (q.get('status') || '').trim().toUpperCase();
+      let limit = parseInt(q.get('limit') ?? '50', 10);
+      if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+      limit = Math.min(limit, 200);
+      let orders = store.listOrders().slice().sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+      const total = orders.length;
+      if (statusFilter) orders = orders.filter((o) => String(o.status || '').toUpperCase() === statusFilter);
+      return sendJson(res, 200, { orders: orders.slice(0, limit).map(sanitizeOrder), total, limit });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/admin/licenses') {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       const list = service.list().map(sanitizeLicense);

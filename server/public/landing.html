@@ -1579,6 +1579,14 @@ document.addEventListener("DOMContentLoaded", () => initInViewAnimations());
             const heading = card.querySelector('h3'); if (heading) heading.textContent = plan.name;
             const price = card.querySelector('.text-4xl, .text-3xl'); if (price) price.textContent = Number(plan.amount) > 0 ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: plan.currency || 'IDR', maximumFractionDigits: 0 }).format(plan.amount) : 'Contact sales';
             const detail = card.querySelector('ul'); if (detail && plan.quota) { const li = document.createElement('li'); li.className = 'flex items-start gap-2'; li.textContent = `${plan.quota} · ${plan.expiresInDays} days`; detail.prepend(li); }
+            if (detail && plan.ai) {
+              const li = document.createElement('li');
+              li.className = 'flex items-start gap-2';
+              if (plan.ai.enabled === false) li.textContent = 'AI: tidak termasuk';
+              else if (plan.ai.quotaTokens == null) li.textContent = 'AI termasuk · token unlimited';
+              else li.textContent = `AI termasuk · ${plan.ai.quotaTokens.toLocaleString('id-ID')} tokens`;
+              detail.prepend(li);
+            }
             const action = card.querySelector('button'); if (action && Number(plan.amount) <= 0) { action.textContent = plan.key === 'custom' ? 'Contact Copilot' : 'Set price in Admin'; action.disabled = true; action.setAttribute('aria-disabled', 'true'); }
           });
         } catch (_) { /* keep canonical fallback copy when API is unavailable */ }

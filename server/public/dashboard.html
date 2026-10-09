@@ -258,6 +258,35 @@
               <div class="empty" id="licEmpty" style="display:none">Belum ada lisensi. Gunakan “Terbitkan Lisensi” untuk membuat yang pertama.</div>
             </div>
           </div>
+          <div class="metal-panel panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Orders &amp; Payment</div>
+                <div class="mono-label">siklus pembayaran — status dari order store server-side</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" id="refreshOrders">Muat ulang</button>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <caption class="sr-only">Daftar order pembayaran</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Order ID</th>
+                      <th scope="col" class="hide-sm">Package</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Status</th>
+                      <th scope="col" class="hide-sm">Dibuat</th>
+                      <th scope="col" class="hide-sm">Dibayar</th>
+                    </tr>
+                  </thead>
+                  <tbody id="orderRows"></tbody>
+                </table>
+              </div>
+              <div class="status-loading" id="orderLoading">Memuat orders…</div>
+              <div class="empty" id="orderEmpty" style="display:none">Belum ada order.</div>
+            </div>
+          </div>
         </section>
 
         <!-- ===================== USAGE ===================== -->
@@ -1125,6 +1154,38 @@
       return apiFetch('/api/admin/usage').then(function (data) { renderUsage((data && data.usage) || []); });
     }
 
+    /* Orders & Payment (read-only operator view) */
+    function loadOrders() {
+      $('orderLoading').style.display = 'block';
+      $('orderEmpty').style.display = 'none';
+      return apiFetch('/api/admin/orders?limit=100').then(function (data) {
+        $('orderLoading').style.display = 'none';
+        var rows = (data && data.orders) || [];
+        var body = $('orderRows');
+        if (!rows.length) { $('orderEmpty').style.display = 'block'; body.innerHTML = ''; return; }
+        body.innerHTML = rows.map(function (o) {
+          var st = String(o.status || '—');
+          var stCls = st === 'PAID' ? 'active' : (st === 'EXPIRED' || st === 'FAILED' ? 'revoked' : 'pending');
+          var amount = (o.amount != null) ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(o.amount) : '—';
+          var created = o.createdAt ? new Date(o.createdAt).toLocaleString('id-ID') : '—';
+          var paid = o.paidAt ? new Date(o.paidAt).toLocaleString('id-ID') : '—';
+          return '<tr>' +
+            '<td class="mono" style="font-size:12px">' + escapeHtml(o.id) + '</td>' +
+            '<td class="hide-sm">' + escapeHtml(o.planName || o.packageKey || '—') + '</td>' +
+            '<td class="mono">' + escapeHtml(amount) + '</td>' +
+            '<td><span class="badge ' + stCls + '">' + escapeHtml(st) + '</span></td>' +
+            '<td class="hide-sm" style="font-size:12px">' + escapeHtml(created) + '</td>' +
+            '<td class="hide-sm" style="font-size:12px">' + escapeHtml(paid) + '</td>' +
+          '</tr>';
+        }).join('');
+      }).catch(function (e) {
+        $('orderLoading').style.display = 'none';
+        if (e && e.status === 401) return;
+        $('orderRows').innerHTML = '<tr><td colspan="6" class="empty">Orders gagal dimuat: ' + escapeHtml((e && e.message) || 'error') + '</td></tr>';
+      });
+    }
+    $('refreshOrders').addEventListener('click', loadOrders);
+
     /* ------------------------------------------------------------------
        AI Ledger (customer usage, D-021) — server-side ledger only
     ------------------------------------------------------------------ */
@@ -1224,6 +1285,7 @@
       return Promise.all([
         loadStats().catch(function (e) { if (e.status !== 401) toast('Stats gagal: ' + e.message, 'err'); }),
         loadLicenses().catch(function (e) { if (e.status !== 401) toast('Licenses gagal: ' + e.message, 'err'); }),
+        loadOrders().catch(function (e) { if (e && e.status !== 401) toast('Orders gagal: ' + e.message, 'err'); }),
         loadUsage().catch(function (e) { if (e.status !== 401) toast('Usage gagal: ' + e.message, 'err'); })
       ]);
     }

@@ -109,7 +109,10 @@ test('publicPlans hides inactive plans and exposes safe fields only', () => {
   const plans = publicPlans(eff);
   assert.equal(plans.length, 1);
   assert.equal(plans[0].key, 'a');
-  assert.deepEqual(Object.keys(plans[0]).sort(), ['amount', 'currency', 'expiresInDays', 'features', 'key', 'name', 'quota']);
+  // 'ai' summary { enabled, quotaTokens } is intentionally customer-visible;
+  // it never contains the raw policy, provider internals, or model lists.
+  assert.deepEqual(Object.keys(plans[0]).sort(), ['ai', 'amount', 'currency', 'expiresInDays', 'features', 'key', 'name', 'quota']);
+  assert.deepEqual(plans[0].ai, { enabled: true, quotaTokens: null });
 });
 
 test('envSeeds only derives keys that are present', () => {

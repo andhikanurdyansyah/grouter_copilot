@@ -160,7 +160,7 @@
                 <div class="cd-section-desc">Token terpakai per lisensi, dari ledger server-side.</div>
               </div>
             </div>
-            <div class="cd-table-wrap">
+            <div class="cd-table-wrap" tabindex="0" role="region" aria-label="Tabel pemakaian AI — panah kiri/kanan untuk scroll horizontal">
               <table class="cd-table">
                 <caption class="sr-only">Pemakaian AI per lisensi: token terpakai dan sisa kuota</caption>
                 <thead>
@@ -191,7 +191,7 @@
                 <div class="cd-section-desc">5 lisensi terakhir — kelola semuanya di <a href="/user/licenses" style="color:var(--cd-accent)">halaman Lisensi</a>.</div>
               </div>
             </div>
-            <div class="cd-table-wrap">
+            <div class="cd-table-wrap" tabindex="0" role="region" aria-label="Tabel lisensi — panah kiri/kanan untuk scroll horizontal">
               <table class="cd-table">
                 <caption class="sr-only">Lima lisensi terakhir milik akun Anda</caption>
                 <thead>
@@ -247,7 +247,7 @@
             </div>
           </div>
           <section class="cd-section">
-            <div class="cd-table-wrap">
+            <div class="cd-table-wrap" tabindex="0" role="region" aria-label="Tabel lisensi lengkap — panah kiri/kanan untuk scroll horizontal">
               <table class="cd-table">
                 <caption class="sr-only">Daftar lisensi milik akun Anda</caption>
                 <thead>
@@ -516,9 +516,17 @@
             remainTxt = '—';
           } else {
             var remain = Math.max(0, u.quotaLimit - used);
+            var ratio = u.quotaLimit > 0 ? used / u.quotaLimit : 0;
             limitTxt = u.quotaLimit.toLocaleString('id-ID') + ' tokens';
-            remainTxt = remain.toLocaleString('id-ID') + ' tokens';
-            if (u.aiEnabled === false) remainTxt += ' (AI off)';
+            if (u.aiEnabled === false) {
+              remainTxt = '<span class="cd-badge cd-badge--muted">AI dimatikan di paket</span>';
+            } else if (remain === 0) {
+              remainTxt = '<span class="cd-badge cd-badge--err">kuota habis — upgrade paket</span>';
+            } else if (ratio >= 0.9) {
+              remainTxt = '<span class="cd-badge cd-badge--warn">' + remain.toLocaleString('id-ID') + ' tokens — hampir habis</span>';
+            } else {
+              remainTxt = remain.toLocaleString('id-ID') + ' tokens';
+            }
           }
           return '<tr>' +
             '<td>' + escapeHtml(l.customer || u.licenseId) + '</td>' +
@@ -910,7 +918,7 @@
             '</tr>';
         }).join('');
         els.orgHost.innerHTML =
-          '<div class="table-wrap"><table>' +
+          '<div class="table-wrap" tabindex="0" role="region" aria-label="Tabel organisasi — panah kiri/kanan untuk scroll horizontal"><table>' +
           '<caption class="sr-only">Daftar organisasi Anda</caption>' +
           '<thead><tr><th scope="col">Nama</th><th scope="col">Slug</th><th scope="col">Dibuat</th><th scope="col"><span class="sr-only">Aksi</span></th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table></div>' +
@@ -936,7 +944,7 @@
         }).join('');
         host.innerHTML =
           '<div class="panel-title" style="margin-bottom:10px">' + escapeHtml(data.name || 'Organisasi') + '</div>' +
-          '<div class="table-wrap"><table>' +
+          '<div class="table-wrap" tabindex="0" role="region" aria-label="Tabel anggota organisasi — panah kiri/kanan untuk scroll horizontal"><table>' +
           '<caption class="sr-only">Anggota organisasi</caption>' +
           '<thead><tr><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Peran</th></tr></thead>' +
           '<tbody>' + (rows || '<tr><td colspan="3" class="cd-empty">Belum ada anggota.</td></tr>') + '</tbody></table></div>';
@@ -1020,7 +1028,18 @@
       });
 
       Array.prototype.forEach.call(els.sidebar.querySelectorAll('.cd-nav-item'), function (a) {
-        a.addEventListener('click', function () { setSidebar(false); });
+        a.addEventListener('click', function (e) {
+          var route = a.getAttribute('data-route');
+          if (!route) return; // link non-app (halaman produk) tetap navigate normal
+          e.preventDefault(); // SPA switch
+          applyRoute(route);
+          try { history.pushState(null, '', ROUTES[route] ? ROUTES[route].path : '/user'); } catch (err) {}
+          setSidebar(false);
+        });
+      });
+      // Back/forward browser
+      window.addEventListener('popstate', function () {
+        applyRoute(routeFromPath(location.pathname));
       });
 
       /* ---------------- events ---------------- */

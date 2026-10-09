@@ -60,7 +60,7 @@
     .identity { display: inline-flex; align-items: center; gap: 10px; }
     .identity .who { line-height: 1.15; text-align: right; }
     .identity .who .n { font-size: 13px; font-weight: 600; }
-    .identity .who .r { font-size: 11px; color: var(--grx-ink-faint); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+    .identity .who .r { font-size: 11px; color: var(--cd-ink-3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
     @media (max-width: 640px) { .identity .who { display: none; } }
 
     #appStatus { min-height: 0; }
@@ -142,6 +142,10 @@
 
         <div style="margin-top:auto;padding-top:var(--sp-4)">
           <div class="divider" style="margin-bottom:var(--sp-4)"></div>
+          <div id="backendHealth" class="mono-label" style="padding:0 20px 12px;display:flex;align-items:center;gap:6px" aria-live="polite">
+            <span id="healthDot" aria-hidden="true" style="width:6px;height:6px;border-radius:50%;background:var(--cd-ink-4);display:inline-block"></span>
+            <span id="healthText">Memeriksa backend…</span>
+          </div>
           <span class="nav-section" style="padding-top:0">Sesi</span>
           <button class="nav-item" type="button" id="logoutBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
@@ -233,12 +237,23 @@
                 <div class="mono-label" id="licCount">—</div>
               </div>
               <div class="row" style="gap:var(--sp-2)">
+                <div class="field" style="margin:0;flex-direction:row;align-items:center;gap:6px">
+                  <label class="sr-only" for="licSearch">Cari customer atau license ID</label>
+                  <input id="licSearch" type="search" placeholder="Cari customer / lic_…" autocomplete="off"
+                         style="width:200px;padding:4px 10px;font-size:12px" aria-describedby="licCount" />
+                </div>
+                <select id="licStatusFilter" aria-label="Filter status lisensi" style="width:auto;padding:4px 28px 4px 10px;font-size:12px">
+                  <option value="all">Semua status</option>
+                  <option value="active">Aktif</option>
+                  <option value="expired">Kedaluwarsa</option>
+                  <option value="revoked">Dicabut</option>
+                </select>
                 <button class="btn btn-ghost btn-sm" type="button" id="refreshLic">Muat ulang</button>
                 <button class="btn btn-primary btn-sm" type="button" id="issueBtn2">+ Terbitkan</button>
               </div>
             </div>
             <div class="panel-body">
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel — gunakan tombol panah kiri/kanan untuk scroll horizontal">
                 <table>
                   <caption class="sr-only">Daftar lisensi gRouter Copilot</caption>
                   <thead>
@@ -269,7 +284,7 @@
               <button class="btn btn-ghost btn-sm" type="button" id="refreshOrders">Muat ulang</button>
             </div>
             <div class="panel-body">
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel lisensi — panah kiri/kanan untuk scroll horizontal">
                 <table>
                   <caption class="sr-only">Daftar order pembayaran</caption>
                   <thead>
@@ -280,6 +295,7 @@
                       <th scope="col">Status</th>
                       <th scope="col" class="hide-sm">Dibuat</th>
                       <th scope="col" class="hide-sm">Dibayar</th>
+                      <th scope="col"><span class="sr-only">Aksi</span></th>
                     </tr>
                   </thead>
                   <tbody id="orderRows"></tbody>
@@ -303,7 +319,7 @@
               <button class="btn btn-ghost btn-sm" type="button" id="refreshUsage">Muat ulang</button>
             </div>
             <div class="panel-body">
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel order pembayaran — panah kiri/kanan untuk scroll horizontal">
                 <table>
                   <caption class="sr-only">Pemakaian token dan quota per lisensi</caption>
                   <thead>
@@ -363,7 +379,7 @@
                 <button class="btn btn-sm" type="submit">Terapkan</button>
                 <button class="btn btn-ghost btn-sm" type="button" id="ledgerReset">Reset</button>
               </form>
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel usage kuota — panah kiri/kanan untuk scroll horizontal">
                 <table>
                   <caption class="sr-only">Ledger permintaan AI per lisensi: waktu, model, status, token, kuota</caption>
                   <thead>
@@ -419,7 +435,7 @@
                 </div>
               </div>
               <div class="panel-body">
-                <div class="table-wrap">
+                <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel ledger AI — panah kiri/kanan untuk scroll horizontal">
                   <table>
                     <caption class="sr-only">Daftar plan dan harga</caption>
                     <thead>
@@ -449,7 +465,7 @@
                 </div>
               </div>
               <div class="panel-body">
-                <div class="table-wrap">
+                <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel plan harga — panah kiri/kanan untuk scroll horizontal">
                   <table>
                     <caption class="sr-only">Kebijakan AI per plan</caption>
                     <thead>
@@ -908,10 +924,15 @@
     });
 
     document.querySelectorAll('.nav-item[data-view]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault(); // SPA switch, bukan full reload
         activateView(btn.getAttribute('data-view'));
-        try { history.replaceState(null, '', '/admin' + (btn.getAttribute('data-view') === 'overview' ? '' : '/' + btn.getAttribute('data-view'))); } catch (e) {}
+        try { history.pushState(null, '', '/admin' + (btn.getAttribute('data-view') === 'overview' ? '' : '/' + btn.getAttribute('data-view'))); } catch (err) {}
       });
+    });
+    // Back/forward browser: render view sesuai URL
+    window.addEventListener('popstate', function () {
+      activateView(routeFromPath(location.pathname));
     });
 
     /* ------------------------------------------------------------------
@@ -1064,15 +1085,37 @@
     var lastLicenses = [];
     var lastPlans = []; // dari /api/admin/settings (katalog + AI policy ringkas)
 
+    function licenseMatchesFilters(l) {
+      var q = ($('licSearch') && $('licSearch').value || '').trim().toLowerCase();
+      var st = ($('licStatusFilter') && $('licStatusFilter').value) || 'all';
+      if (st !== 'all' && statusOf(l) !== st) return false;
+      if (!q) return true;
+      return String(l.customer || '').toLowerCase().indexOf(q) !== -1 ||
+             String(l.id || '').toLowerCase().indexOf(q) !== -1;
+    }
+
     function renderLicenses(list) {
       lastLicenses = list || [];
+      var filtered = lastLicenses.filter(licenseMatchesFilters);
       var body = $('licenseRows');
       var empty = $('licEmpty');
       $('licLoading').style.display = 'none';
-      $('licCount').textContent = lastLicenses.length ? (lastLicenses.length + ' lisensi') : 'belum ada lisensi';
+      var countTxt = lastLicenses.length ? (lastLicenses.length + ' lisensi') : 'belum ada lisensi';
+      if (filtered.length !== lastLicenses.length) countTxt += ' (' + filtered.length + ' cocok)';
+      $('licCount').textContent = countTxt;
 
+      var emptyDefault = empty.getAttribute('data-default') || empty.textContent.trim();
+      empty.setAttribute('data-default', emptyDefault);
       if (!lastLicenses.length) {
         body.innerHTML = '';
+        empty.textContent = emptyDefault;
+        empty.style.display = 'block';
+        renderChart([]);
+        return;
+      }
+      if (!filtered.length) {
+        body.innerHTML = '';
+        empty.textContent = 'Tidak ada lisensi yang cocok dengan pencarian/filter.';
         empty.style.display = 'block';
         renderChart([]);
         return;
@@ -1088,7 +1131,7 @@
         var aiTxt = ai.enabled === false ? 'AI off' : (ai.quotaTokens == null ? 'AI · unlimited' : 'AI · ' + fmtNum(ai.quotaTokens) + ' tok');
         return '<span class="mono">' + escapeHtml(planKey) + '</span><br><span class="mono-label">' + escapeHtml(aiTxt) + '</span>';
       }
-      body.innerHTML = lastLicenses.map(function (l) {
+      body.innerHTML = filtered.map(function (l) {
         var st = statusOf(l);
         var actions = '';
         if (st === 'active') {
@@ -1190,6 +1233,11 @@
           var amount = (o.amount != null) ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(o.amount) : '—';
           var created = o.createdAt ? new Date(o.createdAt).toLocaleString('id-ID') : '—';
           var paid = o.paidAt ? new Date(o.paidAt).toLocaleString('id-ID') : '—';
+          var actions = '';
+          if (st === 'PENDING') {
+            actions = '<button class="btn btn-subtle btn-sm" type="button" data-settle="' + escapeHtml(o.id) + '"' +
+              ' aria-label="Verifikasi & settle order ' + escapeHtml(o.id) + '">Verifikasi & settle</button>';
+          }
           return '<tr>' +
             '<td class="mono" style="font-size:12px">' + escapeHtml(o.id) + '</td>' +
             '<td class="hide-sm">' + escapeHtml(o.planName || o.packageKey || '—') + '</td>' +
@@ -1197,15 +1245,45 @@
             '<td><span class="badge ' + stCls + '">' + escapeHtml(st) + '</span></td>' +
             '<td class="hide-sm" style="font-size:12px">' + escapeHtml(created) + '</td>' +
             '<td class="hide-sm" style="font-size:12px">' + escapeHtml(paid) + '</td>' +
+            '<td class="nowrap">' + actions + '</td>' +
           '</tr>';
         }).join('');
       }).catch(function (e) {
         $('orderLoading').style.display = 'none';
         if (e && e.status === 401) return;
-        $('orderRows').innerHTML = '<tr><td colspan="6" class="empty">Orders gagal dimuat: ' + escapeHtml((e && e.message) || 'error') + '</td></tr>';
+        $('orderRows').innerHTML = '<tr><td colspan="7" class="empty">Orders gagal dimuat: ' + escapeHtml((e && e.message) || 'error') + '</td></tr>';
       });
     }
     $('refreshOrders').addEventListener('click', loadOrders);
+
+    // Settle order PENDING: server selalu re-verify status upstream (webhook-level
+    // verification) sebelum menerbitkan lisensi — bukan percaya tombol/klien.
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('[data-settle]');
+      if (!btn) return;
+      var orderId = btn.getAttribute('data-settle');
+      var amountTxt = '';
+      var row = btn.closest('tr');
+      if (row) { var cells = row.querySelectorAll('td'); amountTxt = cells[2] ? cells[2].textContent.trim() : ''; }
+      var ok = window.confirm('Verifikasi pembayaran order ' + orderId + ' (' + amountTxt + ')?\n\n' +
+        'Server akan memeriksa status ke KlikQRIS upstream. Lisensi diterbitkan HANYA jika pembayaran terverifikasi.');
+      if (!ok) return;
+      btn.disabled = true; btn.textContent = 'Memverifikasi…';
+      apiFetch('/api/admin/orders/' + encodeURIComponent(orderId) + '/settle', { method: 'POST' })
+        .then(function (data) {
+          toast('Order ' + orderId + ' settled. License: ' + ((data && data.licenseId) || '—'), 'ok');
+          setStatus('Order ' + orderId + ' settled oleh admin.');
+          loadOrders();
+        })
+        .catch(function (e) {
+          btn.disabled = false; btn.textContent = 'Verifikasi & settle';
+          var msg = (e && e.message) || 'gagal';
+          if (e && e.status === 409) msg = 'pembayaran belum terverifikasi upstream';
+          if (e && e.status === 502) msg = 'gagal memeriksa status upstream';
+          toast('Settle gagal: ' + msg, 'err');
+          setStatus('Settle order ' + orderId + ' gagal: ' + msg);
+        });
+    });
 
     /* ------------------------------------------------------------------
        AI Ledger (customer usage, D-021) — server-side ledger only
@@ -1803,12 +1881,28 @@
        Refresh controls
     ------------------------------------------------------------------ */
     $('refreshBtn').addEventListener('click', function () { loadAll().then(function () { toast('Data diperbarui.', 'ok'); }); });
+    $('licSearch').addEventListener('input', function () { renderLicenses(lastLicenses); });
+    $('licStatusFilter').addEventListener('change', function () { renderLicenses(lastLicenses); });
     $('refreshLic').addEventListener('click', function () { loadLicenses().then(function () { toast('Licenses diperbarui.', 'ok'); }); });
     $('refreshUsage').addEventListener('click', function () { loadUsage().then(function () { toast('Usage diperbarui.', 'ok'); }); });
 
     /* ------------------------------------------------------------------
        Boot
     ------------------------------------------------------------------ */
+    // Backend health pill (rail footer): sinyal operasional utk admin.
+    function checkHealth() {
+      var dot = $('healthDot'), txt = $('healthText');
+      if (!dot || !txt) return;
+      fetch('/api/health', { cache: 'no-store' }).then(function (r) {
+        if (r.ok) { dot.style.background = 'var(--cd-ok)'; txt.textContent = 'Backend sehat'; }
+        else { dot.style.background = 'var(--cd-warn)'; txt.textContent = 'Backend ' + r.status; }
+      }).catch(function () {
+        dot.style.background = 'var(--cd-err)'; txt.textContent = 'Backend tak terjangkau';
+      });
+    }
+    checkHealth();
+    setInterval(checkHealth, 60000);
+
     if (token) {
       activateView(routeFromPath(location.pathname));
       showConsole();

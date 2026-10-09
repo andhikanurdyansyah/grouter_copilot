@@ -233,7 +233,9 @@ export function createCopilotServer({
     // Admin console is a SEPARATE surface from the customer site: it lives at
     // /admin (never at /), so a customer OAuth callback or error never lands on
     // the "Masuk sebagai Admin" gate.
-    if (req.method === 'GET' && url.pathname === '/admin') {
+    if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin-gate')) {
+      const spa = spaIndexHtml();
+      if (spa) return sendHtml(res, 200, spa);
       return sendHtml(res, 200, renderDashboardHtml(service));
     }
 
@@ -250,6 +252,8 @@ export function createCopilotServer({
     }
 
     if (req.method === 'GET' && (url.pathname === '/user' || url.pathname.startsWith('/user/'))) {
+      const spa = spaIndexHtml();
+      if (spa) return sendHtml(res, 200, spa);
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'user-dashboard.html'), 'utf8'));
     }
 
@@ -258,7 +262,7 @@ export function createCopilotServer({
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'success.html'), 'utf8'));
     }
 
-    // Static assets (css)
+    // Static assets (css) — landing/dashboard klasik (protected scope)
     if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
       const file = path.join(__dirname, '..', 'public', url.pathname);
       try {
@@ -268,6 +272,45 @@ export function createCopilotServer({
         return res.end(content);
       } catch {
         return sendJson(res, 404, { error: 'not found' });
+      }
+    }
+
+    // Static assets untuk SPA dashboard shadcn-admin (build Vite di frontend/dist,
+    // disalin ke public/app). Base '/app/' agar tidak bentrok /assets landing.
+    if (req.method === 'GET' && url.pathname.startsWith('/app/')) {
+      const rel = url.pathname.slice('/app/'.length) || 'index.html';
+      const file = path.join(__dirname, '..', 'public', 'app', rel);
+      const resolved = path.resolve(file);
+      const root = path.resolve(path.join(__dirname, '..', 'public', 'app'));
+      if (!resolved.startsWith(root)) return sendJson(res, 404, { error: 'not found' });
+      try {
+        const content = readFileSync(resolved);
+        const ext = path.extname(resolved);
+        const types = {
+          '.js': 'text/javascript; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.html': 'text/html; charset=utf-8',
+          '.svg': 'image/svg+xml',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.woff2': 'font/woff2',
+          '.woff': 'font/woff',
+          '.json': 'application/json; charset=utf-8',
+          '.ico': 'image/x-icon',
+        };
+        res.writeHead(200, { 'content-type': types[ext] || 'application/octet-stream' });
+        return res.end(content);
+      } catch {
+        return sendJson(res, 404, { error: 'not found' });
+      }
+    }
+
+    // SPA index untuk dashboard baru (dipakai oleh /user* dan /admin*)
+    function spaIndexHtml() {
+      try {
+        return readFileSync(path.join(__dirname, '..', 'public', 'app', 'index.html'), 'utf8');
+      } catch {
+        return null; // build belum ada → fallback HTML lama
       }
     }
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createCopilotServer } from '../src/server.js';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -135,16 +135,22 @@ test('revoke flips the license to revoked and blocks heartbeat', async () => {
   }
 });
 
-test('admin console renders at /admin with placeholders replaced', async () => {
+test('admin console renders at /admin (SPA shell when built, legacy fallback otherwise)', async () => {
   const { baseUrl, server } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/admin`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    // Admin console shell + token gate must render.
-    assert.match(html, /gRouter Copilot/);
-    assert.match(html, /Admin/);
-    assert.ok(!html.includes('__STATS_JSON__'));
+    if (existsSync(path.join(process.cwd(), 'public', 'app', 'index.html'))) {
+      // SPA dashboard (shadcn-admin build): Vite entry + Indonesian title.
+      assert.match(html, /\/app\/assets\//);
+      assert.match(html, /<title>Copilot — gRouter<\/title>/);
+    } else {
+      // Legacy server-rendered console must still render + token gate.
+      assert.match(html, /gRouter Copilot/);
+      assert.match(html, /Admin/);
+      assert.ok(!html.includes('__STATS_JSON__'));
+    }
   } finally {
     server.close();
   }

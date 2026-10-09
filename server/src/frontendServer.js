@@ -27,6 +27,9 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.json': 'application/json; charset=utf-8',
   '.jfif': 'image/jpeg',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -40,10 +43,8 @@ const PAGES = {
   '/landing': 'landing.html',
   '/register': 'register.html',
   '/login': 'register.html',
-  '/user': 'user-dashboard.html',
   '/success': 'success.html',
   '/checkout/success': 'success.html',
-  '/admin': 'dashboard.html',
 };
 
 export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } = {}) {
@@ -96,6 +97,27 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       res.writeHead(404); return res.end('not found');
     }
 
+    // SPA dashboard baru (Vite build di public/app, base '/app/')
+    if (url.pathname.startsWith('/app/')) {
+      const rel = url.pathname.slice('/app/'.length) || 'index.html';
+      const file = path.join(PUBLIC_DIR, 'app', rel);
+      const resolved = path.resolve(file);
+      const root = path.resolve(path.join(PUBLIC_DIR, 'app'));
+      if (!resolved.startsWith(root)) { res.writeHead(404); return res.end('not found'); }
+      if (existsSync(resolved)) {
+        const ext = path.extname(resolved).toLowerCase();
+        const type = MIME[ext] || 'application/octet-stream';
+        res.writeHead(200, { 'content-type': type, 'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable' });
+        return res.end(readFileSync(resolved));
+      }
+      res.writeHead(404); return res.end('not found');
+    }
+
+    const SPA_INDEX = () => {
+      const f = path.join(PUBLIC_DIR, 'app', 'index.html');
+      return existsSync(f) ? f : null;
+    };
+
     // Pages (exact map)
     if (req.method === 'GET' && PAGES[url.pathname]) {
       const page = PAGES[url.pathname];
@@ -109,14 +131,16 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
     // Real route prefixes: /user/* and /admin/* serve their app shell so the
     // dashboards can use real paths (/user/licenses) instead of hash anchors.
     if (req.method === 'GET' && (url.pathname === '/user' || url.pathname.startsWith('/user/'))) {
-      const file = path.join(PUBLIC_DIR, 'user-dashboard.html');
+      const spa = SPA_INDEX();
+      const file = spa || path.join(PUBLIC_DIR, 'user-dashboard.html');
       if (existsSync(file)) {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
         return res.end(readFileSync(file, 'utf8'));
       }
     }
-    if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) {
-      const file = path.join(PUBLIC_DIR, 'dashboard.html');
+    if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin-gate' || url.pathname.startsWith('/admin/'))) {
+      const spa = SPA_INDEX();
+      const file = spa || path.join(PUBLIC_DIR, 'dashboard.html');
       if (existsSync(file)) {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
         return res.end(readFileSync(file, 'utf8'));

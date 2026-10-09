@@ -12,6 +12,10 @@
   <style>
     /* page-local: routing views + plan tier cards (hanya token grx) */
     [hidden] { display: none !important; }
+    button.avatar { border: none; cursor: pointer; padding: 0; }
+    button.avatar:focus-visible { outline: 2px solid var(--grx-cyan); outline-offset: 2px; }
+    #accountMenu .nav-item { display: flex; align-items: center; gap: 8px; padding: var(--sp-2) var(--sp-3); font-size: 14px; }
+    #accountMenu .nav-item:hover { background: var(--grx-steel-3); }
     .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
     .plan-card { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); position: relative; }
     .plan-card--featured { border-color: rgba(34, 211, 238, 0.35); }
@@ -61,12 +65,28 @@
               <div class="page-sub" id="pageSub">Kelola lisensi dan pantau penggunaan Anda</div>
             </div>
           </div>
-          <div class="row">
+          <div class="row" style="position:relative">
             <div style="text-align:right">
               <div class="panel-title" id="accountName">Memuat…</div>
               <div class="sub" id="accountEmail"></div>
             </div>
-            <div class="avatar" id="avatar" aria-hidden="true">U</div>
+            <button class="avatar" id="avatarMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="accountMenu" aria-label="Menu akun">
+              <span id="avatar" aria-hidden="true">U</span>
+            </button>
+            <div id="accountMenu" role="menu" aria-label="Menu akun" hidden
+                 style="position:absolute;top:calc(100% + 8px);right:0;min-width:220px;z-index:60;
+                        background:var(--grx-steel-2);border:1px solid var(--grx-steel-hi);border-radius:var(--r);
+                        box-shadow:var(--shadow-3);padding:var(--sp-2)">
+              <div style="padding:var(--sp-2) var(--sp-3)">
+                <div class="panel-title" id="menuAccountName" style="font-size:14px">—</div>
+                <div class="sub" id="menuAccountEmail" style="font-size:12px"></div>
+              </div>
+              <hr style="border:none;border-top:1px solid var(--grx-steel-hi);margin:var(--sp-1) 0" />
+              <a role="menuitem" class="nav-item" href="/user/licenses" style="border-radius:var(--r-sm)">Lisensi saya</a>
+              <a role="menuitem" class="nav-item" href="/user/organization" style="border-radius:var(--r-sm)">Organisasi</a>
+              <hr style="border:none;border-top:1px solid var(--grx-steel-hi);margin:var(--sp-1) 0" />
+              <button role="menuitem" class="nav-item" id="signOutBtn" type="button" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;color:var(--grx-err);border-radius:var(--r-sm)">Keluar</button>
+            </div>
           </div>
         </header>
 
@@ -406,7 +426,7 @@
           els.liveStatus.textContent = 'Gagal memuat data.';
           return;
         }
-        if (res.status === 401) { location.href = '/register'; return; }
+        if (res.status === 401) { location.href = '/login'; return; }
         if (!res.ok) {
           els.licenseRows.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data (' + res.status + ').</td></tr>';
           els.liveStatus.textContent = 'Gagal memuat data (' + res.status + ').';
@@ -1031,6 +1051,49 @@
       window.addEventListener('resize', function () {
         if (window.innerWidth > 860 && els.sidebar.classList.contains('open')) setSidebar(false);
       });
+
+      /* ---------------- account menu & sign-out ----------------
+         better-auth endpoint: POST /api/auth/sign-out (cookie session).
+         Redirect ke /login setelah sukses; gagal → pesan, tetap di halaman. */
+      (function () {
+        var btn = document.getElementById('avatarMenuBtn');
+        var menu = document.getElementById('accountMenu');
+        if (!btn || !menu) return;
+        function closeMenu() {
+          menu.hidden = true;
+          btn.setAttribute('aria-expanded', 'false');
+        }
+        btn.addEventListener('click', function () {
+          var open = menu.hidden;
+          menu.hidden = !open;
+          btn.setAttribute('aria-expanded', String(open));
+          if (open) {
+            var name = document.getElementById('accountName');
+            var email = document.getElementById('accountEmail');
+            document.getElementById('menuAccountName').textContent = name ? name.textContent : '—';
+            document.getElementById('menuAccountEmail').textContent = email ? email.textContent : '';
+          }
+        });
+        document.addEventListener('click', function (ev) {
+          if (!menu.hidden && !menu.contains(ev.target) && ev.target !== btn && !btn.contains(ev.target)) closeMenu();
+        });
+        document.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape' && !menu.hidden) { closeMenu(); btn.focus(); }
+        });
+        var out = document.getElementById('signOutBtn');
+        if (out) {
+          out.addEventListener('click', async function () {
+            out.disabled = true;
+            try {
+              await fetch('/api/auth/sign-out', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'content-type': 'application/json' }, body: '{}',
+              });
+            } catch (e) { /* sign-out local always proceeds */ }
+            location.href = '/login';
+          });
+        }
+      })();
 
       applyRoute(routeFromPath(location.pathname));
       loadPlans();

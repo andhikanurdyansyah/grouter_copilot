@@ -244,6 +244,7 @@
                     <tr>
                       <th scope="col">Customer</th>
                       <th scope="col">License ID</th>
+                      <th scope="col" class="hide-sm">Package / AI</th>
                       <th scope="col">Install</th>
                       <th scope="col">Status</th>
                       <th scope="col" class="hide-sm">Expires</th>
@@ -614,6 +615,12 @@
           <input id="customer" name="customer" placeholder="Acme CRM" autocomplete="organization" />
         </div>
         <div class="field">
+          <label for="issuePlan">Package <span class="hint" style="display:inline">(menentukan AI entitlement)</span></label>
+          <select id="issuePlan" name="issuePlan">
+            <option value="">— tanpa package (unlimited) —</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="accountId">Account ID <span class="hint" style="display:inline">(opsional)</span></label>
           <input id="accountId" name="accountId" placeholder="acc_..." autocomplete="off" />
         </div>
@@ -871,6 +878,7 @@
       document.title = 'gRouter Copilot — ' + meta.heading;
       closeSidebar();
       if (name === 'settings') loadSettingsOnce();
+      if (name === 'licenses') loadSettingsOnce(); // untuk kolom Package/AI
       if (name === 'ledger') loadLedger();
     }
 
@@ -1053,6 +1061,7 @@
        LICENSES
     ------------------------------------------------------------------ */
     var lastLicenses = [];
+    var lastPlans = []; // dari /api/admin/settings (katalog + AI policy ringkas)
 
     function renderLicenses(list) {
       lastLicenses = list || [];
@@ -1068,6 +1077,16 @@
         return;
       }
       empty.style.display = 'none';
+      // Package/AI ringkasan per lisensi dari katalog server-side (lastPlans
+      // diisi loadSettingsOnce; tanpa itu tetap tampil planKey saja).
+      function pkgCell(l) {
+        var planKey = l.planKey || '—';
+        var plan = (lastPlans || []).find(function (p) { return p.key === l.planKey; });
+        if (!plan) return '<span class="mono">' + escapeHtml(planKey) + '</span>';
+        var ai = plan.ai || {};
+        var aiTxt = ai.enabled === false ? 'AI off' : (ai.quotaTokens == null ? 'AI · unlimited' : 'AI · ' + fmtNum(ai.quotaTokens) + ' tok');
+        return '<span class="mono">' + escapeHtml(planKey) + '</span><br><span class="mono-label">' + escapeHtml(aiTxt) + '</span>';
+      }
       body.innerHTML = lastLicenses.map(function (l) {
         var st = statusOf(l);
         var actions = '';
@@ -1080,6 +1099,7 @@
         return '<tr>' +
           '<td>' + escapeHtml(l.customer || '—') + '</td>' +
           '<td class="mono">' + escapeHtml(l.id) + '</td>' +
+          '<td class="hide-sm">' + pkgCell(l) + '</td>' +
           '<td class="mono">' + fmtNum(l.installCount || 0) + '</td>' +
           '<td><span class="badge ' + st + '">' + st + '</span></td>' +
           '<td class="nowrap hide-sm">' + fmtDate(l.expiresAt) + '</td>' +
@@ -1305,6 +1325,16 @@
       $('features').value = 'core';
       $('grouterApiKey').value = '';
       $('expiresInDays').value = '365';
+      // Isi dropdown Package dari katalog server-side (lastPlans).
+      var sel = $('issuePlan');
+      if (sel) {
+        sel.innerHTML = '<option value="">— tanpa package (unlimited) —</option>' +
+          (lastPlans || []).map(function (p) {
+            var ai = p.ai || {};
+            var aiTxt = ai.enabled === false ? 'AI off' : (ai.quotaTokens == null ? 'unlimited' : fmtNum(ai.quotaTokens) + ' tok');
+            return '<option value="' + escapeHtml(p.key) + '">' + escapeHtml((p.name || p.key) + ' · ' + aiTxt) + '</option>';
+          }).join('');
+      }
       modal.classList.add('open');
       setTimeout(function () { try { $('customer').focus(); } catch (e) {} }, 30);
     }
@@ -1334,6 +1364,7 @@
       var payload = {
         customer: customer,
         accountId: ($('accountId').value || '').trim() || null,
+        planKey: ($('issuePlan') && $('issuePlan').value) || null, // AI entitlement package
         features: ($('features').value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
         expiresInDays: parseInt($('expiresInDays').value, 10) || 365,
         grouterApiKey: ($('grouterApiKey').value || '').trim() || null
@@ -1430,8 +1461,11 @@
       if (settingsLoaded) return Promise.resolve();
       return apiFetch('/api/admin/settings').then(function (data) {
         fillSettingsForm((data && data.settings) || {});
+        lastPlans = ((data && data.settings) || {}).plans || [];
         settingsLoaded = true;
         setStatus('Settings dimuat.');
+        // Re-render lisensi agar kolom Package/AI memakai katalog terbaru.
+        if (lastLicenses.length) renderLicenses(lastLicenses);
       }).catch(function (err) {
         if (err.status !== 401) toast('Settings gagal dimuat: ' + err.message, 'err');
       });

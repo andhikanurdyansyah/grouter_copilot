@@ -91,6 +91,7 @@ export class PaymentService {
     const { record } = this.licenseService.issue({
       customer: order.planName || order.packageKey, // license named after the plan
       accountId: order.accountId,
+      planKey: order.packageKey, // entitlement (quotaTokens) resolves from the plan catalogue
       features,
       expiresInDays,
       quota,

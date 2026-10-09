@@ -89,6 +89,55 @@ export class CopilotRuntime {
   }
 
   /**
+   * D-021 gateway mode: build the gateway payload WITHOUT calling the
+   * provider. Skills still run here (they need host-app data), the license
+   * gate still applies, and the context is built locally — then the host app
+   * POSTs the result to the Copilot backend gateway (/api/copilot/chat),
+   * which is the only component holding the gRouter service credential.
+   * @returns {Promise<{requestId, token, messages, model?, maxTokens?}>}
+   */
+  async buildGatewayPayload(req = {}) {
+    const requestId = nextRequestId();
+    validateChatRequest(req);
+    this._enforceLicense();
+
+    const skillName = this.registry.resolve(req.skillHint, req.message);
+    if (!skillName) {
+      if (this.registry.list().length === 0) {
+        throw new CopilotError(ErrorCode.SKILL_NOT_FOUND, 'No skills are configured.', { status: 404 });
+      }
+      throw new CopilotError(
+        ErrorCode.SKILL_NOT_FOUND,
+        'I could not determine which data to use for this question. Please be more specific.',
+        { status: 400 },
+      );
+    }
+
+    const { data, sources } = await this.registry.run(skillName, req.args ?? {}, {
+      user: req.user ?? { id: req.userId },
+      requestId,
+      sessionId: req.sessionId,
+    });
+
+    const { messages, truncated } = buildContext({
+      systemPrompt: this.config?.systemPrompt,
+      data,
+      sources,
+      question: req.message,
+      limits: this.config?.limits,
+    });
+
+    return {
+      requestId,
+      token: process.env.GROUTER_LICENSE ?? '',
+      messages,
+      model: this.config?.model,
+      maxTokens: this.config?.limits?.maxTokens,
+      meta: { skill: skillName, truncated },
+    };
+  }
+
+  /**
    * Stream chat as an async generator of SSE-friendly event objects.
    */
   async *streamChat(req = {}) {

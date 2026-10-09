@@ -20,6 +20,7 @@ import { GrouterAdapter } from './adapter/grouter.js';
 import { SkillRegistry } from './skills/registry.js';
 import { CopilotRuntime } from './runtime/chat.js';
 import { LicenseGate } from './license/gate.js';
+import { CopilotError, ErrorCode } from './adapter/errors.js';
 
 /**
  * One-call factory: create a ready-to-use Copilot from a config path.
@@ -38,4 +39,37 @@ export async function createCopilot({ configPath, adapter, licenseGate } = {}) {
   });
   const runtime = new CopilotRuntime({ config, adapter: grouterAdapter, registry, licenseGate: gate });
   return { config, registry, adapter: grouterAdapter, runtime };
+}
+
+/**
+ * D-021 gateway client: build the payload locally (skills + context + license
+ * gate) and POST it to the Copilot backend gateway. The gRouter service
+ * credential never leaves the backend. Accepts an injected fetchImpl for tests.
+ */
+export async function gatewayChat({ runtime, gatewayUrl, fetchImpl = globalThis.fetch, ...req } = {}) {
+  if (!gatewayUrl) {
+    throw new CopilotError(ErrorCode.INVALID_REQUEST, 'gatewayUrl is required.', { status: 500 });
+  }
+  const payload = await runtime.buildGatewayPayload(req);
+  let res;
+  try {
+    res = await fetchImpl(gatewayUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Unable to reach the Copilot gateway.', { retryable: true, cause: err });
+  }
+  let body = null;
+  try { body = await res.json(); } catch { /* malformed body handled below */ }
+  if (!res.ok || !body || body.status === 'error') {
+    if (body?.status === 'error') return body;
+    throw new CopilotError(
+      ErrorCode.UPSTREAM_UNAVAILABLE,
+      'The Copilot gateway returned an error.',
+      { retryable: res.status >= 500 || res.status === 429, cause: body?.error ?? null },
+    );
+  }
+  return body;
 }

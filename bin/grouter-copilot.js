@@ -89,17 +89,15 @@ export default {
     maxRows: 500,
     maxContextBytes: 32000,
     maxTokens: 2000
-  },
-  adapter: {
-    apiKey: process.env.GROUTER_API_KEY,
-    baseUrl: process.env.GROUTER_BASE_URL
   }
 };
+// NOTE (D-021): no adapter credentials here. The gRouter service credential
+// lives ONLY in the Copilot backend; your app calls the backend gateway.
 `;
 
-const ROUTE_APP_TEMPLATE = `// gRouter Copilot chat route (Next.js App Router).
+const ROUTE_APP_TEMPLATE = `// gRouter Copilot chat route (Next.js App Router) — D-021 gateway mode.
 import { NextResponse } from "next/server";
-import { createCopilot } from "@grouter/copilot";
+import { createCopilot, gatewayChat } from "@grouter/copilot";
 import path from "node:path";
 
 let copilot;
@@ -112,17 +110,20 @@ async function getCopilot() {
   return copilot;
 }
 
+// The Copilot backend that owns the gRouter service credential (server-side).
+const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.id/api/copilot/chat";
+
 export async function POST(request) {
   const body = await request.json();
   const { runtime } = await getCopilot();
-  const result = await runtime.chat(body);
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 500) : 200;
+  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...body });
+  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   return NextResponse.json(result, { status });
 }
 `;
 
-const ROUTE_PAGES_TEMPLATE = `// gRouter Copilot chat API route (Next.js Pages Router).
-import { createCopilot } from "@grouter/copilot";
+const ROUTE_PAGES_TEMPLATE = `// gRouter Copilot chat API route (Next.js Pages Router) — D-021 gateway mode.
+import { createCopilot, gatewayChat } from "@grouter/copilot";
 import path from "node:path";
 
 let copilot;
@@ -131,11 +132,14 @@ async function getCopilot() {
   return copilot;
 }
 
+// The Copilot backend that owns the gRouter service credential (server-side).
+const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.id/api/copilot/chat";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const { runtime } = await getCopilot();
-  const result = await runtime.chat(req.body ?? {});
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 500) : 200;
+  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   return res.status(status).json(result);
 }
 `;
@@ -149,8 +153,8 @@ export default function CopilotWidget() {
 }
 `;
 
-const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route (Express).
-import { createCopilot } from "@grouter/copilot";
+const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route (Express) — D-021 gateway mode.
+import { createCopilot, gatewayChat } from "@grouter/copilot";
 import path from "node:path";
 
 let copilot;
@@ -163,10 +167,13 @@ async function getCopilot() {
   return copilot;
 }
 
+// The Copilot backend that owns the gRouter service credential (server-side).
+const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.id/api/copilot/chat";
+
 export async function copilotHandler(req, res) {
   const { runtime } = await getCopilot();
-  const result = await runtime.chat(req.body ?? {});
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 500) : 200;
+  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   res.status(status).json(result);
 }
 `;
@@ -280,8 +287,10 @@ function writeEnv(opts = {}) {
   const rel = '.env';
   const full = path.join(cwd, rel);
   const lines = [];
-  if (opts.baseUrl) lines.push(`GROUTER_BASE_URL=${opts.baseUrl}`);
-  if (opts.apiKey) lines.push(`GROUTER_API_KEY=${opts.apiKey}`);
+  // D-021: NO provider credentials here. GROUTER_API_KEY/GROUTER_BASE_URL are
+  // server-side Copilot backend configuration only. The host app stores its
+  // license, the gateway URL, and the PUBLIC verifier key — nothing secret.
+  if (opts.gatewayUrl) lines.push(`GROUTER_GATEWAY_URL=${opts.gatewayUrl}`);
   if (opts.license) lines.push(`GROUTER_LICENSE=${opts.license}`);
   if (opts.licenseServerUrl) lines.push(`GROUTER_LICENSE_SERVER=${opts.licenseServerUrl}`);
   if (opts.licensePublicKey) lines.push(`GROUTER_LICENSE_PUBLIC_KEY=${opts.licensePublicKey.replace(/\n/g, '\\n')}`);
@@ -361,8 +370,9 @@ function main() {
 }
 
 /**
- * Install mode: scaffold, exchange the Copilot license for a server-resolved
- * provider credential, and persist credentials in the server-side app .env.
+ * Install mode: scaffold and exchange the Copilot license for NON-SECRET
+ * configuration (gateway URL + public verifier key). D-021: the gRouter
+ * service credential is NEVER handed to the customer app.
  */
 async function runInstall(opts = {}) {
   const missing = [];
@@ -383,8 +393,13 @@ async function runInstall(opts = {}) {
       body: JSON.stringify({ token: opts.license }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok || typeof body.apiKey !== 'string' || !body.apiKey || typeof body.baseUrl !== 'string' || !body.baseUrl || typeof body.licensePublicKey !== 'string' || !body.licensePublicKey) {
+    // D-021: the resolve payload no longer contains an apiKey (and never may).
+    if (!response.ok || typeof body.baseUrl !== 'string' || !body.baseUrl || typeof body.licensePublicKey !== 'string' || !body.licensePublicKey) {
       throw new Error(response.status === 404 ? 'This license is not activated yet. Contact support.' : 'License verification failed. Check the license and try again.');
+    }
+    if (typeof body.apiKey === 'string' && body.apiKey) {
+      // Defense in depth: refuse payloads that still try to hand off a key.
+      throw new Error('Server tried to hand off a provider credential; refusing (D-021). Update the license server.');
     }
     resolved = body;
   } catch (err) {
@@ -399,16 +414,15 @@ async function runInstall(opts = {}) {
   for (const r of results) console.log(`${r.skipped ? '· (exists)' : '✔ Created'} ${r.rel}`);
 
   const envResult = writeEnv({
-    baseUrl: resolved.baseUrl,
-    apiKey: resolved.apiKey,
+    gatewayUrl: resolved.gatewayUrl || new URL('/api/copilot/chat', licenseServerUrl).href,
     license: opts.license,
     licenseServerUrl,
     licensePublicKey: resolved.licensePublicKey,
   });
-  if (envResult) console.log(`✔ Saved server-side app credentials to ${envResult.rel}`);
+  if (envResult) console.log(`✔ Saved gateway configuration to ${envResult.rel}`);
   console.log('');
-  console.log('Done. Provider credentials were resolved by the Copilot license server and were not printed.');
-  console.log('✔ Detected framework and generated a server-side chat route');
+  console.log('Done. Your app calls the Copilot backend gateway; the gRouter');
+  console.log('service credential stays server-side (D-021) and is never stored here.');
   console.log('Next: edit skills/example.js with explicitly approved read-only data, mount CopilotWidget from components/CopilotWidget.jsx in your app layout, and connect the generated route from your server.');
 }
 

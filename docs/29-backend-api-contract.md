@@ -43,7 +43,8 @@ yang dipakai frontend:
 | `GET /api/orders/latest` | order terakhir akun + license yang terbit bersamanya |
 | `GET /api/orders/:id` | order milik akun saja (404 untuk akun lain) |
 | `POST /api/heartbeat` `{token,installId,baseUrl?}` | plugin; validasi offline signature + revocation; 403 invalid/revoked |
-| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{apiKey?, baseUrl, licensePublicKey}` via TLS. **LEGACY (pra-D-021):** pengembalian `apiKey` = pola key-handoff lama (per-customer key). Target D-021: resolve HANYA `{baseUrl, licensePublicKey}` — provider key TIDAK pernah keluar dari Copilot backend (satu service credential, server-side); 403 invalid/revoked; 404 without bound key (legacy path) |
+| `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{baseUrl, gatewayUrl, licensePublicKey}` (D-021: **TANPA `apiKey`** — provider key tidak pernah keluar backend; installer menolak payload yang mengandung key); 403 invalid/revoked |
+| `POST /api/copilot/chat` `{token, messages[≤40], requestId?, model?, maxTokens?}` | **AI gateway (D-021)** — satu-satunya konsumen service credential. Flow: validate license server-side → validasi messages (≤32KB) → kuota `plan.quotaTokens` per license (server-side plan catalogue, null=unlimited) → reservasi → call gRouter → rekonsiliasi usage → ledger. 200 `{status:'ok',answer,usage{inputTokens,outputTokens},licenseId,quota{unit,limit,usedTokens,requestCount}}`; 400 invalid request; 403 license invalid/revoked; 429 quota exhausted (atau rate-limit); 503 gateway not configured; 502/504 upstream error/timeout. `requestId` duplikat = idempotent replay (tidak dobel charge). Error upstream tidak ditagih. Body customer `{licenseId,plan,quota,…}` diabaikan (server resolve). Rate limit 60/menit/IP |
 
 ### Admin (`Authorization: Bearer`)
 

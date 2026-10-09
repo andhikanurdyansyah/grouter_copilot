@@ -46,9 +46,9 @@ export const DEFAULT_SETTINGS = {
     currency: 'IDR',
   },
   plans: [
-    { key: 'quota-3b-90d', name: '3B · 3 months', amount: 0, currency: 'IDR', quota: '3B usage', features: ['core'], expiresInDays: 90, active: true },
-    { key: 'quota-15b-365d', name: '15B · 1 year', amount: 0, currency: 'IDR', quota: '15B usage', features: ['core', 'pro'], expiresInDays: 365, active: true },
-    { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
+    { key: 'quota-3b-90d', name: '3B · 3 months', amount: 0, currency: 'IDR', quota: '3B usage', quotaTokens: 3000000, features: ['core'], expiresInDays: 90, active: true },
+    { key: 'quota-15b-365d', name: '15B · 1 year', amount: 0, currency: 'IDR', quota: '15B usage', quotaTokens: 15000000, features: ['core', 'pro'], expiresInDays: 365, active: true },
+    { key: 'custom', name: 'Custom', amount: 0, currency: 'IDR', quota: 'Custom usage', quotaTokens: null, features: ['core', 'pro', 'enterprise'], expiresInDays: 365, active: true },
   ],
   payment: {
     provider: 'klikqris',
@@ -68,6 +68,13 @@ export const DEFAULT_SETTINGS = {
     // gRouter base WITHOUT the /v1 prefix — the adapter appends /v1/chat/completions.
     baseUrl: 'https://prod.grouter.web.id',
     timeoutMs: 60000,
+    // D-021 gateway: the service credential itself is server-side env-only
+    // (GROUTER_API_KEY in server/.env), never a store setting.
+    gateway: {
+      defaultReservationTokens: 2000,
+      maxReservationTokens: 20000,
+      maxMessageBytes: 32000,
+    },
   },
   limits: {
     maxContextBytes: 32000,
@@ -196,6 +203,9 @@ function validatePlans(plans) {
     if (!p.name.trim()) throw fail(`plans[${i}].name must not be empty.`);
     assertInt(p.amount, `plans[${i}].amount`, { min: 0 });
     assertInt(p.expiresInDays ?? 365, `plans[${i}].expiresInDays`, { min: 1 });
+    if (p.quotaTokens !== undefined && p.quotaTokens !== null) {
+      assertInt(p.quotaTokens, `plans[${i}].quotaTokens`, { min: 1 });
+    }
     if (p.features !== undefined && !Array.isArray(p.features)) {
       throw fail(`plans[${i}].features must be an array.`);
     }
@@ -243,6 +253,14 @@ export function validateSettings(patch) {
   }
   if (p.usage?.checkUsageUrl !== undefined) validStr(p.usage.checkUsageUrl, 'usage.checkUsageUrl');
   if (p.provider?.baseUrl !== undefined) validStr(p.provider.baseUrl, 'provider.baseUrl');
+  if (p.provider?.timeoutMs !== undefined) assertInt(p.provider.timeoutMs, 'provider.timeoutMs', { min: 1000 });
+  if (p.provider?.gateway !== undefined) {
+    const g = p.provider.gateway;
+    if (!isPlainObject(g)) throw fail('provider.gateway must be an object.');
+    for (const k of ['defaultReservationTokens', 'maxReservationTokens', 'maxMessageBytes']) {
+      if (g[k] !== undefined) assertInt(g[k], `provider.gateway.${k}`, { min: 1 });
+    }
+  }
   if (p.auth?.minPasswordLength !== undefined) assertInt(p.auth.minPasswordLength, 'auth.minPasswordLength', { min: 6 });
   if (p.auth?.activityTrackingIntervalMs !== undefined) {
     assertInt(p.auth.activityTrackingIntervalMs, 'auth.activityTrackingIntervalMs', { min: 1000 });

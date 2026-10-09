@@ -19,7 +19,7 @@ export class LicenseService {
     this.audience = audience;
   }
 
-  issue({ customer, accountId = null, features = ['core'], expiresInDays = 365, quota = null, notBefore, grouterApiKey = null } = {}) {
+  issue({ customer, accountId = null, features = ['core'], expiresInDays = 365, quota = null, notBefore, grouterApiKey = null, planKey = null } = {}) {
     const id = nextId('lic');
     const expiresAt = notBefore
       ? null
@@ -36,6 +36,7 @@ export class LicenseService {
       id,
       customer,
       accountId: accountId ?? null,
+      planKey: planKey ?? null, // links the license to the plan catalogue (quotaTokens)
       features,
       quota: quota ?? null,
       createdAt: Date.now(),
@@ -43,7 +44,7 @@ export class LicenseService {
       revokedAt: null,
       installIds: [],
       lastSeenAt: null,
-      grouterApiKey: grouterApiKey ?? null, // bound gRouter api key (secret, server-side)
+      grouterApiKey: grouterApiKey ?? null, // LEGACY (pre-D-021), unused by the gateway; never returned via API
       // The signed license token is customer-facing material, not a provider credential.
       // Persist it so an authenticated purchaser can retrieve it after payment.
       token,

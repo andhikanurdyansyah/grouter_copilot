@@ -23,6 +23,7 @@ import { LicenseService } from './licenseService.js';
 import { UsageResolver } from './usageResolver.js';
 import { KlikQris, isPaidStatus } from './klikqris.js';
 import { PaymentService } from './paymentService.js';
+import { createGateway } from './gateway.js';
 import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
 import { AccountService } from './accountService.js';
@@ -30,6 +31,18 @@ import {
   resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans, findPlan,
 } from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
+
+/** HTTP status mapping for gateway error codes (safe, stable). */
+const GATEWAY_HTTP = {
+  INVALID_REQUEST: 400,
+  SKILL_NOT_FOUND: 404,
+  NOT_CONFIGURED: 503,
+  QUOTA_EXHAUSTED: 429,
+  LICENSE_INVALID: 403,
+  LICENSE_REVOKED: 403,
+  TIMEOUT: 504,
+  UPSTREAM_UNAVAILABLE: 502,
+};
 
 function amountMatchesOrder(upstreamAmount, localAmount) {
   if (upstreamAmount === null || upstreamAmount === undefined || upstreamAmount === ''
@@ -57,6 +70,7 @@ function normalizeHeartbeatBaseUrl(value) {
  */
 const RATE_LIMITS = new Map([
   ['/api/resolve', { windowMs: 60_000, max: 30 }],
+  ['/api/copilot/chat', { windowMs: 60_000, max: 60 }],
   ['/api/heartbeat', { windowMs: 60_000, max: 60 }],
   ['/api/payment/klikqris/webhook', { windowMs: 60_000, max: 60 }],
 ]);
@@ -95,6 +109,7 @@ export function createCopilotServer({
   allowUnauthenticatedAdmin = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development',
   checkUsageUrl = process.env.GROUTER_CHECK_USAGE_URL || undefined,
   fetch = globalThis.fetch,
+  initialSettings = null,
   requirePersistedLicenseKeys = process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development',
 } = {}) {
   const devMode = allowUnauthenticatedAdmin || !requirePersistedLicenseKeys;
@@ -114,6 +129,9 @@ export function createCopilotServer({
   }
 
   const store = new JsonStore(dataFile);
+  if (initialSettings) {
+    store.updateSettings(validateSettings(initialSettings));
+  }
   const effSettings = resolveSettings(store.getSettings());
   const service = new LicenseService({
     store,
@@ -137,6 +155,17 @@ export function createCopilotServer({
   });
   const payment = new PaymentService({ klikqris, licenseService: service, store });
   const accounts = new AccountService({ store });
+
+  // D-021: the backend gateway is the ONLY holder/caller of the single
+  // gRouter service credential (server-side env). Tests inject a fake
+  // provider via the same `fetch` injection used by KlikQRIS tests.
+  const gateway = createGateway({
+    store,
+    licenseService: service,
+    publicKeyPem: keys.publicKeyPem,
+    settings: () => store.getSettings(),
+    fetchImpl: fetch,
+  });
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
@@ -239,6 +268,7 @@ export function createCopilotServer({
         const { record, token } = service.issue({
           customer: body.customer,
           accountId: body.accountId ?? null,
+          planKey: body.planKey ?? null, // entitlement (quotaTokens) resolves from the plan catalogue
           features: body.features,
           expiresInDays: body.expiresInDays,
           grouterApiKey: body.grouterApiKey ?? null,
@@ -259,9 +289,11 @@ export function createCopilotServer({
       });
     }
 
-    // Key handoff: plugin exchanges a valid license for the bound gRouter api key.
-    // This returns the api key (server-side handoff over TLS); it must NOT be
-    // exposed to a browser. In production this is called by the CLI/installer.
+    // Legacy credential handoff REMOVED (D-021): /api/resolve never returns a
+    // gRouter API key. The provider credential is a single server-side service
+    // credential owned by the Copilot backend (see /api/copilot/chat). This
+    // endpoint now only distributes non-secret verifier material so existing
+    // installers keep working (they no longer receive apiKey).
     if (req.method === 'POST' && url.pathname === '/api/resolve') {
       return readBody(req).then((body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
@@ -276,16 +308,29 @@ export function createCopilotServer({
         if (lic?.revokedAt) {
           return sendJson(res, 403, { error: 'license revoked' });
         }
-        const apiKey = service.resolveApiKey(result.payload.lic);
-        if (!apiKey) {
-          return sendJson(res, 404, { error: 'no api key bound to this license' });
-        }
         const eff = resolveSettings(store.getSettings());
         return sendJson(res, 200, {
-          apiKey,
+          // NOTE: no `apiKey` field, ever (D-021). Older installers that expect
+          // one fail closed with a clear upgrade message (see bin/ installer).
           baseUrl: eff.provider.baseUrl,
+          gatewayUrl: `${eff.branding?.publicOrigin || 'https://copilot.grouter.id'}/api/copilot/chat`,
           licensePublicKey: keys.publicKeyPem,
         });
+      });
+    }
+
+    // D-021 AI gateway: the ONLY path that consumes the server-side service
+    // credential. The host app posts { token, messages, requestId?, ... }.
+    // Rate limited like /api/resolve (license-exchange surface).
+    if (req.method === 'POST' && url.pathname === '/api/copilot/chat') {
+      return readBody(req).then(async (body) => {
+        if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
+        if (isRateLimited(req.socket?.remoteAddress ?? 'unknown', '/api/copilot/chat')) {
+          return sendJson(res, 429, { error: 'too many requests' });
+        }
+        const out = await gateway.chat(body);
+        const code = out.status === 'error' ? (GATEWAY_HTTP[out.code] ?? 502) : 200;
+        return sendJson(res, code, out);
       });
     }
 
@@ -319,21 +364,22 @@ export function createCopilotServer({
       });
     }
 
-    // Usage endpoint (admin): fetch gRouter /check-usage for each license with a
-    // bound api key. Read-only consumption of gRouter.
+    // Usage endpoint (admin). D-021: /check-usage describes INFRASTRUCTURE usage
+    // of the single service credential (server-side env) — never a customer's
+    // entitlement (that lives in the gateway usage ledger).
     if (req.method === 'GET' && url.pathname === '/api/admin/usage') {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return (async () => {
-        const licenses = service.list();
+        const serviceKey = process.env.GROUTER_API_KEY || null;
+        if (!serviceKey) {
+          return sendJson(res, 200, { usage: [], note: 'gateway credential not configured (D-021: server-side env)' });
+        }
         const results = [];
-        for (const l of licenses) {
-          if (!l.grouterApiKey) continue;
-          try {
-            const data = await usage.fetchUsage(l.id, l.grouterApiKey);
-            results.push({ licenseId: l.id, customer: l.customer, usage: data });
-          } catch {
-            results.push({ licenseId: l.id, customer: l.customer, usage: null });
-          }
+        try {
+          const data = await usage.fetchUsage('service-credential', serviceKey);
+          results.push({ licenseId: null, customer: '__infrastructure__', usage: data });
+        } catch {
+          results.push({ licenseId: null, customer: '__infrastructure__', usage: null });
         }
         return sendJson(res, 200, { usage: results });
       })();
@@ -554,7 +600,7 @@ export function createCopilotServer({
   });
 
   return {
-    server, store, service, usage, keys, payment, accounts, klikqris,
+    server, store, service, usage, keys, payment, accounts, klikqris, gateway,
     settings: () => resolveSettings(store.getSettings()),
     listen: () => new Promise((r) => server.listen(port, r)),
   };

@@ -26,6 +26,10 @@ export const ErrorCode = {
   INVALID_REQUEST: 'INVALID_REQUEST',
   RATE_LIMITED: 'RATE_LIMITED',
   NOT_CONFIGURED: 'NOT_CONFIGURED',
+  // Backend AI gateway (D-021) surfaced to host apps:
+  QUOTA_EXHAUSTED: 'QUOTA_EXHAUSTED',
+  LICENSE_INVALID: 'LICENSE_INVALID',
+  LICENSE_REVOKED: 'LICENSE_REVOKED',
 };
 
 export function toErrorEnvelope(err, requestId) {

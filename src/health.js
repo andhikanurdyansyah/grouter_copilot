@@ -1,5 +1,5 @@
 /** Host-local readiness only; never return license payloads or provider credentials. */
-export function getCopilotHealth(copilot, token = process.env.GROUTER_LICENSE) {
+export function getCopilotHealth(copilot, token = process.env.GROUTER_LICENSE, { gatewayUrl } = {}) {
   const { runtime } = copilot;
   let license = false;
   try {
@@ -11,7 +11,9 @@ export function getCopilotHealth(copilot, token = process.env.GROUTER_LICENSE) {
   const checks = {
     license,
     skills: runtime.registry.list().length > 0,
-    provider: runtime.adapter.configured === true,
+    // D-021: the provider lives behind the Copilot backend gateway — reachable
+    // gateway OR a directly configured adapter (legacy in-process mode) counts.
+    provider: runtime.adapter.configured === true || Boolean(gatewayUrl ?? process.env.GROUTER_LICENSE_SERVER),
   };
   return { status: Object.values(checks).every(Boolean) ? 'ok' : 'unavailable', checks };
 }

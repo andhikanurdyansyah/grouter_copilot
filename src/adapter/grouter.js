@@ -66,8 +66,17 @@ export class GrouterAdapter {
         });
       }
 
-      const data = await res.json();
-      const answer = data?.choices?.[0]?.message?.content ?? '';
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Upstream AI service returned a malformed response.', { retryable: false });
+      }
+      if (!Array.isArray(data?.choices) || data.choices.length === 0 || typeof data?.choices?.[0]?.message?.content !== 'string') {
+        // Malformed upstream response (e.g. empty choices): never treat as success.
+        throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Upstream AI service returned a malformed response.', { retryable: false });
+      }
+      const answer = data.choices[0].message.content;
       const usage = data?.usage ?? {};
       return {
         answer,

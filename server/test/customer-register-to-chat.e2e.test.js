@@ -9,12 +9,12 @@
  *   → KlikQRIS webhook forgery ignored (upstream still PENDING)
  *   → webhook settles after upstream re-verification reports SUCCESS
  *   → license issued to the account with the PLAN entitlement (A3)
- *   → operator binds the supplier key (D-016 manual binding)
  *   → CLI install (real bin/grouter-copilot.js over real HTTP /api/resolve)
- *     writes server-side app credentials, printing neither key nor token
+ *     writes NON-SECRET gateway config (D-021), printing neither key nor token
  *   → heartbeat records the install
- *   → host-app createCopilot() + runtime.chat() completes on the issued
- *     license via FakeSupplier (no real supplier call)
+ *   → host-app buildGatewayPayload() + backend gateway.chat() completes on the
+ *     issued license via FakeSupplier (no real supplier call); the gRouter
+ *     service credential lives only in the server-side env (D-021)
  *
  * Isolation: temp auth DB (copied from the prod-schema auth.sqlite, all rows
  * cleared), temp store.json, faked KlikQRIS fetch, ephemeral port, FakeSupplier
@@ -105,6 +105,23 @@ function makeFakeKlikqris() {
         { status: 200, headers: { 'content-type': 'application/json' } },
       );
     }
+    if (u.endsWith('/v1/chat/completions')) {
+      // gRouter stand-in for the D-021 gateway leg (server-side env credential).
+      const body = JSON.parse(init?.body || '{}');
+      if ((init?.headers?.authorization || '') !== `Bearer ${process.env.GROUTER_API_KEY}`) {
+        return new Response(JSON.stringify({ error: 'API key required' }), { status: 401 });
+      }
+      if (body.model !== 'grouter-default' || !Array.isArray(body.messages) || body.messages.length === 0) {
+        return new Response(JSON.stringify({ error: 'model and messages are required.' }), { status: 400 });
+      }
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'The total is 42.' } }],
+          usage: { prompt_tokens: 11, completion_tokens: 7 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
     return new Response(
       JSON.stringify({ error: 'unexpected upstream call' }),
       { status: 404, headers: { 'content-type': 'application/json' } },
@@ -132,6 +149,8 @@ test('E2E: register → purchase → verified payment → license → install �
   const storeDir = mkdtempSync(path.join(tmpdir(), 'copilot-e2e-store-'));
   const dataFile = path.join(storeDir, 'store.json');
   const { fakeFetch, createCalls, setUpstream } = makeFakeKlikqris();
+  const previousApiKey = process.env.GROUTER_API_KEY;
+  process.env.GROUTER_API_KEY = 'gRouter-e2e-service-key'; // server-side credential (D-021)
   const { server, payment } = createCopilotServer({ dataFile, fetch: fakeFetch, adminToken });
   await new Promise((r) => server.listen(0, r));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -156,10 +175,11 @@ test('E2E: register → purchase → verified payment → license → install �
 
     // Configure a priced plan catalogue (operator action, authenticated).
     const patch = await req(baseUrl, 'PATCH', '/api/admin/settings', {
+      branding: { publicOrigin: baseUrl }, // gatewayUrl derives from the configured public origin
       plans: [
         {
           key: 'starter', name: 'Starter', amount: 99000, currency: 'IDR',
-          quota: '5M tokens', features: ['core'], expiresInDays: 365, active: true,
+          quota: '5M tokens', quotaTokens: 5000000, features: ['core'], expiresInDays: 365, active: true,
         },
       ],
     }, null, true);
@@ -253,7 +273,8 @@ test('E2E: register → purchase → verified payment → license → install �
     const list = await req(baseUrl, 'GET', '/api/admin/licenses', null, null, true);
     assert.equal(list.status, 200);
 
-    // Operator binds the supplier key (D-016: manual binding until auto-provisioning).
+    // Operator binds the supplier key — LEGACY field (pre-D-021), kept only for
+    // data compat; it must never be projected or handed out again.
     const supplierKey = 'gRouter-e2e-supplier-000123';
     const bind = await req(baseUrl, 'POST', `/api/admin/licenses/${issued.record.id}/bind`, { grouterApiKey: supplierKey }, null, true);
     assert.equal(bind.status, 200, `bind failed: ${JSON.stringify(bind.json)}`);
@@ -290,8 +311,9 @@ test('E2E: register → purchase → verified payment → license → install �
       env[t.slice(0, i)] = t.slice(i + 1);
     }
     assert.equal(env.GROUTER_LICENSE, issued.token);
-    assert.equal(env.GROUTER_API_KEY, supplierKey);
-    assert.equal(env.GROUTER_BASE_URL, 'https://prod.grouter.web.id');
+    assert.equal(env.GROUTER_GATEWAY_URL, `${baseUrl}/api/copilot/chat`);
+    assert.equal(env.GROUTER_API_KEY, undefined, 'D-021: no provider credential in the customer .env');
+    assert.equal(env.GROUTER_BASE_URL, undefined, 'D-021: no provider base URL in the customer .env');
     assert.equal(env.GROUTER_LICENSE_SERVER, baseUrl);
     assert.ok(env.GROUTER_LICENSE_PUBLIC_KEY && env.GROUTER_LICENSE_PUBLIC_KEY.includes('BEGIN PUBLIC KEY'), 'public verifier key must be written');
     assert.ok(!(run.output).includes(supplierKey), 'installer must not print the supplier key');
@@ -307,9 +329,9 @@ test('E2E: register → purchase → verified payment → license → install �
     const me2 = await req(baseUrl, 'GET', '/api/me', null, cookie);
     assert.equal(me2.json.licenses[0].installCount, 1);
 
-    // Host-app chat on the issued license: config + adapter exactly as the
-    // installer scaffolded them, FakeSupplier standing in for the real
-    // supplier (zero external calls; adapter contract unchanged).
+    // Host-app chat on the issued license through the backend AI gateway
+    // (D-021): buildGatewayPayload() locally (skill execution + context here),
+    // POST to /api/copilot/chat, provider call served by the injected fake.
     writeFileSync(path.join(projectDir, 'copilot.config.mjs'), `export default {
   model: 'grouter-default',
   systemPrompt: 'Answer only from the data provided.',
@@ -328,27 +350,29 @@ test('E2E: register → purchase → verified payment → license → install �
     process.env.GROUTER_LICENSE = issued.token;
     process.env.GROUTER_LICENSE_PUBLIC_KEY = env.GROUTER_LICENSE_PUBLIC_KEY.replace(/\\n/g, '\n');
     const plugin = await import(pathToFileURL(path.join(root, 'src', 'index.js')).href);
-    const supplier = new plugin.FakeSupplier();
-    let supplierReq = null;
-    const fetchImpl = async (url, init) => {
-      supplierReq = { url: String(url), auth: init?.headers?.authorization };
-      return supplier.fetch(url, init);
-    };
-    const adapter = new plugin.GrouterAdapter({ apiKey: env.GROUTER_API_KEY, baseUrl: env.GROUTER_BASE_URL, fetchImpl });
-    const { runtime } = await plugin.createCopilot({
-      configPath: path.join(projectDir, 'copilot.config.mjs'),
-      adapter,
+    const { runtime } = await plugin.createCopilot({ configPath: path.join(projectDir, 'copilot.config.mjs') });
+    const payload = await runtime.buildGatewayPayload({ message: 'summarize sales' });
+    assert.equal(payload.meta.skill, 'sales-summary');
+    // Real HTTP round-trip through the backend gateway; the gRouter provider
+    // call is served by the injected fetch (FakeSupplier), zero external calls.
+    const gw = await plugin.gatewayChat({
+      runtime,
+      gatewayUrl: `${baseUrl}/api/copilot/chat`,
+      fetchImpl: async (url, init) => {
+        const res = await fetch(url, init); // hits the local backend server
+        const bodyText = await res.text();
+        return new Response(bodyText, { status: res.status, headers: res.headers });
+      },
+      message: 'summarize sales',
     });
-    const result = await runtime.chat({ message: 'summarize sales' });
-    assert.equal(result.status, 'complete');
-    assert.ok(String(result.answer).includes('42'));
-    assert.equal(result.skill, 'sales-summary');
-    assert.equal(supplierReq.url, 'https://prod.grouter.web.id/v1/chat/completions');
-    assert.equal(supplierReq.auth, `Bearer ${supplierKey}`);
-    assert.ok(!String(result.answer).includes(supplierKey), 'answer must not echo the supplier key');
+    assert.equal(gw.status, 'ok', JSON.stringify(gw));
+    assert.ok(String(gw.answer).includes('42'));
+    assert.ok(gw.usage && typeof gw.usage.inputTokens === 'number', 'gateway returns reconciled usage');
   } finally {
     payment.licenseService.issue = originalIssue;
     server.close();
+    if (previousApiKey === undefined) delete process.env.GROUTER_API_KEY;
+    else process.env.GROUTER_API_KEY = previousApiKey;
     if (projectDir) rmSync(projectDir, { recursive: true, force: true });
     rmSync(storeDir, { recursive: true, force: true });
     // The chat leg seeds the plugin's env defaults; restore them (factory

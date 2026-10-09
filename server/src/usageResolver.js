@@ -1,9 +1,10 @@
 /**
- * Usage resolver — consume gRouter /check-usage (READ-ONLY) for a bound api key,
- * cache and aggregate for the Copilot dashboard.
+ * Usage resolver — consume gRouter /check-usage (READ-ONLY) for the single
+ * service credential, cache and aggregate for the Copilot dashboard.
  *
- * This NEVER writes to gRouter. It only calls the public /check-usage endpoint
- * using the gRouter api key bound to a Copilot license.
+ * This NEVER writes to gRouter. D-021: the response describes INFRASTRUCTURE
+ * usage of the whole service credential (all customers) — it is NOT any
+ * individual customer's quota. Customer usage lives in the gateway ledger.
  */
 
 import { CopilotError, ErrorCode } from '../../src/adapter/errors.js';

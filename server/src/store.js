@@ -26,7 +26,7 @@ export class JsonStore {
   }
 
   _load() {
-    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], settings: {} };
+    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], usage: [], settings: {} };
     if (!existsSync(this.filePath)) {
       return empty;
     }
@@ -37,6 +37,7 @@ export class JsonStore {
         licenses: parsed.licenses ?? [],
         orders: parsed.orders ?? [],
         heartbeats: parsed.heartbeats ?? [],
+        usage: parsed.usage ?? [],
         // Runtime configuration (SSOT). Resolved against defaults + env seeds
         // by server/src/settings.js — this is only the persisted override layer.
         settings: parsed.settings ?? {},
@@ -121,6 +122,46 @@ export class JsonStore {
     this.data.licenses.push(license);
     this._save();
     return license;
+  }
+
+  // --- AI usage ledger (D-021 gateway; customer dimension) ---
+
+  getUsageRecord(requestId) {
+    return this.data.usage.find((u) => u.requestId === requestId) ?? null;
+  }
+
+  addUsageRecord(record) {
+    this.data.usage.push(record);
+    this._save();
+    return record;
+  }
+
+  updateUsageRecord(requestId, patch) {
+    const record = this.getUsageRecord(requestId);
+    if (!record) return null;
+    Object.assign(record, patch);
+    this._save();
+    return record;
+  }
+
+  /**
+   * Effective charged tokens for a license. Reserved requests count their
+   * reservation (prevents quota bypass via concurrent in-flight requests);
+   * errored requests count nothing (reservation released).
+   */
+  usageTotals(licenseId) {
+    let usedTokens = 0;
+    let requestCount = 0;
+    for (const u of this.data.usage) {
+      if (u.licenseId !== licenseId) continue;
+      if (u.status === 'ok') {
+        usedTokens += u.totalTokens ?? 0;
+        requestCount += 1;
+      } else if (u.status === 'reserved') {
+        usedTokens += u.reservedTokens ?? 0;
+      }
+    }
+    return { usedTokens, requestCount };
   }
 
   revokeLicense(id, { at = Date.now() } = {}) {

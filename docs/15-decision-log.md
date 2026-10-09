@@ -89,6 +89,25 @@ customer; (2) key menyebar ke N host app = permukaan bocor O(N) tanpa revocation
   Copilot backend, bukan host app customer.
 - Pemanggilan gRouter terpusat di Copilot backend; plugin/host app memanggil Copilot backend.
 
+**Implemented (2026-10-09):**
+- `POST /api/copilot/chat` — satu-satunya konsumen service credential (`server/src/gateway.js`).
+  Flow: validate license (signature/expiry/revocation, server-side) → validasi `messages` (≤40,
+  ≤32KB, role whitelist) → kuota per license dari `plan.quotaTokens` (plan catalogue; null =
+  unlimited) → reservasi token sinkron (read-then-write tanpa await, anti-interleave) → call
+  gRouter via adapter → rekonsiliasi usage nyata → ledger per license (D-021 ledger).
+  Idempotensi: `requestId` duplikat = replay, tidak dobel charge. Error upstream TIDAK
+  ditagih (reservasi dilepas). Response tanpa kredensial; field identity dari client diabaikan.
+- `/api/resolve` TIDAK pernah mengembalikan `apiKey` lagi; hanya `{baseUrl, gatewayUrl,
+  licensePublicKey}`. Field `grouterApiKey` pada license = LEGACY, tidak pernah diproyeksikan.
+- Installer baru (`bin/grouter-copilot.js`): scaffold + `.env` berisi `GROUTER_LICENSE`,
+  `GROUTER_GATEWAY_URL`, `GROUTER_LICENSE_SERVER`, `GROUTER_LICENSE_PUBLIC_KEY` — tanpa
+  kredensial provider. Menolak server lama yang masih mencoba handoff key (defense in depth).
+- Plugin: `runtime.buildGatewayPayload()` (skill + context dibangun di host app) +
+  `gatewayChat()` (`src/index.js`) → POST ke gateway. Kredensial tidak pernah keluar backend.
+- `/api/admin/usage` = infrastructure dimension (satu service credential, server-side env);
+  customer dimension ada di ledger gateway (per license).
+- Rate limit `/api/copilot/chat` 60 req/menit/IP (sama dengan /api/resolve).
+
 ## Customer flow
 
 ```text

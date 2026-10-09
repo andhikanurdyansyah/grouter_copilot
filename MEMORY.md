@@ -1,6 +1,6 @@
 # gRouter Copilot — Project Memory (terpisah dari gRouter)
 
-> Memory ini hidup DI DALAM workspace Copilot (`C:/gRouter_copilot/`), terisolasi dari
+> Memory ini hidup DI DALAM workspace Copilot (`/home/ubuntu/grouter_copilot/`), terisolasi dari
 > memory gRouter (profile grouter-dev). Fakta gRouter TIDAK boleh tercampur ke sini,
 > dan fakta Copilot TIDAK boleh masuk ke memory gRouter.
 
@@ -8,8 +8,8 @@
 
 - **Terminologi landing terkunci:** “intro page” berarti `server/public/intro.html`, yaitu halaman pembuka yang sebelumnya berasal dari `comingsoon`. “Landing” berarti halaman produk utama Commandlayer di `https://copilot.grouter.id/copilot`; secara product-flow ini adalah root landing, sedangkan `/` tanpa query menyajikan intro terlebih dahulu. Intro scroll sampai bawah lalu same-origin `location.replace()` menuju `/copilot`.
 
-- **Baca `docs/handoff-2026-10-02.md` DULU** (status terbaru: UI v3 + routing real-path, pushed).
-  Baseline lama: `docs/handoff-2026-10-01.md` (safety rules + gotcha §8 masih berlaku).
+- **Baca `docs/handoff-2026-10-09.md` DULU** (terbaru: D-021 AI gateway + Linux = source of truth dev & production).
+  Baseline lama: `docs/handoff-2026-10-02.md` (UI v3), `docs/handoff-2026-10-01.md` (safety rules + gotcha §8 masih berlaku).
 - Docs = source of truth. Beberapa doc MASIH STALE — lihat @section "Docs stale" di bawah.
 - **Landing = SCRUB CUT (2026-10-03 malam, commit `fce6aff`):** sequence video 300 frame (ezgif, 1920×1080, asal `Downloads/landing-bot`, copy project root + served di `server/public/assets/landing-bot/`) di-scrub canvas ala Apple mengikuti scroll. `landing.html` + `landing.css` + `landing.js` (cache-buster `?v=g1`): journey 4 babak (hero/produk/ask/arch, class `.jch`) mengambang di atas canvas + komponen GROUND (bento fitur 5 kartu, chat panel, pricing 3 kartu dari `/api/plans`, final CTA giant) di atas frame 300 ambient. Kalibrasi terukur: `data-frame` 5/95/195/295 = posisi copy-center tiap babak (progres dihitung dari journey-only, ground membekukan frame). Preseden versi lama: backup stage-cut v3 di `server/public/_backup-landing-stagecut-f3/` (belum commit), scroll-world v6 superseded. Gotcha baru: (1) `display:grid` class mengalahkan atribut `hidden` → guard `[hidden]{display:none!important}` WAJIB; (2) flex-item dengan max-width BISA menyusut di bawah max-width oleh flex-shrink → `flex:none;width:100%` di `.jch .arch-copy` (flow 5 node wrap 2 baris tanpa itu); (3) kalibrasi frame: ukur `copyCenterAbs` aktual dulu, jangan tebak; (4) `data-frame` hanya dokumentasi QA — frame aktual dari progress scroll.
 - **Landing v2 = CINEMATIC GLASS (2026-10-03, commit `e8efcbf`, feedback Jie: storytelling kurang jelas / feel scroll belum sempurna / component belum menyatu dengan color):** re-tint penuh midnight teal + ice-cyan `#7ed6f3` (selaras warna sequence, bukan hitam asing); headline serif editorial (Iowan/Palatino stack) dengan kata aksen `.orb` italic + ring orbit; scrim gradasi KIRI di `.scrub-vignette` (copy kontras, visual kanan bernafas — ganti panel glass per babak); 4 babak bernomor (`.ch-meta` 01–04 + `.ch-cap` caption sinematik italic); pagination babak fixed 01–04 + garis ice-cyan (klik lompat babak) + `.v-tags` vertical + `.scroll-hint`, semuanya auto-fade via `body.jch-ui-off` (toggle di updateTarget saat p≥0.985); tombol pill (primary ice / white / glass / outline); bento+chat+pricing teal glass; `.ground::before` fade bridge. Hero = tepat 100vh (metrics utuh di viewport pertama, caption hero absolut kiri-bawah). Cache-buster `?v=g2`.
@@ -24,7 +24,7 @@
 - gRouter Copilot = product BARU, terpisah total dari gRouter existing (port 20128).
 - gRouter existing = supplier AI (API key + model). HANYA read-only (consume `/api/check-usage`).
 - Repo: `https://github.com/andhikanurdyansyah/grouter_copilot` (branch `main`).
-- Workspace: `C:/gRouter_copilot`. Memory ini file manual (`MEMORY.md`), TIDAK auto-load.
+- Workspace: `/home/ubuntu/grouter_copilot/`. Memory ini file manual (`MEMORY.md`), TIDAK auto-load.
 
 ## Keputusan kunci (lihat docs/15-decision-log.md)
 

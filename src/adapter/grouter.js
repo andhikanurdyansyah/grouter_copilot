@@ -18,6 +18,43 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 // /v1. (The old default `https://api.grouter.io` was never the real contract.)
 const DEFAULT_BASE_URL = process.env.GROUTER_BASE_URL || 'https://prod.grouter.web.id';
 
+/**
+ * Extract the first balanced JSON object/array from a string (string-aware
+ * brace scan). Returns null when no complete JSON value is found. Used to
+ * tolerate upstream responses that append SSE framing after the JSON body.
+ */
+function parseFirstJsonObject(text) {
+  const start = text.search(/[{[]/);
+  if (start === -1) return null;
+  const open = text[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(text.slice(start, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export class GrouterAdapter {
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = globalThis.fetch } = {}) {
     this.apiKey = apiKey || process.env.GROUTER_API_KEY || null;
@@ -66,11 +103,19 @@ export class GrouterAdapter {
         });
       }
 
+      // gRouter may answer with content-type text/event-stream even for a
+      // non-streaming request, appending SSE framing ("data: [DONE]") after the
+      // single JSON object. Extract the FIRST balanced JSON value (string-aware
+      // scan) instead of failing — trailing SSE frames are ignored.
+      const rawBody = await res.text();
       let data;
       try {
-        data = await res.json();
+        data = JSON.parse(rawBody);
       } catch {
-        throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Upstream AI service returned a malformed response.', { retryable: false });
+        data = parseFirstJsonObject(rawBody);
+        if (!data) {
+          throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Upstream AI service returned a malformed response.', { retryable: false });
+        }
       }
       if (!Array.isArray(data?.choices) || data.choices.length === 0 || typeof data?.choices?.[0]?.message?.content !== 'string') {
         // Malformed upstream response (e.g. empty choices): never treat as success.

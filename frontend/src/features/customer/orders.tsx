@@ -1,26 +1,41 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchPlans, formatIDR, fmtDate } from '@/lib/grouter-api'
+import { fetchPlans, fetchMe, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { PageHeader } from '@/components/shared/page-header'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { api } from '@/lib/grouter-api'
 import { toast } from 'sonner'
+import { Check, Clock, Copy, Sparkles, Infinity as InfinityIcon, Mail, HelpCircle } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 
 interface OrderResp {
   order?: { id: string; qrString?: string; qrUrl?: string; amount?: number; packageKey?: string }
   [k: string]: unknown
 }
 
+interface Plan {
+  key: string
+  name: string
+  amount: number
+  expiresInDays: number
+  quota?: number | null
+  ai?: { enabled?: boolean; quotaTokens?: number | null }
+}
+
+// Paket & Perpanjangan: keputusan pembelian dulu — paket aktif & status order
+// di atas, perbandingan paket sebagai kartu (bukan tabel mentah), harga nol
+// = state "penjualan langsung" (hubungi sales), bukan produk gratis.
 export function CustomerOrders() {
   const qc = useQueryClient()
   const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
+  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const [qr, setQr] = useState<OrderResp | null>(null)
 
   const buy = useMutation({
@@ -32,6 +47,7 @@ export function CustomerOrders() {
     onSuccess: (data) => {
       setQr(data)
       qc.invalidateQueries({ queryKey: ['me'] })
+      qc.invalidateQueries({ queryKey: ['orders-latest'] })
     },
     onError: (e) => {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -39,137 +55,260 @@ export function CustomerOrders() {
     },
   })
 
-  if (plans.isLoading) return <Skeleton className='h-64' />
-  const planList = plans.data?.plans ?? []
+  if (plans.isPending) {
+    return (
+      <div className='space-y-5'>
+        <PageHeader title='Paket & Perpanjangan' description='Pilih paket yang sesuai kebutuhan AI Anda.' />
+        <TableSkeleton rows={3} cols={3} />
+      </div>
+    )
+  }
+  if (plans.isError) {
+    return (
+      <div className='space-y-5'>
+        <PageHeader title='Paket & Perpanjangan' description='Pilih paket yang sesuai kebutuhan AI Anda.' />
+        <ErrorState
+          status={(plans.error as { response?: { status?: number } })?.response?.status}
+          message={(plans.error as Error).message}
+          onRetry={() => plans.refetch()}
+        />
+      </div>
+    )
+  }
+
+  const planList = (plans.data?.plans ?? []) as Plan[]
+  // Paket reguler berharga → checkout; paket reguler tanpa harga → unpriced;
+  // paket 'custom' → jalur sales (by design).
+  const isCustom = (p: Plan) => p.key === 'custom' || /custom/i.test(p.name)
+  const purchasable = planList.filter((p) => p.amount > 0)
+  const unpricedList = planList.filter((p) => !(p.amount > 0) && !isCustom(p))
+  const salesOnly = planList.filter((p) => !(p.amount > 0) && isCustom(p))
+
+  // Paket aktif customer (entitlement nyata)
+  const myLicense = me.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? me.data?.licenses?.[0]
+  const myUsage = me.data?.usage?.find((u) => u.licenseId === myLicense?.id)
+  const activePlan = myLicense?.planKey ? planList.find((p) => p.key === myLicense.planKey) : undefined
+  const quota = myUsage?.quotaLimit ?? activePlan?.ai?.quotaTokens ?? null
+  const used = myUsage?.usedTokens ?? 0
 
   return (
-    <div className='space-y-6'>
+    <div className='mx-auto flex max-w-6xl flex-col gap-6'>
       <PageHeader
-        title='Paket & Order'
-        description='Harga & entitlement ditetapkan server (tidak dari browser). Pembayaran via QRIS; lisensi terbit otomatis setelah terverifikasi.'
+        title='Paket & Perpanjangan'
+        description='Kuota AI bersifat lifetime per lisensi — tidak direset bulanan. Harga final ditetapkan server saat checkout.'
       />
+
+      {/* STATUS PAKET AKTIF — konteks keputusan */}
+      {activePlan ? (
+        <Card className='border-primary/25 bg-primary/[0.04]'>
+          <CardContent className='flex flex-wrap items-center justify-between gap-4 p-5'>
+            <div>
+              <div className='flex items-center gap-2'>
+                <Sparkles className='size-4 text-primary' aria-hidden />
+                <p className='text-sm font-medium'>Paket Anda saat ini: {activePlan.name}</p>
+                {myLicense && <StatusBadge tone='success'>aktif</StatusBadge>}
+              </div>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                Berlaku s.d. {myLicense?.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                {quota !== null && quota !== undefined ? ` · terpakai ${used.toLocaleString('id-ID')} dari ${quota.toLocaleString('id-ID')} token` : ' · kuota unlimited'}
+              </p>
+            </div>
+            <Button asChild variant='outline' size='sm'>
+              <Link to='/user/usage'>Lihat pemakaian</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <LatestOrder />
 
-      <Card className='py-0 overflow-hidden'>
-        <CardContent className='p-0'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className='w-2/5 md:w-1/3'>Fitur</TableHead>
-                {planList.map((p) => (
-                  <TableHead key={p.key} className='text-center'>
-                    <div className='text-sm font-semibold'>{p.name}</div>
-                    <div className='text-xs font-normal text-muted-foreground'>{p.key}</div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className='text-sm text-muted-foreground'>Harga (server-side)</TableCell>
-                {planList.map((p) => (
-                  <TableCell key={p.key} className='text-center text-base font-semibold tabular-nums'>{formatIDR(p.amount)}</TableCell>
-                ))}
-              </TableRow>
-              <TableRow>
-                <TableCell className='text-sm text-muted-foreground'>Masa aktif lisensi</TableCell>
-                {planList.map((p) => (
-                  <TableCell key={p.key} className='text-center text-sm tabular-nums'>{p.expiresInDays} hari</TableCell>
-                ))}
-              </TableRow>
-              <TableRow>
-                <TableCell className='text-sm text-muted-foreground'>Fitur AI</TableCell>
-                {planList.map((p) => (
-                  <TableCell key={p.key} className='text-center'>
-                    {p.ai?.enabled ? (
-                      <Badge variant='secondary'>
-                        {p.ai.quotaTokens === null ? 'AI · token unlimited' : 'AI · ' + p.ai.quotaTokens.toLocaleString('id-ID') + ' tok'}
-                      </Badge>
-                    ) : (
-                      <span className='text-sm text-muted-foreground'>tidak termasuk</span>
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-              <TableRow>
-                <TableCell className='text-sm text-muted-foreground'>Beli / perpanjang</TableCell>
-                {planList.map((p) => (
-                  <TableCell key={p.key} className='text-center'>
-                    <Button
-                      size='sm'
-                      disabled={buy.isPending || p.amount === 0}
-                      onClick={() => buy.mutate(p.key)}
-                    >
-                      {p.amount === 0 ? 'Hubungi kami' : buy.isPending ? '…' : 'Beli via QRIS'}
-                    </Button>
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* PERBANDINGAN PAKET — kartu, bukan tabel */}
+      <section aria-labelledby='plan-comparison'>
+        <h2 id='plan-comparison' className='text-lg font-medium tracking-tight'>Pilih paket Anda</h2>
+        <p className='mt-0.5 text-sm text-muted-foreground'>Semua paket memakai gateway AI yang sama — beda durasi dan kuota token.</p>
+        <div className='mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
+          {[...purchasable, ...unpricedList, ...salesOnly].map((p) => (
+            <PlanCard
+              key={p.key}
+              plan={p}
+              current={myLicense?.planKey === p.key}
+              onBuy={p.amount > 0 ? () => buy.mutate(p.key) : undefined}
+              buying={buy.isPending}
+              salesOnly={isCustom(p)}
+            />
+          ))}
+        </div>
+      </section>
 
-      {qr && (
-        <Card>
-          <CardHeader>
-            <CardTitle className='text-base'>Checkout QRIS</CardTitle>
-            <CardDescription>
-              Order {String((qr.order as { id?: string })?.id ?? '')} — scan QR di bawah.
-              Lisensi terbit otomatis setelah pembayaran terverifikasi webhook.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='flex flex-col items-center gap-3'>
-            {(() => {
-              const o = qr.order as { qrString?: string; qrUrl?: string } | undefined
-              const qrValue = o?.qrUrl || o?.qrString
-              return qrValue ? (
-                <img
-                  src={'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrValue)}
-                  alt='QR Code pembayaran'
-                  className='rounded-md border bg-white p-2'
-                  width={220}
-                  height={220}
-                />
-              ) : (
-                <div className='text-sm text-muted-foreground'>QR string:</div>
-              )
-            })()}
-          </CardContent>
-        </Card>
-      )}
+      {/* CHECKOUT QRIS */}
+      <Dialog open={!!qr} onOpenChange={(open) => { if (!open) setQr(null) }}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Selesaikan pembayaran</DialogTitle>
+            <DialogDescription>
+              Order <code className='font-mono text-xs'>{String((qr?.order as { id?: string })?.id ?? '')}</code> —
+              scan QR berikut dengan aplikasi pembayaran Anda. Lisensi terbit otomatis setelah pembayaran terverifikasi server
+              (biasanya beberapa detik setelah pembayaran).
+            </DialogDescription>
+          </DialogHeader>
+          {(() => {
+            const o = qr?.order as { qrString?: string; qrUrl?: string; amount?: number } | undefined
+            const qrValue = o?.qrUrl || o?.qrString
+            return (
+              <div className='flex flex-col items-center gap-3 py-2'>
+                <p className='text-2xl font-semibold tabular-nums'>{formatIDR(o?.amount)}</p>
+                {qrValue ? (
+                  <img
+                    src={'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrValue)}
+                    alt='Kode QR pembayaran QRIS'
+                    className='rounded-md border bg-white p-2'
+                    width={220}
+                    height={220}
+                  />
+                ) : (
+                  <div className='chassis-well w-full break-all px-3 py-2 font-mono text-xs'>{qrValue || 'QR tidak tersedia'}</div>
+                )}
+                <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                  <Clock className='size-3.5' aria-hidden /> Biarkan halaman ini terbuka — status order diperbarui otomatis.
+                </p>
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
+function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
+  plan: Plan
+  current?: boolean
+  onBuy?: () => void
+  buying?: boolean
+  salesOnly?: boolean
+}) {
+  const ai = plan.ai?.enabled
+  const tokens = plan.ai?.quotaTokens
+  // Paket reguler tanpa harga terkonfigurasi ≠ gratis: tampilkan state
+  // "harga menyusul" — jangan pernah menampilkan Rp 0 sebagai harga beli.
+  const unpriced = !salesOnly && !plan.amount
+  return (
+    <Card className={'relative flex flex-col py-0 ' + (current ? 'border-primary/50 ring-1 ring-primary/30' : salesOnly ? '' : 'border-amber-500/25')}>
+      {current && (
+        <span className='absolute -top-2.5 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary-foreground'>
+          Paket Anda
+        </span>
+      )}
+      <CardContent className='flex flex-1 flex-col p-5'>
+        <div className='flex items-baseline justify-between gap-2'>
+          <h3 className='text-base font-medium'>{plan.name}</h3>
+          {unpriced ? (
+            <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400'>harga menyusul</Badge>
+          ) : (
+            <p className='text-2xl font-semibold tabular-nums tracking-tight'>{formatIDR(plan.amount)}</p>
+          )}
+        </div>
+        <p className='mt-1 text-sm text-muted-foreground'>Lisensi aktif {plan.expiresInDays} hari</p>
 
-// Order terakhir customer (status pembayaran server-side)
+        <ul className='mt-4 flex-1 space-y-2.5 text-sm'>
+          <li className='flex items-center gap-2'>
+            {ai ? <Check className='size-4 text-emerald-400' aria-hidden /> : <HelpCircle className='size-4 text-muted-foreground' aria-hidden />}
+            {ai
+              ? (tokens === null || tokens === undefined
+                  ? 'AI unlimited'
+                  : <>AI hingga <strong className='tabular-nums'>{tokens.toLocaleString('id-ID')}</strong> token</>)
+              : 'Tanpa fitur AI'}
+          </li>
+          {ai && tokens !== null && tokens !== undefined && (
+            <li className='flex items-center gap-2 text-muted-foreground'>
+              <InfinityIcon className='size-4' aria-hidden /> Kuota lifetime — tidak reset bulanan
+            </li>
+          )}
+          {plan.quota != null && (
+            <li className='flex items-center gap-2 text-muted-foreground'>
+              <Check className='size-4 text-emerald-400' aria-hidden /> Kuota {plan.quota.toLocaleString('id-ID')}
+            </li>
+          )}
+        </ul>
+
+        <div className='mt-5 border-t pt-4'>
+          {salesOnly || unpriced ? (
+            <div className='space-y-2'>
+              <Button variant='outline' className='w-full' asChild>
+                <a href={`mailto:sales@grouter.web.id?subject=${encodeURIComponent('Paket ' + plan.name + ' — gRouter Copilot')}`}>
+                  <Mail className='size-4' /> {unpriced ? 'Daftar menunggu harga' : 'Hubungi sales'}
+                </a>
+              </Button>
+              <p className='text-xs text-muted-foreground'>
+                {unpriced
+                  ? 'Harga paket ini belum ditetapkan operator — daftar untuk prioritas saat tersedia.'
+                  : 'Paket custom (volume/harga khusus) disusun bersama tim kami.'}
+              </p>
+            </div>
+          ) : (
+            <Button
+              className='w-full'
+              variant={current ? 'outline' : 'default'}
+              onClick={onBuy}
+              disabled={buying || !onBuy}
+            >
+              {current ? 'Perpanjang paket ini' : buying ? 'Memproses…' : 'Beli via QRIS'}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Status order terakhir: kontekstual — pending = lanjut bayar; paid = selesai.
 function LatestOrder() {
   const latest = useQuery({
     queryKey: ['orders-latest'],
     queryFn: async () => (await api.get('/orders/latest')).data as { order: { id: string; packageKey?: string; amount?: number; status?: string; createdAt?: number | string } | null },
   })
+  const [copied, setCopied] = useState(false)
   if (latest.isPending || latest.isError) return null
   const o = latest.data?.order
   if (!o) return null
-  const st = String(o.status || '—')
+  const st = String(o.status || '').toUpperCase()
+  const pending = st === 'PENDING'
+
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(o.id)
+      setCopied(true)
+      toast.success('Order ID disalin')
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error('Gagal menyalin')
+    }
+  }
+
   return (
-    <Card>
-      <CardHeader className='pb-2'>
-        <CardTitle className='text-base'>Order terakhir Anda</CardTitle>
-      </CardHeader>
-      <CardContent className='flex flex-wrap items-center justify-between gap-2 text-sm'>
-        <div className='min-w-0'>
-          <p className='font-mono text-xs text-muted-foreground'>{o.id}</p>
-          <p className='text-muted-foreground'>
-            {o.packageKey ? o.packageKey + ' · ' : ''}
-            {formatIDR(o.amount)} · {fmtDate(o.createdAt)}
+    <Card className={pending ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'py-0'}>
+      <CardContent className={'flex flex-wrap items-center gap-x-6 gap-y-3 ' + (pending ? 'p-5' : 'px-4 py-3.5')}>
+        <div className='min-w-0 flex-1'>
+          <div className='flex items-center gap-2'>
+            <p className='label-mono'>{pending ? 'Menunggu pembayaran' : st === 'PAID' ? 'Order terakhir' : 'Order terakhir'}</p>
+            <StatusBadge tone={st === 'PAID' ? 'success' : pending ? 'warning' : 'danger'}>
+              {st === 'PAID' ? 'dibayar' : pending ? 'pending' : st.toLowerCase()}
+            </StatusBadge>
+          </div>
+          <p className='mt-1 text-sm'>
+            <button type='button' onClick={copyId} className='group inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground' aria-label={'Salin order ID ' + o.id}>
+              {o.id}
+              {copied ? <Check className='size-3 text-emerald-500' aria-hidden /> : <Copy className='size-3 opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />}
+            </button>
+            {o.packageKey ? <span> · {o.packageKey}</span> : null}
+            <span> · {formatIDR(o.amount)} · {fmtDate(o.createdAt)}</span>
           </p>
         </div>
-        <StatusBadge tone={st.toUpperCase() === 'PAID' ? 'success' : st.toUpperCase() === 'PENDING' ? 'warning' : 'danger'}>
-          {st.toLowerCase() === 'paid' ? 'dibayar' : st.toLowerCase() === 'pending' ? 'menunggu pembayaran' : st.toLowerCase()}
-        </StatusBadge>
+        {pending && (
+          <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'>
+            <Clock className='size-3' aria-hidden /> selesaikan pembayaran QRIS untuk menerbitkan lisensi
+          </Badge>
+        )}
       </CardContent>
     </Card>
   )

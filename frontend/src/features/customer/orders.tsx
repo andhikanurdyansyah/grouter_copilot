@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPlans, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { PageHeader } from '@/components/shared/page-header'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -48,41 +51,65 @@ export function CustomerOrders() {
 
       <LatestOrder />
 
-      <div className='grid gap-4 md:grid-cols-3'>
-        {planList.map((p) => (
-          <Card key={p.key}>
-            <CardHeader>
-              <CardTitle className='text-lg'>{p.name}</CardTitle>
-              <CardDescription>{p.key}</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-3'>
-              <div className='text-2xl font-bold tabular-nums'>{formatIDR(p.amount)}</div>
-              <div className='text-sm text-muted-foreground'>
-                Masa aktif {p.expiresInDays} hari
-              </div>
-              {p.ai ? (
-                p.ai.enabled ? (
-                  <Badge variant='secondary'>
-                    AI termasuk · {p.ai.quotaTokens === null ? 'token unlimited' : p.ai.quotaTokens.toLocaleString('id-ID') + ' tokens'}
-                  </Badge>
-                ) : (
-                  <Badge variant='outline'>AI: tidak termasuk</Badge>
-                )
-              ) : null}
-              {p.quota != null && (
-                <div className='text-sm text-muted-foreground'>Kuota {p.quota.toLocaleString('id-ID')}</div>
-              )}
-              <Button
-                className='w-full'
-                disabled={buy.isPending || p.amount === 0}
-                onClick={() => buy.mutate(p.key)}
-              >
-                {p.amount === 0 ? 'Hubungi kami' : buy.isPending ? 'Memproses…' : 'Beli via QRIS'}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className='py-0 overflow-hidden'>
+        <CardContent className='p-0'>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className='w-2/5 md:w-1/3'>Fitur</TableHead>
+                {planList.map((p) => (
+                  <TableHead key={p.key} className='text-center'>
+                    <div className='text-sm font-semibold'>{p.name}</div>
+                    <div className='text-xs font-normal text-muted-foreground'>{p.key}</div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className='text-sm text-muted-foreground'>Harga (server-side)</TableCell>
+                {planList.map((p) => (
+                  <TableCell key={p.key} className='text-center text-base font-semibold tabular-nums'>{formatIDR(p.amount)}</TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className='text-sm text-muted-foreground'>Masa aktif lisensi</TableCell>
+                {planList.map((p) => (
+                  <TableCell key={p.key} className='text-center text-sm tabular-nums'>{p.expiresInDays} hari</TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className='text-sm text-muted-foreground'>Fitur AI</TableCell>
+                {planList.map((p) => (
+                  <TableCell key={p.key} className='text-center'>
+                    {p.ai?.enabled ? (
+                      <Badge variant='secondary'>
+                        {p.ai.quotaTokens === null ? 'AI · token unlimited' : 'AI · ' + p.ai.quotaTokens.toLocaleString('id-ID') + ' tok'}
+                      </Badge>
+                    ) : (
+                      <span className='text-sm text-muted-foreground'>tidak termasuk</span>
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow>
+                <TableCell className='text-sm text-muted-foreground'>Beli / perpanjang</TableCell>
+                {planList.map((p) => (
+                  <TableCell key={p.key} className='text-center'>
+                    <Button
+                      size='sm'
+                      disabled={buy.isPending || p.amount === 0}
+                      onClick={() => buy.mutate(p.key)}
+                    >
+                      {p.amount === 0 ? 'Hubungi kami' : buy.isPending ? '…' : 'Beli via QRIS'}
+                    </Button>
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {qr && (
         <Card>

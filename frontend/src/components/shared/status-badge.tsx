@@ -7,7 +7,7 @@ const STYLES: Record<string, string> = {
   success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
   warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
   danger: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
-  neutral: 'bg-muted text-muted-foreground border-border',
+  neutral: 'bg-muted text-slate-700 dark:text-slate-300 border-border',
   info: 'bg-primary/10 text-primary border-primary/20',
 }
 

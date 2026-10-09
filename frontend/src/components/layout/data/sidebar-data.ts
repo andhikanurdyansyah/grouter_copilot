@@ -1,18 +1,23 @@
 import {
-  LayoutDashboard,
+  Gauge,
   KeyRound,
-  Activity,
-  ReceiptText,
+  ShoppingCart,
   ScrollText,
   Package,
+  Activity,
   ServerCog,
-  ShieldCheck,
-  ShoppingCart,
+  Home,
+  BookOpen,
+  PieChart,
+  ReceiptText,
+  UserRound,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
-// Dua workspace dalam satu app: /user/* (customer) & /admin/* (operator).
-// Role dipilih runtime: jika pathname /admin → navGroups admin.
+// Dua produk yang sengaja dibedakan (blueprint D-024):
+// - Admin = control plane: nav berdasar OBJEK KERJA, dikelompokkan per domain.
+// - Customer = self-service: nav berdasar PERTANYAAN pelanggan, datar 5 item,
+//   tanpa istilah administratif (revoke, policy, ledger, infrastruktur).
 export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email?: string }): SidebarData {
   if (isAdmin) {
     return {
@@ -20,25 +25,25 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
       teams: [],
       navGroups: [
         {
-          title: 'Operasional',
+          title: 'Antrean',
           items: [
-            { title: 'Ringkasan', url: '/admin', icon: LayoutDashboard },
-            { title: 'Lisensi', url: '/admin/licenses', icon: KeyRound },
-            { title: 'Usage & Kuota', url: '/admin/usage', icon: Activity },
+            { title: 'Operasional', url: '/admin', icon: Gauge },
           ],
         },
         {
-          title: 'Komersial',
+          title: 'Objek Kerja',
           items: [
-            { title: 'Paket & AI Policy', url: '/admin/packages', icon: Package },
-            { title: 'Orders & Bayar', url: '/admin/orders', icon: ShoppingCart },
+            { title: 'Lisensi', url: '/admin/licenses', icon: KeyRound },
+            { title: 'Orders & Reconciliasi', url: '/admin/orders', icon: ShoppingCart },
             { title: 'AI Ledger', url: '/admin/ledger', icon: ScrollText },
           ],
         },
         {
-          title: 'Infrastruktur',
+          title: 'Konfigurasi',
           items: [
-            { title: 'Pengaturan', url: '/admin/settings', icon: ServerCog },
+            { title: 'Paket & Kebijakan AI', url: '/admin/packages', icon: Package },
+            { title: 'Usage Provider', url: '/admin/usage', icon: Activity },
+            { title: 'Pengaturan & Health', url: '/admin/settings', icon: ServerCog },
           ],
         },
       ],
@@ -49,23 +54,13 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
     teams: [],
     navGroups: [
       {
-        title: 'Workspace',
+        title: 'Produk',
         items: [
-          { title: 'Ringkasan', url: '/user', icon: LayoutDashboard },
-          { title: 'Lisensi & Install', url: '/user/licenses', icon: KeyRound },
-          { title: 'Pemakaian AI', url: '/user/usage', icon: Activity },
-        ],
-      },
-      {
-        title: 'Pembelian',
-        items: [
-          { title: 'Paket & Order', url: '/user/orders', icon: ReceiptText },
-        ],
-      },
-      {
-        title: 'Akun',
-        items: [
-          { title: 'Halaman produk', url: '/landing', icon: ShieldCheck },
+          { title: 'Status Saya', url: '/user', icon: Home },
+          { title: 'Instalasi & Panduan', url: '/user/install', icon: BookOpen },
+          { title: 'Pemakaian AI', url: '/user/usage', icon: PieChart },
+          { title: 'Paket & Perpanjangan', url: '/user/orders', icon: ReceiptText },
+          { title: 'Akun', url: '/user/account', icon: UserRound },
         ],
       },
     ],

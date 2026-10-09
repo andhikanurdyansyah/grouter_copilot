@@ -18,6 +18,8 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUserUsageRouteImport } from './routes/_authenticated/user/usage'
 import { Route as AuthenticatedUserOrdersRouteImport } from './routes/_authenticated/user/orders'
 import { Route as AuthenticatedUserLicensesRouteImport } from './routes/_authenticated/user/licenses'
+import { Route as AuthenticatedUserInstallRouteImport } from './routes/_authenticated/user/install'
+import { Route as AuthenticatedUserAccountRouteImport } from './routes/_authenticated/user/account'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin/usage'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminPackagesRouteImport } from './routes/_authenticated/admin/packages'
@@ -70,6 +72,18 @@ const AuthenticatedUserLicensesRoute =
     path: '/licenses',
     getParentRoute: () => AuthenticatedUserRouteRoute,
   } as any)
+const AuthenticatedUserInstallRoute =
+  AuthenticatedUserInstallRouteImport.update({
+    id: '/install',
+    path: '/install',
+    getParentRoute: () => AuthenticatedUserRouteRoute,
+  } as any)
+const AuthenticatedUserAccountRoute =
+  AuthenticatedUserAccountRouteImport.update({
+    id: '/account',
+    path: '/account',
+    getParentRoute: () => AuthenticatedUserRouteRoute,
+  } as any)
 const AuthenticatedAdminUsageRoute = AuthenticatedAdminUsageRouteImport.update({
   id: '/usage',
   path: '/usage',
@@ -117,6 +131,8 @@ export interface FileRoutesByFullPath {
   '/admin/packages': typeof AuthenticatedAdminPackagesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/user/account': typeof AuthenticatedUserAccountRoute
+  '/user/install': typeof AuthenticatedUserInstallRoute
   '/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/user/orders': typeof AuthenticatedUserOrdersRoute
   '/user/usage': typeof AuthenticatedUserUsageRoute
@@ -132,6 +148,8 @@ export interface FileRoutesByTo {
   '/admin/packages': typeof AuthenticatedAdminPackagesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/user/account': typeof AuthenticatedUserAccountRoute
+  '/user/install': typeof AuthenticatedUserInstallRoute
   '/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/user/orders': typeof AuthenticatedUserOrdersRoute
   '/user/usage': typeof AuthenticatedUserUsageRoute
@@ -150,6 +168,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/packages': typeof AuthenticatedAdminPackagesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/_authenticated/user/account': typeof AuthenticatedUserAccountRoute
+  '/_authenticated/user/install': typeof AuthenticatedUserInstallRoute
   '/_authenticated/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/_authenticated/user/orders': typeof AuthenticatedUserOrdersRoute
   '/_authenticated/user/usage': typeof AuthenticatedUserUsageRoute
@@ -169,6 +189,8 @@ export interface FileRouteTypes {
     | '/admin/packages'
     | '/admin/settings'
     | '/admin/usage'
+    | '/user/account'
+    | '/user/install'
     | '/user/licenses'
     | '/user/orders'
     | '/user/usage'
@@ -184,6 +206,8 @@ export interface FileRouteTypes {
     | '/admin/packages'
     | '/admin/settings'
     | '/admin/usage'
+    | '/user/account'
+    | '/user/install'
     | '/user/licenses'
     | '/user/orders'
     | '/user/usage'
@@ -201,6 +225,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/packages'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/usage'
+    | '/_authenticated/user/account'
+    | '/_authenticated/user/install'
     | '/_authenticated/user/licenses'
     | '/_authenticated/user/orders'
     | '/_authenticated/user/usage'
@@ -278,6 +304,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUserLicensesRouteImport
       parentRoute: typeof AuthenticatedUserRouteRoute
     }
+    '/_authenticated/user/install': {
+      id: '/_authenticated/user/install'
+      path: '/install'
+      fullPath: '/user/install'
+      preLoaderRoute: typeof AuthenticatedUserInstallRouteImport
+      parentRoute: typeof AuthenticatedUserRouteRoute
+    }
+    '/_authenticated/user/account': {
+      id: '/_authenticated/user/account'
+      path: '/account'
+      fullPath: '/user/account'
+      preLoaderRoute: typeof AuthenticatedUserAccountRouteImport
+      parentRoute: typeof AuthenticatedUserRouteRoute
+    }
     '/_authenticated/admin/usage': {
       id: '/_authenticated/admin/usage'
       path: '/usage'
@@ -350,6 +390,8 @@ const AuthenticatedAdminRouteRouteWithChildren =
   )
 
 interface AuthenticatedUserRouteRouteChildren {
+  AuthenticatedUserAccountRoute: typeof AuthenticatedUserAccountRoute
+  AuthenticatedUserInstallRoute: typeof AuthenticatedUserInstallRoute
   AuthenticatedUserLicensesRoute: typeof AuthenticatedUserLicensesRoute
   AuthenticatedUserOrdersRoute: typeof AuthenticatedUserOrdersRoute
   AuthenticatedUserUsageRoute: typeof AuthenticatedUserUsageRoute
@@ -358,6 +400,8 @@ interface AuthenticatedUserRouteRouteChildren {
 
 const AuthenticatedUserRouteRouteChildren: AuthenticatedUserRouteRouteChildren =
   {
+    AuthenticatedUserAccountRoute: AuthenticatedUserAccountRoute,
+    AuthenticatedUserInstallRoute: AuthenticatedUserInstallRoute,
     AuthenticatedUserLicensesRoute: AuthenticatedUserLicensesRoute,
     AuthenticatedUserOrdersRoute: AuthenticatedUserOrdersRoute,
     AuthenticatedUserUsageRoute: AuthenticatedUserUsageRoute,

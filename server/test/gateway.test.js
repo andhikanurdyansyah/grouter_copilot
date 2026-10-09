@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { createCopilotServer } from '../src/server.js';
+import { validateSettings } from '../src/settings.js';
 import { createGateway } from '../src/gateway.js';
 import { JsonStore } from '../src/store.js';
 import { LicenseService } from '../src/licenseService.js';
@@ -445,6 +446,176 @@ test('admin ledger endpoint: auth required, filters, pagination, customer summar
     if (prevKey === undefined) delete process.env.GROUTER_API_KEY;
     else process.env.GROUTER_API_KEY = prevKey;
   }
+});
+
+
+test('package AI policy: settings validation (allowlist, default-in-allowlist, quota rules)', () => {
+
+  // default di luar allowlist ditolak
+  assert.throws(
+    () => validateSettings({ plans: [{ key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, provider: 'grouter', allowedModels: ['m1'], defaultModel: 'other' } }] }),
+    /defaultModel must be one of allowedModels/,
+  );
+  // allowlist kosong saat enabled ditolak
+  assert.throws(
+    () => validateSettings({ plans: [{ key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, allowedModels: [], defaultModel: 'm' } }] }),
+    /allowedModels must not be empty/,
+  );
+  // provider palsu ditolak
+  assert.throws(
+    () => validateSettings({ plans: [{ key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, provider: 'openai', allowedModels: ['m'], defaultModel: 'm' } }] }),
+    /provider must be one of/,
+  );
+  // quota negatif/malformed ditolak — TIDAK diam-diam jadi unlimited
+  assert.throws(
+    () => validateSettings({ plans: [{ key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, allowedModels: ['m'], defaultModel: 'm', quotaTokens: -5 } }] }),
+    /quotaTokens/,
+  );
+  assert.throws(
+    () => validateSettings({ plans: [{ key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, allowedModels: ['m'], defaultModel: 'm', quotaTokens: 1.5 } }] }),
+    /quotaTokens/,
+  );
+  // valid: policy lengkap + unlimited eksplisit + legacy tanpa ai tetap lolos
+  validateSettings({ plans: [
+    { key: 'p', name: 'P', amount: 0, expiresInDays: 30, ai: { enabled: true, provider: 'grouter', allowedModels: ['m1', 'm2'], defaultModel: 'm1', quotaTokens: 10000 } },
+    { key: 'u', name: 'U', amount: 0, expiresInDays: 30, ai: { enabled: true, provider: 'grouter', allowedModels: ['m1'], defaultModel: 'm1', quotaTokens: null } },
+    { key: 'legacy', name: 'L', amount: 0, expiresInDays: 30 },
+    { key: 'off', name: 'O', amount: 0, expiresInDays: 30, ai: { enabled: false, allowedModels: [] } },
+  ]});
+});
+
+test('package entitlement at runtime: allowlist, package default, AI disabled (never charged)', async () => {
+  const env = makeServer({
+    fetchImpl: okProvider({ answer: 'pol' }),
+    apiKey: 'test-key',
+    settingsPatch: { plans: [
+      { key: 'locked', name: 'Locked', amount: 0, currency: 'IDR', quota: 'l', quotaTokens: 5000, features: ['core'], expiresInDays: 90, active: true,
+        ai: { enabled: true, provider: 'grouter', allowedModels: ['DeepSeek-V4-Flash'], defaultModel: 'DeepSeek-V4-Flash' } },
+      { key: 'noai', name: 'NoAI', amount: 0, currency: 'IDR', quota: 'n', quotaTokens: 5000, features: ['core'], expiresInDays: 90, active: true,
+        ai: { enabled: false, provider: 'grouter', allowedModels: [] } },
+      { key: 'legacy', name: 'Legacy', amount: 0, currency: 'IDR', quota: 'g', quotaTokens: 5000, features: ['core'], expiresInDays: 90, active: true },
+    ] },
+  });
+  try {
+    const admin = await req(env.baseUrl, 'POST', '/api/admin/licenses', null, 'test-admin');
+    // HANYA cek auth works; issue tiga lisensi
+    const mk = async (planKey, customer) => {
+      const r = await fetch(`${env.baseUrl}/api/admin/licenses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer test-admin' },
+        body: JSON.stringify({ customer, planKey }),
+      });
+      return r.json();
+    };
+    const locked = await mk('locked', 'L');
+    const noai = await mk('noai', 'N');
+    const legacy = await mk('legacy', 'G');
+
+    // 1) Model di luar allowlist → MODEL_NOT_ALLOWED, upstream TIDAK dipanggil, tidak ditagih.
+    const denied = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: locked.token, messages: MESSAGES, model: 'kimi-k3', requestId: 'req_pe1' }),
+    });
+    assert.equal(denied.status, 403);
+    assert.equal((await denied.json()).code, 'MODEL_NOT_ALLOWED');
+
+    // 2) Tanpa model → package default (DeepSeek-V4-Flash), sukses.
+    const auto = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: locked.token, messages: MESSAGES, requestId: 'req_pe2' }),
+    });
+    assert.equal((await auto.json()).status, 'ok');
+
+    // 3) AI disabled → AI_DISABLED, tanpa upstream call.
+    const off = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: noai.token, messages: MESSAGES, requestId: 'req_pe3' }),
+    });
+    assert.equal(off.status, 403);
+    assert.equal((await off.json()).code, 'AI_DISABLED');
+
+    // 4) Legacy plan tanpa policy → tetap jalan (backward compatible), model default provider.
+    const leg = await fetch(`${env.baseUrl}/api/copilot/chat`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: legacy.token, messages: MESSAGES, requestId: 'req_pe4' }),
+    });
+    assert.equal((await leg.json()).status, 'ok');
+
+    // 5) Ledger mencatat penolakan tanpa charge: error rows reservedTokens 0.
+    const ledger = await req(env.baseUrl, 'GET', '/api/admin/ledger?status=rejected', null, 'test-admin');
+    const recs = ledger.json.records.filter((r) => r.licenseId === locked.license?.id || r.customer === 'L' || r.customer === 'N');
+    assert.ok(ledger.json.total >= 1);
+    assert.ok(ledger.json.records.every((r) => (r.reservedTokens ?? 0) === 0));
+  } finally { env.cleanup(); }
+});
+
+
+test('package edit isolation: updating ONE plan must not alter others (catalog regression)', async () => {
+  const env = makeServer({ fetchImpl: okProvider(), apiKey: 'test-key', settingsPatch: {
+    plans: [
+      { key: 'keep-a', name: 'A', amount: 1000, currency: 'IDR', quota: 'qa', quotaTokens: 1111, features: ['core'], expiresInDays: 90, active: true },
+      { key: 'edit-me', name: 'B', amount: 2000, currency: 'IDR', quota: 'qb', quotaTokens: 2222, features: ['core'], expiresInDays: 90, active: true,
+        ai: { enabled: true, provider: 'grouter', allowedModels: ['old-model'], defaultModel: 'old-model' } },
+      { key: 'keep-c', name: 'C', amount: 3000, currency: 'IDR', quota: 'qc', quotaTokens: 3333, features: ['core'], expiresInDays: 90, active: true },
+    ],
+  } });
+  try {
+    // Edit 'edit-me' SAJA: kirim katalog penuh dengan hanya plan itu berubah.
+    const patch = {
+      plans: [
+        { key: 'keep-a', name: 'A', amount: 1000, currency: 'IDR', quota: 'qa', quotaTokens: 1111, features: ['core'], expiresInDays: 90, active: true },
+        { key: 'edit-me', name: 'B2', amount: 2500, currency: 'IDR', quota: 'qb', quotaTokens: 2222, features: ['core'], expiresInDays: 90, active: true,
+          ai: { enabled: true, provider: 'grouter', allowedModels: ['new-model'], defaultModel: 'new-model', quotaTokens: 4444 } },
+        { key: 'keep-c', name: 'C', amount: 3000, currency: 'IDR', quota: 'qc', quotaTokens: 3333, features: ['core'], expiresInDays: 90, active: true },
+      ],
+    };
+    const res = await fetch(`${env.baseUrl}/api/admin/settings`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer test-admin' },
+      body: JSON.stringify(patch),
+    });
+    assert.equal(res.status, 200);
+    const eff = (await res.json()).settings;
+    const byKey = new Map(eff.plans.map((p) => [p.key, p]));
+    // Plan lain TIDAK berubah
+    assert.equal(byKey.get('keep-a').amount, 1000);
+    assert.equal(byKey.get('keep-a').quotaTokens, 1111);
+    assert.equal(byKey.get('keep-c').quotaTokens, 3333);
+    assert.equal(byKey.get('keep-c').name, 'C');
+    // Plan target berubah persis seperti patch, AI policy tersimpan
+    assert.equal(byKey.get('edit-me').name, 'B2');
+    assert.equal(byKey.get('edit-me').amount, 2500);
+    assert.deepEqual(byKey.get('edit-me').ai.allowedModels, ['new-model']);
+    assert.equal(byKey.get('edit-me').ai.defaultModel, 'new-model');
+    assert.equal(byKey.get('edit-me').ai.quotaTokens, 4444);
+    // Jumlah plan tetap 3 — tidak ada plan yang hilang/terduplikasi.
+    assert.equal(eff.plans.length, 3);
+  } finally { env.cleanup(); }
+});
+
+test('non-admin cannot modify packages (entitlement changes are admin-only)', async () => {
+  const env = makeServer({ fetchImpl: okProvider(), apiKey: 'test-key', settingsPatch: {
+    plans: [{ key: 'p', name: 'P', amount: 0, currency: 'IDR', quota: 'q', quotaTokens: 100, features: ['core'], expiresInDays: 30, active: true }],
+  } });
+  try {
+    // PATCH tanpa token saat server bergate → 401.
+    const gated = createCopilotServer({
+      dataFile: path.join(tmpdir(), `copilot-gate-${Date.now()}.json`),
+      fetchImpl: okProvider(),
+      apiKeyEnv: undefined,
+      adminToken: 'real-admin-token',
+      allowUnauthenticatedAdmin: false,
+      initialSettings: { plans: [{ key: 'p', name: 'P', amount: 0, currency: 'IDR', quota: 'q', quotaTokens: 100, features: ['core'], expiresInDays: 30, active: true }] },
+    });
+    gated.server.listen(0, () => {});
+    try {
+      const base = `http://127.0.0.1:${gated.server.address().port}`;
+      const noAuth = await fetch(`${base}/api/admin/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plans: [] }) });
+      assert.equal(noAuth.status, 401, 'package catalogue must never be editable without the admin token');
+      const wrongToken = await fetch(`${base}/api/admin/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', authorization: 'Bearer wrong' }, body: JSON.stringify({ plans: [] }) });
+      assert.equal(wrongToken.status, 401);
+    } finally { gated.server.close(); }
+  } finally { env.cleanup(); }
 });
 
 test('createGateway: reads the credential from server-side env only (fail closed)', () => {

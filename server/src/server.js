@@ -29,6 +29,7 @@ import { toNodeHandler } from 'better-auth/node';
 import { AccountService } from './accountService.js';
 import {
   resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans, findPlan,
+  resolvePlanAiPolicy,
 } from './settings.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
@@ -40,6 +41,9 @@ const GATEWAY_HTTP = {
   QUOTA_EXHAUSTED: 429,
   LICENSE_INVALID: 403,
   LICENSE_REVOKED: 403,
+  // Package entitlement (D-021): denied by the customer's own package policy.
+  AI_DISABLED: 403,
+  MODEL_NOT_ALLOWED: 403,
   TIMEOUT: 504,
   UPSTREAM_UNAVAILABLE: 502,
 };
@@ -209,9 +213,10 @@ export function createCopilotServer({
         const plansByKey = new Map((eff.plans || []).map((p) => [p.key, p]));
         for (const u of usage) {
           const rec = store.getLicense(u.licenseId);
-          const plan = plansByKey.get(rec?.planKey ?? '');
-          u.quotaLimit = plan?.quotaTokens ?? null; // null = unlimited
+          const policy = resolvePlanAiPolicy(plansByKey.get(rec?.planKey ?? ''), eff);
+          u.quotaLimit = policy.quotaTokens; // null = unlimited
           u.quotaUnit = 'tokens';
+          u.aiEnabled = policy.enabled;
         }
         return sendJson(res, 200, {
           account: { id: account.id, name: account.name, email: account.email },
@@ -419,7 +424,7 @@ export function createCopilotServer({
       const total = rows.length;
       const page = rows.slice(offset, offset + limit).map((u) => {
         const plan = plansByKey.get(planByLicense.get(u.licenseId) ?? '');
-        const quotaTokens = plan?.quotaTokens ?? null; // null/undefined = unlimited
+        const policy = resolvePlanAiPolicy(plan, eff); // package AI policy (entitlement)
         const totals = store.usageTotals(u.licenseId);
         return {
           requestId: u.requestId,
@@ -438,7 +443,7 @@ export function createCopilotServer({
           quota: {
             planKey: planByLicense.get(u.licenseId) ?? null,
             unit: 'tokens',
-            limit: quotaTokens, // null = unlimited
+            limit: policy.quotaTokens, // null = unlimited
             usedTokens: totals.usedTokens,
             requestCount: totals.requestCount,
           },

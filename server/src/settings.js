@@ -38,6 +38,9 @@ export const SECRET_PATHS = [
  * panel, NOT hardcoded at a call site.
  */
 export const DEFAULT_SETTINGS = {
+  // Providers the backend actually supports (D-021: gRouter is the only one
+  // wired to a real upstream). Package AI policy may only reference these.
+  supportedAiProviders: ['grouter'],
   branding: {
     productName: 'gRouter Copilot',
     publicDomain: 'copilot.grouter.id',
@@ -217,7 +220,71 @@ function validatePlans(plans) {
     if (p.active !== undefined && typeof p.active !== 'boolean') {
       throw fail(`plans[${i}].active must be a boolean.`);
     }
+    validatePlanAiPolicy(p.ai, `plans[${i}].ai`);
   });
+}
+
+/**
+ * Providers the backend actually supports for package AI policies. gRouter is
+ * the only one wired to a real upstream; extending this list requires a real
+ * adapter implementation, not just a UI option.
+ */
+const SUPPORTED_AI_PROVIDERS = ['grouter'];
+
+/**
+ * Per-package AI policy (product decision 2026-10-09): the Package is the
+ * source of the customer's AI entitlement — which provider, which models are
+ * allowed, the package default model, and the per-license token quota.
+ * Stored under plans[n].ai. Semantics:
+ * - enabled (bool, default true): false → the package may not call the AI
+ *   gateway at all.
+ * - provider (string, default 'grouter'): only providers the backend actually
+ *   supports; never a free-text fake.
+ * - allowedModels (string[]): the allowlist enforced at request time. Must be
+ *   non-empty when AI is enabled.
+ * - defaultModel: REQUIRED and must be a member of allowedModels — the model
+ *   used when the request omits one. Fail-closed otherwise.
+ * - quotaTokens (positive int | null): per-license total token quota from the
+ *   server-side ledger (unchanged semantics: lifetime total, null = unlimited
+ *   only via explicit null; overrides the legacy top-level quotaTokens when
+ *   present). Malformed/negative values are rejected — never coerced to
+ *   unlimited.
+ */
+function validatePlanAiPolicy(ai, label) {
+  if (ai === undefined || ai === null) return; // legacy plan without policy
+  if (!isPlainObject(ai)) throw fail(`${label} must be an object.`);
+  if (ai.enabled !== undefined && typeof ai.enabled !== 'boolean') {
+    throw fail(`${label}.enabled must be a boolean.`);
+  }
+  const enabled = ai.enabled !== false;
+  validStr(ai.provider ?? 'grouter', `${label}.provider`);
+  if (ai.provider !== undefined && !SUPPORTED_AI_PROVIDERS.includes(ai.provider)) {
+    throw fail(`${label}.provider must be one of: ${SUPPORTED_AI_PROVIDERS.join(', ')}.`);
+  }
+  if (ai.allowedModels !== undefined) {
+    if (!Array.isArray(ai.allowedModels)) throw fail(`${label}.allowedModels must be an array.`);
+    if (enabled && ai.allowedModels.length === 0) {
+      throw fail(`${label}.allowedModels must not be empty while AI is enabled.`);
+    }
+    ai.allowedModels.forEach((m, j) => {
+      validStr(m, `${label}.allowedModels[${j}]`);
+      if (!m.trim()) throw fail(`${label}.allowedModels[${j}] must not be empty.`);
+      if (m.length > 120) throw fail(`${label}.allowedModels[${j}] exceeds 120 chars.`);
+    });
+  }
+  if (ai.defaultModel !== undefined) {
+    validStr(ai.defaultModel, `${label}.defaultModel`);
+    if (enabled) {
+      if (!ai.defaultModel.trim()) throw fail(`${label}.defaultModel must not be empty while AI is enabled.`);
+      const allow = ai.allowedModels;
+      if (Array.isArray(allow) && !allow.includes(ai.defaultModel)) {
+        throw fail(`${label}.defaultModel must be one of allowedModels.`);
+      }
+    }
+  }
+  if (ai.quotaTokens !== undefined && ai.quotaTokens !== null) {
+    assertInt(ai.quotaTokens, `${label}.quotaTokens`, { min: 1 });
+  }
 }
 
 /**
@@ -257,6 +324,12 @@ export function validateSettings(patch) {
     }
   }
   if (p.usage?.checkUsageUrl !== undefined) validStr(p.usage.checkUsageUrl, 'usage.checkUsageUrl');
+  if (p.supportedAiProviders !== undefined) {
+    if (!Array.isArray(p.supportedAiProviders) || p.supportedAiProviders.length === 0
+      || !p.supportedAiProviders.every((x) => typeof x === 'string' && x.trim())) {
+      throw fail('supportedAiProviders must be a non-empty array of provider names.');
+    }
+  }
   if (p.provider?.baseUrl !== undefined) validStr(p.provider.baseUrl, 'provider.baseUrl');
   if (p.provider?.model !== undefined) validStr(p.provider.model, 'provider.model');
   if (p.provider?.gateway !== undefined) {
@@ -338,4 +411,35 @@ export function publicPlans(eff) {
 /** Find a plan by key (active or not). */
 export function findPlan(eff, key) {
   return (eff.plans || []).find((p) => p.key === key) ?? null;
+}
+
+/**
+ * Resolve the effective AI policy for a plan, merging defaults with the
+ * stored policy. Backward compatibility (product decision 2026-10-09): a
+ * legacy plan without an `ai` section keeps working — AI stays ENABLED with
+ * the provider's configured default model and the plan's legacy top-level
+ * quotaTokens (or unlimited). This does NOT silently grant new privileges:
+ * the model catalogue is not widened, quota semantics are unchanged.
+ * @returns {{enabled:boolean, provider:string, allowedModels:string[]|null,
+ *            defaultModel:string|null, quotaTokens:number|null}}
+ *   allowedModels null = no package allowlist configured (legacy) → the
+ *   provider default model is permitted; enforcement falls back to
+ *   infra settings. defaultModel null → caller fails closed.
+ */
+export function resolvePlanAiPolicy(plan, eff) {
+  const ai = plan?.ai ?? null;
+  const enabled = ai ? ai.enabled !== false : true;
+  const provider = ai?.provider ?? 'grouter';
+  const allowedModels = Array.isArray(ai?.allowedModels) && ai.allowedModels.length > 0
+    ? ai.allowedModels.slice()
+    : null; // null = legacy plan, no package allowlist
+  let defaultModel = ai?.defaultModel ?? null;
+  if (enabled && !defaultModel && allowedModels && allowedModels.length === 1) {
+    defaultModel = allowedModels[0]; // single-model allowlist implies the default
+  }
+  // Quota: package AI quota wins; fall back to the legacy top-level quotaTokens.
+  const quotaTokens = ai && ai.quotaTokens !== undefined && ai.quotaTokens !== null
+    ? ai.quotaTokens
+    : (plan?.quotaTokens ?? null);
+  return { enabled, provider, allowedModels, defaultModel, quotaTokens };
 }

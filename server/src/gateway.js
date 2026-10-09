@@ -24,7 +24,7 @@
 
 import { CopilotError, ErrorCode } from '../../src/adapter/errors.js';
 import { GrouterAdapter } from '../../src/adapter/grouter.js';
-import { resolveSettings } from './settings.js';
+import { resolveSettings, resolvePlanAiPolicy } from './settings.js';
 
 const REQUEST_ID_PATTERN = /^req_[a-zA-Z0-9_-]{1,80}$/;
 const ROLE_PATTERN = /^(system|user|assistant)$/;
@@ -131,7 +131,58 @@ export class CopilotGateway {
     //    interleave past the check on the event loop.
     const eff = this.resolveSettings();
     const plan = (eff.plans || []).find((p) => p.key === lic.planKey);
-    const quotaTokens = plan?.quotaTokens ?? null; // null/undefined = unlimited (documented)
+
+    // 6b. Package AI policy (entitlement, resolved server-side from the plan
+    //     catalogue — never from request input). The Package decides whether
+    //     this customer may call AI at all, with which models, and how many
+    //     tokens. The global provider.model is INFRASTRUCTURE fallback only;
+    //     it can never widen a package allowlist.
+    const policy = resolvePlanAiPolicy(plan, eff);
+    if (!policy.enabled) {
+      this.store.addUsageRecord(this._ledgerEntry({ requestId, lic, status: 'rejected', errorClassification: 'ai_disabled' }));
+      return { requestId, status: 'error', code: 'AI_DISABLED', message: 'AI access is not enabled for this package.', retryable: false, licenseId: lic.id };
+    }
+    if (policy.provider !== 'grouter') {
+      // Only gRouter is wired to a real upstream (SUPPORTED_AI_PROVIDERS);
+      // validation already keeps other values out of the catalogue.
+      this.store.updateUsageRecord(requestId, { status: 'error', completedAt: Date.now(), reservedTokens: 0, errorClassification: 'not_configured', errorStatus: 503, errorCode: 'NOT_CONFIGURED' });
+      return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'The configured AI provider is not available.', retryable: false, licenseId: lic.id };
+    }
+    // Model resolution + allowlist enforcement (server-side policy):
+    // - client override accepted ONLY if it is in the package allowlist;
+    // - no client model → package default (which validation keeps inside the
+    //   allowlist); legacy packages without a policy use the provider default.
+    let effModel;
+    if (model) {
+      if (policy.allowedModels && !policy.allowedModels.includes(model)) {
+        this.store.addUsageRecord(this._ledgerEntry({ requestId, lic, status: 'rejected', errorClassification: 'model_not_allowed' }));
+        return { requestId, status: 'error', code: 'MODEL_NOT_ALLOWED', message: 'The requested model is not allowed for this package.', retryable: false, licenseId: lic.id };
+      }
+      effModel = model;
+    } else {
+      effModel = policy.defaultModel ?? this.resolveSettings().provider?.model ?? null;
+      if (policy.allowedModels && effModel && !policy.allowedModels.includes(effModel)) {
+        // Global default drifted outside the package allowlist → fail closed
+        // rather than silently running a model the package never allowed.
+        effModel = null;
+      }
+    }
+    if (!effModel) {
+      this.store.updateUsageRecord(requestId, {
+        status: 'error',
+        completedAt: Date.now(),
+        reservedTokens: 0,
+        errorClassification: 'not_configured',
+        errorStatus: 503, errorCode: 'NOT_CONFIGURED',
+      });
+      return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'No usable model is configured for this package.', retryable: false, licenseId: lic.id };
+    }
+
+    // 6c. Quota reservation — package AI quota (falls back to the legacy
+    //     top-level quotaTokens; null = unlimited). SYNCHRONOUS read-then-write
+    //     (no await between usageTotals and addUsageRecord) so concurrent
+    //     requests cannot interleave past the check on the event loop.
+    const quotaTokens = policy.quotaTokens ?? null; // null/undefined = unlimited (documented)
     const { usedTokens } = this.store.usageTotals(lic.id);
     const remaining = quotaTokens === null || quotaTokens === undefined
       ? Number.MAX_SAFE_INTEGER
@@ -144,19 +195,6 @@ export class CopilotGateway {
     this.store.addUsageRecord(this._ledgerEntry({ requestId, lic, status: 'reserved', reservation }));
 
     // 7. Call gRouter via the server-side adapter, then reconcile.
-    // Default model comes from settings (SSOT, D-020): provider.model, never a
-    // hardcoded call-site value.
-    const effModel = model || this.resolveSettings().provider?.model || null;
-    if (!effModel) {
-      this.store.updateUsageRecord(requestId, {
-        status: 'error',
-        completedAt: Date.now(),
-        reservedTokens: 0,
-        errorClassification: 'not_configured',
-        errorStatus: 503, errorCode: 'NOT_CONFIGURED',
-      });
-      return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'No model configured for the AI gateway.', retryable: false, licenseId: lic.id };
-    }
     try {
       const { answer, usage } = await this.adapter.complete({
         model: effModel,

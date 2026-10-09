@@ -410,6 +410,33 @@
                 <p class="hint" style="margin-top:var(--sp-3)">Checkout customer resolve harga dari tabel ini server-side. Perubahan langsung aktif (hot).</p>
               </div>
             </div>
+            <div class="metal-panel panel" style="margin-bottom:var(--sp-4)">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">AI Provider &amp; Quota per Package</div>
+                  <div class="mono-label">entitlement AI customer (D-021) — ditegakkan backend di /api/copilot/chat</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="table-wrap">
+                  <table>
+                    <caption class="sr-only">Kebijakan AI per plan</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Package</th>
+                        <th scope="col">AI access</th>
+                        <th scope="col">Provider</th>
+                        <th scope="col">Allowed models <span class="mono-label">(pisah koma)</span></th>
+                        <th scope="col">Default model</th>
+                        <th scope="col">Token quota <span class="mono-label">(kosong = ikut Quota)</span></th>
+                      </tr>
+                    </thead>
+                    <tbody id="aiPolicyRows"></tbody>
+                  </table>
+                </div>
+                <p class="hint" style="margin-top:var(--sp-3)">Default model WAJIB termasuk allowed models. Quota = total token per lisensi (bukan per hari); kosongkan untuk memakai kolom Quota plan; ketik <code>unlimited</code> untuk tanpa batas (butuh konfirmasi admin). Hanya provider gRouter yang benar-benar aktif.</p>
+              </div>
+            </div>
             <button class="btn btn-primary" type="button" data-save-settings>Simpan Settings</button>
           </div>
 
@@ -1391,7 +1418,20 @@
           active: p.active !== false
         };
       });
+      aiPolicyDraft = (eff.plans || []).map(function (p) {
+        var ai = p.ai || {};
+        return {
+          enabled: ai.enabled !== false,
+          provider: ai.provider || 'grouter',
+          allowedModels: (ai.allowedModels || []).slice(),
+          defaultModel: ai.defaultModel || '',
+          // undefined = inherit (plan lama tanpa policy); null = explicit unlimited
+          quotaTokens: ai.quotaTokens !== undefined ? ai.quotaTokens : (p.quotaTokens != null ? p.quotaTokens : undefined),
+          quotaInherit: !ai.quotaTokens && ai.quotaTokens === undefined,
+        };
+      });
       renderPlanRows();
+      renderAiPolicyRows();
     }
 
     function renderPlanRows() {
@@ -1426,7 +1466,9 @@
           var key = (plansDraft[i] && plansDraft[i].key) || String(i + 1);
           if (!window.confirm('Hapus plan "' + key + '" dari katalog?')) return;
           plansDraft.splice(i, 1);
+          aiPolicyDraft.splice(i, 1);
           renderPlanRows();
+          renderAiPolicyRows();
         });
       });
     }
@@ -1435,9 +1477,123 @@
       return isFinite(v) ? v : fallback;
     }
 
+    /* ------------------------------------------------------------------
+       AI policy per package (D-021 entitlement). Editor inline mengikuti
+       pola plans table; draft disimpan di aiPolicyDraft dan di-merge ke
+       plans pada saveSettings. Edit satu baris TIDAK menyentuh plan lain
+       (draft penuh dirender ulang dari state yang sama).
+    ------------------------------------------------------------------ */
+    var aiPolicyDraft = [];
+
+    function renderAiPolicyRows() {
+      var body = $('aiPolicyRows');
+      if (!body) return;
+      if (!plansDraft.length) {
+        body.innerHTML = '<tr><td colspan="6" class="mono-label">Tambah plan dulu pada tabel Plans.</td></tr>';
+        return;
+      }
+      body.innerHTML = plansDraft.map(function (p, i) {
+        var ai = aiPolicyDraft[i] || {};
+        var enabled = ai.enabled !== false;
+        var provider = ai.provider || 'grouter';
+        var models = (ai.allowedModels || []).join(', ');
+        var def = ai.defaultModel || '';
+        var quota = (ai.quotaTokens === undefined || ai.quotaTokens === null) ? '' : String(ai.quotaTokens);
+        var modelOpts = (ai.allowedModels || []).map(function (m) {
+          return '<option value="' + escapeHtml(m) + '"' + (m === def ? ' selected' : '') + '>' + escapeHtml(m) + '</option>';
+        }).join('');
+        return '<tr>' +
+          '<td class="mono">' + escapeHtml(p.key || '(baris ' + (i + 1) + ')') + '</td>' +
+          '<td style="text-align:center"><input type="checkbox" data-ai="enabled" data-i="' + i + '"' + (enabled ? ' checked' : '') + ' aria-label="AI access plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
+          '<td><select data-ai="provider" data-i="' + i + '" aria-label="Provider plan ' + escapeHtml(p.key || String(i + 1)) + '">' +
+            '<option value="grouter"' + (provider === 'grouter' ? ' selected' : '') + '>grouter (aktif)</option>' +
+          '</select></td>' +
+          '<td><input class="cell-in mono" data-ai="allowedModels" data-i="' + i + '" value="' + escapeHtml(models) + '" placeholder="mis. DeepSeek-V4-Flash, kimi-k3" autocomplete="off" spellcheck="false" aria-label="Allowed models plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
+          '<td><select data-ai="defaultModel" data-i="' + i + '" aria-label="Default model plan ' + escapeHtml(p.key || String(i + 1)) + '">' +
+            (enabled
+              ? (modelOpts || '<option value="">— atur allowed models dulu —</option>')
+              : '<option value="">AI disabled</option>') +
+          '</select></td>' +
+          '<td><input class="cell-in mono" data-ai="quotaTokens" data-i="' + i + '" value="' + escapeHtml(quota) + '" placeholder="ikut Quota plan" autocomplete="off" inputmode="numeric" aria-label="Token quota plan ' + escapeHtml(p.key || String(i + 1)) + '" /></td>' +
+        '</tr>';
+      }).join('');
+
+      Array.prototype.forEach.call(body.querySelectorAll('[data-ai]'), function (inp) {
+        inp.addEventListener('change', function () {
+          var i = Number(inp.getAttribute('data-i'));
+          var prop = inp.getAttribute('data-ai');
+          var ai = aiPolicyDraft[i];
+          if (!ai) return;
+          if (prop === 'enabled') {
+            ai.enabled = inp.checked;
+            renderAiPolicyRows(); // re-render: default-model select ikut berubah
+          } else if (prop === 'provider') {
+            ai.provider = inp.value;
+          } else if (prop === 'allowedModels') {
+            var list = (inp.value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+            ai.allowedModels = list;
+            if (ai.defaultModel && list.indexOf(ai.defaultModel) === -1) ai.defaultModel = list[0] || '';
+            renderAiPolicyRows(); // dropdown default mengikuti allowlist
+          } else if (prop === 'defaultModel') {
+            ai.defaultModel = inp.value;
+          } else if (prop === 'quotaTokens') {
+            var raw = (inp.value || '').trim();
+            if (!raw) { ai.quotaTokens = null; ai.quotaInherit = true; }
+            else if (raw.toLowerCase() === 'unlimited') {
+              if (!window.confirm('Set quota UNLIMITED untuk package ini? Pelanggan bisa memakai token tanpa batas.')) {
+                renderAiPolicyRows();
+                return;
+              }
+              ai.quotaTokens = null; ai.quotaInherit = false; ai.quotaExplicitUnlimited = true;
+            } else {
+              var v = parseInt(raw, 10);
+              if (!isFinite(v) || v < 1 || String(v) !== raw) {
+                toast('Token quota harus bilangan bulat >= 1, kosong (ikut Quota), atau "unlimited".', 'err');
+                renderAiPolicyRows();
+                return;
+              }
+              ai.quotaTokens = v; ai.quotaInherit = false; ai.quotaExplicitUnlimited = false;
+            }
+          }
+        });
+      });
+    }
+
+    /** Normalisasi draft AI policy ke bentuk yang disimpan + divalidasi backend. */
+    function aiPolicyForSave(i) {
+      var ai = aiPolicyDraft[i];
+      var p = plansDraft[i] || {};
+      if (!ai) return undefined;
+      var enabled = ai.enabled !== false;
+      var allowed = (ai.allowedModels || []).slice();
+      var out = { enabled: enabled, provider: ai.provider || 'grouter' };
+      if (enabled) {
+        if (!allowed.length) {
+          throw new Error('Package "' + (p.key || (i + 1)) + '": AI enabled butuh minimal 1 allowed model.');
+        }
+        if (!ai.defaultModel || allowed.indexOf(ai.defaultModel) === -1) {
+          throw new Error('Package "' + (p.key || (i + 1)) + '": default model harus salah satu allowed models.');
+        }
+        out.allowedModels = allowed;
+        out.defaultModel = ai.defaultModel;
+      } else {
+        // Disabled: simpan allowlist apa adanya (tanpa requirement), tanpa default.
+        out.allowedModels = allowed;
+        delete out.defaultModel;
+      }
+      if (ai.quotaInherit) {
+        // kosong → ikuti kolom Quota plan lama (top-level quotaTokens) — kirim tanpa ai.quotaTokens
+      } else {
+        out.quotaTokens = ai.quotaTokens; // number ATAU null eksplisit = unlimited (sudah dikonfirmasi admin)
+      }
+      return out;
+    }
+
     $('addPlanBtn').addEventListener('click', function () {
       plansDraft.push({ key: '', name: '', amount: 0, quota: '', features: 'core', expiresInDays: 365, active: true });
+      aiPolicyDraft.push({ enabled: true, provider: 'grouter', allowedModels: [], defaultModel: '', quotaTokens: undefined, quotaInherit: true });
       renderPlanRows();
+      renderAiPolicyRows();
       var rows = document.querySelectorAll('#planRows tr');
       var last = rows[rows.length - 1];
       if (last) { try { last.querySelector('.cell-in').focus(); } catch (e) {} }
@@ -1448,16 +1604,27 @@
     });
 
     function saveSettings() {
-      var plans = plansDraft.map(function (p) {
-        return {
-          key: (p.key || '').trim(), name: (p.name || '').trim(),
-          amount: Number(p.amount) || 0, currency: ($('brCurrency').value || 'IDR').trim(),
-          quota: (p.quota || '').trim(),
-          features: (p.features || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
-          expiresInDays: Number(p.expiresInDays) || 365,
-          active: !!p.active
-        };
-      });
+      var plans;
+      try {
+        plans = plansDraft.map(function (p, i) {
+          var out = {
+            key: (p.key || '').trim(), name: (p.name || '').trim(),
+            amount: Number(p.amount) || 0, currency: ($('brCurrency').value || 'IDR').trim(),
+            quota: (p.quota || '').trim(),
+            features: (p.features || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+            expiresInDays: Number(p.expiresInDays) || 365,
+            active: !!p.active
+          };
+          // Merge AI policy per package (entitlement D-021). Validasi lokal
+          // dulu agar admin melihat error spesifik sebelum PATCH terkirim.
+          var ai = aiPolicyForSave(i);
+          if (ai) out.ai = ai;
+          return out;
+        });
+      } catch (e) {
+        toast(e.message || 'Validasi AI policy gagal.', 'err');
+        return;
+      }
       var patch = {
         plans: plans,
         branding: {

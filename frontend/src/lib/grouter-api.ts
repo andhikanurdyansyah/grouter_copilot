@@ -80,6 +80,11 @@ export async function issueLicense(payload: {
   return data
 }
 
+export async function revokeLicense(licenseId: string) {
+  const { data } = await api.post(`/admin/licenses/${encodeURIComponent(licenseId)}/revoke`)
+  return data
+}
+
 export async function fetchAdminOrders(limit = 100) {
   const { data } = await api.get(`/admin/orders?limit=${limit}`)
   return data as { orders: Record<string, unknown>[]; total: number; limit: number }
@@ -135,8 +140,8 @@ export function formatIDR(n: number | null | undefined): string {
   }).format(n)
 }
 
-export function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
+export function fmtDate(iso: string | number | null | undefined): string {
+  if (iso === null || iso === undefined || iso === '') return '—'
   try {
     return new Date(iso).toLocaleString('id-ID', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',

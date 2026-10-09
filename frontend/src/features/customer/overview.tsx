@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchMe, fetchPlans } from '@/lib/grouter-api'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/shared/page-header'
+import { MetricCard } from '@/components/shared/metric-card'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { TableSkeleton, EmptyState, ErrorState } from '@/components/shared/data-states'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { KeyRound, Activity, ReceiptText, ShieldAlert } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 function statusOf(l: { status?: string; expiresAt?: string }): string {
@@ -18,132 +18,123 @@ export function CustomerOverview() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
 
-  if (me.isLoading) {
+  if (me.isPending) {
     return (
-      <div className='grid gap-4 md:grid-cols-2'>
-        <Skeleton className='h-32' />
-        <Skeleton className='h-32' />
-        <Skeleton className='h-48 md:col-span-2' />
+      <div className='space-y-5'>
+        <PageHeader title='Ringkasan' description='Status lisensi, AI, dan pembelian Anda.' />
+        <TableSkeleton rows={3} cols={3} />
       </div>
     )
   }
-  if (me.error) {
+  if (me.isError) {
     return (
-      <Alert variant='destructive'>
-        <ShieldAlert className='size-4' />
-        <AlertTitle>Gagal memuat akun</AlertTitle>
-        <AlertDescription>
-          {(me.error as Error).message} — coba muat ulang halaman.
-        </AlertDescription>
-      </Alert>
+      <div className='space-y-5'>
+        <PageHeader title='Ringkasan' description='Status lisensi, AI, dan pembelian Anda.' />
+        <ErrorState
+          status={(me.error as { response?: { status?: number } })?.response?.status}
+          message={(me.error as Error).message}
+          onRetry={() => me.refetch()}
+        />
+      </div>
     )
   }
 
   const { account, licenses, usage } = me.data!
-  const activeLicenses = licenses.filter((l) => statusOf(l) === 'active')
+  const active = licenses.filter((l) => statusOf(l) === 'active')
+  const firstUsage = usage[0]
+  const used = firstUsage?.usedTokens ?? 0
+  const limit = firstUsage?.quotaLimit ?? null
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
+  const exhausted = limit !== null && used >= limit
+  const nearExhausted = limit !== null && !exhausted && pct >= 90
 
   return (
     <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Selamat datang, {account.name}</h1>
-        <p className='text-muted-foreground text-sm'>
-          Ringkasan lisensi, AI, dan pembelian Anda.
-        </p>
-      </div>
+      <PageHeader
+        title={`Selamat datang, ${account.name}`}
+        description='Status lisensi, pemakaian AI terhadap kuota, dan pembelian Anda.'
+      >
+        <Button asChild variant='outline' size='sm'>
+          <Link to='/user/orders'>Beli / perpanjang paket</Link>
+        </Button>
+      </PageHeader>
 
-      {licenses.length === 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Belum ada lisensi</CardTitle>
-            <CardDescription>
-              Beli paket untuk mulai menggunakan gRouter Copilot. Lisensi terbit otomatis
-              setelah pembayaran terverifikasi.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link to='/user/orders'>Lihat paket & beli</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {licenses.length === 0 ? (
+        <EmptyState
+          title='Belum ada lisensi aktif'
+          description='Beli paket untuk mulai menggunakan gRouter Copilot. Lisensi terbit otomatis setelah pembayaran terverifikasi.'
+          action={<Button asChild><Link to='/user/orders'>Lihat paket</Link></Button>}
+        />
+      ) : (
+        <>
+          <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+            <MetricCard label='Lisensi aktif' value={active.length} sub={`dari ${licenses.length} lisensi`} tone={active.length > 0 ? 'success' : 'warning'} />
+            <MetricCard
+              label='Token terpakai'
+              value={used}
+              sub={limit === null || limit === undefined ? 'kuota unlimited' : `dari ${limit.toLocaleString('id-ID')}`}
+            />
+            <MetricCard
+              label='Sisa kuota AI'
+              value={firstUsage?.aiEnabled === false ? 'AI off' : limit === null ? '∞' : Math.max(0, limit - used)}
+              tone={firstUsage?.aiEnabled === false ? 'warning' : exhausted ? 'danger' : nearExhausted ? 'warning' : 'default'}
+              sub={exhausted ? 'kuota habis — upgrade paket' : nearExhausted ? 'hampir habis' : undefined}
+            />
+            <MetricCard label='Paket tersedia' value={plans.data?.plans?.length ?? '—'} sub='siap dibeli' />
+          </div>
 
-      {licenses.length > 0 && (
-        <div className='grid gap-4 md:grid-cols-3'>
+          {(exhausted || nearExhausted || firstUsage?.aiEnabled === false) && (
+            <Card className='border-amber-500/30 bg-amber-500/5'>
+              <CardContent className='flex flex-wrap items-center justify-between gap-3 py-4'>
+                <div className='space-y-0.5'>
+                  <p className='text-sm font-medium'>
+                    {firstUsage?.aiEnabled === false
+                      ? 'Paket Anda tidak menyertakan AI'
+                      : exhausted
+                        ? 'Kuota AI Anda sudah habis'
+                        : 'Kuota AI hampir habis'}
+                  </p>
+                  <p className='text-sm text-muted-foreground'>
+                    {firstUsage?.aiEnabled === false
+                      ? 'Upgrade ke paket dengan AI untuk mulai memakai fitur AI.'
+                      : 'Upgrade paket untuk menambah kuota token lifetime.'}
+                  </p>
+                </div>
+                <Button asChild size='sm'>
+                  <Link to='/user/orders'>Upgrade paket</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
-            <CardHeader className='pb-2'>
-              <CardDescription className='flex items-center gap-1.5'>
-                <KeyRound className='size-3.5' /> Lisensi aktif
-              </CardDescription>
-              <CardTitle className='text-3xl tabular-nums'>
-                {activeLicenses.length}
-                <span className='text-base font-normal text-muted-foreground'>
-                  {' '}/ {licenses.length}
-                </span>
-              </CardTitle>
+            <CardHeader>
+              <CardTitle className='text-base'>Lisensi Anda</CardTitle>
+              <CardDescription>Status dan masa berlaku.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button asChild variant='ghost' size='sm' className='px-0 text-primary'>
-                <Link to='/user/licenses'>Kelola lisensi →</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {usage.slice(0, 1).map((u) => {
-            const limit = u.quotaLimit ?? null
-            const used = u.usedTokens ?? 0
-            const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
-            const exhausted = limit !== null && used >= limit
-            return (
-              <Card key={u.licenseId}>
-                <CardHeader className='pb-2'>
-                  <CardDescription className='flex items-center gap-1.5'>
-                    <Activity className='size-3.5' /> Pemakaian AI
-                  </CardDescription>
-                  <CardTitle className='text-3xl tabular-nums'>
-                    {used.toLocaleString('id-ID')}
-                    <span className='text-base font-normal text-muted-foreground'>
-                      {' '}/ {limit === null || limit === undefined ? '∞' : limit.toLocaleString('id-ID') + ' tok'}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-2'>
-                  {limit !== null && (
-                    <div className='h-2 rounded-full bg-muted overflow-hidden'>
-                      <div
-                        className={'h-full ' + (exhausted || pct >= 90 ? 'bg-destructive' : pct >= 75 ? 'bg-amber-500' : 'bg-primary')}
-                        style={{ width: pct + '%' }}
-                      />
+            <CardContent className='space-y-2'>
+              {licenses.slice(0, 4).map((l) => {
+                const st = statusOf(l)
+                return (
+                  <div key={l.id} className='flex flex-wrap items-center justify-between gap-2 border-b pb-2 last:border-0 last:pb-0'>
+                    <div className='min-w-0'>
+                      <p className='truncate font-mono text-xs text-muted-foreground'>{l.id}</p>
+                      <p className='text-sm'>Berlaku s.d. {l.expiresAt ? new Date(l.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
                     </div>
-                  )}
-                  {u.aiEnabled === false && (
-                    <Badge variant='outline'>AI dimatikan di paket</Badge>
-                  )}
-                  {exhausted && <Badge variant='destructive'>Kuota habis — upgrade paket</Badge>}
-                  <Button asChild variant='ghost' size='sm' className='px-0 text-primary'>
-                    <Link to='/user/usage'>Detail pemakaian →</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )
-          })}
-
-          <Card>
-            <CardHeader className='pb-2'>
-              <CardDescription className='flex items-center gap-1.5'>
-                <ReceiptText className='size-3.5' /> Paket tersedia
-              </CardDescription>
-              <CardTitle className='text-3xl tabular-nums'>
-                {plans.data?.plans?.length ?? '—'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant='ghost' size='sm' className='px-0 text-primary'>
-                <Link to='/user/orders'>Beli / perpanjang →</Link>
-              </Button>
+                    <StatusBadge tone={st === 'active' ? 'success' : st === 'expired' ? 'warning' : 'danger'}>
+                      {st === 'active' ? 'aktif' : st === 'expired' ? 'kedaluwarsa' : 'dicabut'}
+                    </StatusBadge>
+                  </div>
+                )
+              })}
+              {licenses.length > 4 && (
+                <Button asChild variant='ghost' size='sm' className='px-0 text-primary'>
+                  <Link to='/user/licenses'>Lihat semua lisensi →</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
-        </div>
+        </>
       )}
     </div>
   )

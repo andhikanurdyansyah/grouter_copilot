@@ -31,7 +31,7 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
           title: 'Komersial',
           items: [
             { title: 'Paket & AI Policy', url: '/admin/packages', icon: Package },
-            { title: 'Orders', url: '/admin/orders', icon: ShoppingCart },
+            { title: 'Orders & Bayar', url: '/admin/orders', icon: ShoppingCart },
             { title: 'AI Ledger', url: '/admin/ledger', icon: ScrollText },
           ],
         },

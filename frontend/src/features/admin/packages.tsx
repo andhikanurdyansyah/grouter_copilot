@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminSettings, patchAdminSettings } from '@/lib/grouter-api'
+import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,18 +66,14 @@ export function AdminPackages() {
 
   return (
     <div className='space-y-6'>
-      <div className='flex flex-wrap items-end justify-between gap-3'>
-        <div>
-          <h1 className='text-2xl font-bold tracking-tight'>Paket & AI Policy</h1>
-          <p className='text-muted-foreground text-sm'>
-            Harga server-authoritative. Kebijakan AI divalidasi server (provider, model
-            allowlist, default model, kuota token).
-          </p>
-        </div>
+      <PageHeader
+        title='Paket & AI Policy'
+        description='Harga server-authoritative — pembayaran selalu dihitung server. Kebijakan AI (provider, allowlist model, default model, kuota) divalidasi server; drift konfigurasi membuat AI fail-closed.'
+      >
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
           {save.isPending ? 'Menyimpan…' : dirty ? 'Simpan perubahan' : 'Tersimpan'}
         </Button>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>

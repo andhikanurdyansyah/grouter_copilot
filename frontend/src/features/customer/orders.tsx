@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchPlans, formatIDR } from '@/lib/grouter-api'
+import { fetchPlans, formatIDR, fmtDate } from '@/lib/grouter-api'
+import { PageHeader } from '@/components/shared/page-header'
+import { StatusBadge } from '@/components/shared/status-badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,12 +41,12 @@ export function CustomerOrders() {
 
   return (
     <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Paket & Order</h1>
-        <p className='text-muted-foreground text-sm'>
-          Pilih paket — harga & entitlement ditetapkan server. Pembayaran via QRIS.
-        </p>
-      </div>
+      <PageHeader
+        title='Paket & Order'
+        description='Harga & entitlement ditetapkan server (tidak dari browser). Pembayaran via QRIS; lisensi terbit otomatis setelah terverifikasi.'
+      />
+
+      <LatestOrder />
 
       <div className='grid gap-4 md:grid-cols-3'>
         {planList.map((p) => (
@@ -111,5 +113,37 @@ export function CustomerOrders() {
         </Card>
       )}
     </div>
+  )
+}
+
+
+// Order terakhir customer (status pembayaran server-side)
+function LatestOrder() {
+  const latest = useQuery({
+    queryKey: ['orders-latest'],
+    queryFn: async () => (await api.get('/orders/latest')).data as { order: { id: string; packageKey?: string; amount?: number; status?: string; createdAt?: number | string } | null },
+  })
+  if (latest.isPending || latest.isError) return null
+  const o = latest.data?.order
+  if (!o) return null
+  const st = String(o.status || '—')
+  return (
+    <Card>
+      <CardHeader className='pb-2'>
+        <CardTitle className='text-base'>Order terakhir Anda</CardTitle>
+      </CardHeader>
+      <CardContent className='flex flex-wrap items-center justify-between gap-2 text-sm'>
+        <div className='min-w-0'>
+          <p className='font-mono text-xs text-muted-foreground'>{o.id}</p>
+          <p className='text-muted-foreground'>
+            {o.packageKey ? o.packageKey + ' · ' : ''}
+            {formatIDR(o.amount)} · {fmtDate(o.createdAt)}
+          </p>
+        </div>
+        <StatusBadge tone={st.toUpperCase() === 'PAID' ? 'success' : st.toUpperCase() === 'PENDING' ? 'warning' : 'danger'}>
+          {st.toLowerCase() === 'paid' ? 'dibayar' : st.toLowerCase() === 'pending' ? 'menunggu pembayaran' : st.toLowerCase()}
+        </StatusBadge>
+      </CardContent>
+    </Card>
   )
 }

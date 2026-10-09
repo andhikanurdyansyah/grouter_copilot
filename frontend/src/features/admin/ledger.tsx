@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { fetchLedger, fmtDate } from '@/lib/grouter-api'
+import { PageHeader } from '@/components/shared/page-header'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { TableSkeleton, EmptyState, ErrorState } from '@/components/shared/data-states'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -30,13 +31,11 @@ export function AdminLedger() {
   const rows = (ledger.data?.records ?? []) as Record<string, unknown>[]
 
   return (
-    <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>AI Ledger</h1>
-        <p className='text-muted-foreground text-sm'>
-          Pemakaian AI customer — dihitung & diverifikasi server (bukan dimensi infrastruktur).
-        </p>
-      </div>
+    <div className='space-y-5'>
+      <PageHeader
+        title='AI Ledger'
+        description='Pemakaian AI customer — dihitung & diverifikasi server per request (kuota lifetime per lisensi).'
+      />
 
       <div className='flex flex-wrap items-center gap-2'>
         <Input
@@ -61,11 +60,19 @@ export function AdminLedger() {
         />
       </div>
 
-      {ledger.isLoading ? (
-        <Skeleton className='h-64' />
+      {ledger.isPending ? (
+        <TableSkeleton rows={8} cols={6} />
+      ) : ledger.isError ? (
+        <ErrorState
+          status={(ledger.error as { response?: { status?: number } })?.response?.status}
+          message={(ledger.error as Error).message}
+          onRetry={() => ledger.refetch()}
+        />
+      ) : rows.length === 0 ? (
+        <EmptyState title='Tidak ada entri ledger' description='Belum ada request AI yang tercatat untuk filter ini.' />
       ) : (
-        <Card>
-          <CardContent className='pt-6'>
+        <Card className='py-0'>
+          <CardContent className='px-0'>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -74,13 +81,11 @@ export function AdminLedger() {
                   <TableHead className='hidden lg:table-cell'>Model</TableHead>
                   <TableHead className='text-right'>Token</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className='hidden xl:table-cell'>Alasan</TableHead>
+                  <TableHead className='hidden xl:table-cell'>License</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className='text-muted-foreground'>Tidak ada entri ledger.</TableCell></TableRow>
-                ) : rows.map((e, i) => {
+                {rows.map((e, i) => {
                   const ev = e as {
                     createdAt?: number
                     customer?: string
@@ -95,11 +100,15 @@ export function AdminLedger() {
                   return (
                     <TableRow key={i}>
                       <TableCell className='whitespace-nowrap text-sm'>{fmtDate(created)}</TableCell>
-                      <TableCell className='hidden md:table-cell text-sm'>{ev.customer || '—'}</TableCell>
-                      <TableCell className='hidden lg:table-cell font-mono text-xs'>{ev.model || '—'}</TableCell>
-                      <TableCell className='text-right tabular-nums'>{typeof ev.totalTokens === 'number' ? ev.totalTokens.toLocaleString('id-ID') : '—'}</TableCell>
+                      <TableCell className='hidden md:table-cell text-sm'>{ev.customer || <span className='text-muted-foreground'>—</span>}</TableCell>
+                      <TableCell className='hidden lg:table-cell font-mono text-xs'>{ev.model || <span className='text-muted-foreground'>—</span>}</TableCell>
+                      <TableCell className='text-right tabular-nums'>
+                        {typeof ev.totalTokens === 'number' ? ev.totalTokens.toLocaleString('id-ID') : <span className='text-muted-foreground'>—</span>}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={ok ? 'default' : 'destructive'}>{ok ? 'sukses' : (ev.errorClassification || ev.status || 'ditolak')}</Badge>
+                        <StatusBadge tone={ok ? 'success' : 'danger'}>
+                          {ok ? 'sukses' : (ev.errorClassification || ev.status || 'ditolak')}
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className='hidden xl:table-cell font-mono text-xs text-muted-foreground'>{ev.licenseId || '—'}</TableCell>
                     </TableRow>

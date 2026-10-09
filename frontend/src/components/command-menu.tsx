@@ -22,6 +22,10 @@ export function CommandMenu() {
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
 
+  // Konten dialog dirender hanya saat terbuka (menghindari konten hidden
+  // di luar landmark sebelum dialog dibuka)
+  if (!open) return null
+
   const runCommand = React.useCallback(
     (command: () => unknown) => {
       setOpen(false)
@@ -32,10 +36,10 @@ export function CommandMenu() {
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder='Type a command or search...' />
+      <CommandInput placeholder='Ketik perintah atau cari…' />
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>Tidak ada hasil.</CommandEmpty>
           {sidebarData.navGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items.map((navItem, i) => {

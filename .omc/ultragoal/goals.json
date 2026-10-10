@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-06T15:58:20.784Z",
+  "updatedAt": "2026-10-07T02:47:20.895Z",
+  "briefPath": ".omc/ultragoal/brief.md",
+  "goalsPath": ".omc/ultragoal/goals.json",
+  "ledgerPath": ".omc/ultragoal/ledger.jsonl",
+  "claudeGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001-install-to-chat-proof",
+      "title": "Install-to-chat proof",
+      "objective": "Run and improve isolated tests for clean plugin install/config/license/read-only skill/FakeSupplier chat/safe errors/key boundaries. No live supplier. Preserve all dirty files; no package install, DB migration, production touch, commit or push.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:14:17.060Z",
+      "startedAt": "2026-10-06T15:58:31.583Z",
+      "completedAt": "2026-10-07T02:14:17.060Z",
+      "evidence": "Install-to-chat chain verified by isolated tests: root suite 101/101 pass (2026-10-07). Clean install resolves server-side env values and never prints provider key (test/cli-install.test.js); failure path exits 1 with no scaffold; reinstall over public-key-only env still writes GROUTER_LICENSE (exact-key fix verified live in temp dir). Factory chat proof: test/factory-license.test.js fail-closed NOT_CONFIGURED without license; complete chat with fake adapter + valid signed license. streamChat gate: run.failed SCOPE_DENIED before first event unlicensed (test/license-gate-runtime.test.js). No live supplier, no npm install, no commit/push; all dirty files preserved."
+    },
+    {
+      "id": "G002-p0-acceptance-and-security",
+      "title": "P0 acceptance and security",
+      "objective": "Map the 12 P0s to executable acceptance/failure tests. Minimally fix only verified gaps in read-only skill boundaries, secrets, error redaction, context limits, adapter and protocol versioning. Respect D-020; no production supplier.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:15:11.857Z",
+      "startedAt": "2026-10-07T02:14:50.111Z",
+      "completedAt": "2026-10-07T02:15:11.857Z",
+      "evidence": "12 P0s (R-001..R-012) mapped to executable acceptance/failure tests in docs/20-requirements-traceability.md with exit criteria checked. Verified gap fixes this session: (1) context redaction now scrubs gRouter- provider keys + grouterApiKey/grouter_api_key keys (src/runtime/context.js) with unit + buildContext leak tests; (2) safe error envelopes proven at runtime level: INTERNAL_ERROR without internals (adapter + stream), SKILL_FAILED without underlying error text (test/runtime.test.js); (3) context limits enforced fail-closed (existing maxContextBytes tests + envelope RangeError); (4) protocol versioning: public v1 constants + response/SSE contract test (test/protocol-version.test.js); (5) read-only boundary: SCOPE_DENIED stream + chat tests; (6) adapter boundary: NOT_CONFIGURED/UPSTREAM_UNAVAILABLE/TIMEOUT taxonomy tests. D-020 respected: settings SSOT untouched, prices server-resolved (cost-integrity tests green). Root 101/101, backend 44/44. No production supplier call."
+    },
+    {
+      "id": "G003-customer-onboarding-dx",
+      "title": "Customer onboarding DX",
+      "objective": "Audit fresh-user install-to-chat docs/examples/CLI without installing packages; repair verified blockers and add reproducible examples/troubleshooting.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:15:40.919Z",
+      "startedAt": "2026-10-07T02:15:40.538Z",
+      "completedAt": "2026-10-07T02:15:40.919Z",
+      "evidence": "Fresh-user install-to-chat audited without installing packages. VERIFIED BLOCKER FOUND AND FIXED: bin/grouter-copilot.js writeEnv used substring matching, so an existing GROUTER_LICENSE_PUBLIC_KEY line made install silently skip writing GROUTER_LICENSE (reproduced live in isolated temp dir: exit 0, Done message, license missing from .env -> runtime NOT_CONFIGURED). Fixed with exact-key matching; regression test added (test/cli-install.test.js reinstall test). Failure-path test added: resolve rejection exits 1, no scaffold (.env/copilot.config.js/skills absent). README troubleshooting added: re-install/renewal section warning about stale GROUTER_LICENSE lines. All CLI tests 3/3, root 101/101. Docs/examples audited: README install section accurate re server-resolved credential + public verifier key; docs/22 customer flow matches /api/resolve contract (licensePublicKey added). No npm install, no commit/push."
+    },
+    {
+      "id": "G004-customer-order-to-license",
+      "title": "Customer order-to-license",
+      "objective": "Use isolated auth/store and injected fake KlikQRIS to test catalogue, checkout, settlement, issuance, dashboard/success projections and ownership failures. No real payment or production DB.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:16:14.920Z",
+      "startedAt": "2026-10-07T02:16:14.542Z",
+      "completedAt": "2026-10-07T02:16:14.920Z",
+      "evidence": "Order-to-license chain tested with isolated auth/store + injected fake KlikQRIS (no real payment, no production DB): server/test/cost-integrity.test.js (A1: body amount/description rejected 400; price+entitlement resolved server-side from plan catalogue; unknown/inactive 400; custom/zero-price 409; verified settle issues license with PLAN entitlement incl. custom features + 30d expiry), server/test/server.test.js (webhook forged PAID rejected via upstream re-verification; verified SUCCESS settles; idempotent second delivery issues no duplicate license), NEW server/test/orders-ownership.test.js (authenticated account gets 404 on another account's order; /api/orders/latest empty for fresh account; cost-integrity 400 under real session), server/test/account.test.js (accountId accepted, grouterApiKey never in sanitized license). Dashboard/success projections: /success page test + /api/orders/latest session-scoped tests. Backend 44/44 pass. No real payment or production DB touched."
+    },
+    {
+      "id": "G005-admin-and-settings-security",
+      "title": "Admin and settings security",
+      "objective": "Adversarially test admin auth, secret masking, D-020, ownership, validation, webhook re-verification and neutral errors using fake credentials/upstream only.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:16:48.956Z",
+      "startedAt": "2026-10-07T02:16:48.571Z",
+      "completedAt": "2026-10-07T02:16:48.956Z",
+      "evidence": "Adversarial admin/settings testing with fake credentials/upstream only: NEW 9-route admin auth sweep in server/test/server.test.js (stats/licenses issue/bind/revoke/order settle/settings GET+PATCH/usage all 401 with missing AND wrong Bearer token; 200 with correct token proving sweep gates on auth not 404s). Secret masking: server/test/settings.test.js (GET masks secrets, masked round-trip keeps stored secret, 401 without token). D-020 SSOT: server/test/settings-wiring.test.js (env seeds < store precedence; stored payment credentials reach KlikQRIS headers without exposure; stored license audience used for issued-token validation). Webhook re-verification: forged PAID ignored (unverified upstream), verified SUCCESS settles (server.test.js). Ownership: session-scoped order reads 404 cross-account (orders-ownership.test.js). Neutral errors: cost-integrity 400/409 messages carry no internals. Context redaction hardened: grouterApiKey key + gRouter- format scrubbed. Backend 44/44, root 101/101. No production credentials touched."
+    },
+    {
+      "id": "G006-docs-reconciliation",
+      "title": "Docs reconciliation",
+      "objective": "Align docs with verified code/tests; maintain external go-live gates as pending PO/operator work.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:17:12.471Z",
+      "startedAt": "2026-10-07T02:17:12.088Z",
+      "completedAt": "2026-10-07T02:17:12.471Z",
+      "evidence": "Docs aligned with verified code/tests: docs/20-requirements-traceability.md R-010 evidence updated (gRouter- redaction + runtime envelope tests) and verification snapshot refreshed to actual 2026-10-07 results (root 101/101, backend 44/44, sweep/ownership/gate/CLI specifics); docs/release-evidence-2026-10-06.md refreshed (counts updated 90->101 root, 42->44 backend, fixes #7/#8 added: gRouter- key redaction + CLI exact-key env merge, readiness matrix rows added for onboarding CLI + sweep/ownership evidence). docs/29-backend-api-contract.md /api/resolve row already matches code (licensePublicKey, server-resolved baseUrl). docs/22-customer-flow.md matches installer behavior. External go-live gates kept PENDING as PO/operator work (KlikQRIS production credentials, keypair persistence, ADMIN_TOKEN, live-domain smoke, npm publish) — not fabricated as done. git diff --check pass."
+    },
+    {
+      "id": "G007-release-evidence-packet",
+      "title": "Release evidence packet",
+      "objective": "Produce P0 matrix, isolated smoke steps, rollback checklist and exact remaining external actions. No activation, PM2 restart, commit or push.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-10-06T15:58:20.784Z",
+      "updatedAt": "2026-10-07T02:47:20.895Z",
+      "startedAt": "2026-10-07T02:17:28.082Z",
+      "evidence": "Release evidence packet completed in docs/release-evidence-2026-10-06.md: P0 readiness matrix (11 surfaces), isolated smoke steps, rollback checklist, exact remaining external actions (KlikQRIS production creds, keypair persistence, ADMIN_TOKEN, npm publish, external E2E, live-domain smoke, lockfile policy). No activation, no PM2 restart, no commit, no push. Quality gate evidence in .omc/artifacts/quality-gate-g007.json.",
+      "completedAt": "2026-10-07T02:47:20.895Z"
+    }
+  ],
+  "claudeObjective": "Complete all ultragoal stories in .omc/ultragoal/goals.json: G001-install-to-chat-proof Install-to-chat proof; G002-p0-acceptance-and-security P0 acceptance and security; G003-customer-onboarding-dx Customer onboarding DX; G004-customer-order-to-license Customer order-to-license; G005-admin-and-settings-security Admin and settings security; G006-docs-reconciliation Docs reconciliation; G007-release-evidence-packet Release evidence packet"
+}

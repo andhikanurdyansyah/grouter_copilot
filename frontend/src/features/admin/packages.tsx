@@ -237,7 +237,7 @@ export function AdminPackages() {
                 </div>
                 <div className='space-y-1.5'>
                   <Label htmlFor={'days-' + p.key}>Masa aktif</Label>
-                  <div className='relative'>
+                  <div className='relative w-fit'>
                     <Input
                       id={'days-' + p.key}
                       type='number'
@@ -254,10 +254,13 @@ export function AdminPackages() {
                 </div>
                 <div className='space-y-1.5'>
                   <Label>Kuota lisensi</Label>
-                  <p className='flex h-9 items-center text-sm tabular-nums'>
-                    {p.quota === null || p.quota === undefined
-                      ? 'Tanpa batas'
-                      : p.quota.toLocaleString('id-ID')}
+                  <p className='flex h-9 items-center gap-1.5 rounded-md border border-dashed px-3 text-sm tabular-nums'>
+                    <span className='font-medium'>
+                      {p.quota === null || p.quota === undefined
+                        ? 'Tanpa batas'
+                        : p.quota.toLocaleString('id-ID')}
+                    </span>
+                    <span className='text-xs text-muted-foreground'>lisensi aktif</span>
                   </p>
                 </div>
               </div>
@@ -268,6 +271,7 @@ export function AdminPackages() {
               <div className='space-y-4'>
                 <div className='flex flex-wrap items-center justify-between gap-3'>
                   <div className='flex items-center gap-1.5'>
+                    {/* h3: di bawah CardTitle (h2) kartu paket — h1→h2→h3 tanpa skip */}
                     <h3 className='text-sm font-medium'>Kebijakan AI</h3>
                     <AiSafetyInfo />
                   </div>

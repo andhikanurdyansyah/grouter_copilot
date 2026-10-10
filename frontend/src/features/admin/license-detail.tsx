@@ -3,6 +3,7 @@ import { useParams, Link } from '@tanstack/react-router'
 import { fetchAdminLicenses, fetchLedger, fmtDate } from '@/lib/grouter-api'
 import { StatusBadge, licenseTone } from '@/components/shared/status-badge'
 import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -42,7 +43,7 @@ export function AdminLicenseDetail() {
   }
 
   const license = (licenses.data?.licenses ?? []).find((l) => l.id === licenseId) as
-    | { id: string; customer?: string | null; planKey?: string | null; status?: string; expiresAt?: string; createdAt?: string; quota?: number | null }
+    | { id: string; customer?: string | null; planKey?: string | null; status?: string; expiresAt?: string | number; createdAt?: string | number; quota?: number | null }
     | undefined
 
   if (!license) {
@@ -56,7 +57,11 @@ export function AdminLicenseDetail() {
     )
   }
 
-  const usage = (ledger.data?.records ?? []) as { totalTokens?: number | null; status?: string }[]
+  // Status & tanggal: list API kadang tak menyertakan status — derive jujur
+  // dari expiresAt (mirip halaman list) supaya badge tidak tampil "—".
+  const licenseStatus = license.status
+    ?? (license.expiresAt && new Date(license.expiresAt).getTime() < Date.now() ? 'expired' : 'active')
+  const usage = (ledger.data?.records ?? []) as { totalTokens?: number | null; status?: string; createdAt?: number | string }[]
   const usedTokens = usage.reduce((a, r) => a + (typeof r.totalTokens === 'number' ? r.totalTokens : 0), 0)
   const quota = typeof license.quota === 'number' ? license.quota : null
   const pct = quota ? Math.min(100, Math.round((usedTokens / quota) * 100)) : null
@@ -72,15 +77,17 @@ export function AdminLicenseDetail() {
   return (
     <div className='space-y-5'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div className='flex items-center gap-3'>
+        <div className='flex min-w-0 items-center gap-2.5'>
+          {/* Mobile: trigger sidebar + back button berdampingan */}
+          <SidebarTrigger className='-ml-1.5 md:hidden' aria-label='Buka menu navigasi' />
           <Button asChild variant='outline' size='icon' className='size-8' aria-label='Kembali ke daftar lisensi'>
             <Link to='/admin/licenses'><ArrowLeft className='size-4' /></Link>
           </Button>
-          <div>
-            <div className='flex items-center gap-2'>
-              <h1 className='font-mono text-lg font-semibold tracking-tight'>{license.id}</h1>
-              <StatusBadge tone={licenseTone(String(license.status ?? ''))}>
-                {license.status === 'active' ? 'AKTIF' : license.status === 'expired' ? 'KEDALUWARSA' : license.status === 'revoked' ? 'DICABUT' : String(license.status ?? '—').toUpperCase()}
+          <div className='min-w-0'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h1 className='truncate font-mono text-lg font-semibold tracking-tight'>{license.id}</h1>
+              <StatusBadge tone={licenseTone(String(licenseStatus))}>
+                {licenseStatus === 'active' ? 'AKTIF' : licenseStatus === 'expired' ? 'KEDALUWARSA' : licenseStatus === 'revoked' ? 'DICABUT' : String(licenseStatus).toUpperCase()}
               </StatusBadge>
             </div>
             <p className='text-[13px] text-muted-foreground'>
@@ -94,7 +101,8 @@ export function AdminLicenseDetail() {
         </Button>
       </div>
 
-      <div className='grid gap-4 md:grid-cols-3'>
+      {/* md: 2 kolom (kolom 3×155px terlalu sempit utk tombol aksi di 768px) */}
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
         <Card className='py-0'>
           <CardContent className='p-5'>
             <div className='flex items-center gap-2 text-sm font-medium text-muted-foreground'>
@@ -137,7 +145,9 @@ export function AdminLicenseDetail() {
             )}
             <div className='mt-3 flex items-center justify-between text-xs text-muted-foreground'>
               <span>{usage.length} request tercatat</span>
-              <Link to='/admin/ledger' search={{ licenseId }} className='text-primary hover:underline'>Lihat di ledger →</Link>
+              <Link to='/admin/ledger' search={{ licenseId }} className='font-semibold text-primary hover:underline'>
+                Lihat di ledger →
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -173,11 +183,12 @@ export function AdminLicenseDetail() {
           ) : usage.length === 0 ? (
             <p className='px-5 pb-6 text-sm text-muted-foreground'>Belum ada request AI tercatat untuk lisensi ini.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Waktu</TableHead>
-                  <TableHead>Model</TableHead>
+            <div className='overflow-x-auto'>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Waktu</TableHead>
+                    <TableHead>Model</TableHead>
                   <TableHead className='text-right'>Token</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -185,7 +196,7 @@ export function AdminLicenseDetail() {
               <TableBody>
                 {usage.map((r, i) => (
                   <TableRow key={i}>
-                    <TableCell className='text-xs tabular-nums'>{fmtDate(String((r as { createdAt?: number }).createdAt ?? ''))}</TableCell>
+                    <TableCell className='text-xs tabular-nums'>{fmtDate(r.createdAt ?? null)}</TableCell>
                     <TableCell className='font-mono text-xs'>{String((r as { model?: string }).model ?? '—')}</TableCell>
                     <TableCell className='text-right tabular-nums'>{typeof r.totalTokens === 'number' ? r.totalTokens.toLocaleString('id-ID') : '—'}</TableCell>
                     <TableCell>
@@ -193,14 +204,19 @@ export function AdminLicenseDetail() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <p className='text-xs text-muted-foreground'>
-        Order dikelola di halaman <Link to='/admin/orders' className='text-primary hover:underline'>Orders &amp; Payments</Link> — rekonsiliasi &amp; settle dari sana.
+        Order dikelola di halaman{' '}
+        <Link to='/admin/orders' className='font-semibold text-primary hover:underline'>
+          Orders &amp; Payments
+        </Link>{' '}
+        — rekonsiliasi &amp; settle dari sana.
       </p>
     </div>
   )

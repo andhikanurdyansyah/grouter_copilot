@@ -228,7 +228,8 @@ export function AdminLedger() {
                     errorClassification?: string | null
                     licenseId?: string
                   }
-                  const ok = ev.status === 'success'
+                  // API ledger memakai status 'ok' untuk sukses (bukan 'success').
+                  const ok = ev.status === 'ok' || ev.status === 'success'
                   const errInfo = ok ? null : errorLabel(ev.errorClassification, ev.status)
                   const hasSplit =
                     typeof ev.promptTokens === 'number' || typeof ev.completionTokens === 'number'

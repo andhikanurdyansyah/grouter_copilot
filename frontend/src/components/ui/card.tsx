@@ -27,9 +27,11 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+function CardTitle({ className, ...props }: React.ComponentProps<'h2'>) {
+  // h2 sungguhan (bukan div): judul kartu masuk outline heading — h1 halaman
+  // → h2 kartu, dan axe heading-order lolos. Styling tidak berubah.
   return (
-    <div
+    <h2
       data-slot='card-title'
       className={cn('leading-none font-semibold', className)}
       {...props}

@@ -1,0 +1,279 @@
+{
+  "updatedAt": "2026-10-07T02:39:35.767Z",
+  "missions": [
+    {
+      "id": "session:162fa5ec-9dad-4b0c-9577-531ec8a9a763:none",
+      "source": "session",
+      "name": "none",
+      "objective": "Session mission",
+      "createdAt": "2026-10-07T02:18:44.936Z",
+      "updatedAt": "2026-10-07T02:39:35.767Z",
+      "status": "done",
+      "workerCount": 2,
+      "taskCounts": {
+        "total": 2,
+        "pending": 0,
+        "blocked": 0,
+        "inProgress": 0,
+        "completed": 2,
+        "failed": 0
+      },
+      "agents": [
+        {
+          "name": "verifier:a613092",
+          "role": "verifier",
+          "ownership": "a613092a1670a80e7",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-10-07T02:39:25.530Z"
+        },
+        {
+          "name": "code-reviewer:a4e69bf",
+          "role": "code-reviewer",
+          "ownership": "a4e69bf13b93b03d6",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "Marked as stale during unmatched stop reconciliation - exceed...",
+          "completedSummary": "Marked as stale during unmatched stop reconciliation - exceed...",
+          "updatedAt": "2026-10-07T02:39:35.767Z"
+        }
+      ],
+      "timeline": [
+        {
+          "id": "session-start:a613092a1670a80e7:2026-10-07T02:18:44.936Z",
+          "at": "2026-10-07T02:18:44.936Z",
+          "kind": "update",
+          "agent": "verifier:a613092",
+          "detail": "started verifier:a613092",
+          "sourceKey": "session-start:a613092a1670a80e7"
+        },
+        {
+          "id": "session-start:a4e69bf13b93b03d6:2026-10-07T02:19:01.249Z",
+          "at": "2026-10-07T02:19:01.249Z",
+          "kind": "update",
+          "agent": "code-reviewer:a4e69bf",
+          "detail": "started code-reviewer:a4e69bf",
+          "sourceKey": "session-start:a4e69bf13b93b03d6"
+        },
+        {
+          "id": "session-stop:a96990cb190f036a1:2026-10-07T02:19:37.223Z",
+          "at": "2026-10-07T02:19:37.223Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a96990cb190f036a1"
+        },
+        {
+          "id": "session-stop:ae87508bd57f8d1f6:2026-10-07T02:20:10.609Z",
+          "at": "2026-10-07T02:20:10.609Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:ae87508bd57f8d1f6"
+        },
+        {
+          "id": "session-stop:acaacb00287e928c5:2026-10-07T02:20:45.743Z",
+          "at": "2026-10-07T02:20:45.743Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:acaacb00287e928c5"
+        },
+        {
+          "id": "session-stop:ab09d5bd967dddfd0:2026-10-07T02:21:48.845Z",
+          "at": "2026-10-07T02:21:48.845Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:ab09d5bd967dddfd0"
+        },
+        {
+          "id": "session-stop:af0495194654e719c:2026-10-07T02:21:54.338Z",
+          "at": "2026-10-07T02:21:54.338Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:af0495194654e719c"
+        },
+        {
+          "id": "session-stop:a2b9904d202e89994:2026-10-07T02:22:30.088Z",
+          "at": "2026-10-07T02:22:30.088Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a2b9904d202e89994"
+        },
+        {
+          "id": "session-stop:a7f8811d8d7055588:2026-10-07T02:22:51.163Z",
+          "at": "2026-10-07T02:22:51.163Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a7f8811d8d7055588"
+        },
+        {
+          "id": "session-stop:aff8ee55cef7af1ab:2026-10-07T02:23:06.166Z",
+          "at": "2026-10-07T02:23:06.166Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:aff8ee55cef7af1ab"
+        },
+        {
+          "id": "session-stop:a467c4ea5b29e19ed:2026-10-07T02:24:25.499Z",
+          "at": "2026-10-07T02:24:25.499Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a467c4ea5b29e19ed"
+        },
+        {
+          "id": "session-stop:a99c2436f0414d1b8:2026-10-07T02:24:40.206Z",
+          "at": "2026-10-07T02:24:40.206Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a99c2436f0414d1b8"
+        },
+        {
+          "id": "session-stop:a492bd80ab88b1f27:2026-10-07T02:24:59.064Z",
+          "at": "2026-10-07T02:24:59.064Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a492bd80ab88b1f27"
+        },
+        {
+          "id": "session-stop:aff2872475ca8c4b7:2026-10-07T02:25:17.961Z",
+          "at": "2026-10-07T02:25:17.961Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:aff2872475ca8c4b7"
+        },
+        {
+          "id": "session-stop:a6dc5990a5a25c949:2026-10-07T02:25:54.159Z",
+          "at": "2026-10-07T02:25:54.159Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a6dc5990a5a25c949"
+        },
+        {
+          "id": "session-stop:a2d5ce8506155da97:2026-10-07T02:26:00.547Z",
+          "at": "2026-10-07T02:26:00.547Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a2d5ce8506155da97"
+        },
+        {
+          "id": "session-stop:a3ac9c28f1dc67248:2026-10-07T02:26:30.227Z",
+          "at": "2026-10-07T02:26:30.227Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a3ac9c28f1dc67248"
+        },
+        {
+          "id": "session-stop:a2e5c933dbf6ba68f:2026-10-07T02:27:02.353Z",
+          "at": "2026-10-07T02:27:02.353Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a2e5c933dbf6ba68f"
+        },
+        {
+          "id": "session-stop:ad51e4fd63f1eece5:2026-10-07T02:28:34.073Z",
+          "at": "2026-10-07T02:28:34.073Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:ad51e4fd63f1eece5"
+        },
+        {
+          "id": "session-stop:a613092a1670a80e7:2026-10-07T02:28:52.318Z",
+          "at": "2026-10-07T02:28:52.318Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "Marked as stale during unmatched stop reconciliation - exceeded timeout",
+          "sourceKey": "session-stop:a613092a1670a80e7"
+        },
+        {
+          "id": "session-stop:ad106c8aa04e1abde:2026-10-07T02:29:09.311Z",
+          "at": "2026-10-07T02:29:09.311Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:ad106c8aa04e1abde"
+        },
+        {
+          "id": "session-stop:adc60dcb5b4356e02:2026-10-07T02:30:12.790Z",
+          "at": "2026-10-07T02:30:12.790Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:adc60dcb5b4356e02"
+        },
+        {
+          "id": "session-stop:ae2a1c1e0c339d0e1:2026-10-07T02:32:44.614Z",
+          "at": "2026-10-07T02:32:44.614Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:ae2a1c1e0c339d0e1"
+        },
+        {
+          "id": "session-stop:a90d84d9c1ecb5a11:2026-10-07T02:34:46.694Z",
+          "at": "2026-10-07T02:34:46.694Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a90d84d9c1ecb5a11"
+        },
+        {
+          "id": "session-stop:a98cc7d177e66288b:2026-10-07T02:35:18.566Z",
+          "at": "2026-10-07T02:35:18.566Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a98cc7d177e66288b"
+        },
+        {
+          "id": "session-stop:a8b4bdce43d3e6c1a:2026-10-07T02:35:51.244Z",
+          "at": "2026-10-07T02:35:51.244Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a8b4bdce43d3e6c1a"
+        },
+        {
+          "id": "session-stop:a880cc97181ff943d:2026-10-07T02:37:53.211Z",
+          "at": "2026-10-07T02:37:53.211Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a880cc97181ff943d"
+        },
+        {
+          "id": "session-stop:a0d6f3dd5437d068c:2026-10-07T02:39:25.530Z",
+          "at": "2026-10-07T02:39:25.530Z",
+          "kind": "completion",
+          "agent": "verifier:a613092",
+          "detail": "completed",
+          "sourceKey": "session-stop:a0d6f3dd5437d068c"
+        },
+        {
+          "id": "session-stop:a4e69bf13b93b03d6:2026-10-07T02:39:35.767Z",
+          "at": "2026-10-07T02:39:35.767Z",
+          "kind": "completion",
+          "agent": "code-reviewer:a4e69bf",
+          "detail": "Marked as stale during unmatched stop reconciliation - exceeded timeout",
+          "sourceKey": "session-stop:a4e69bf13b93b03d6"
+        }
+      ]
+    }
+  ]
+}

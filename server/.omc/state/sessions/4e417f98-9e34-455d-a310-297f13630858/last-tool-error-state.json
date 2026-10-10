@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"sleep 120; tail -8 /root/.hermes/profiles/copilot-grouter/cache/scratch/claude-0/-home-ubuntu-grouter-copilot/162fa5ec-9dad-4b0c-9577-531ec8a9a763/tasks/b0qwfq049.output 2>/dev/null; echo ...",
+  "error": "Exit code 143\nCommand timed out after 2m 0s",
+  "timestamp": "2026-10-07T05:18:03.441Z",
+  "retry_count": 1
+}

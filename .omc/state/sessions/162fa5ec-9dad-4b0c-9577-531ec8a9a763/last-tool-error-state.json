@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"sleep 120\",\"description\":\"Wait for verification agents to finish\"}",
+  "error": "Exit code 143\nCommand timed out after 2m 0s",
+  "timestamp": "2026-10-07T02:26:04.593Z",
+  "retry_count": 1
+}

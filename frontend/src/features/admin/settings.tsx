@@ -15,12 +15,13 @@ import { RefreshCw, ShieldCheck, ExternalLink, ArrowRight } from 'lucide-react'
 // dikirim server ke browser; baris "kredensial" hanya menampilkan status.
 function Row({ label, value, hint, mono }: { label: string; value: React.ReactNode; hint?: string; mono?: boolean }) {
   return (
-    <div className='flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-border/60 py-2.5 last:border-0 last:pb-0'>
+    // Konsisten: label kiri + nilai KANAN satu baris (bukan kadang stacked).
+    <div className='flex items-center justify-between gap-x-6 border-b border-border/60 py-2.5 last:border-0 last:pb-0'>
       <div className='min-w-0'>
         <p className='text-sm'>{label}</p>
         {hint && <p className='mt-0.5 text-xs text-muted-foreground'>{hint}</p>}
       </div>
-      <div className={'text-right text-sm text-foreground/90 ' + (mono ? 'font-mono text-xs' : '')}>{value}</div>
+      <div className={'shrink-0 text-right text-sm text-foreground/90 ' + (mono ? 'font-mono text-xs' : '')}>{value}</div>
     </div>
   )
 }
@@ -138,7 +139,7 @@ export function AdminSettings() {
         <Card className='py-0'>
           <CardContent className='flex flex-col gap-4 p-5'>
             <div>
-              <p className='label-mono'>Service health</p>
+              <p className='text-sm font-medium'>Service health</p>
               <div className='mt-1.5 flex items-center gap-2' role='status'>
                 {healthOk ? (
                   <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-700 dark:text-emerald-400'>

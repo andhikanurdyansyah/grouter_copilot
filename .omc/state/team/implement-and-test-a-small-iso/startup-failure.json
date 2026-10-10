@@ -1,0 +1,37 @@
+{
+  "reason": "startup_failed_before_config_persisted",
+  "error": "tmux_creation_cleanup_unverified",
+  "recorded_at": "2026-10-07T03:45:50.295Z",
+  "instance_id": "9af8449f-8e4f-46e6-afd9-c9d318246b4c",
+  "instance_binding": {
+    "instance_id": "9af8449f-8e4f-46e6-afd9-c9d318246b4c",
+    "team_name": "implement-and-test-a-small-iso",
+    "cwd": "/home/ubuntu/grouter_copilot",
+    "workspace_hash": "9aab92c6e092eed42854edb85b1770e17bc6830baf1f5df98bff2a04d6467838",
+    "state_root": "/home/ubuntu/grouter_copilot/.omc/state/team/implement-and-test-a-small-iso"
+  },
+  "partial_session": {
+    "sessionName": "omc-team-implement-and-test-a-small-iso-muxkeven:0",
+    "leaderPaneId": "",
+    "workerPaneIds": [],
+    "sessionMode": "detached-session",
+    "tmuxServerIdentity": {
+      "socket_path": "/tmp/tmux-0/default",
+      "server_pid": 660043,
+      "process_started_at": "linux:e3a1f546-a8b2-4a0d-8b23-02aa6052ce5c:6943139"
+    }
+  },
+  "creation_evidence": {
+    "provider": "tmux",
+    "operation": "new-session",
+    "rawOutput": "#S:#{window_index}\t#{pane_id}\t#{socket_path}\t#{pid}\nOMC_TMUX_GUARD_OK_700494_muxkeveo_1\n",
+    "stderr": "",
+    "tmuxServerIdentity": {
+      "socket_path": "/tmp/tmux-0/default",
+      "server_pid": 660043,
+      "process_started_at": "linux:e3a1f546-a8b2-4a0d-8b23-02aa6052ce5c:6943139"
+    }
+  },
+  "cleanup_status": "unknown",
+  "cleanup_incomplete": true
+}

@@ -1,0 +1,438 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1791299833678,
+  "projectRoot": "/home/ubuntu/grouter_copilot",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": ">=18",
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": "Node.js 18"
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "npm test",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {
+      "test": "node --test"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "bin",
+      "docs",
+      "examples",
+      "scripts",
+      "src",
+      "test"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "bin": {
+      "path": "bin",
+      "purpose": "Executable scripts",
+      "fileCount": 1,
+      "lastAccessed": 1791299833612,
+      "keyFiles": [
+        "grouter-copilot.js"
+      ]
+    },
+    "design": {
+      "path": "design",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1791299833613,
+      "keyFiles": [
+        "DESIGN.md",
+        "theme.css",
+        "tokens.json",
+        "variables.css"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 33,
+      "lastAccessed": 1791299833638,
+      "keyFiles": [
+        "00-product-charter.md",
+        "01-brd.md",
+        "02-prd.md",
+        "03-master-plan.md",
+        "04-solution-architecture.md"
+      ]
+    },
+    "examples": {
+      "path": "examples",
+      "purpose": "Example code",
+      "fileCount": 0,
+      "lastAccessed": 1791299833651,
+      "keyFiles": []
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1791299833660,
+      "keyFiles": [
+        "e2e-smoke.mjs"
+      ]
+    },
+    "server": {
+      "path": "server",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1791299833660,
+      "keyFiles": [
+        "README.md",
+        "ecosystem.config.cjs",
+        "package-lock.json",
+        "package.json"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1791299833664,
+      "keyFiles": [
+        "config.js",
+        "index.js"
+      ]
+    },
+    "test": {
+      "path": "test",
+      "purpose": "Test files",
+      "fileCount": 10,
+      "lastAccessed": 1791299833667,
+      "keyFiles": [
+        "adapter.test.js",
+        "cli-install.test.js",
+        "config.test.js",
+        "context.test.js",
+        "license-gate-runtime.test.js"
+      ]
+    },
+    "test-fixtures": {
+      "path": "test-fixtures",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1791299833669,
+      "keyFiles": [
+        "copilot.config.js"
+      ]
+    },
+    "server/data": {
+      "path": "server/data",
+      "purpose": "Data files",
+      "fileCount": 2,
+      "lastAccessed": 1791299833671,
+      "keyFiles": [
+        "auth.sqlite",
+        "store.json"
+      ]
+    },
+    "server/node_modules": {
+      "path": "server/node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1791299833671,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "server/src/server.js",
+      "accessCount": 21,
+      "lastAccessed": 1791348436483,
+      "type": "file"
+    },
+    {
+      "path": "src/runtime/context.js",
+      "accessCount": 9,
+      "lastAccessed": 1791340877409,
+      "type": "file"
+    },
+    {
+      "path": "test/cli-install.test.js",
+      "accessCount": 9,
+      "lastAccessed": 1791348445066,
+      "type": "file"
+    },
+    {
+      "path": "docs/release-evidence-2026-10-06.md",
+      "accessCount": 7,
+      "lastAccessed": 1791345908087,
+      "type": "file"
+    },
+    {
+      "path": "server/test/server.test.js",
+      "accessCount": 7,
+      "lastAccessed": 1791348465744,
+      "type": "file"
+    },
+    {
+      "path": "bin/grouter-copilot.js",
+      "accessCount": 6,
+      "lastAccessed": 1791339778858,
+      "type": "file"
+    },
+    {
+      "path": "docs/handoff-2026-10-02.md",
+      "accessCount": 6,
+      "lastAccessed": 1791348422437,
+      "type": "file"
+    },
+    {
+      "path": "MEMORY.md",
+      "accessCount": 6,
+      "lastAccessed": 1791348426457,
+      "type": "file"
+    },
+    {
+      "path": "test/context.test.js",
+      "accessCount": 6,
+      "lastAccessed": 1791356853972,
+      "type": "file"
+    },
+    {
+      "path": "test/license-gate-runtime.test.js",
+      "accessCount": 5,
+      "lastAccessed": 1791338389967,
+      "type": "file"
+    },
+    {
+      "path": "test/runtime.test.js",
+      "accessCount": 4,
+      "lastAccessed": 1791339611869,
+      "type": "file"
+    },
+    {
+      "path": "src/runtime/chat.js",
+      "accessCount": 4,
+      "lastAccessed": 1791339748080,
+      "type": "file"
+    },
+    {
+      "path": "docs/15-decision-log.md",
+      "accessCount": 4,
+      "lastAccessed": 1791348426414,
+      "type": "file"
+    },
+    {
+      "path": "server/test/orders-ownership.test.js",
+      "accessCount": 4,
+      "lastAccessed": 1791348431132,
+      "type": "file"
+    },
+    {
+      "path": "src/adapter/grouter.js",
+      "accessCount": 3,
+      "lastAccessed": 1791337847890,
+      "type": "file"
+    },
+    {
+      "path": "src/license/validate.js",
+      "accessCount": 3,
+      "lastAccessed": 1791337848106,
+      "type": "file"
+    },
+    {
+      "path": "src/license/gate.js",
+      "accessCount": 3,
+      "lastAccessed": 1791337861416,
+      "type": "file"
+    },
+    {
+      "path": "src/config.js",
+      "accessCount": 3,
+      "lastAccessed": 1791338047422,
+      "type": "file"
+    },
+    {
+      "path": "docs/20-requirements-traceability.md",
+      "accessCount": 3,
+      "lastAccessed": 1791339083057,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1791345570119,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 3,
+      "lastAccessed": 1791345901807,
+      "type": "file"
+    },
+    {
+      "path": "server/src/licenseService.js",
+      "accessCount": 3,
+      "lastAccessed": 1791348453645,
+      "type": "file"
+    },
+    {
+      "path": "AGENTS.md",
+      "accessCount": 2,
+      "lastAccessed": 1791303282482,
+      "type": "file"
+    },
+    {
+      "path": "src/index.js",
+      "accessCount": 2,
+      "lastAccessed": 1791303289679,
+      "type": "file"
+    },
+    {
+      "path": "docs/handoff-2026-10-05.md",
+      "accessCount": 2,
+      "lastAccessed": 1791304342077,
+      "type": "file"
+    },
+    {
+      "path": "src/adapter/errors.js",
+      "accessCount": 2,
+      "lastAccessed": 1791337847955,
+      "type": "file"
+    },
+    {
+      "path": "src/skills/registry.js",
+      "accessCount": 2,
+      "lastAccessed": 1791337848037,
+      "type": "file"
+    },
+    {
+      "path": "server/src/settings.js",
+      "accessCount": 2,
+      "lastAccessed": 1791344695055,
+      "type": "file"
+    },
+    {
+      "path": "server/src/frontendServer.js",
+      "accessCount": 2,
+      "lastAccessed": 1791344695283,
+      "type": "file"
+    },
+    {
+      "path": "server/package.json",
+      "accessCount": 2,
+      "lastAccessed": 1791345206393,
+      "type": "file"
+    },
+    {
+      "path": "server/test/cost-integrity.test.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348431245,
+      "type": "file"
+    },
+    {
+      "path": "server/src/paymentService.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348441780,
+      "type": "file"
+    },
+    {
+      "path": "server/test/handoff.test.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348441896,
+      "type": "file"
+    },
+    {
+      "path": "test/factory-license.test.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348444991,
+      "type": "file"
+    },
+    {
+      "path": "server/src/klikqris.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348453416,
+      "type": "file"
+    },
+    {
+      "path": "server/src/auth.js",
+      "accessCount": 2,
+      "lastAccessed": 1791348460804,
+      "type": "file"
+    },
+    {
+      "path": "test/protocol-version.test.js",
+      "accessCount": 2,
+      "lastAccessed": 1791353023437,
+      "type": "file"
+    },
+    {
+      "path": "docs/29-backend-api-contract.md",
+      "accessCount": 1,
+      "lastAccessed": 1791302385472,
+      "type": "file"
+    },
+    {
+      "path": "src/skills/validator.js",
+      "accessCount": 1,
+      "lastAccessed": 1791302427585,
+      "type": "file"
+    },
+    {
+      "path": "src/widget/CopilotChat.jsx",
+      "accessCount": 1,
+      "lastAccessed": 1791302560249,
+      "type": "file"
+    },
+    {
+      "path": "server/test/account.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1791338029717,
+      "type": "file"
+    },
+    {
+      "path": "server/src/index.js",
+      "accessCount": 1,
+      "lastAccessed": 1791344589442,
+      "type": "file"
+    },
+    {
+      "path": "server/src/loadKeys.js",
+      "accessCount": 1,
+      "lastAccessed": 1791344589555,
+      "type": "file"
+    },
+    {
+      "path": "server/test/production-gates.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1791345305413,
+      "type": "file"
+    },
+    {
+      "path": "server/src/readiness.js",
+      "accessCount": 1,
+      "lastAccessed": 1791345745442,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

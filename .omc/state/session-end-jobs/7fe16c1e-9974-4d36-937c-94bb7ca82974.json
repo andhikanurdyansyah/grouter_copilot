@@ -1,0 +1,367 @@
+{
+  "version": 1,
+  "jobId": "28eb0c83-78d1-4b73-9213-bfe209bcf5d4",
+  "sessionId": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+  "scopeKey": "a60abebb8581fcb3b42a8e982e809de2c888a018bfb7224dcec458dde05ed9a2",
+  "revision": 63,
+  "createdAt": "2026-10-06T16:46:51.076Z",
+  "updatedAt": "2026-10-06T16:47:22.582Z",
+  "producerGraceExpiresAt": "2026-10-06T16:47:21.077Z",
+  "bestEffortDeadlineAt": "2026-10-06T16:48:14.077Z",
+  "producers": {
+    "core": {
+      "state": "sealed",
+      "intentKey": "126ab2774d4f903b7e7d9413edf15d3fe8da1c68fedac3cfd9b054912f70cdd6",
+      "payloadDigest": "126ab2774d4f903b7e7d9413edf15d3fe8da1c68fedac3cfd9b054912f70cdd6",
+      "sealedAt": "2026-10-06T16:47:21.380Z",
+      "sealedBy": "recovery"
+    },
+    "wiki": {
+      "state": "no-op",
+      "sealedAt": "2026-10-06T16:46:51.161Z",
+      "sealedBy": "wiki-producer"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "f41952079d8d890bab601731142047f34861ee1f178b8745979c2f64251b8d86",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:47:21.145Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "5ea59f19-bc5c-4a40-91d8-27cd6b350e40",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:21.375Z"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "2892edbfa79da8520016fa9e4d3dddbf7a341d29c300b02c842386b22bd8ad06",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-10-06T16:46:51.161Z"
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "78fe453b7eba05b105ae0d29359378b9136584770ae452ded20305eb6df16f8a",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:47:21.396Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "32ab6361-4410-490c-a19d-8a7024076892",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:21.550Z"
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "26d2489464e70b2d9e9b4718e7ec00b55c3211a50b80e802bfb7f8897ef8408b",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:47:21.562Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e1dc315c-ec1f-494f-beef-15840dbcc823",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:21.725Z"
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "f1c9e537a0a95b5a77fb4ad46c75d68e5f460e0f948feb36bc86aef4df8318c6",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:47:21.740Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "a10719b0-6887-48fb-b5d0-9a93584a5d37",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:21.904Z"
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "7395a2da6a1f5c8a179d8f67e466773a0e343c1aee0f1e404ed03a54d6cc32a6",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:47:21.916Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "bc3eb525-141b-4c49-833a-7bf2a05d14bd",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:22.075Z"
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "9a4752a246b798e84e6f72c2a5af785e656fdc8a680a79ea78bafac05d2378e0",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:47:22.089Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "0ff77e67-e599-4077-895c-16e503f440bf",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:22.236Z"
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "aca2f3b1b63844f766e28a81c034ad00c68f7b56f0237c6a9d28d9f0f4287347",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "ended_at": "2026-10-06T16:47:21.267Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:47:22.249Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "82f07a6b-d313-40b6-b323-0aba4e40aee0",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:22.404Z"
+    },
+    "spawn-next": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "4725da9c1d5e8104aa426387ff9d2b83b0527dd3f521fc1a8c76bb78c520433c",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+        "reason": "other",
+        "input": {
+          "session_id": "7fe16c1e-9974-4d36-937c-94bb7ca82974",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/7fe16c1e-9974-4d36-937c-94bb7ca82974.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot/.omc/ultragoal",
+          "prompt_id": "a4d9111a-c969-4797-b029-b95024f458ed",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:47:22.416Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "3ed581dd-ea12-4395-8883-2ec2fb3cd44d",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:47:31.107Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:47:22.560Z"
+    }
+  },
+  "owner": null,
+  "phase": "complete",
+  "recoverableFailure": {
+    "reason": "actions-settled",
+    "releasedAt": "2026-10-06T16:47:22.571Z",
+    "ownerNonce": "b57ef3be-9f2b-4780-ae49-24378a9d6349"
+  },
+  "completion": {
+    "completedAt": "2026-10-06T16:47:22.571Z",
+    "terminalDigest": "f161f21e187902d563cd7d3df16771817817f1ee1ff1345fe02d9592a0aaf8e4",
+    "terminalRevision": 62
+  }
+}

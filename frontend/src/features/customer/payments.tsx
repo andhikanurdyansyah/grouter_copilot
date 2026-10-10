@@ -78,7 +78,7 @@ export function CustomerPayments() {
                     <p className='text-sm font-medium'>
                       1 order menunggu pembayaran — {latest.planName || latest.packageKey} · {formatIDR(latest.amount)}
                     </p>
-                    <p className='text-[13px] text-muted-foreground'>
+                    <p className='text-[13px] font-medium text-amber-800 dark:text-amber-300'>
                       Order {latest.id} dibuat {fmtDate(latest.createdAt ?? null)}. Selesaikan pembayaran QRIS sebelum kode hangus; lisensi terbit otomatis setelah pembayaran terverifikasi server.
                     </p>
                   </div>

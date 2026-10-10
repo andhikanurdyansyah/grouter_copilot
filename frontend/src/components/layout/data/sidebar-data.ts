@@ -20,6 +20,7 @@ import { type SidebarData } from '../types'
 //   Pelanggan / Tata Kelola AI / Platform Infrastruktur — bahasa operasional.
 // - Customer = SELF-SERVICE: kelompok MY COPILOT / SUBSCRIPTION / ACCOUNT —
 //   tanpa istilah administratif (revoke, policy, ledger, infrastruktur).
+// Bahasa: satu locale (Indonesia) — label nav = judul halaman (h1) yang dituju.
 export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email?: string }): SidebarData {
   if (isAdmin) {
     return {
@@ -29,28 +30,28 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
         {
           title: 'Operasi',
           items: [
-            { title: 'Operational Overview', url: '/admin', icon: Gauge },
+            { title: 'Operasional', url: '/admin', icon: Gauge },
           ],
         },
         {
           title: 'Manajemen Pelanggan',
           items: [
-            { title: 'Customers & Licenses', url: '/admin/licenses', icon: KeyRound },
-            { title: 'Orders & Payments', url: '/admin/orders', icon: Wallet },
+            { title: 'Lisensi', url: '/admin/licenses', icon: KeyRound },
+            { title: 'Orders & Pembayaran', url: '/admin/orders', icon: Wallet },
           ],
         },
         {
           title: 'Tata Kelola AI',
           items: [
-            { title: 'Packages & AI Policies', url: '/admin/packages', icon: Package },
-            { title: 'AI Usage Ledger', url: '/admin/ledger', icon: ScrollText },
-            { title: 'Provider Usage', url: '/admin/usage', icon: Cpu },
+            { title: 'Paket & Kebijakan AI', url: '/admin/packages', icon: Package },
+            { title: 'AI Ledger', url: '/admin/ledger', icon: ScrollText },
+            { title: 'Usage Provider', url: '/admin/usage', icon: Cpu },
           ],
         },
         {
           title: 'Platform Infrastruktur',
           items: [
-            { title: 'Infrastructure & Health', url: '/admin/settings', icon: ServerCog },
+            { title: 'Infrastruktur & Health', url: '/admin/settings', icon: ServerCog },
           ],
         },
       ],
@@ -61,24 +62,24 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
     teams: [],
     navGroups: [
       {
-        title: 'My Copilot',
+        title: 'Copilot Saya',
         items: [
-          { title: 'Overview', url: '/user', icon: Home },
-          { title: 'Installation & Guides', url: '/user/install', icon: BookOpen },
-          { title: 'AI Usage', url: '/user/usage', icon: PieChart },
+          { title: 'Status Saya', url: '/user', icon: Home },
+          { title: 'Instalasi & Panduan', url: '/user/install', icon: BookOpen },
+          { title: 'Pemakaian AI', url: '/user/usage', icon: PieChart },
         ],
       },
       {
-        title: 'Subscription',
+        title: 'Langganan',
         items: [
-          { title: 'Packages & Renewals', url: '/user/orders', icon: ReceiptText },
-          { title: 'Orders & Payments', url: '/user/payments', icon: Wallet },
+          { title: 'Paket & Perpanjangan', url: '/user/orders', icon: ReceiptText },
+          { title: 'Orders & Pembayaran', url: '/user/payments', icon: Wallet },
         ],
       },
       {
-        title: 'Account',
+        title: 'Akun',
         items: [
-          { title: 'Profile & Security', url: '/user/account', icon: ShieldCheck },
+          { title: 'Profil & Keamanan', url: '/user/account', icon: ShieldCheck },
         ],
       },
     ],

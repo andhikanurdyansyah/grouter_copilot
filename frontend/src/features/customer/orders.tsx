@@ -216,7 +216,7 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
   return (
     <Card className={'relative flex flex-col py-0 ' + (current ? 'border-primary/50 ring-1 ring-primary/30' : salesOnly ? '' : 'border-amber-500/25')}>
       {current && (
-        <span className='absolute -top-2.5 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary-foreground'>
+        <span className='absolute -top-2.5 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground drop-shadow-sm'>
           Paket Anda
         </span>
       )}
@@ -251,18 +251,19 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
               Sedang aktif
             </Button>
           ) : salesOnly || unpriced ? (
-            <div className='space-y-2'>
+            <>
+              {/* Disclaimer DI ATAS tombol — CTA semua kartu sejajar di baseline bawah */}
+              <p className='mb-2 text-xs text-muted-foreground'>
+                {unpriced
+                  ? 'Harga paket ini belum ditetapkan — hubungi sales untuk informasi ketersediaan.'
+                  : 'Paket custom (volume/harga khusus) disusun bersama tim kami.'}
+              </p>
               <Button variant='outline' className='w-full' asChild>
                 <a href={`mailto:sales@grouter.web.id?subject=${encodeURIComponent('Paket ' + plan.name + ' — gRouter Copilot')}`}>
                   <Mail className='size-4' aria-hidden /> Hubungi sales
                 </a>
               </Button>
-              <p className='text-xs text-muted-foreground'>
-                {unpriced
-                  ? 'Harga paket ini belum ditetapkan — hubungi sales untuk informasi ketersediaan.'
-                  : 'Paket custom (volume/harga khusus) disusun bersama tim kami.'}
-              </p>
-            </div>
+            </>
           ) : (
             <Button
               className='w-full'
@@ -282,14 +283,19 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
 function LatestOrder() {
   const latest = useQuery({
     queryKey: ['orders-latest'],
-    queryFn: async () => (await api.get('/orders/latest')).data as { order: { id: string; packageKey?: string; amount?: number; status?: string; createdAt?: number | string } | null },
+    queryFn: async () => (await api.get('/orders/latest')).data as { order: { id: string; packageKey?: string; planName?: string | null; amount?: number; status?: string; createdAt?: number | string } | null },
   })
+  const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
   const [copied, setCopied] = useState(false)
   if (latest.isPending || latest.isError) return null
   const o = latest.data?.order
   if (!o) return null
   const st = String(o.status || '').toUpperCase()
   const pending = st === 'PENDING'
+  // Nama paket yang manusiawi (planName dari server; fallback katalog; slug terakhir)
+  const planName = o.planName
+    || (o.packageKey ? ((plans.data?.plans ?? []) as Plan[]).find((p) => p.key === o.packageKey)?.name : undefined)
+    || o.packageKey
 
   const copyId = async () => {
     try {
@@ -307,25 +313,25 @@ function LatestOrder() {
       <CardContent className={'flex flex-wrap items-center gap-x-6 gap-y-3 ' + (pending ? 'p-5' : 'px-4 py-3.5')}>
         <div className='min-w-0 flex-1'>
           <div className='flex items-center gap-2'>
-            <p className='label-mono'>{pending ? 'Menunggu pembayaran' : 'Order terakhir'}</p>
+            <p className='label-mono'>Order terakhir</p>
             <StatusBadge tone={st === 'PAID' ? 'success' : pending ? 'warning' : 'danger'}>
               {st === 'PAID' ? 'dibayar' : pending ? 'menunggu pembayaran' : st.toLowerCase()}
             </StatusBadge>
           </div>
           <p className='mt-1 text-sm'>
-            <button type='button' onClick={copyId} className='group inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground' aria-label={'Salin order ID ' + o.id}>
+            <button type='button' onClick={copyId} className='group inline-flex items-center gap-1 font-mono text-xs font-medium text-foreground/80 hover:text-foreground' aria-label={'Salin order ID ' + o.id}>
               {o.id}
               {copied ? <Check className='size-3 text-emerald-500' aria-hidden /> : <Copy className='size-3 opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />}
             </button>
-            {o.packageKey ? <span> · {o.packageKey}</span> : null}
+            {planName ? <span> · {planName}</span> : null}
             {o.amount ? <span> · {formatIDR(o.amount)}</span> : null}
             <span> · {fmtDate(o.createdAt)}</span>
           </p>
         </div>
         {pending && (
-          <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'>
-            <Clock className='size-3' aria-hidden /> selesaikan pembayaran QRIS untuk menerbitkan lisensi
-          </Badge>
+          <Button asChild size='sm'>
+            <Link to='/user/payments'>Lanjutkan pembayaran</Link>
+          </Button>
         )}
       </CardContent>
     </Card>

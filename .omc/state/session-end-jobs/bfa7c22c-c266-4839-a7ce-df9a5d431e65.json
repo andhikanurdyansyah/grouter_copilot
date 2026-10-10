@@ -1,0 +1,367 @@
+{
+  "version": 1,
+  "jobId": "db112a52-5e7d-414e-9478-a09a05147a08",
+  "sessionId": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+  "scopeKey": "a60abebb8581fcb3b42a8e982e809de2c888a018bfb7224dcec458dde05ed9a2",
+  "revision": 60,
+  "createdAt": "2026-10-06T16:32:50.560Z",
+  "updatedAt": "2026-10-06T16:33:22.096Z",
+  "producerGraceExpiresAt": "2026-10-06T16:33:20.562Z",
+  "bestEffortDeadlineAt": "2026-10-06T16:34:13.562Z",
+  "producers": {
+    "core": {
+      "state": "sealed",
+      "intentKey": "5bffdd60ffcbd16bb31b7d9eccc09f6007e55a590719132140d107c967624675",
+      "payloadDigest": "5bffdd60ffcbd16bb31b7d9eccc09f6007e55a590719132140d107c967624675",
+      "sealedAt": "2026-10-06T16:33:20.885Z",
+      "sealedBy": "recovery"
+    },
+    "wiki": {
+      "state": "no-op",
+      "sealedAt": "2026-10-06T16:32:50.630Z",
+      "sealedBy": "wiki-producer"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "cc30eee8d6dc6f35adb1217e52d2def4cbb6cf096c158c7dc6a828ceb7e14526",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:33:20.624Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "91d0f715-31c0-4903-8d28-54f3d6e13304",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:20.880Z"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "95283243333b5711697de77d2b761a3cd38a9e9f3c2983b4f96532fedd598651",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-10-06T16:32:50.630Z"
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "897ba860e8755ccd8637bdca76c24a33665ac66b006a286c4d82c422047060e6",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:33:20.901Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "191a5844-9b3d-43e7-a868-277531c9440a",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.056Z"
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "da60aaf4c10b0fa053082d4ad99c285915ad655f126e9fde8e1fc8acc15c50c7",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:33:21.069Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "f566ae0f-6314-4b73-b656-b897b7504dcc",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.242Z"
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "e5786d547e9c1a616490e6770783b010481448cc5118b9e2a6f90da989609887",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-06T16:33:21.254Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "4e26c885-18e4-43d9-8df9-7ac941209a47",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.416Z"
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "1b1085a27b5a2c55802a95c486e652fefd38e24598ed82defdf62ad987382098",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:33:21.428Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "aaed34d3-fec9-454d-820e-26ae69265976",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.584Z"
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "3d2adbb7651038bceb9519d3e8748863b34480815c2b7a4580f0eeb7579d8da4",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:33:21.596Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "32458953-e2bf-4e6b-90dc-f66ecb4ff4e2",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.751Z"
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "c610b8a7ed6ec04cdf17f90db96aa61c86a64148ed2dcb9977d7f108c665e117",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "ended_at": "2026-10-06T16:33:20.767Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:33:21.764Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e4324670-5ac6-4472-abf8-4c48ea504e1a",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:21.916Z"
+    },
+    "spawn-next": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "d3f8cf250aa1ab7b1700a2cdb118ec0aa4b0813ced6ee764163114e8451485e4",
+      "payload": {
+        "transcriptPath": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+        "cwd": "/home/ubuntu/grouter_copilot",
+        "reason": "other",
+        "input": {
+          "session_id": "bfa7c22c-c266-4839-a7ce-df9a5d431e65",
+          "transcript_path": "/root/.claude/projects/-home-ubuntu-grouter-copilot/bfa7c22c-c266-4839-a7ce-df9a5d431e65.jsonl",
+          "cwd": "/home/ubuntu/grouter_copilot",
+          "prompt_id": "60125d5b-c3fe-4fad-8fd2-b21c0bd27e8b",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-06T16:33:21.928Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "98b30bf1-8e87-47e4-b563-d226506fd4fd",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-06T16:33:30.589Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-06T16:33:22.075Z"
+    }
+  },
+  "owner": null,
+  "phase": "complete",
+  "recoverableFailure": {
+    "reason": "actions-settled",
+    "releasedAt": "2026-10-06T16:33:22.086Z",
+    "ownerNonce": "5ffd54b5-d317-4a50-87bb-6620e38d029a"
+  },
+  "completion": {
+    "completedAt": "2026-10-06T16:33:22.086Z",
+    "terminalDigest": "f0092795e0890c0859a955f7b94e584c1e5b25c2ad7a7782c90a1ec30e61e8c0",
+    "terminalRevision": 59
+  }
+}

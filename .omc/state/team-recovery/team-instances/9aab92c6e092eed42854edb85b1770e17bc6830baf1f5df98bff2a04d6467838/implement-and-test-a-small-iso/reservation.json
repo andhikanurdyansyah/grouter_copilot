@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "kind": "team-instance-reservation",
+  "instance_id": "9af8449f-8e4f-46e6-afd9-c9d318246b4c",
+  "team_name": "implement-and-test-a-small-iso",
+  "cwd": "/home/ubuntu/grouter_copilot",
+  "workspace_hash": "9aab92c6e092eed42854edb85b1770e17bc6830baf1f5df98bff2a04d6467838",
+  "state_root": "/home/ubuntu/grouter_copilot/.omc/state/team/implement-and-test-a-small-iso",
+  "phase": "pending",
+  "owner": {
+    "pid": 700494,
+    "process_started_at": "linux:7672879",
+    "nonce": "a25055fc-3eff-405e-9fe0-48de5b260ea0"
+  },
+  "reservation_path": "/home/ubuntu/grouter_copilot/.omc/state/team-recovery/team-instances/9aab92c6e092eed42854edb85b1770e17bc6830baf1f5df98bff2a04d6467838/implement-and-test-a-small-iso/reservation.json",
+  "lifecycle_lock_path": "/home/ubuntu/grouter_copilot/.omc/state/team-recovery/lifecycle-locks/9aab92c6e092eed42854edb85b1770e17bc6830baf1f5df98bff2a04d6467838/implement-and-test-a-small-iso.lock",
+  "created_at": "2026-10-07T03:45:50.108Z",
+  "updated_at": "2026-10-07T03:45:50.113Z"
+}

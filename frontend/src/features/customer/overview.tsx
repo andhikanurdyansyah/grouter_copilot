@@ -200,15 +200,15 @@ export function CustomerOverview() {
         </Card>
       )}
 
-      {/* RINGKASAN AKUN — selalu tampil, konteks tambahan */}
-      <Card>
-        <CardContent className='p-5'>
-          <h2 className='text-sm font-semibold'>Ringkasan akun</h2>
-          <div className='mt-3 grid gap-3 sm:grid-cols-3'>
-            <div className='rounded-lg border p-3'>
+      {/* RINGKASAN AKUN — KPI strip dengan nilai menonjol (tanpa card-in-card) */}
+      <Card className='py-0'>
+        <CardContent className='p-0'>
+          <h2 className='px-5 pt-5 text-sm font-semibold'>Ringkasan akun</h2>
+          <div className='mt-3 grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0'>
+            <div className='p-5 pb-4 sm:py-4'>
               <p className='text-xs text-muted-foreground'>Paket aktif</p>
-              <p className='mt-1 text-sm font-medium'>
-                {active ? (active.planKey ?? '—') : anyLicense ? (anyLicense.planKey ?? '—') : 'Belum ada'}
+              <p className='mt-1 text-lg font-semibold'>
+                {active ? (active.planKey ?? '—') : anyLicense ? (anyLicense.planKey ?? '—') : <span className='text-muted-foreground'>Belum ada</span>}
               </p>
               {active && (
                 <p className='text-xs text-muted-foreground'>
@@ -216,9 +216,9 @@ export function CustomerOverview() {
                 </p>
               )}
             </div>
-            <div className='rounded-lg border p-3'>
+            <div className='p-5 pb-4 sm:px-5 sm:py-4'>
               <p className='text-xs text-muted-foreground'>Kedaluwarsa</p>
-              <p className='mt-1 text-sm font-medium'>
+              <p className={'mt-1 text-lg font-semibold tabular-nums ' + (primaryLicense?.expiresAt ? '' : 'text-muted-foreground')}>
                 {primaryLicense?.expiresAt
                   ? new Date(primaryLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
                   : '—'}
@@ -227,9 +227,9 @@ export function CustomerOverview() {
                 <p className='text-xs text-amber-600 dark:text-amber-400'>Lisensi sudah kedaluwarsa</p>
               )}
             </div>
-            <div className='rounded-lg border p-3'>
+            <div className='p-5 pb-4 sm:px-5 sm:py-4'>
               <p className='text-xs text-muted-foreground'>Request AI tercatat</p>
-              <p className='mt-1 text-sm font-medium tabular-nums'>{usageRow?.requestCount ?? 0}</p>
+              <p className='mt-1 text-lg font-semibold tabular-nums'>{usageRow?.requestCount ?? 0}</p>
               {usageRow && (
                 <p className='text-xs text-muted-foreground tabular-nums'>
                   {usageRow.usedTokens?.toLocaleString('id-ID') ?? 0} token terpakai
@@ -286,13 +286,13 @@ export function CustomerOverview() {
 
 function ShortcutCard({ to, icon, title, desc }: { to: string; icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <Link to={to} className='group flex items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50'>
+    <Link to={to} className='group flex items-start gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/50'>
       <div className='flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>{icon}</div>
       <div className='min-w-0'>
         <p className='text-sm font-medium group-hover:text-foreground'>{title}</p>
         <p className='mt-0.5 text-xs text-muted-foreground'>{desc}</p>
       </div>
-      <ArrowRight className='ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />
+      <ArrowRight className='ml-auto size-4 shrink-0 text-muted-foreground opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100' aria-hidden />
     </Link>
   )
 }

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"grep -rn \\\"AUTH_DB_FILE\\\\|NODE_ENV\\\" server/test/settings-wiring.test.js | head -3; echo \\\"===\\\"; sed -n '1,40p' server/test/settings-wiring.test.js\",\"description\":\"Check settings-wiring t...",
+  "error": "Exit code 2\nugrep: warning: server/test/settings-wiring.test.js: No such file or directory\n===\nsed: can't read server/test/settings-wiring.test.js: No such file or directory",
+  "timestamp": "2026-10-07T03:54:48.618Z",
+  "retry_count": 1
+}

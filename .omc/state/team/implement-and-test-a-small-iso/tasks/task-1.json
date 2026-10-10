@@ -1,0 +1,17 @@
+{
+  "subject": "Implement and test a small isolated hardening slice in /home/ubuntu/grouter_copi",
+  "description": "Implement and test a small isolated hardening slice in /home/ubuntu/grouter_copilot: (1) requireAdmin must fail closed when ADMIN_TOKEN absent in production/non-dev; preserve test/dev behavior only explicitly; add tests. (2) test persisted license keypair behavior across isolated server restart using temp files/env only; if safe architecture allows, add production startup gate for missing persisted keys. Do not touch server/data or production env, no npm install/migration, no port 20128, no commit/push. Preserve unrelated dirty state. Run focused tests and report exact files, diff, evidence, blockers. Do not modify OMC ultragoal ledger or artifacts.",
+  "status": "pending",
+  "owner": "worker-1",
+  "role": "executor",
+  "delegation": {
+    "mode": "auto",
+    "required_parallel_probe": true,
+    "skip_allowed_reason_required": true,
+    "child_report_format": "bullets"
+  },
+  "id": "1",
+  "depends_on": [],
+  "version": 1,
+  "created_at": "2026-10-07T03:45:50.131Z"
+}

@@ -76,8 +76,11 @@ export async function issueLicense(payload: {
   planKey?: string | null
   expiresInDays?: number | null
 }) {
+  // Kontrak: POST /api/admin/licenses → { license, token }. Token SINGKATANA
+  // dikembalikan server SAAT penerbitan (tidak pernah tersedia lagi setelahnya
+  // — /api/me dan list admin tidak memuatnya). UI wajib menampilkannya sekali.
   const { data } = await api.post('/admin/licenses', payload)
-  return data
+  return data as { license: { id: string; customer?: string | null }; token?: string }
 }
 
 export async function revokeLicense(licenseId: string) {

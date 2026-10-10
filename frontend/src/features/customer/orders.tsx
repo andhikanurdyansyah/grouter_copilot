@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchPlans, fetchMe, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { PageHeader } from '@/components/shared/page-header'
@@ -43,6 +43,43 @@ export function CustomerOrders() {
   const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const [qr, setQr] = useState<OrderResp | null>(null)
+
+  // POLLING status order selama dialog QR terbuka: /api/orders/<id> di-poll
+  // setiap 4 dtk HANYA selagi dialog terbuka dan order masih PENDING —
+  // berhenti saat PAID/terminal, dialog ditutup, atau komponen unmount.
+  // Verifikasi pembayaran TETAP server-side (webhook/settle); polling hanya
+  // MEMBACA status otoritatif, tidak pernah mengubahnya.
+  const polledId = qr?.order?.id ?? null
+  const poll = useQuery({
+    queryKey: ['order-status', polledId],
+    enabled: !!polledId,
+    refetchInterval: (query) => {
+      const st = String((query.state.data as { order?: { status?: string } } | undefined)?.order?.status || '').toUpperCase()
+      return polledId && st === 'PENDING' ? 4000 : false
+    },
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    retry: 2,
+    queryFn: async ({ signal }) => (await api.get(`/orders/${encodeURIComponent(String(polledId))}`, { signal })).data as { order?: { id: string; status?: string } },
+  })
+  const pollStatus = String((poll.data as { order?: { status?: string } } | undefined)?.order?.status || '').toUpperCase()
+  const pollError = !!poll.isError
+
+  // Saat server mengonfirmasi PAID di dialog: satu notifikasi akurat, lalu
+  // segarkan state (me/orders-latest) agar badge & banner ikut berubah.
+  const [notifiedPaidId, setNotifiedPaidId] = useState<string | null>(null)
+  useEffect(() => {
+    if (polledId && pollStatus === 'PAID' && notifiedPaidId !== polledId) {
+      setNotifiedPaidId(polledId)
+      toast.success('Pembayaran terverifikasi — lisensi Anda sudah diterbitkan', {
+        description: 'Buka Lisensi & Install untuk mulai memasang Copilot.',
+        duration: 8000,
+      })
+      qc.invalidateQueries({ queryKey: ['me'] })
+      qc.invalidateQueries({ queryKey: ['orders-latest'] })
+    }
+  }, [polledId, pollStatus, notifiedPaidId, qc])
 
   const buy = useMutation({
     mutationFn: async (packageKey: string) => {
@@ -184,9 +221,24 @@ export function CustomerOrders() {
                 ) : (
                   <div className='chassis-well w-full break-all px-3 py-2 font-mono text-xs'>{qrValue || 'QR tidak tersedia'}</div>
                 )}
-                <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                  <Clock className='size-3.5' aria-hidden /> Biarkan halaman ini terbuka — status order diperbarui otomatis.
-                </p>
+                {/* Status polling live dari server (sumber: /api/orders/<id>, read-only) */}
+                {pollStatus === 'PAID' ? (
+                  <p className='flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400' role='status'>
+                    <Check className='size-4' aria-hidden /> Pembayaran terverifikasi — lisensi diterbitkan
+                  </p>
+                ) : pollError ? (
+                  <p className='text-xs text-amber-600 dark:text-amber-400' role='status'>
+                    Gagal memeriksa status — kami akan coba lagi otomatis. Anda juga bisa memeriksa ulang di menu Orders.
+                  </p>
+                ) : poll.isFetching ? (
+                  <p className='flex items-center gap-1.5 text-xs text-muted-foreground' role='status'>
+                    <Clock className='size-3.5 animate-spin' aria-hidden /> Memeriksa status pembayaran…
+                  </p>
+                ) : (
+                  <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                    <Clock className='size-3.5' aria-hidden /> Menunggu pembayaran — status diperiksa otomatis tiap 4 detik selama dialog ini terbuka.
+                  </p>
+                )}
               </div>
             )
           })()}

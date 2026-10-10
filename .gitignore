@@ -15,3 +15,8 @@ server/*.sqlite
 server/*.sqlite-shm
 server/*.sqlite-wal
 /logs/
+
+# Playwright E2E artifacts
+test-results/
+playwright-report/
+e2e/node_modules/

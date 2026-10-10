@@ -64,7 +64,12 @@ export function AdminLicenses() {
   const [open, setOpen] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<AdminLicense | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedToken, setCopiedToken] = useState(false)
   const [form, setForm] = useState<{ customer: string; planKey: string }>({ customer: '', planKey: 'none' })
+  // Lisensi yang baru diterbitkan — token SEKALI-LIHAT dari respons penerbitan.
+  // Tidak pernah masuk list (server tidak mengirimnya di sana), tidak di URL,
+  // tidak di log: hanya state dialog ini, hilang saat dialog ditutup.
+  const [issued, setIssued] = useState<{ id: string; token: string | null } | null>(null)
 
   // Feedback "Tersalin" hilang setelah 1.5 detik
   useEffect(() => {
@@ -91,11 +96,14 @@ export function AdminLicenses() {
       customer: form.customer || undefined,
       planKey: form.planKey === 'none' ? null : form.planKey,
     }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // JANGAN tutup dialog: lisensi sudah terbit (list di-invalidate), tapi
+      // token sekali-lihat harus ditampilkan DI SINI — server tidak pernah
+      // mengirimnya lagi setelah respons penerbitan ini.
+      qc.invalidateQueries({ queryKey: ['admin-licenses'] })
+      qc.invalidateQueries({ queryKey: ['admin-stats'] })
+      setIssued(data.license ? { id: data.license.id, token: data.token ?? null } : null)
       toast.success('Lisensi terbit')
-      setOpen(false)
-      setForm({ customer: '', planKey: 'none' })
-      invalidate()
     },
     onError: (e) => {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -319,8 +327,66 @@ export function AdminLicenses() {
       )}
 
       {/* Dialog terbitkan */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIssued(null); setCopiedToken(false); setForm({ customer: '', planKey: 'none' }) } }}>
         <DialogContent>
+          {issued ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Lisensi {issued.id} terbit</DialogTitle>
+                <DialogDescription>
+                  Salin license token sekarang. Server tidak pernah mengirim token ini lagi
+                  setelah penerbitan — setelah dialog ditutup, token tidak dapat dilihat kembali.
+                </DialogDescription>
+              </DialogHeader>
+              <div className='space-y-4 py-2'>
+                {issued.token ? (
+                  <div className='space-y-2'>
+                    <Label htmlFor='issued-token'>License token (sekali-lihat)</Label>
+                    <div className='flex items-start gap-2'>
+                      <code
+                        id='issued-token'
+                        className='chassis-well max-h-32 flex-1 overflow-auto break-all px-3 py-2 font-mono text-xs'
+                      >
+                        {issued.token}
+                      </code>
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        aria-label='Salin license token'
+                        onClick={async () => {
+                          if (await copyText(issued.token!)) {
+                            setCopiedToken(true)
+                            toast.success('Token disalin — simpan sekarang, tidak akan ditampilkan lagi')
+                            setTimeout(() => setCopiedToken(false), 1500)
+                          } else {
+                            toast.error('Gagal menyalin — salin manual dari dialog')
+                          }
+                        }}
+                      >
+                        {copiedToken ? <Check className='size-3.5 text-emerald-600' /> : <Copy className='size-3.5' />}
+                        {copiedToken ? 'Tersalin' : 'Salin'}
+                      </Button>
+                    </div>
+                    <p className='text-xs text-amber-600 dark:text-amber-400' role='note'>
+                      Berikan token ini ke customer untuk instalasi. Ini BUKAN credential supplier dan tidak
+                      pernah dikirim ulang oleh API mana pun.
+                    </p>
+                  </div>
+                ) : (
+                  <p className='text-xs text-amber-600 dark:text-amber-400' role='note'>
+                    Server tidak mengembalikan token pada penerbitan ini. Lisensi tetap terbit —
+                    jika customer membutuhkan token, terbitkan ulang lisensi atau hubungi owner.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={() => { setOpen(false); setIssued(null); setCopiedToken(false); setForm({ customer: '', planKey: 'none' }) }}>
+                  Selesai
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
           <DialogHeader>
             <DialogTitle>Terbitkan Lisensi</DialogTitle>
             <DialogDescription>
@@ -359,6 +425,8 @@ export function AdminLicenses() {
               {issue.isPending ? 'Menerbitkan…' : 'Terbitkan'}
             </Button>
           </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

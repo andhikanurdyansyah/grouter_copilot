@@ -114,6 +114,20 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: effAuth.minPasswordLength ?? 8,
   },
+  // Rate limit auth endpoints. Default Better Auth: special rule 3 req/10 dtk
+  // untuk /sign-up+/sign-in per IP — terlalu ketat untuk satu kantor/NAT sah
+  // (login tim + QA E2E memicu 429 "Too many requests"). customRules override
+  // special rule: 20 req/10 dtk per IP masih menahan credential stuffing
+  // (sentinel tetap aktif), tapi tidak lagi menolak login sah beruntun.
+  rateLimit: {
+    enabled: true,
+    window: 10,
+    max: 100,
+    customRules: {
+      '/sign-up/email': { window: 10, max: 20 },
+      '/sign-in/email': { window: 10, max: 20 },
+    },
+  },
   ...(socialProviders ? { socialProviders } : {}),
   advanced: {
     // Behind Cloudflare Tunnel + frontend proxy: resolve the real client IP so

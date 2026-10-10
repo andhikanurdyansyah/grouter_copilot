@@ -16,6 +16,7 @@ import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUserIndexRouteImport } from './routes/_authenticated/user/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedUserUsageRouteImport } from './routes/_authenticated/user/usage'
+import { Route as AuthenticatedUserPaymentsRouteImport } from './routes/_authenticated/user/payments'
 import { Route as AuthenticatedUserOrdersRouteImport } from './routes/_authenticated/user/orders'
 import { Route as AuthenticatedUserLicensesRouteImport } from './routes/_authenticated/user/licenses'
 import { Route as AuthenticatedUserInstallRouteImport } from './routes/_authenticated/user/install'
@@ -26,6 +27,7 @@ import { Route as AuthenticatedAdminPackagesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminLicensesRouteImport } from './routes/_authenticated/admin/licenses'
 import { Route as AuthenticatedAdminLedgerRouteImport } from './routes/_authenticated/admin/ledger'
+import { Route as AuthenticatedAdminLicensesLicenseIdRouteImport } from './routes/_authenticated/admin/licenses_.$licenseId'
 
 const AdminGateRoute = AdminGateRouteImport.update({
   id: '/admin-gate',
@@ -61,6 +63,12 @@ const AuthenticatedUserUsageRoute = AuthenticatedUserUsageRouteImport.update({
   path: '/usage',
   getParentRoute: () => AuthenticatedUserRouteRoute,
 } as any)
+const AuthenticatedUserPaymentsRoute =
+  AuthenticatedUserPaymentsRouteImport.update({
+    id: '/payments',
+    path: '/payments',
+    getParentRoute: () => AuthenticatedUserRouteRoute,
+  } as any)
 const AuthenticatedUserOrdersRoute = AuthenticatedUserOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -119,6 +127,12 @@ const AuthenticatedAdminLedgerRoute =
     path: '/ledger',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminLicensesLicenseIdRoute =
+  AuthenticatedAdminLicensesLicenseIdRouteImport.update({
+    id: '/licenses_/$licenseId',
+    path: '/licenses/$licenseId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedRouteRouteWithChildren
@@ -135,9 +149,11 @@ export interface FileRoutesByFullPath {
   '/user/install': typeof AuthenticatedUserInstallRoute
   '/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/user/orders': typeof AuthenticatedUserOrdersRoute
+  '/user/payments': typeof AuthenticatedUserPaymentsRoute
   '/user/usage': typeof AuthenticatedUserUsageRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/user/': typeof AuthenticatedUserIndexRoute
+  '/admin/licenses/$licenseId': typeof AuthenticatedAdminLicensesLicenseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedRouteRouteWithChildren
@@ -152,9 +168,11 @@ export interface FileRoutesByTo {
   '/user/install': typeof AuthenticatedUserInstallRoute
   '/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/user/orders': typeof AuthenticatedUserOrdersRoute
+  '/user/payments': typeof AuthenticatedUserPaymentsRoute
   '/user/usage': typeof AuthenticatedUserUsageRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/user': typeof AuthenticatedUserIndexRoute
+  '/admin/licenses/$licenseId': typeof AuthenticatedAdminLicensesLicenseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,9 +190,11 @@ export interface FileRoutesById {
   '/_authenticated/user/install': typeof AuthenticatedUserInstallRoute
   '/_authenticated/user/licenses': typeof AuthenticatedUserLicensesRoute
   '/_authenticated/user/orders': typeof AuthenticatedUserOrdersRoute
+  '/_authenticated/user/payments': typeof AuthenticatedUserPaymentsRoute
   '/_authenticated/user/usage': typeof AuthenticatedUserUsageRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/user/': typeof AuthenticatedUserIndexRoute
+  '/_authenticated/admin/licenses_/$licenseId': typeof AuthenticatedAdminLicensesLicenseIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,9 +213,11 @@ export interface FileRouteTypes {
     | '/user/install'
     | '/user/licenses'
     | '/user/orders'
+    | '/user/payments'
     | '/user/usage'
     | '/admin/'
     | '/user/'
+    | '/admin/licenses/$licenseId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,9 +232,11 @@ export interface FileRouteTypes {
     | '/user/install'
     | '/user/licenses'
     | '/user/orders'
+    | '/user/payments'
     | '/user/usage'
     | '/admin'
     | '/user'
+    | '/admin/licenses/$licenseId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -229,9 +253,11 @@ export interface FileRouteTypes {
     | '/_authenticated/user/install'
     | '/_authenticated/user/licenses'
     | '/_authenticated/user/orders'
+    | '/_authenticated/user/payments'
     | '/_authenticated/user/usage'
     | '/_authenticated/admin/'
     | '/_authenticated/user/'
+    | '/_authenticated/admin/licenses_/$licenseId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -288,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/usage'
       fullPath: '/user/usage'
       preLoaderRoute: typeof AuthenticatedUserUsageRouteImport
+      parentRoute: typeof AuthenticatedUserRouteRoute
+    }
+    '/_authenticated/user/payments': {
+      id: '/_authenticated/user/payments'
+      path: '/payments'
+      fullPath: '/user/payments'
+      preLoaderRoute: typeof AuthenticatedUserPaymentsRouteImport
       parentRoute: typeof AuthenticatedUserRouteRoute
     }
     '/_authenticated/user/orders': {
@@ -360,6 +393,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLedgerRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/licenses_/$licenseId': {
+      id: '/_authenticated/admin/licenses_/$licenseId'
+      path: '/licenses/$licenseId'
+      fullPath: '/admin/licenses/$licenseId'
+      preLoaderRoute: typeof AuthenticatedAdminLicensesLicenseIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
@@ -371,6 +411,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminLicensesLicenseIdRoute: typeof AuthenticatedAdminLicensesLicenseIdRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
@@ -382,6 +423,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
     AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+    AuthenticatedAdminLicensesLicenseIdRoute:
+      AuthenticatedAdminLicensesLicenseIdRoute,
   }
 
 const AuthenticatedAdminRouteRouteWithChildren =
@@ -394,6 +437,7 @@ interface AuthenticatedUserRouteRouteChildren {
   AuthenticatedUserInstallRoute: typeof AuthenticatedUserInstallRoute
   AuthenticatedUserLicensesRoute: typeof AuthenticatedUserLicensesRoute
   AuthenticatedUserOrdersRoute: typeof AuthenticatedUserOrdersRoute
+  AuthenticatedUserPaymentsRoute: typeof AuthenticatedUserPaymentsRoute
   AuthenticatedUserUsageRoute: typeof AuthenticatedUserUsageRoute
   AuthenticatedUserIndexRoute: typeof AuthenticatedUserIndexRoute
 }
@@ -404,6 +448,7 @@ const AuthenticatedUserRouteRouteChildren: AuthenticatedUserRouteRouteChildren =
     AuthenticatedUserInstallRoute: AuthenticatedUserInstallRoute,
     AuthenticatedUserLicensesRoute: AuthenticatedUserLicensesRoute,
     AuthenticatedUserOrdersRoute: AuthenticatedUserOrdersRoute,
+    AuthenticatedUserPaymentsRoute: AuthenticatedUserPaymentsRoute,
     AuthenticatedUserUsageRoute: AuthenticatedUserUsageRoute,
     AuthenticatedUserIndexRoute: AuthenticatedUserIndexRoute,
   }

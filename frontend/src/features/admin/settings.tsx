@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Link } from '@tanstack/react-router'
 import { RefreshCw, ShieldCheck, ExternalLink, ArrowRight } from 'lucide-react'
 
@@ -45,9 +46,42 @@ function SectionCard({ title, badge, action, children, className }: {
   )
 }
 
+// Affordance detail untuk nilai yang digrupkan (mis. "Origin terpercaya: 4"):
+// tampilkan daftar isi bila data tersedia di response settings.
+function DetailList({ items, label }: { items?: string[]; label: string }) {
+  if (!items || items.length === 0) return null
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type='button'
+          aria-label={label}
+          className='ml-1 rounded-sm text-xs text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        >
+          lihat
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align='end' className='w-80 p-0'>
+        <ul className='max-h-56 overflow-auto py-1'>
+          {items.map((item) => (
+            <li key={item} className='border-b border-border/60 px-3 py-1.5 font-mono text-xs last:border-0'>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function AdminSettings() {
   const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 60_000 })
   const settings = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
+
+  const reload = () => {
+    health.refetch()
+    settings.refetch()
+  }
 
   if (settings.isPending) {
     return (
@@ -86,42 +120,43 @@ export function AdminSettings() {
     <div className='mx-auto flex max-w-6xl flex-col gap-5'>
       <PageHeader
         title='Infrastruktur & Health'
-        description='Ringkasan konfigurasi gateway yang berjalan. Entitlement AI per-paket dikelola terpisah di Paket & Kebijakan AI.'
+        description='Semua kartu di halaman ini read-only — nilai konfigurasi berasal dari environment server dan hanya berubah lewat env/restart. Entitlement AI per-paket dikelola terpisah di Paket & Kebijakan AI.'
       >
-        <Button variant='outline' size='sm' onClick={() => { health.refetch(); settings.refetch() }}>
-          <RefreshCw className='size-3.5' /> Perbarui
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={reload}
+          disabled={health.isFetching || settings.isFetching}
+        >
+          <RefreshCw className={health.isFetching || settings.isFetching ? 'size-3.5 animate-spin' : 'size-3.5'} />
+          Muat ulang
         </Button>
       </PageHeader>
 
-      <div className='grid gap-4 lg:grid-cols-3'>
-        {/* HEALTH — service card dgn konteks nyata */}
-        <Card className='py-0 lg:col-span-1'>
+      <div className='grid items-start gap-4 lg:grid-cols-3'>
+        {/* HEALTH — service card dgn konteks nyata (polling 60 dtk dipertahankan) */}
+        <Card className='py-0'>
           <CardContent className='flex flex-col gap-4 p-5'>
-            <div className='flex items-start justify-between'>
-              <div>
-                <p className='label-mono'>Service health</p>
-                <div className='mt-1.5 flex items-center gap-2'>
-                  {healthOk ? (
-                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-700'>
-                      <span className='relative flex size-2'>
-                        <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60' />
-                        <span className='relative inline-flex size-2 rounded-full bg-emerald-500' />
-                      </span>
-                      Sehat
+            <div>
+              <p className='label-mono'>Service health</p>
+              <div className='mt-1.5 flex items-center gap-2' role='status'>
+                {healthOk ? (
+                  <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-700 dark:text-emerald-400'>
+                    <span className='relative flex size-2'>
+                      <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60' />
+                      <span className='relative inline-flex size-2 rounded-full bg-emerald-500' />
                     </span>
-                  ) : (
-                    <span className='inline-flex items-center gap-1.5 text-lg font-medium text-red-600'>
-                      <span className='size-2 rounded-full bg-red-500' /> Tak terjangkau
-                    </span>
-                  )}
-                </div>
-                <p className='mt-1 text-xs text-muted-foreground'>
-                  /api/health · diperiksa {health.dataUpdatedAt ? new Date(health.dataUpdatedAt).toLocaleTimeString('id-ID') : '—'} · polling 60 dtk
-                </p>
+                    Sehat
+                  </span>
+                ) : (
+                  <span className='inline-flex items-center gap-1.5 text-lg font-medium text-red-600 dark:text-red-400'>
+                    <span className='size-2 rounded-full bg-red-500' /> Tak terjangkau
+                  </span>
+                )}
               </div>
-              <Button variant='outline' size='icon' className='size-8' onClick={() => health.refetch()} aria-label='Periksa kesehatan sekarang'>
-                <RefreshCw className='size-3.5' />
-              </Button>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                /api/health · diperiksa {health.dataUpdatedAt ? new Date(health.dataUpdatedAt).toLocaleTimeString('id-ID') : '—'} · polling 60 dtk
+              </p>
             </div>
             <div className='rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-xs text-muted-foreground'>
               {health.isError ? 'Gagal menghubungi /api/health' : 'GET /api/health → 200 OK'}
@@ -155,9 +190,13 @@ export function AdminSettings() {
         </SectionCard>
       </div>
 
-      <div className='grid gap-4 lg:grid-cols-3'>
+      <div className='grid items-start gap-4 lg:grid-cols-3'>
         {/* PAYMENT — kredensial hanya status, tidak pernah nilainya */}
-        <SectionCard title='Payment gateway' badge={payment?.mode ? <StatusBadge tone={payment.mode === 'production' ? 'warning' : 'neutral'}>{payment.mode}</StatusBadge> : undefined}>
+        <SectionCard
+          title='Payment gateway'
+          badge={<StatusBadge tone='info'>read-only</StatusBadge>}
+          action={payment?.mode ? <StatusBadge tone={payment.mode === 'production' ? 'warning' : 'neutral'}>{payment.mode}</StatusBadge> : undefined}
+        >
           <div>
             <Row label='Provider' value={payment?.provider || '—'} mono />
             <Row label='API key' value={credState(payment?.apiKey)} hint='Disimpan server; tidak pernah dikirim ke browser.' />
@@ -167,24 +206,50 @@ export function AdminSettings() {
         </SectionCard>
 
         {/* LICENSE DEFAULTS */}
-        <SectionCard title='Default lisensi' action={
-          <Button asChild variant='ghost' size='sm' className='text-primary'>
-            <Link to='/admin/licenses'>Kelola lisensi <ArrowRight className='size-3.5' /></Link>
-          </Button>
-        }>
+        <SectionCard
+          title='Default lisensi'
+          badge={<StatusBadge tone='info'>read-only</StatusBadge>}
+          action={
+            <Button asChild variant='ghost' size='sm' className='text-primary'>
+              <Link to='/admin/licenses'>Kelola lisensi <ArrowRight className='size-3.5' /></Link>
+            </Button>
+          }
+        >
           <div>
             <Row label='Audience' value={license?.audience || '—'} mono />
             <Row label='Masa berlaku default' value={license?.defaultExpiresInDays ? license.defaultExpiresInDays + ' hari' : '—'} mono />
-            <Row label='Fitur default' value={license?.defaultFeatures?.join(', ') || '—'} mono />
+            <Row
+              label='Fitur default'
+              value={
+                license?.defaultFeatures?.length ? (
+                  <>
+                    {license.defaultFeatures.length}
+                    <DetailList items={license.defaultFeatures} label='Lihat daftar fitur default' />
+                  </>
+                ) : (
+                  '—'
+                )
+              }
+            />
           </div>
         </SectionCard>
 
         {/* AUTH & SECURITY */}
-        <SectionCard title='Autentikasi & sesi'>
+        <SectionCard title='Autentikasi & sesi' badge={<StatusBadge tone='info'>read-only</StatusBadge>}>
           <div>
             <Row label='Panjang sandi minimum' value={auth?.minPasswordLength ?? '—'} mono />
             <Row label='Interval aktivitas' value={auth?.activityTrackingIntervalMs ? Math.round(auth.activityTrackingIntervalMs / 60000) + ' mnt' : '—'} mono />
-            <Row label='Origin terpercaya' value={auth?.trustedOrigins?.length ?? 0} mono hint='Daftar origin diizinkan untuk callback auth.' />
+            <Row
+              label='Origin terpercaya'
+              value={
+                <>
+                  {auth?.trustedOrigins?.length ?? 0}
+                  <DetailList items={auth?.trustedOrigins} label='Lihat daftar origin terpercaya' />
+                </>
+              }
+              mono
+              hint='Daftar origin diizinkan untuk callback auth.'
+            />
           </div>
         </SectionCard>
       </div>

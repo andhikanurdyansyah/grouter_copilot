@@ -1,0 +1,1 @@
+import{n as e}from"./Match-aV51Gqgy.js";var t=e;export{t as component};

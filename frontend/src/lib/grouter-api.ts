@@ -90,6 +90,12 @@ export async function fetchAdminOrders(limit = 100) {
   return data as { orders: Record<string, unknown>[]; total: number; limit: number }
 }
 
+// Riwayat order milik akun yang sedang login (session-scoped, read-only).
+export async function fetchMyOrders() {
+  const { data } = await api.get('/orders')
+  return data as { orders: Record<string, unknown>[]; total: number }
+}
+
 export async function settleOrder(orderId: string) {
   const { data } = await api.post(`/admin/orders/${encodeURIComponent(orderId)}/settle`)
   return data as { ok: boolean; licenseId: string | null }

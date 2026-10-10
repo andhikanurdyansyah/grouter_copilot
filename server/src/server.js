@@ -633,6 +633,22 @@ export function createCopilotServer({
       })();
     }
 
+    // Customer: riwayat order milik akun (session-scoped, read-only).
+    // Dipakai halaman "Orders & Payments" customer; sanitasi sama dengan
+    // /api/orders/latest (tanpa kredensial/QR raw).
+    if (req.method === 'GET' && url.pathname === '/api/orders') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const orders = store.listOrders()
+          .filter((o) => o.accountId === account.id)
+          .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+          .map(sanitizeOrder);
+        return sendJson(res, 200, { orders, total: orders.length });
+      })();
+    }
+
     // Admin reconciliation uses the same upstream verification as the webhook.
     if (req.method === 'POST' && /^\/api\/admin\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });

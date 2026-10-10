@@ -6,8 +6,9 @@ import { TableSkeleton } from '@/components/shared/data-states'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, Copy, CircleHelp } from 'lucide-react'
+import { Check, Copy, CircleHelp, Package } from 'lucide-react'
 import { toast } from 'sonner'
+import { Link } from '@tanstack/react-router'
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion'
@@ -16,6 +17,8 @@ export function CustomerInstall() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const [copied, setCopied] = useState(false)
   const licenseId = me.data?.licenses?.find((l) => String(l.status) !== 'revoked')?.id ?? me.data?.licenses?.[0]?.id
+  const usageRow = me.data?.usage?.find((u) => u.licenseId === licenseId)
+  const hasFirstRequest = (usageRow?.usedTokens ?? 0) > 0
 
   const copy = async () => {
     if (!licenseId) return
@@ -38,43 +41,66 @@ export function CustomerInstall() {
     )
   }
 
+  const hasLicense = !!licenseId
+
   return (
     <div className='space-y-5'>
       <PageHeader
         title='Instalasi & Panduan'
-        description='Tiga langkah menghubungkan Copilot. Lisensi Anda memvalidasi otomatis ke server.'
+        description={hasLicense
+          ? 'Tiga langkah menghubungkan Copilot. Lisensi Anda memvalidasi otomatis ke server.'
+          : 'Anda belum punya lisensi untuk dipasang. Pilih paket dulu untuk menerbitkan lisensi.'}
       />
 
-      {!licenseId ? (
+      {!hasLicense ? (
         <Card className='border-dashed'>
-          <CardContent className='py-10 text-center'>
+          <CardContent className='flex flex-col items-center gap-3 py-10 text-center'>
+            <div className='flex size-12 items-center justify-center rounded-2xl bg-primary/10'>
+              <Package className='size-6 text-primary' aria-hidden />
+            </div>
             <p className='text-sm font-medium'>Belum ada lisensi untuk dipasang</p>
-            <p className='mt-1 text-sm text-muted-foreground'>Beli paket terlebih dahulu — lisensi terbit otomatis setelah pembayaran terverifikasi.</p>
+            <p className='max-w-md text-sm text-muted-foreground'>
+              Beli paket terlebih dahulu — lisensi terbit otomatis setelah pembayaran QRIS terverifikasi server.
+            </p>
+            <Button asChild className='mt-1'>
+              <Link to='/user/orders'>Lihat paket</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <ol className='space-y-4'>
-          <Step n={1} title='Salin License ID Anda' done={copied}>
+        <ol className='space-y-4' aria-label='Langkah instalasi Copilot'>
+          <Step n={1} total={3} title='Salin License ID Anda' done={copied}>
             <div className='flex flex-wrap items-center gap-2'>
               <code className='rounded-md border bg-muted px-3 py-2 font-mono text-sm'>{licenseId}</code>
-              <Button size='sm' variant='outline' onClick={copy}>
-                {copied ? <Check className='size-3.5 text-emerald-600' /> : <Copy className='size-3.5' />}
+              <Button size='sm' variant='outline' onClick={copy} aria-label={copied ? 'License ID tersalin' : 'Salin License ID'}>
+                {copied ? <Check className='size-3.5 text-emerald-600' aria-hidden /> : <Copy className='size-3.5' aria-hidden />}
                 {copied ? 'Tersalin' : 'Salin'}
               </Button>
             </div>
           </Step>
-          <Step n={2} title='Jalankan installer Copilot' done={false}>
+          <Step n={2} total={3} title='Jalankan installer Copilot' done={false}>
             <p className='text-sm text-muted-foreground'>
               Buka terminal di workspace Anda dan jalankan perintah installer dari dokumentasi produk.
               Installer akan meminta License ID — tempel yang Anda salin di langkah 1.
             </p>
           </Step>
-          <Step n={3} title='Verifikasi koneksi' done={false}>
-            <p className='text-sm text-muted-foreground'>
-              Setelah terpasang, plugin mengirim heartbeat berkala ke server. Halaman
-              <strong className='text-foreground'> Pemakaian AI</strong> Anda akan menampilkan request
-              pertama begitu Copilot dipakai — itu tanda koneksi berhasil.
-            </p>
+          <Step n={3} total={3} title='Verifikasi koneksi' done={hasFirstRequest}>
+            {hasFirstRequest ? (
+              <p className='text-sm text-muted-foreground'>
+                Request AI pertama sudah tercatat di server — koneksi Copilot terverifikasi.
+              </p>
+            ) : (
+              <p className='text-sm text-muted-foreground'>
+                Setelah terpasang, plugin mengirim request AI ke server. Halaman
+                <strong className='text-foreground'> Pemakaian AI</strong> akan menampilkan request
+                pertama begitu Copilot dipakai — itu tanda koneksi berhasil.
+              </p>
+            )}
+            {!hasFirstRequest && (
+              <p className='text-xs text-amber-600 dark:text-amber-400' role='status'>
+                Belum ada request AI tercatat — verifikasi menyusul setelah pemakaian pertama.
+              </p>
+            )}
           </Step>
         </ol>
       )}
@@ -114,15 +140,16 @@ export function CustomerInstall() {
   )
 }
 
-function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
+function Step({ n, total, title, done, children }: { n: number; total: number; title: string; done: boolean; children: React.ReactNode }) {
   return (
     <li className='flex gap-4 rounded-lg border bg-card p-4'>
       <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary'>
-        {done ? <Check className='size-4 text-emerald-600' /> : n}
+        {done ? <Check className='size-4 text-emerald-600' aria-hidden /> : n}
       </div>
       <div className='min-w-0 flex-1 space-y-2'>
-        <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
           <p className='text-sm font-semibold'>{title}</p>
+          <span className='text-xs text-muted-foreground'>langkah {n} dari {total}</span>
           {done && <Badge variant='outline' className='bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'>selesai</Badge>}
         </div>
         {children}

@@ -5,11 +5,43 @@ import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { CheckCircle2, RefreshCw, ArrowRight, Wallet, KeyRound, Timer } from 'lucide-react'
+import { CheckCircle2, RefreshCw, ArrowRight, Wallet, KeyRound, Timer, CircleAlert } from 'lucide-react'
 
 // Overview = "Butuh tindakan Anda": work queue sebagai kartu tindakan kaya
 // konteks (bukan baris tipis), identitas bisnis di kolom kanan, log AI
 // berkomentar manusiawi. Komposisi Direction B — bento, bukan tumpukan kartu.
+
+// Umur manusiawi untuk antrean pending: jam → hari → bulan
+function formatAge(ms: number): string {
+  const hours = Math.max(1, Math.round(ms / 36e5))
+  if (hours < 24) return `${hours} jam`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days} hari`
+  const months = Math.round(days / 30)
+  return `${months} bulan`
+}
+
+// Eskalasi severity umur pending: <24j info, 24–72j warning, >72j danger
+function ageTone(ms: number): 'info' | 'warning' | 'danger' {
+  const hours = ms / 36e5
+  if (hours > 72) return 'danger'
+  if (hours >= 24) return 'warning'
+  return 'info'
+}
+
+// Timestamp aktivitas: jam saja untuk hari ini, tanggal singkat untuk hari lain
+function fmtActivityTime(ts: number): string {
+  const d = new Date(ts)
+  const now = new Date()
+  const sameDay =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  if (sameDay) return time
+  return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${time}`
+}
+
 export function AdminOverview() {
   const orders = useQuery({ queryKey: ['admin-orders'], queryFn: () => fetchAdminOrders(100) })
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
@@ -33,7 +65,8 @@ export function AdminOverview() {
   const oldestPending = pending.length > 0
     ? pending.reduce((old, o) => (Number(o.createdAt || 0) < Number(old.createdAt || Infinity) ? o : old), pending[0])
     : undefined
-  const pendingAge = oldestPending?.createdAt ? Math.max(1, Math.round((Date.now() - Number(oldestPending.createdAt)) / 36e5)) : 0
+  const pendingAgeMs = oldestPending?.createdAt ? Math.max(0, Date.now() - Number(oldestPending.createdAt)) : 0
+  const pendingTone = ageTone(pendingAgeMs)
 
   const licenses = (lic.data?.licenses ?? []) as { id: string; customer?: string | null; status?: string; expiresAt?: string | number }[]
   const revoked = licenses.filter((l) => String(l.status) === 'revoked')
@@ -44,6 +77,10 @@ export function AdminOverview() {
   })
   const s = stats.data as Record<string, number> | undefined
   const queueEmpty = pending.length === 0 && expiringSoon.length === 0
+
+  const healthCheckedAt = health.dataUpdatedAt
+    ? new Date(health.dataUpdatedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null
 
   return (
     <div className='space-y-5'>
@@ -73,11 +110,11 @@ export function AdminOverview() {
             {pending.length > 0 && (
               <ActionCard
                 to='/admin/orders'
-                tone='warning'
+                tone={pendingTone}
                 icon={<Wallet className='size-5' aria-hidden />}
                 title={`${pending.length.toLocaleString('id-ID')} order menunggu verifikasi pembayaran`}
                 sub={oldestPending
-                  ? `Tertua ${pendingAge} jam · ${oldestPending.planName || oldestPending.packageKey || ''} · verifikasi selalu re-cek status ke upstream sebelum lisensi terbit.`
+                  ? `Tertua ${formatAge(pendingAgeMs)} · ${oldestPending.planName || oldestPending.packageKey || ''} · verifikasi selalu re-cek status ke upstream sebelum lisensi terbit.`
                   : 'Verifikasi selalu re-cek status ke upstream sebelum lisensi terbit.'}
                 action='Verifikasi order'
               />
@@ -92,14 +129,18 @@ export function AdminOverview() {
                 action='Tinjau lisensi'
               />
             )}
-            <ActionCard
-              to='/admin/licenses'
-              tone='neutral'
-              icon={<KeyRound className='size-5' aria-hidden />}
-              title={`${revoked.length.toLocaleString('id-ID')} lisensi berstatus dicabut`}
-              sub='Lonjakan pencabutan bisa menandakan kegagalan pembayaran atau abuse — pantau trennya.'
-              action='Lihat lisensi'
-            />
+            {/* Kartu aksi hanya untuk hal yang benar-benar butuh tindakan —
+                dicabut adalah status terminal, disembunyikan saat 0 */}
+            {revoked.length > 0 && (
+              <ActionCard
+                to='/admin/licenses'
+                tone='neutral'
+                icon={<KeyRound className='size-5' aria-hidden />}
+                title={`${revoked.length.toLocaleString('id-ID')} lisensi berstatus dicabut`}
+                sub='Lonjakan pencabutan bisa menandakan kegagalan pembayaran atau abuse — pantau trennya.'
+                action='Lihat lisensi'
+              />
+            )}
 
             {queueEmpty && (
               <div className='flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3.5 text-sm font-medium text-emerald-700' role='status'>
@@ -108,7 +149,7 @@ export function AdminOverview() {
               </div>
             )}
 
-            {/* ── AKTIVITAS AI: log berkomentar ── */}
+            {/* ── AKTIVITAS AI: log berkomentar, tiap baris menuju ledger ── */}
             <Card className='py-0'>
               <CardContent className='px-0 pb-0'>
                 <div className='flex items-center justify-between px-5 py-4'>
@@ -126,15 +167,23 @@ export function AdminOverview() {
                     const ev = e as { createdAt?: number; licenseId?: string; model?: string | null; totalTokens?: number | null; status?: string; errorClassification?: string | null }
                     const ok = ev.status === 'success'
                     return (
-                      <li key={i} className='flex min-w-0 items-center gap-3 px-5 py-3'>
-                        <span aria-hidden className={'size-2 shrink-0 rounded-full ' + (ok ? 'bg-emerald-500' : 'bg-red-500')} />
-                        <p className='min-w-0 flex-1 text-sm'>
-                          <span className='font-mono text-xs font-medium [overflow-wrap:anywhere]'>{(ev.licenseId || '—').slice(0, 18)}</span>{' '}
-                          {ok
-                            ? <>menyelesaikan request <span className='text-muted-foreground [overflow-wrap:anywhere]'>{ev.model || ''} · {typeof ev.totalTokens === 'number' ? ev.totalTokens.toLocaleString('id-ID') : '—'} token</span></>
-                            : <>ditolak — <span className='text-muted-foreground [overflow-wrap:anywhere]'>{ev.errorClassification || 'gagal'}</span></>}
-                        </p>
-                        <span className='shrink-0 text-xs tabular-nums text-muted-foreground'>{ev.createdAt ? new Date(ev.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      <li key={i}>
+                        <Link
+                          to='/admin/ledger'
+                          className='flex min-w-0 items-center gap-3 px-5 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none'
+                          aria-label={`Buka ledger untuk ${ev.licenseId || 'request ini'}`}
+                        >
+                          <span aria-hidden className={'size-2 shrink-0 rounded-full ' + (ok ? 'bg-emerald-500' : 'bg-red-500')} />
+                          <p className='min-w-0 flex-1 text-sm'>
+                            <span className='font-mono text-xs font-medium [overflow-wrap:anywhere]'>{(ev.licenseId || '—').slice(0, 18)}</span>{' '}
+                            {ok
+                              ? <>menyelesaikan request <span className='text-muted-foreground [overflow-wrap:anywhere]'>{ev.model || ''} · {typeof ev.totalTokens === 'number' ? ev.totalTokens.toLocaleString('id-ID') : '—'} token</span></>
+                              : <>ditolak — <span className='text-muted-foreground [overflow-wrap:anywhere]'>{ev.errorClassification || 'gagal'}</span></>}
+                          </p>
+                          <span className='shrink-0 text-xs tabular-nums text-muted-foreground'>
+                            {ev.createdAt ? fmtActivityTime(ev.createdAt) : ''}
+                          </span>
+                        </Link>
                       </li>
                     )
                   })}
@@ -174,6 +223,11 @@ export function AdminOverview() {
                     <span aria-hidden className={'size-2 rounded-full ' + (health.isError ? 'bg-red-500' : 'bg-emerald-500')} />
                     {health.isError ? 'Tak terjangkau' : 'Sehat'}
                   </p>
+                  {healthCheckedAt && (
+                    <p className='mt-0.5 text-xs tabular-nums text-muted-foreground' role='status'>
+                      Dicek {healthCheckedAt}
+                    </p>
+                  )}
                   <Link to='/admin/settings' className='mt-0.5 inline-block text-xs text-primary hover:underline'>Infrastruktur →</Link>
                 </CardContent>
               </Card>
@@ -181,10 +235,10 @@ export function AdminOverview() {
 
             <Card className='py-0'>
               <CardContent className='space-y-3 p-5'>
-                <p className='text-sm font-semibold'>Pekerjaan cepat</p>
-                <QuickLink to='/admin/packages' title='Paket & kebijakan AI' sub='Harga, kuota token, dan model per paket' />
-                <QuickLink to='/admin/usage' title='Usage provider' sub='Dimensi infrastruktur upstream' />
-                <QuickLink to='/admin/settings' title='Infrastruktur & health' sub='Konfigurasi gateway & status layanan' />
+                <p className='text-sm font-semibold'>Jalan pintas</p>
+                <QuickLink to='/admin/licenses' title='Terbitkan lisensi' sub='Buka halaman lisensi untuk menerbitkan lisensi baru' />
+                <QuickLink to='/admin/orders' title='Verifikasi order tertua' sub='Tinjau antrean pembayaran yang menunggu verifikasi' />
+                <QuickLink to='/admin/ledger' title='Lihat error AI 24 jam' sub='Audit request AI yang ditolak di ledger' icon={<CircleAlert className='size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary' aria-hidden />} />
               </CardContent>
             </Card>
           </section>
@@ -200,18 +254,22 @@ function ActionCard({ to, icon, title, sub, action, tone }: {
   title: string
   sub: string
   action: string
-  tone: 'warning' | 'info' | 'neutral'
+  tone: 'warning' | 'info' | 'neutral' | 'danger'
 }) {
-  const toneCls = tone === 'warning'
-    ? 'border-amber-500/30 bg-amber-500/[0.05] hover:border-amber-500/50'
-    : tone === 'info'
-      ? 'border-primary/25 bg-primary/[0.04] hover:border-primary/40'
-      : 'border hover:bg-muted/40'
-  const iconCls = tone === 'warning'
-    ? 'bg-amber-500/10 text-amber-600'
-    : tone === 'info'
-      ? 'bg-primary/10 text-primary'
-      : 'bg-muted text-muted-foreground'
+  const toneCls = tone === 'danger'
+    ? 'border-red-500/30 bg-red-500/[0.05] hover:border-red-500/50'
+    : tone === 'warning'
+      ? 'border-amber-500/30 bg-amber-500/[0.05] hover:border-amber-500/50'
+      : tone === 'info'
+        ? 'border-primary/25 bg-primary/[0.04] hover:border-primary/40'
+        : 'border hover:bg-muted/40'
+  const iconCls = tone === 'danger'
+    ? 'bg-red-500/10 text-red-600'
+    : tone === 'warning'
+      ? 'bg-amber-500/10 text-amber-600'
+      : tone === 'info'
+        ? 'bg-primary/10 text-primary'
+        : 'bg-muted text-muted-foreground'
   return (
     <Link
       to={to}
@@ -229,14 +287,14 @@ function ActionCard({ to, icon, title, sub, action, tone }: {
   )
 }
 
-function QuickLink({ to, title, sub }: { to: string; title: string; sub: string }) {
+function QuickLink({ to, title, sub, icon }: { to: string; title: string; sub: string; icon?: React.ReactNode }) {
   return (
     <Link to={to} className='group flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-accent'>
       <div className='min-w-0 flex-1'>
         <p className='text-sm font-medium'>{title}</p>
         <p className='text-xs text-muted-foreground'>{sub}</p>
       </div>
-      <ArrowRight className='size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary' aria-hidden />
+      {icon ?? <ArrowRight className='size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary' aria-hidden />}
     </Link>
   )
 }

@@ -141,7 +141,9 @@ test('admin console renders at /admin (SPA shell when built, legacy fallback oth
     const res = await fetch(`${baseUrl}/admin`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    if (existsSync(path.join(process.cwd(), 'public', 'app', 'index.html'))) {
+    // Deteksi SPA build relatif direktori test ini (../.. = repo root), BUKAN
+    // process.cwd() — hasil sama dijalankan dari root maupun dari server/.
+    if (existsSync(new URL('../../server/public/app/index.html', import.meta.url))) {
       // SPA dashboard (shadcn-admin build): Vite entry + Indonesian title.
       assert.match(html, /\/app\/assets\//);
       assert.match(html, /<title>Copilot — gRouter<\/title>/);

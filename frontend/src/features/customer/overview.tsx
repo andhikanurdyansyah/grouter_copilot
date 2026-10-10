@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMe } from '@/lib/grouter-api'
 import { PageHeader } from '@/components/shared/page-header'
@@ -6,7 +7,8 @@ import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { CheckCircle2, Circle, ArrowRight, ShieldOff, Sparkles } from 'lucide-react'
+import { CheckCircle2, Circle, ArrowRight, ShieldOff, Sparkles, Copy, Check, Package, Wrench, BarChart3 } from 'lucide-react'
+import { toast } from 'sonner'
 
 function statusOf(l: { status?: string; expiresAt?: string }): string {
   if (l.status) return String(l.status)
@@ -14,10 +16,17 @@ function statusOf(l: { status?: string; expiresAt?: string }): string {
   return 'active'
 }
 
+function daysLeft(iso?: string): number | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
+}
+
 // "Status Saya": customer langsung tahu apakah lisensinya hidup, sisa kuota,
 // dan langkah berikutnya — bukan grid metrik admin-style.
 export function CustomerOverview() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
+  const [copied, setCopied] = useState(false)
 
   if (me.isPending) {
     return (
@@ -43,7 +52,8 @@ export function CustomerOverview() {
   const { account, licenses, usage } = me.data!
   const active = licenses.find((l) => statusOf(l) === 'active')
   const anyLicense = licenses[0]
-  const usageRow = usage.find((u) => u.licenseId === (active ?? anyLicense)?.id)
+  const primaryLicense = active ?? anyLicense
+  const usageRow = usage.find((u) => u.licenseId === primaryLicense?.id)
   const aiOff = usageRow?.aiEnabled === false
   const limit = usageRow?.quotaLimit ?? null
   const used = usageRow?.usedTokens ?? 0
@@ -51,15 +61,27 @@ export function CustomerOverview() {
   const exhausted = limit !== null && used >= limit
   const near = limit !== null && !exhausted && pct >= 90
 
-  // Onboarding: beli → aktif → pasang
+  // Onboarding: beli → aktif → pasang (terverifikasi pemakaian)
   const step1 = licenses.length > 0
   const step2 = !!active
-  const step3 = !!active // pasang = ada lisensi aktif (verifikasi heartbeat menyusul di Pemakaian)
+  const step3 = !!active && used > 0 // pasang = ada bukti request AI pertama
+
+  const copyLicense = async () => {
+    if (!primaryLicense?.id) return
+    try {
+      await navigator.clipboard.writeText(primaryLicense.id)
+      setCopied(true)
+      toast.success('License ID disalin')
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error('Gagal menyalin — salin manual')
+    }
+  }
 
   return (
     <div className='space-y-6'>
       <PageHeader
-        title={`Status Saya`}
+        title='Status Saya'
         description={anyLicense
           ? `Halo ${account.name} — begini kondisi lisensi dan kuota AI Anda.`
           : `Halo ${account.name} — Anda belum punya paket aktif. Mulai dengan memilih paket.`}
@@ -105,18 +127,32 @@ export function CustomerOverview() {
               <div>
                 <p className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>Lisensi</p>
                 <div className='mt-1 flex flex-wrap items-center gap-2'>
-                  <code className='font-mono text-sm'>{(active ?? anyLicense).id}</code>
+                  <code className='font-mono text-sm'>{primaryLicense.id}</code>
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    className='size-6'
+                    onClick={copyLicense}
+                    aria-label={copied ? 'License ID tersalin' : 'Salin License ID'}
+                  >
+                    {copied ? <Check className='size-3.5 text-emerald-600' aria-hidden /> : <Copy className='size-3.5' aria-hidden />}
+                  </Button>
                   <StatusBadge tone={active ? 'success' : statusOf(anyLicense) === 'expired' ? 'warning' : 'danger'}>
                     {active ? 'AKTIF' : statusOf(anyLicense) === 'expired' ? 'KEDALUWARSA' : 'DICABUT'}
                   </StatusBadge>
                 </div>
                 <p className='mt-1 text-sm text-muted-foreground'>
-                  Berlaku s.d. {(active ?? anyLicense).expiresAt ? new Date((active ?? anyLicense).expiresAt!).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                  Berlaku s.d. {primaryLicense.expiresAt ? new Date(primaryLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
                 </p>
               </div>
-              <Button asChild variant='outline'>
-                <Link to='/user/install'>Pasang Copilot</Link>
-              </Button>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Button asChild variant='outline' size='sm'>
+                  <Link to='/user/usage'>Lihat pemakaian</Link>
+                </Button>
+                <Button asChild variant='outline' size='sm'>
+                  <Link to='/user/install'>Pasang Copilot</Link>
+                </Button>
+              </div>
             </div>
 
             {aiOff ? (
@@ -164,6 +200,46 @@ export function CustomerOverview() {
         </Card>
       )}
 
+      {/* RINGKASAN AKUN — selalu tampil, konteks tambahan */}
+      <Card>
+        <CardContent className='p-5'>
+          <h2 className='text-sm font-semibold'>Ringkasan akun</h2>
+          <div className='mt-3 grid gap-3 sm:grid-cols-3'>
+            <div className='rounded-lg border p-3'>
+              <p className='text-xs text-muted-foreground'>Paket aktif</p>
+              <p className='mt-1 text-sm font-medium'>
+                {active ? (active.planKey ?? '—') : anyLicense ? (anyLicense.planKey ?? '—') : 'Belum ada'}
+              </p>
+              {active && (
+                <p className='text-xs text-muted-foreground'>
+                  {daysLeft(active.expiresAt) !== null ? `Sisa ${daysLeft(active.expiresAt)} hari` : 'Tidak ada batas waktu'}
+                </p>
+              )}
+            </div>
+            <div className='rounded-lg border p-3'>
+              <p className='text-xs text-muted-foreground'>Kedaluwarsa</p>
+              <p className='mt-1 text-sm font-medium'>
+                {primaryLicense?.expiresAt
+                  ? new Date(primaryLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+                  : '—'}
+              </p>
+              {!active && anyLicense && (
+                <p className='text-xs text-amber-600 dark:text-amber-400'>Lisensi sudah kedaluwarsa</p>
+              )}
+            </div>
+            <div className='rounded-lg border p-3'>
+              <p className='text-xs text-muted-foreground'>Request AI tercatat</p>
+              <p className='mt-1 text-sm font-medium tabular-nums'>{usageRow?.requestCount ?? 0}</p>
+              {usageRow && (
+                <p className='text-xs text-muted-foreground tabular-nums'>
+                  {usageRow.usedTokens?.toLocaleString('id-ID') ?? 0} token terpakai
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ONBOARDING JOURNEY */}
       {anyLicense && (
         <Card>
@@ -172,12 +248,52 @@ export function CustomerOverview() {
             <div className='mt-3 grid gap-2 sm:grid-cols-3'>
               <JourneyStep done={step1} label='Beli paket' hint='Pembayaran via QRIS' />
               <JourneyStep done={step2} label='Lisensi aktif' hint='Terbit otomatis' />
-              <JourneyStep done={step3} label='Pasang Copilot' hint='3 langkah panduan' to={step1 && step2 ? '/user/install' : undefined} />
+              <JourneyStep
+                done={step3}
+                label='Pasang Copilot'
+                hint={step3 ? 'Request AI pertama tercatat' : 'Belum terverifikasi — lihat panduan'}
+                to={step1 && step2 && !step3 ? '/user/install' : undefined}
+              />
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* SHORTCUT CARDS — isi ruang kosong bawah */}
+      <div className='grid gap-3 sm:grid-cols-3'>
+        <ShortcutCard
+          to='/user/install'
+          icon={<Wrench className='size-4' aria-hidden />}
+          title='Instalasi & Panduan'
+          desc='Pasang plugin ke workspace Anda.'
+        />
+        <ShortcutCard
+          to='/user/usage'
+          icon={<BarChart3 className='size-4' aria-hidden />}
+          title='Pemakaian AI'
+          desc='Lihat token & request tercatat.'
+        />
+        <ShortcutCard
+          to='/user/orders'
+          icon={<Package className='size-4' aria-hidden />}
+          title='Paket & Perpanjangan'
+          desc='Bandingkan paket atau perpanjang lisensi.'
+        />
+      </div>
     </div>
+  )
+}
+
+function ShortcutCard({ to, icon, title, desc }: { to: string; icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <Link to={to} className='group flex items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50'>
+      <div className='flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>{icon}</div>
+      <div className='min-w-0'>
+        <p className='text-sm font-medium group-hover:text-foreground'>{title}</p>
+        <p className='mt-0.5 text-xs text-muted-foreground'>{desc}</p>
+      </div>
+      <ArrowRight className='ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />
+    </Link>
   )
 }
 

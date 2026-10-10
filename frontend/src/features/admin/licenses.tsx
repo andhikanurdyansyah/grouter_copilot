@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { fetchAdminLicenses, fetchAdminSettings, issueLicense, revokeLicense, fmtDate } from '@/lib/grouter-api'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge, licenseTone } from '@/components/shared/status-badge'
@@ -22,7 +23,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowDown, ArrowUp, Search, Copy } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ArrowDown, ArrowUp, Search, Copy, Check, MoreHorizontal } from 'lucide-react'
 
 interface AdminLicense {
   id: string
@@ -31,11 +35,21 @@ interface AdminLicense {
   status?: string
   createdAt?: number | string
   expiresAt?: number | string
+  // Catatan: field secret backend (token, grouterApiKey) sengaja TIDAK dirender di UI.
   [k: string]: unknown
 }
 
 function statusOf(l: AdminLicense): string {
   return String(l.status || (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now() ? 'expired' : 'active'))
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
 }
 
 type SortKey = 'customer' | 'createdAt' | 'expiresAt' | 'status'
@@ -49,7 +63,23 @@ export function AdminLicenses() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'createdAt', dir: -1 })
   const [open, setOpen] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<AdminLicense | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [form, setForm] = useState<{ customer: string; planKey: string }>({ customer: '', planKey: 'none' })
+
+  // Feedback "Tersalin" hilang setelah 1.5 detik
+  useEffect(() => {
+    if (!copiedId) return
+    const t = setTimeout(() => setCopiedId(null), 1500)
+    return () => clearTimeout(t)
+  }, [copiedId])
+
+  const onCopyId = async (id: string) => {
+    if (await copyText(id)) {
+      setCopiedId(id)
+    } else {
+      toast.error('Gagal menyalin')
+    }
+  }
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-licenses'] })
@@ -110,7 +140,10 @@ export function AdminLicenses() {
     })
   }, [lic.data, q, status, sort])
 
-  const total = ((lic.data?.licenses ?? []) as AdminLicense[]).length
+  const allLicenses = (lic.data?.licenses ?? []) as AdminLicense[]
+  const total = allLicenses.length
+  const activeCount = allLicenses.filter((l) => statusOf(l) === 'active').length
+  const revokedCount = allLicenses.filter((l) => statusOf(l) === 'revoked').length
   const plans = (settings.data as { settings?: { plans?: { key: string; name: string }[] } })?.settings?.plans ?? []
   const plansMap = new Map(plans.map((p) => [p.key, p.name]))
 
@@ -180,6 +213,9 @@ export function AdminLicenses() {
       ) : (
         <Card className='py-0'>
           <CardContent className='px-0'>
+            <p className='border-b px-4 py-2.5 text-xs text-muted-foreground' role='status'>
+              {total.toLocaleString('id-ID')} lisensi · {activeCount.toLocaleString('id-ID')} aktif · {revokedCount.toLocaleString('id-ID')} dicabut
+            </p>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -192,51 +228,85 @@ export function AdminLicenses() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((l) => (
-                  <TableRow key={l.id}>
-                    <TableCell className='font-medium'>
-                      {l.customer || <span className='text-muted-foreground'>(tanpa nama)</span>}
-                    </TableCell>
-                    <TableCell className='hidden md:table-cell'>
-                      <button
-                        type='button'
-                        className='group/id inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground'
-                        onClick={async () => {
-                          try { await navigator.clipboard.writeText(l.id); toast.success('License ID disalin') } catch { toast.error('Gagal menyalin') }
-                        }}
-                        aria-label={'Salin ' + l.id}
-                        title='Klik untuk salin'
-                      >
-                        {l.id}
-                        <Copy className='size-3 opacity-0 transition-opacity group-hover/id:opacity-100' aria-hidden />
-                      </button>
-                    </TableCell>
-                    <TableCell className='hidden lg:table-cell text-sm'>
-                      {l.planKey ? (plansMap.get(String(l.planKey)) || String(l.planKey)) : <span className='text-muted-foreground'>—</span>}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge tone={licenseTone(l._st)}>
-                        {l._st === 'active' ? 'aktif' : l._st === 'expired' ? 'kedaluwarsa' : 'dicabut'}
-                      </StatusBadge>
-                    </TableCell>
-                    <TableCell className='hidden xl:table-cell text-sm whitespace-nowrap'>{fmtDate(l.expiresAt)}</TableCell>
-                    <TableCell className='text-right'>
-                      {l._st === 'active' ? (
-                        <Button
-                          size='sm'
-                          variant='ghost'
-                          className='text-destructive hover:text-destructive'
-                          onClick={() => setRevokeTarget(l)}
-                        >
-                          Cabut
-                          <span className='sr-only'> lisensi {l.customer || l.id}</span>
-                        </Button>
-                      ) : (
-                        <span className='text-muted-foreground text-xs'>—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {rows.map((l) => {
+                  const copied = copiedId === l.id
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className='font-medium'>
+                        {l.customer
+                          ? l.customer
+                          : <span className='italic text-muted-foreground'>tanpa nama</span>}
+                      </TableCell>
+                      <TableCell className='hidden md:table-cell'>
+                        <span className='inline-flex max-w-full items-center gap-1'>
+                          <Link
+                            to='/admin/licenses/$licenseId'
+                            params={{ licenseId: l.id }}
+                            className='truncate font-mono text-xs text-muted-foreground underline-offset-2 [overflow-wrap:anywhere] hover:text-foreground hover:underline'
+                            title='Buka detail lisensi'
+                          >
+                            {l.id}
+                          </Link>
+                          <button
+                            type='button'
+                            className='inline-flex shrink-0 items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                            onClick={() => onCopyId(l.id)}
+                            aria-label={copied ? 'License ID tersalin' : 'Salin License ID ' + l.id}
+                          >
+                            {copied
+                              ? <Check className='size-3.5 text-emerald-600' aria-hidden />
+                              : <Copy className='size-3.5' aria-hidden />}
+                            <span className='sr-only' role='status' aria-live='polite'>
+                              {copied ? 'Tersalin' : ''}
+                            </span>
+                          </button>
+                          {copied && (
+                            <span className='shrink-0 text-xs font-medium text-emerald-600' role='status' aria-live='polite'>
+                              Tersalin
+                            </span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className='hidden lg:table-cell text-sm'>
+                        {l.planKey ? (plansMap.get(String(l.planKey)) || String(l.planKey)) : <span className='text-muted-foreground'>—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge tone={licenseTone(l._st)}>
+                          {l._st === 'active' ? 'aktif' : l._st === 'expired' ? 'kedaluwarsa' : 'dicabut'}
+                        </StatusBadge>
+                      </TableCell>
+                      <TableCell className='hidden xl:table-cell text-sm whitespace-nowrap'>{fmtDate(l.expiresAt)}</TableCell>
+                      <TableCell className='text-right'>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size='sm'
+                              variant='ghost'
+                              className='size-8 p-0'
+                              aria-label={'Aksi untuk lisensi ' + (l.customer || l.id)}
+                            >
+                              <MoreHorizontal className='size-4' aria-hidden />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align='end'>
+                            <DropdownMenuItem onSelect={() => onCopyId(l.id)}>
+                              <Copy className='size-4' aria-hidden />
+                              Salin License ID
+                            </DropdownMenuItem>
+                            {l._st === 'active' && (
+                              <DropdownMenuItem
+                                className='text-destructive focus:text-destructive'
+                                onSelect={() => setRevokeTarget(l)}
+                              >
+                                Cabut lisensi…
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
             <div className='flex items-center justify-between border-t px-4 py-2.5'>
@@ -300,8 +370,8 @@ export function AdminLicenses() {
               Cabut lisensi {revokeTarget?.customer || revokeTarget?.id}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Lisensi yang dicabut langsung berhenti valid untuk install dan heartbeat. Tindakan
-              ini memengaruhi customer secara langsung.
+              Lisensi yang dicabut langsung berhenti bekerja — install dan heartbeat tidak lagi
+              valid. Tindakan ini tidak bisa dikembalikan dan memengaruhi customer secara langsung.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

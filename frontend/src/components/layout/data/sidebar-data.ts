@@ -1,22 +1,24 @@
 import {
   Gauge,
   KeyRound,
-  ShoppingCart,
   ScrollText,
   Package,
-  Activity,
   ServerCog,
   Home,
   BookOpen,
   PieChart,
   ReceiptText,
-  UserRound,
+  Wallet,
+  ShieldCheck,
+  Cpu,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
-// Dua produk yang sengaja dibedakan (blueprint D-024):
-// - Admin = control plane: nav berdasar OBJEK KERJA, dikelompokkan per domain.
-// - Customer = self-service: nav berdasar PERTANYAAN pelanggan, datar 5 item,
+// Dua produk yang sengaja dibedakan (adopsi desain ZIP enterprise-saas,
+// docs/31-design-adoption-map.md):
+// - Admin = OPERATIONAL CONTROL PLANE: kelompok domain Operasi / Manajemen
+//   Pelanggan / Tata Kelola AI / Platform Infrastruktur — bahasa operasional.
+// - Customer = SELF-SERVICE: kelompok MY COPILOT / SUBSCRIPTION / ACCOUNT —
 //   tanpa istilah administratif (revoke, policy, ledger, infrastruktur).
 export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email?: string }): SidebarData {
   if (isAdmin) {
@@ -25,25 +27,30 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
       teams: [],
       navGroups: [
         {
-          title: 'Antrean',
+          title: 'Operasi',
           items: [
-            { title: 'Operasional', url: '/admin', icon: Gauge },
+            { title: 'Operational Overview', url: '/admin', icon: Gauge },
           ],
         },
         {
-          title: 'Objek Kerja',
+          title: 'Manajemen Pelanggan',
           items: [
-            { title: 'Lisensi', url: '/admin/licenses', icon: KeyRound },
-            { title: 'Orders & Reconciliasi', url: '/admin/orders', icon: ShoppingCart },
-            { title: 'AI Ledger', url: '/admin/ledger', icon: ScrollText },
+            { title: 'Customers & Licenses', url: '/admin/licenses', icon: KeyRound },
+            { title: 'Orders & Payments', url: '/admin/orders', icon: Wallet },
           ],
         },
         {
-          title: 'Konfigurasi',
+          title: 'Tata Kelola AI',
           items: [
-            { title: 'Paket & Kebijakan AI', url: '/admin/packages', icon: Package },
-            { title: 'Usage Provider', url: '/admin/usage', icon: Activity },
-            { title: 'Pengaturan & Health', url: '/admin/settings', icon: ServerCog },
+            { title: 'Packages & AI Policies', url: '/admin/packages', icon: Package },
+            { title: 'AI Usage Ledger', url: '/admin/ledger', icon: ScrollText },
+            { title: 'Provider Usage', url: '/admin/usage', icon: Cpu },
+          ],
+        },
+        {
+          title: 'Platform Infrastruktur',
+          items: [
+            { title: 'Infrastructure & Health', url: '/admin/settings', icon: ServerCog },
           ],
         },
       ],
@@ -54,13 +61,24 @@ export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email
     teams: [],
     navGroups: [
       {
-        title: 'Produk',
+        title: 'My Copilot',
         items: [
-          { title: 'Status Saya', url: '/user', icon: Home },
-          { title: 'Instalasi & Panduan', url: '/user/install', icon: BookOpen },
-          { title: 'Pemakaian AI', url: '/user/usage', icon: PieChart },
-          { title: 'Paket & Perpanjangan', url: '/user/orders', icon: ReceiptText },
-          { title: 'Akun', url: '/user/account', icon: UserRound },
+          { title: 'Overview', url: '/user', icon: Home },
+          { title: 'Installation & Guides', url: '/user/install', icon: BookOpen },
+          { title: 'AI Usage', url: '/user/usage', icon: PieChart },
+        ],
+      },
+      {
+        title: 'Subscription',
+        items: [
+          { title: 'Packages & Renewals', url: '/user/orders', icon: ReceiptText },
+          { title: 'Orders & Payments', url: '/user/payments', icon: Wallet },
+        ],
+      },
+      {
+        title: 'Account',
+        items: [
+          { title: 'Profile & Security', url: '/user/account', icon: ShieldCheck },
         ],
       },
     ],

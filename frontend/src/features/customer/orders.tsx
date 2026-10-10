@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '@/lib/grouter-api'
 import { toast } from 'sonner'
-import { Check, Clock, Copy, Sparkles, Infinity as InfinityIcon, Mail, HelpCircle } from 'lucide-react'
+import { Check, Clock, Copy, Sparkles, Mail } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 interface OrderResp {
@@ -27,6 +27,12 @@ interface Plan {
   expiresInDays: number
   quota?: number | null
   ai?: { enabled?: boolean; quotaTokens?: number | null }
+}
+
+function daysLeft(iso?: string): number | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
 }
 
 // Paket & Perpanjangan: keputusan pembelian dulu — paket aktif & status order
@@ -90,35 +96,41 @@ export function CustomerOrders() {
   const activePlan = myLicense?.planKey ? planList.find((p) => p.key === myLicense.planKey) : undefined
   const quota = myUsage?.quotaLimit ?? activePlan?.ai?.quotaTokens ?? null
   const used = myUsage?.usedTokens ?? 0
+  const remainingDays = daysLeft(myLicense?.expiresAt)
 
   return (
     <div className='mx-auto flex max-w-6xl flex-col gap-6'>
       <PageHeader
         title='Paket & Perpanjangan'
-        description='Kuota AI bersifat lifetime per lisensi — tidak direset bulanan. Harga final ditetapkan server saat checkout.'
+        description='Kuota token berlaku selama masa aktif lisensi dan tidak direset bulanan. Harga sudah termasuk kode unik pembayaran QRIS untuk verifikasi otomatis.'
       />
 
-      {/* STATUS PAKET AKTIF — konteks keputusan */}
-      {activePlan ? (
-        <Card className='border-primary/25 bg-primary/[0.04]'>
-          <CardContent className='flex flex-wrap items-center justify-between gap-4 p-5'>
-            <div>
-              <div className='flex items-center gap-2'>
-                <Sparkles className='size-4 text-primary' aria-hidden />
-                <p className='text-sm font-medium'>Paket Anda saat ini: {activePlan.name}</p>
-                {myLicense && <StatusBadge tone='success'>aktif</StatusBadge>}
+      {/* PAKET AKTIF ANDA — konteks keputusan sebelum katalog */}
+      {myLicense && (
+        <section aria-labelledby='active-plan'>
+          <Card className='border-primary/25 bg-primary/[0.04]'>
+            <CardContent className='flex flex-wrap items-center justify-between gap-4 p-5'>
+              <div>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <Sparkles className='size-4 text-primary' aria-hidden />
+                  <h2 id='active-plan' className='text-sm font-medium'>
+                    Paket aktif Anda: {activePlan?.name ?? myLicense.planKey ?? '—'}
+                  </h2>
+                  <StatusBadge tone='success'>aktif</StatusBadge>
+                </div>
+                <p className='mt-1 text-sm text-muted-foreground'>
+                  {remainingDays !== null ? `Sisa ${remainingDays} hari · ` : ''}
+                  Berlaku s.d. {myLicense.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                  {quota !== null && quota !== undefined ? ` · terpakai ${used.toLocaleString('id-ID')} dari ${quota.toLocaleString('id-ID')} token` : ' · kuota unlimited'}
+                </p>
               </div>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                Berlaku s.d. {myLicense?.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
-                {quota !== null && quota !== undefined ? ` · terpakai ${used.toLocaleString('id-ID')} dari ${quota.toLocaleString('id-ID')} token` : ' · kuota unlimited'}
-              </p>
-            </div>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/user/usage'>Lihat pemakaian</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+              <Button asChild variant='outline' size='sm'>
+                <Link to='/user/usage'>Lihat pemakaian</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <LatestOrder />
 
@@ -156,7 +168,11 @@ export function CustomerOrders() {
             const qrValue = o?.qrUrl || o?.qrString
             return (
               <div className='flex flex-col items-center gap-3 py-2'>
-                <p className='text-2xl font-semibold tabular-nums'>{formatIDR(o?.amount)}</p>
+                {o?.amount ? (
+                  <p className='text-2xl font-semibold tabular-nums'>{formatIDR(o.amount)}</p>
+                ) : (
+                  <p className='text-sm text-muted-foreground'>Jumlah tagihan mengikuti konfirmasi server.</p>
+                )}
                 {qrValue ? (
                   <img
                     src={'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrValue)}
@@ -187,11 +203,16 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
   buying?: boolean
   salesOnly?: boolean
 }) {
-  const ai = plan.ai?.enabled
   const tokens = plan.ai?.quotaTokens
   // Paket reguler tanpa harga terkonfigurasi ≠ gratis: tampilkan state
-  // "harga menyusul" — jangan pernah menampilkan Rp 0 sebagai harga beli.
+  // "harga belum tersedia" — jangan pernah menampilkan harga nol sebagai harga beli.
   const unpriced = !salesOnly && !plan.amount
+  const specParts = [
+    `Lisensi aktif ${plan.expiresInDays} hari`,
+    tokens !== null && tokens !== undefined
+      ? `Kuota hingga ${tokens.toLocaleString('id-ID')} token`
+      : 'Kuota AI ditetapkan saat aktivasi',
+  ]
   return (
     <Card className={'relative flex flex-col py-0 ' + (current ? 'border-primary/50 ring-1 ring-primary/30' : salesOnly ? '' : 'border-amber-500/25')}>
       {current && (
@@ -205,56 +226,50 @@ function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
           {salesOnly ? (
             <p className='text-2xl font-semibold tracking-tight text-muted-foreground'>Custom</p>
           ) : unpriced ? (
-            <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400'>harga menyusul</Badge>
+            <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400'>Harga belum tersedia</Badge>
           ) : (
             <p className='text-2xl font-semibold tabular-nums tracking-tight'>{formatIDR(plan.amount)}</p>
           )}
         </div>
-        <p className='mt-1 text-sm text-muted-foreground'>Lisensi aktif {plan.expiresInDays} hari</p>
+        {/* Satu baris spesifikasi: durasi · kuota — tidak ada duplikasi jargon */}
+        <p className='mt-1 text-sm text-muted-foreground'>{specParts.join(' · ')}</p>
 
         <ul className='mt-4 flex-1 space-y-2.5 text-sm'>
-          <li className='flex items-center gap-2'>
-            {tokens !== null && tokens !== undefined
-              ? <Check className='size-4 text-emerald-500' aria-hidden />
-              : <HelpCircle className='size-4 text-muted-foreground' aria-hidden />}
-            {tokens === null || tokens === undefined
-              ? 'Kuota AI ditetapkan saat aktivasi'
-              : <>AI hingga <strong className='tabular-nums'>{tokens.toLocaleString('id-ID')}</strong> token</>}
+          <li className='flex items-center gap-2 text-muted-foreground'>
+            <Check className='size-4 text-emerald-500' aria-hidden />
+            Kuota berlaku selama masa aktif lisensi — tidak direset bulanan
           </li>
-          {ai && tokens !== null && tokens !== undefined && (
-            <li className='flex items-center gap-2 text-muted-foreground'>
-              <InfinityIcon className='size-4' aria-hidden /> Kuota lifetime — tidak reset bulanan
-            </li>
-          )}
-          {plan.quota != null && (
-            <li className='flex items-center gap-2 text-muted-foreground'>
-              <Check className='size-4 text-emerald-400' aria-hidden /> Kuota {plan.quota.toLocaleString('id-ID')}
-            </li>
-          )}
+          <li className='flex items-center gap-2 text-muted-foreground'>
+            <Check className='size-4 text-emerald-500' aria-hidden />
+            Pembayaran QRIS terverifikasi otomatis oleh server
+          </li>
         </ul>
 
         <div className='mt-5 border-t pt-4'>
-          {salesOnly || unpriced ? (
+          {current ? (
+            <Button className='w-full' variant='outline' disabled aria-label={'Paket ' + plan.name + ' sedang aktif'}>
+              Sedang aktif
+            </Button>
+          ) : salesOnly || unpriced ? (
             <div className='space-y-2'>
               <Button variant='outline' className='w-full' asChild>
                 <a href={`mailto:sales@grouter.web.id?subject=${encodeURIComponent('Paket ' + plan.name + ' — gRouter Copilot')}`}>
-                  <Mail className='size-4' /> {unpriced ? 'Daftar menunggu harga' : 'Hubungi sales'}
+                  <Mail className='size-4' aria-hidden /> Hubungi sales
                 </a>
               </Button>
               <p className='text-xs text-muted-foreground'>
                 {unpriced
-                  ? 'Harga paket ini belum ditetapkan operator — daftar untuk prioritas saat tersedia.'
+                  ? 'Harga paket ini belum ditetapkan — hubungi sales untuk informasi ketersediaan.'
                   : 'Paket custom (volume/harga khusus) disusun bersama tim kami.'}
               </p>
             </div>
           ) : (
             <Button
               className='w-full'
-              variant={current ? 'outline' : 'default'}
               onClick={onBuy}
               disabled={buying || !onBuy}
             >
-              {current ? 'Perpanjang paket ini' : buying ? 'Memproses…' : 'Beli via QRIS'}
+              {buying ? 'Memproses…' : 'Beli via QRIS'}
             </Button>
           )}
         </div>
@@ -292,9 +307,9 @@ function LatestOrder() {
       <CardContent className={'flex flex-wrap items-center gap-x-6 gap-y-3 ' + (pending ? 'p-5' : 'px-4 py-3.5')}>
         <div className='min-w-0 flex-1'>
           <div className='flex items-center gap-2'>
-            <p className='label-mono'>{pending ? 'Menunggu pembayaran' : st === 'PAID' ? 'Order terakhir' : 'Order terakhir'}</p>
+            <p className='label-mono'>{pending ? 'Menunggu pembayaran' : 'Order terakhir'}</p>
             <StatusBadge tone={st === 'PAID' ? 'success' : pending ? 'warning' : 'danger'}>
-              {st === 'PAID' ? 'dibayar' : pending ? 'pending' : st.toLowerCase()}
+              {st === 'PAID' ? 'dibayar' : pending ? 'menunggu pembayaran' : st.toLowerCase()}
             </StatusBadge>
           </div>
           <p className='mt-1 text-sm'>
@@ -303,7 +318,8 @@ function LatestOrder() {
               {copied ? <Check className='size-3 text-emerald-500' aria-hidden /> : <Copy className='size-3 opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />}
             </button>
             {o.packageKey ? <span> · {o.packageKey}</span> : null}
-            <span> · {formatIDR(o.amount)} · {fmtDate(o.createdAt)}</span>
+            {o.amount ? <span> · {formatIDR(o.amount)}</span> : null}
+            <span> · {fmtDate(o.createdAt)}</span>
           </p>
         </div>
         {pending && (

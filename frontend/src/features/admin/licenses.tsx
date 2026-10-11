@@ -49,9 +49,8 @@ export function AdminLicenses() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked'>('all')
   const [selectedPlan, setSelectedPlan] = useState<string>('all')
   const [issueModalOpen, setIssueModalOpen] = useState(false)
-  const [revokeTarget, setRevokeTarget] = useState<null | (typeof mockLicenses)[number]>(null)
-  const [selectedLicense, setSelectedLicense] = useState<null | (typeof mockLicenses)[number]>(null)
-  const [copiedToken, setCopiedToken] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<null | (typeof realLicenses)[number]>(null)
+  const [selectedLicense, setSelectedLicense] = useState<null | (typeof realLicenses)[number]>(null)
 
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
 
@@ -68,7 +67,7 @@ export function AdminLicenses() {
   const shortId = (id: string) => (id.length > 15 ? id.slice(0, 9) + '...' + id.slice(-4) : id)
 
   const [nowMs] = useState(() => Date.now())
-  const mockLicenses = useMemo(() => {
+  const realLicenses = useMemo(() => {
     const raw = lic.data?.licenses ?? []
     return raw.map((l) => {
       const quota = (l.quota ?? null) as { limit?: number | null; usedTokens?: number | null } | null
@@ -92,6 +91,7 @@ export function AdminLicenses() {
         expiresAt: l.expiresAt ? new Date(l.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
         status,
         statusLabel,
+        skills: Array.isArray((l as unknown as { skills?: string[] }).skills) ? (l as unknown as { skills: string[] }).skills : [],
       }
     })
   }, [lic.data, ledgerTotals.data, isId, nowMs])
@@ -105,7 +105,7 @@ export function AdminLicenses() {
   })
 
   const filteredLicenses = useMemo(() => {
-    return mockLicenses.filter((item) => {
+    return realLicenses.filter((item) => {
       if (activeTab === 'active' && item.status !== 'active') return false
       if (activeTab === 'expired' && item.status !== 'expired') return false
       if (activeTab === 'revoked' && item.status !== 'revoked') return false
@@ -122,7 +122,7 @@ export function AdminLicenses() {
       }
       return true
     })
-  }, [mockLicenses, activeTab, selectedPlan, q])
+  }, [realLicenses, activeTab, selectedPlan, q])
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -543,50 +543,38 @@ export function AdminLicenses() {
                 </div>
               </div>
 
-              {/* Skills Registered */}
+              {/* Skills terdaftar — dari data lisensi nyata (bila tersedia) */}
               <div className='rounded-xl border border-border p-4 bg-card space-y-2.5'>
                 <div className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
                   {isId ? 'Skill Read-Only Terdaftar' : 'Registered Read-Only Skills'}
                 </div>
                 <div className='flex flex-wrap gap-1.5 pt-1'>
-                  {['orders.lookup', 'products.search', 'customer.profile', 'shipping.tracking'].map((sk) => (
+                  {(selectedLicense.skills?.length
+                    ? selectedLicense.skills
+                    : []
+                  ).map((sk) => (
                     <span key={sk} className='rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground border border-border/60'>
                       {sk}
                     </span>
                   ))}
+                  {!selectedLicense.skills?.length && (
+                    <span className='text-[11px] text-muted-foreground'>
+                      {isId ? 'Tidak ada skill terdaftar pada lisensi ini.' : 'No skills registered on this license.'}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* License Token Snippet with Copy */}
+              {/* Token sekali-lihat — TIDAK pernah tersimpan server-side (D-021) */}
               <div className='rounded-xl border border-border p-4 bg-card space-y-2'>
-                <div className='flex items-center justify-between'>
-                  <span className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
-                    {isId ? 'Token Lisensi (Signed)' : 'Signed License Token'}
-                  </span>
-                  <Button
-                    size='sm'
-                    variant='ghost'
-                    className='h-6 px-2 text-[11px] text-[#7778FF] hover:text-[#8F90FF]'
-                    onClick={() => {
-                      navigator.clipboard.writeText(`eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiSldUIn0.${btoa(JSON.stringify({ id: selectedLicense.fullId, customer: selectedLicense.customer }))}.sig_mock`)
-                      setCopiedToken(true)
-                      setTimeout(() => setCopiedToken(false), 2000)
-                    }}
-                  >
-                    {copiedToken ? (
-                      <>
-                        <Check className='size-3 text-emerald-500 mr-1' /> {isId ? 'Tersalin' : 'Copied'}
-                      </>
-                    ) : (
-                      <>
-                        <Copy className='size-3 mr-1' /> {t('btn_copy')}
-                      </>
-                    )}
-                  </Button>
+                <div className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                  {isId ? 'Token Lisensi (Signed)' : 'Signed License Token'}
                 </div>
-                <div className='font-mono text-[10px] bg-muted/60 p-2.5 rounded-lg text-muted-foreground break-all select-all'>
-                  {`eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiSldUIn0.eyJzdWIiOiI${selectedLicense.fullId.replace(/-/g, '')}IiwicGxhbiI6Ii${selectedLicense.plan}In0.ed25519_signed`}
-                </div>
+                <p className='text-[11px] text-muted-foreground'>
+                  {isId
+                    ? 'Token hanya ditampilkan sekali saat penerbitan dan tidak pernah disimpan server-side. Gunakan "Terbitkan" untuk lisensi baru bila token hilang.'
+                    : 'The token is shown once at issuance and never stored server-side. Issue a new license if the token is lost.'}
+                </p>
               </div>
             </div>
           )}

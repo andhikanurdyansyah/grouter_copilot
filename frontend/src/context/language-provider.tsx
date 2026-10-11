@@ -9,7 +9,6 @@ export const dictionary: Translations = {
   app_name: { id: 'gRouter Copilot', en: 'gRouter Copilot' },
   operator_console: { id: 'Konsol operator', en: 'Operator console' },
   search_placeholder: { id: 'Cari atau jalankan...', en: 'Search or run...' },
-  demo_data: { id: 'Data demo', en: 'Demo data' },
   
   // Navigation Groups & Items
   nav_operations: { id: 'OPERASI', en: 'OPERATIONS' },

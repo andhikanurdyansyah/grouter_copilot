@@ -122,6 +122,7 @@ export function AdminOverview() {
     tokens: r.totalTokens != null ? r.totalTokens.toLocaleString('id-ID') : '—',
     status: r.status,
     statusType: r.status === 'ok' ? 'success' : r.status === 'reserved' ? 'paid' : r.status === 'error' ? 'quota' : 'new',
+    createdAt: r.createdAt,
   }))
 
   const sheetQc = useQueryClient()
@@ -783,15 +784,13 @@ export function AdminOverview() {
                   <button
                     type='button'
                     onClick={async () => {
+                      // Payload audit dari data ledger nyata — tanpa field fabrikasi.
                       const sample = JSON.stringify({
                         event: selectedEvent.event,
                         license: selectedEvent.license,
                         tokens: selectedEvent.tokens,
                         status: selectedEvent.status,
-                        upstreamRoute: 'supplier/copilot-ai',
-                        model: 'claude-3-5-sonnet',
-                        timestamp: `2026-10-11T${selectedEvent.time}.000Z`,
-                        signatureVerified: true,
+                        timestamp: selectedEvent.createdAt ?? null,
                       }, null, 2)
                       await navigator.clipboard.writeText(sample)
                       setCopiedPayload(true)

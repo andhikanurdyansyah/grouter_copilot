@@ -165,15 +165,6 @@ export function ModaHeader() {
           </button>
         </div>
 
-        {/* Data Demo badge with pulsing radar indicator */}
-        <div className='hidden sm:flex items-center gap-2 rounded-xl border border-border/80 bg-card/70 px-3 py-1 text-xs font-semibold text-muted-foreground shadow-2xs'>
-          <span className='relative flex size-2'>
-            <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
-            <span className='relative inline-flex rounded-full size-2 bg-emerald-500' />
-          </span>
-          <span>{t('demo_data')}</span>
-        </div>
-
         {/* Notification Bell with 3D Dropdown Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

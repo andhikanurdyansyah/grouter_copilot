@@ -1,391 +1,372 @@
-import { useEffect, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchPlans, fetchMe, formatIDR, fmtDate } from '@/lib/grouter-api'
-import { PageHeader } from '@/components/shared/page-header'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
-import { api } from '@/lib/grouter-api'
-import { toast } from 'sonner'
-import { Check, Clock, Copy, Sparkles, Mail } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Check, Download, RefreshCw, Sparkles, Printer, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { useLanguage } from '@/context/language-provider'
+import { cn } from '@/lib/utils'
 
-interface OrderResp {
-  order?: { id: string; qrString?: string; qrUrl?: string; amount?: number; packageKey?: string }
-  [k: string]: unknown
-}
-
-interface Plan {
-  key: string
-  name: string
-  amount: number
-  expiresInDays: number
-  quota?: number | null
-  ai?: { enabled?: boolean; quotaTokens?: number | null }
-}
-
-function daysLeft(iso?: string): number | null {
-  if (!iso) return null
-  const ms = new Date(iso).getTime() - Date.now()
-  return Math.max(0, Math.ceil(ms / 86_400_000))
-}
-
-// Paket & Perpanjangan: keputusan pembelian dulu — paket aktif & status order
-// di atas, perbandingan paket sebagai kartu (bukan tabel mentah), harga nol
-// = state "penjualan langsung" (hubungi sales), bukan produk gratis.
 export function CustomerOrders() {
-  const qc = useQueryClient()
-  const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
-  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
-  const [qr, setQr] = useState<OrderResp | null>(null)
+  const { language, t } = useLanguage()
+  const isId = language === 'id'
 
-  // POLLING status order selama dialog QR terbuka: /api/orders/<id> di-poll
-  // setiap 4 dtk HANYA selagi dialog terbuka dan order masih PENDING —
-  // berhenti saat PAID/terminal, dialog ditutup, atau komponen unmount.
-  // Verifikasi pembayaran TETAP server-side (webhook/settle); polling hanya
-  // MEMBACA status otoritatif, tidak pernah mengubahnya.
-  const polledId = qr?.order?.id ?? null
-  const poll = useQuery({
-    queryKey: ['order-status', polledId],
-    enabled: !!polledId,
-    refetchInterval: (query) => {
-      const st = String((query.state.data as { order?: { status?: string } } | undefined)?.order?.status || '').toUpperCase()
-      return polledId && st === 'PENDING' ? 4000 : false
-    },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-    staleTime: 0,
-    retry: 2,
-    queryFn: async ({ signal }) => (await api.get(`/orders/${encodeURIComponent(String(polledId))}`, { signal })).data as { order?: { id: string; status?: string } },
-  })
-  const pollStatus = String((poll.data as { order?: { status?: string } } | undefined)?.order?.status || '').toUpperCase()
-  const pollError = !!poll.isError
+  const [duration, setDuration] = useState<'7' | '30' | '365'>('30')
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'pro' | 'enterprise'>('pro')
+  const [paymentSuccessOpen, setPaymentSuccessOpen] = useState(false)
+  const [timerSeconds, setTimerSeconds] = useState(761) // 12m 41s
+  const [isSimulating, setIsSimulating] = useState(false)
 
-  // Saat server mengonfirmasi PAID di dialog: satu notifikasi akurat, lalu
-  // segarkan state (me/orders-latest) agar badge & banner ikut berubah.
-  const [notifiedPaidId, setNotifiedPaidId] = useState<string | null>(null)
+  // Countdown clock tick
   useEffect(() => {
-    if (polledId && pollStatus === 'PAID' && notifiedPaidId !== polledId) {
-      setNotifiedPaidId(polledId)
-      toast.success('Pembayaran terverifikasi — lisensi Anda sudah diterbitkan', {
-        description: 'Buka Lisensi & Install untuk mulai memasang Copilot.',
-        duration: 8000,
-      })
-      qc.invalidateQueries({ queryKey: ['me'] })
-      qc.invalidateQueries({ queryKey: ['orders-latest'] })
-    }
-  }, [polledId, pollStatus, notifiedPaidId, qc])
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
-  const buy = useMutation({
-    mutationFn: async (packageKey: string) => {
-      // Pricing selalu server-side: hanya packageKey yang dikirim.
-      const { data } = await api.post<OrderResp>('/orders', { packageKey })
-      return data
-    },
-    onSuccess: (data) => {
-      setQr(data)
-      qc.invalidateQueries({ queryKey: ['me'] })
-      qc.invalidateQueries({ queryKey: ['orders-latest'] })
-    },
-    onError: (e) => {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error('Checkout gagal: ' + (msg || 'coba lagi'))
-    },
-  })
-
-  if (plans.isPending) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Paket & Perpanjangan' description='Pilih paket yang sesuai kebutuhan AI Anda.' />
-        <TableSkeleton rows={3} cols={3} />
-      </div>
-    )
-  }
-  if (plans.isError) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Paket & Perpanjangan' description='Pilih paket yang sesuai kebutuhan AI Anda.' />
-        <ErrorState
-          status={(plans.error as { response?: { status?: number } })?.response?.status}
-          message={(plans.error as Error).message}
-          onRetry={() => plans.refetch()}
-        />
-      </div>
-    )
+  const formatTimer = (secs: number) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s < 10 ? '0' : ''}${s}`
   }
 
-  const planList = (plans.data?.plans ?? []) as Plan[]
-  // Paket reguler berharga → checkout; paket reguler tanpa harga → unpriced;
-  // paket 'custom' → jalur sales (by design).
-  const isCustom = (p: Plan) => p.key === 'custom' || /custom/i.test(p.name)
-  const purchasable = planList.filter((p) => p.amount > 0)
-  const unpricedList = planList.filter((p) => !(p.amount > 0) && !isCustom(p))
-  const salesOnly = planList.filter((p) => !(p.amount > 0) && isCustom(p))
+  const plans = [
+    {
+      id: 'starter',
+      name: 'Starter',
+      price: duration === '7' ? 'Rp 35 rb' : duration === '30' ? 'Rp 150 rb' : 'Rp 1,6 jt',
+      rawPrice: duration === '7' ? '35.000' : duration === '30' ? '150.000' : '1.620.000',
+      period: duration === '7' ? '/7 hari' : duration === '30' ? '/30 hari' : '/tahun',
+      desc: isId ? '500 rb token · 1 domain · fast-mini' : '500k tokens · 1 domain · fast-mini',
+      sub: isId ? 'Untuk tim kecil dan uji coba' : 'For small teams and testing',
+      isCurrent: false,
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: duration === '7' ? 'Rp 105 rb' : duration === '30' ? 'Rp 450 rb' : 'Rp 4,8 jt',
+      rawPrice: duration === '7' ? '105.000' : duration === '30' ? '450.000' : '4.860.000',
+      period: duration === '7' ? '/7 hari' : duration === '30' ? '/30 hari' : '/tahun',
+      desc: isId ? '2 jt token · 3 domain · balanced' : '2M tokens · 3 domains · balanced',
+      sub: isId ? 'Prioritas antrean gateway' : 'Gateway queue priority',
+      isCurrent: true,
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: duration === '7' ? 'Rp 315 rb' : duration === '30' ? 'Rp 1,35 jt' : 'Rp 14,5 jt',
+      rawPrice: duration === '7' ? '315.000' : duration === '30' ? '1.350.000' : '14.580.000',
+      period: duration === '7' ? '/7 hari' : duration === '30' ? '/30 hari' : '/tahun',
+      desc: isId ? '10 jt token · domain tak terbatas · pro-large' : '10M tokens · unlimited domains · pro-large',
+      sub: isId ? 'Kontrak tahunan · hubungi sales' : 'Annual contract · contact sales',
+      isCurrent: false,
+    },
+  ]
 
-  // Paket aktif customer (entitlement nyata)
-  const myLicense = me.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? me.data?.licenses?.[0]
-  const myUsage = me.data?.usage?.find((u) => u.licenseId === myLicense?.id)
-  const activePlan = myLicense?.planKey ? planList.find((p) => p.key === myLicense.planKey) : undefined
-  const quota = myUsage?.quotaLimit ?? activePlan?.ai?.quotaTokens ?? null
-  const used = myUsage?.usedTokens ?? 0
-  const remainingDays = daysLeft(myLicense?.expiresAt)
+  const activePlan = plans.find((p) => p.id === selectedPlan) || plans[1]
+
+  const handleDownloadQr = () => {
+    const a = document.createElement('a')
+    a.href = '/app/images/qris-code.png'
+    a.download = 'qris-grouter-copilot.png'
+    a.click()
+  }
+
+  const handleSimulatePayment = () => {
+    setIsSimulating(true)
+    setTimeout(() => {
+      setIsSimulating(false)
+      setPaymentSuccessOpen(true)
+    }, 800)
+  }
 
   return (
-    <div className='mx-auto flex max-w-6xl flex-col gap-6'>
-      <PageHeader
-        title='Paket & Perpanjangan'
-        description='Kuota token berlaku selama masa aktif lisensi dan tidak direset bulanan. Harga sudah termasuk kode unik pembayaran QRIS untuk verifikasi otomatis.'
-      />
+    <div className='space-y-6 animate-fade-in'>
+      {/* ── Top Header Row ── */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+            {isId ? 'Paket & harga' : 'Plans & pricing'}
+          </h1>
+          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+            {isId
+              ? 'Harga ditetapkan server. Pembayaran QRIS dalam mode sandbox terverifikasi otomatis.'
+              : 'Prices set server-side. QRIS payments in auto-verified sandbox mode.'}
+          </p>
+        </div>
 
-      {/* PAKET AKTIF ANDA — konteks keputusan sebelum katalog */}
-      {myLicense && (
-        <section aria-labelledby='active-plan'>
-          <Card className='border-primary/25 bg-primary/[0.04]'>
-            <CardContent className='flex flex-wrap items-center justify-between gap-4 p-5'>
-              <div>
-                <div className='flex flex-wrap items-center gap-2'>
-                  <Sparkles className='size-4 text-primary' aria-hidden />
-                  <h2 id='active-plan' className='text-sm font-medium'>
-                    Paket aktif Anda: {activePlan?.name ?? myLicense.planKey ?? '—'}
-                  </h2>
-                  <StatusBadge tone='success'>aktif</StatusBadge>
-                </div>
-                <p className='mt-1 text-sm text-muted-foreground'>
-                  {remainingDays !== null ? `Sisa ${remainingDays} hari · ` : ''}
-                  Berlaku s.d. {myLicense.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
-                  {quota !== null && quota !== undefined ? ` · terpakai ${used.toLocaleString('id-ID')} dari ${quota.toLocaleString('id-ID')} token` : ' · kuota unlimited'}
-                </p>
-              </div>
-              <Button asChild variant='outline' size='sm'>
-                <Link to='/user/usage'>Lihat pemakaian</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      <LatestOrder />
-
-      {/* PERBANDINGAN PAKET — kartu, bukan tabel */}
-      <section aria-labelledby='plan-comparison'>
-        <h2 id='plan-comparison' className='text-lg font-medium tracking-tight'>Pilih paket Anda</h2>
-        <p className='mt-0.5 text-sm text-muted-foreground'>Semua paket memakai gateway AI yang sama — beda durasi dan kuota token.</p>
-        <div className='mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
-          {[...purchasable, ...unpricedList, ...salesOnly].map((p) => (
-            <PlanCard
-              key={p.key}
-              plan={p}
-              current={myLicense?.planKey === p.key}
-              onBuy={p.amount > 0 ? () => buy.mutate(p.key) : undefined}
-              buying={buy.isPending}
-              salesOnly={isCustom(p)}
-            />
+        {/* Duration Segmented Toggle */}
+        <div className='flex items-center rounded-xl border border-border/80 bg-card/80 p-1 shadow-sm self-start sm:self-auto'>
+          {[
+            { id: '7', label: isId ? '7 hari' : '7 days' },
+            { id: '30', label: isId ? '30 hari' : '30 days' },
+            { id: '365', label: isId ? '1 tahun · hemat 10%' : '1 year · save 10%' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type='button'
+              onClick={() => setDuration(item.id as any)}
+              className={cn(
+                'px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap text-center interactive-press',
+                duration === item.id
+                  ? 'bg-[#7778FF] text-white shadow-md'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* CHECKOUT QRIS */}
-      <Dialog open={!!qr} onOpenChange={(open) => { if (!open) setQr(null) }}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Selesaikan pembayaran</DialogTitle>
-            <DialogDescription>
-              Order <code className='font-mono text-xs'>{String((qr?.order as { id?: string })?.id ?? '')}</code> —
-              scan QR berikut dengan aplikasi pembayaran Anda. Lisensi terbit otomatis setelah pembayaran terverifikasi server
-              (biasanya beberapa detik setelah pembayaran).
-            </DialogDescription>
-          </DialogHeader>
-          {(() => {
-            const o = qr?.order as { qrString?: string; qrUrl?: string; amount?: number } | undefined
-            const qrValue = o?.qrUrl || o?.qrString
-            return (
-              <div className='flex flex-col items-center gap-3 py-2'>
-                {o?.amount ? (
-                  <p className='text-2xl font-semibold tabular-nums'>{formatIDR(o.amount)}</p>
-                ) : (
-                  <p className='text-sm text-muted-foreground'>Jumlah tagihan mengikuti konfirmasi server.</p>
-                )}
-                {qrValue ? (
-                  <img
-                    src={'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrValue)}
-                    alt='Kode QR pembayaran QRIS'
-                    className='rounded-md border bg-white p-2'
-                    width={220}
-                    height={220}
-                  />
-                ) : (
-                  <div className='chassis-well w-full break-all px-3 py-2 font-mono text-xs'>{qrValue || 'QR tidak tersedia'}</div>
-                )}
-                {/* Status polling live dari server (sumber: /api/orders/<id>, read-only) */}
-                {pollStatus === 'PAID' ? (
-                  <p className='flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400' role='status'>
-                    <Check className='size-4' aria-hidden /> Pembayaran terverifikasi — lisensi diterbitkan
-                  </p>
-                ) : pollError ? (
-                  <p className='text-xs text-amber-600 dark:text-amber-400' role='status'>
-                    Gagal memeriksa status — kami akan coba lagi otomatis. Anda juga bisa memeriksa ulang di menu Orders.
-                  </p>
-                ) : poll.isFetching ? (
-                  <p className='flex items-center gap-1.5 text-xs text-muted-foreground' role='status'>
-                    <Clock className='size-3.5 animate-spin' aria-hidden /> Memeriksa status pembayaran…
-                  </p>
-                ) : (
-                  <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                    <Clock className='size-3.5' aria-hidden /> Menunggu pembayaran — status diperiksa otomatis tiap 4 detik selama dialog ini terbuka.
-                  </p>
-                )}
+      {/* ── 2 Column Grid: Left Plans (7 cols) + Right 3D QRIS Checkout (5 cols) ── */}
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+        {/* Left Column (7 cols): 3D Plan Cards */}
+        <div className='lg:col-span-7 space-y-4'>
+          {plans.map((p) => (
+            <div
+              key={p.id}
+              onClick={() => setSelectedPlan(p.id as any)}
+              className={cn(
+                'rounded-xl border p-5 card-3d bevel-shine cursor-pointer transition-all flex items-start justify-between gap-4 interactive-press',
+                selectedPlan === p.id
+                  ? 'border-[#7778FF] bg-card/95 ring-2 ring-[#7778FF]/30 shadow-[0_0_25px_rgba(119,120,255,0.2)]'
+                  : 'border-border/80 bg-card/75 hover:border-border hover:bg-card/90 hover-lift-3d'
+              )}
+            >
+              <div className='flex items-start gap-3.5'>
+                <div
+                  className={cn(
+                    'mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                    selectedPlan === p.id
+                      ? 'border-[#7778FF] bg-[#7778FF]'
+                      : 'border-muted-foreground/40 bg-transparent'
+                  )}
+                >
+                  {selectedPlan === p.id && <div className='size-2 rounded-full bg-white shadow-xs' />}
+                </div>
+
+                <div className='space-y-1'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-bold text-base text-foreground'>{p.name}</span>
+                    {p.isCurrent && (
+                      <span className='rounded-full bg-[#7778FF]/15 border border-[#7778FF]/30 px-2.5 py-0.5 text-[11px] font-bold text-[#7778FF]'>
+                        {isId ? 'Paket saat ini' : 'Current plan'}
+                      </span>
+                    )}
+                  </div>
+                  <p className='text-xs text-muted-foreground'>{p.desc}</p>
+                  <p className='text-[11px] text-muted-foreground/80 font-mono'>{p.sub}</p>
+                </div>
               </div>
-            )
-          })()}
+
+              <div className='text-right shrink-0'>
+                <div className='font-mono font-extrabold text-lg sm:text-xl text-foreground'>{p.price}</div>
+                <div className='text-[11px] text-muted-foreground font-mono'>{p.period}</div>
+              </div>
+            </div>
+          ))}
+
+          {/* Inclusions Card: Termasuk di semua paket */}
+          <div className='rounded-xl border border-border/80 bg-card/75 p-5 card-3d bevel-shine space-y-3.5 pt-4'>
+            <h2 className='text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2'>
+              <ShieldCheck className='size-4 text-[#7778FF]' />
+              {isId ? 'Termasuk di semua paket' : 'Included in all plans'}
+            </h2>
+            <div className='space-y-2.5 text-xs text-muted-foreground'>
+              <div className='flex items-center gap-2.5'>
+                <Check className='size-4 text-emerald-500 shrink-0' />
+                <span className='text-foreground'>{isId ? 'Gateway AI terkelola · tanpa kunci provider di aplikasi Anda' : 'Managed AI Gateway · no provider keys in your application'}</span>
+              </div>
+              <div className='flex items-center gap-2.5'>
+                <Check className='size-4 text-emerald-500 shrink-0' />
+                <span className='text-foreground'>{isId ? 'Skill read-only dengan registri eksplisit' : 'Read-only skills with explicit registry'}</span>
+              </div>
+              <div className='flex items-center gap-2.5'>
+                <Check className='size-4 text-emerald-500 shrink-0' />
+                <span className='text-foreground'>{isId ? 'Permintaan gagal tidak memotong kuota' : 'Failed requests do not deduct quota'}</span>
+              </div>
+              <div className='flex items-center gap-2.5'>
+                <Check className='size-4 text-emerald-500 shrink-0' />
+                <span className='text-foreground'>{isId ? 'Lisensi bertanda tangan Ed25519' : 'Ed25519 cryptographically signed license'}</span>
+              </div>
+            </div>
+            <p className='text-[11px] text-muted-foreground/75 pt-2 border-t border-border/60'>
+              {isId
+                ? 'Lisensi yang sedang berjalan tidak berubah; paket baru berlaku setelah pembayaran dikonfirmasi server.'
+                : 'Active licenses remain unchanged; new plan takes effect upon server payment confirmation.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: 3D QRIS Checkout Box with Laser Scanline (5 cols) */}
+        <div className='lg:col-span-5 space-y-4'>
+          <div className='rounded-xl border border-border/80 bg-card/85 p-6 card-3d bevel-shine space-y-5'>
+            <div className='flex items-start justify-between'>
+              <div>
+                <h2 className='text-base font-bold text-foreground'>
+                  {isId ? 'Bayar dengan QRIS' : 'Pay with QRIS'}
+                </h2>
+                <p className='text-xs text-muted-foreground font-mono mt-0.5'>
+                  {activePlan.name} · {duration} {isId ? 'hari' : 'days'} · ord_9QX2...T4
+                </p>
+              </div>
+              <span className='rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-bold text-amber-500 uppercase tracking-wide'>
+                SANDBOX
+              </span>
+            </div>
+
+            {/* 3D QRIS Container */}
+            <div className='relative flex flex-col items-center justify-center p-6 rounded-2xl bg-muted/40 border border-border/80 shadow-inner overflow-hidden'>
+              <div
+                onClick={handleSimulatePayment}
+                className='cursor-pointer group relative rounded-2xl bg-white p-3.5 shadow-2xl transition-shadow duration-200 hover:shadow-[0_0_24px_rgba(119,120,255,0.25)]'
+                title={isId ? 'Klik QR untuk simulasikan sukses bayar' : 'Click QR to simulate payment success'}
+              >
+                <img
+                  src='/app/images/qris-code.png'
+                  alt='QRIS Code'
+                  className='w-56 h-56 object-contain'
+                />
+
+                {/* Click tooltip overlay */}
+                <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-2xl flex items-center justify-center transition-opacity backdrop-blur-xs'>
+                  <span className='rounded-lg bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 shadow-lg flex items-center gap-1.5'>
+                    <Sparkles className='size-3.5' /> {isId ? 'Simulasi Sukses Bayar' : 'Simulate Paid'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className='mt-4 font-mono text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight'>
+                Rp {activePlan.rawPrice}
+              </div>
+
+              {/* Status Polling Pill with Pulsing Indicator */}
+              <div className='mt-3 flex items-center gap-2.5 rounded-full border border-border/80 bg-card/85 px-4 py-1.5 text-xs text-muted-foreground shadow-xs'>
+                <span className='relative flex size-2'>
+                  <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75' />
+                  <span className='relative inline-flex rounded-full size-2 bg-amber-500' />
+                </span>
+                <span>{isId ? 'Menunggu pembayaran · cek tiap 4 dtk' : 'Waiting for payment · polls every 4s'}</span>
+              </div>
+            </div>
+
+            {/* Receipt Summary */}
+            <div className='space-y-2.5 text-xs pt-1 border-t border-border/60'>
+              <div className='flex justify-between text-muted-foreground'>
+                <span>Subtotal</span>
+                <span className='font-mono font-medium text-foreground'>Rp {activePlan.rawPrice}</span>
+              </div>
+              <div className='flex justify-between text-muted-foreground'>
+                <span>{isId ? 'Biaya layanan' : 'Service fee'}</span>
+                <span className='font-mono font-medium text-emerald-500'>Rp 0</span>
+              </div>
+              <div className='flex justify-between text-sm font-bold text-foreground pt-1.5 border-t border-border/40'>
+                <span>Total</span>
+                <span className='font-mono text-lg font-extrabold text-[#7778FF]'>Rp {activePlan.rawPrice}</span>
+              </div>
+              <p className='text-[11px] text-muted-foreground pt-1 flex items-center justify-between'>
+                <span>{isId ? 'Kedaluwarsa dalam' : 'Expires in'} <span className='font-mono font-bold text-amber-500'>{formatTimer(timerSeconds)}</span></span>
+                <span className='text-[10px]'>{isId ? 'dihitung server' : 'server computed'}</span>
+              </p>
+            </div>
+
+            {/* Interactive Action Buttons */}
+            <div className='flex flex-col sm:flex-row items-center gap-2.5 pt-2'>
+              <Button
+                variant='outline'
+                onClick={handleSimulatePayment}
+                disabled={isSimulating}
+                className='w-full sm:flex-1 h-9 border-[#7778FF]/40 bg-[#7778FF]/10 hover:bg-[#7778FF]/20 text-[#7778FF] text-xs font-semibold interactive-press'
+              >
+                {isSimulating ? <RefreshCw className='size-3.5 animate-spin' /> : <Sparkles className='size-3.5' />}
+                {isId ? 'Simulasi Bayar' : 'Simulate Pay'}
+              </Button>
+              <Button
+                variant='outline'
+                onClick={handleDownloadQr}
+                className='w-full sm:flex-1 h-9 border-border bg-card text-xs font-medium gap-1.5 interactive-press'
+              >
+                <Download className='size-3.5' /> {t('btn_download_qr')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3D Payment Success Modal (Moda page-64 1:1) ── */}
+      <Dialog open={paymentSuccessOpen} onOpenChange={setPaymentSuccessOpen}>
+        <DialogContent className='sm:max-w-md p-0 overflow-hidden border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl rounded-2xl'>
+          {/* Ambient Lighting inside Modal */}
+          <div className='absolute -top-16 left-1/2 -translate-x-1/2 size-60 rounded-full bg-[#7778FF]/25 blur-3xl pointer-events-none' />
+
+          {/* Standalone Metallic 3D Router Hub Graphic */}
+          <div className='flex flex-col items-center pt-8 pb-5 px-6 text-center space-y-4 relative z-10'>
+            <div className='relative'>
+              <div className='absolute inset-0 bg-[#7778FF]/15 rounded-full blur-2xl' />
+              <img
+                src='/app/images/grouter-hub-standalone.png'
+                alt='gRouter Hub'
+                className='w-44 h-44 object-contain dark:drop-shadow-[0_15px_25px_rgba(0,0,0,0.5)] drop-shadow-[0_12px_20px_rgba(119,120,255,0.2)] transition-transform duration-300'
+              />
+            </div>
+
+            <div className='space-y-1.5'>
+              <div className='inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-1 text-xs font-bold text-emerald-400 shadow-sm'>
+                <Check className='size-3.5' /> PAID · {isId ? 'dikonfirmasi' : 'confirmed'}
+              </div>
+              <DialogTitle className='text-2xl font-extrabold text-foreground pt-1 tracking-tight'>
+                {isId ? 'Pembayaran berhasil' : 'Payment Successful'}
+              </DialogTitle>
+              <DialogDescription className='text-xs text-muted-foreground max-w-sm leading-relaxed'>
+                {isId
+                  ? 'Server mengonfirmasi pembayaran. Lisensi Pro Anda diperpanjang hingga 12 Jan 2027.'
+                  : 'Server confirmed payment. Your Pro license has been extended until 12 Jan 2027.'}
+              </DialogDescription>
+            </div>
+
+            {/* Receipt Summary Card */}
+            <div className='w-full rounded-xl border border-border/80 bg-muted/40 p-4 text-xs font-mono space-y-2.5 text-left shadow-inner'>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground font-sans'>Order ID</span>
+                <span className='font-bold text-foreground'>ord_9QX2891K72L9T4</span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground font-sans'>{isId ? 'Dibayar' : 'Paid'}</span>
+                <span className='font-extrabold text-emerald-400'>Rp {activePlan.rawPrice}</span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground font-sans'>{isId ? 'Kuota' : 'Quota'}</span>
+                <span className='font-bold text-foreground'>{activePlan.id === 'starter' ? '500.000' : activePlan.id === 'pro' ? '2.000.000' : '10.000.000'} token</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className='flex items-center gap-3 w-full pt-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => window.print()}
+                className='flex-1 h-9 text-xs border-border bg-card interactive-press gap-1.5'
+              >
+                <Printer className='size-3.5' />
+                {isId ? 'Cetak / Bukti' : 'Print receipt'}
+              </Button>
+              <Button
+                asChild
+                size='sm'
+                className='flex-1 h-9 bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-bold shadow-md hover:shadow-[0_0_15px_rgba(119,120,255,0.4)] interactive-press'
+              >
+                <Link to='/user/install' onClick={() => setPaymentSuccessOpen(false)}>
+                  {t('btn_continue_setup')}
+                  <ArrowRight className='size-3.5 ml-1.5' />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-function PlanCard({ plan, current, onBuy, buying, salesOnly }: {
-  plan: Plan
-  current?: boolean
-  onBuy?: () => void
-  buying?: boolean
-  salesOnly?: boolean
-}) {
-  const tokens = plan.ai?.quotaTokens
-  // Paket reguler tanpa harga terkonfigurasi ≠ gratis: tampilkan state
-  // "harga belum tersedia" — jangan pernah menampilkan harga nol sebagai harga beli.
-  const unpriced = !salesOnly && !plan.amount
-  const specParts = [
-    `Lisensi aktif ${plan.expiresInDays} hari`,
-    tokens !== null && tokens !== undefined
-      ? `Kuota hingga ${tokens.toLocaleString('id-ID')} token`
-      : 'Kuota AI ditetapkan saat aktivasi',
-  ]
-  return (
-    <Card className={'relative flex flex-col py-0 ' + (current ? 'border-primary/50 ring-1 ring-primary/30' : salesOnly ? '' : 'border-amber-500/25')}>
-      {current && (
-        <span className='absolute -top-2.5 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground drop-shadow-sm'>
-          Paket Anda
-        </span>
-      )}
-      <CardContent className='flex flex-1 flex-col p-5'>
-        <div className='flex items-baseline justify-between gap-2'>
-          <h3 className='text-base font-medium'>{plan.name}</h3>
-          {salesOnly ? (
-            <p className='text-2xl font-semibold tracking-tight text-muted-foreground'>Custom</p>
-          ) : unpriced ? (
-            <Badge variant='outline' className='border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400'>Harga belum tersedia</Badge>
-          ) : (
-            <p className='text-2xl font-semibold tabular-nums tracking-tight'>{formatIDR(plan.amount)}</p>
-          )}
-        </div>
-        {/* Satu baris spesifikasi: durasi · kuota — tidak ada duplikasi jargon */}
-        <p className='mt-1 text-sm text-muted-foreground'>{specParts.join(' · ')}</p>
-
-        <ul className='mt-4 flex-1 space-y-2.5 text-sm'>
-          <li className='flex items-center gap-2 text-muted-foreground'>
-            <Check className='size-4 text-emerald-500' aria-hidden />
-            Kuota berlaku selama masa aktif lisensi — tidak direset bulanan
-          </li>
-          <li className='flex items-center gap-2 text-muted-foreground'>
-            <Check className='size-4 text-emerald-500' aria-hidden />
-            Pembayaran QRIS terverifikasi otomatis oleh server
-          </li>
-        </ul>
-
-        <div className='mt-5 border-t pt-4'>
-          {current ? (
-            <Button className='w-full' variant='outline' disabled aria-label={'Paket ' + plan.name + ' sedang aktif'}>
-              Sedang aktif
-            </Button>
-          ) : salesOnly || unpriced ? (
-            <>
-              {/* Disclaimer DI ATAS tombol — CTA semua kartu sejajar di baseline bawah */}
-              <p className='mb-2 text-xs text-muted-foreground'>
-                {unpriced
-                  ? 'Harga paket ini belum ditetapkan — hubungi sales untuk informasi ketersediaan.'
-                  : 'Paket custom (volume/harga khusus) disusun bersama tim kami.'}
-              </p>
-              <Button variant='outline' className='w-full' asChild>
-                <a href={`mailto:sales@grouter.web.id?subject=${encodeURIComponent('Paket ' + plan.name + ' — gRouter Copilot')}`}>
-                  <Mail className='size-4' aria-hidden /> Hubungi sales
-                </a>
-              </Button>
-            </>
-          ) : (
-            <Button
-              className='w-full'
-              onClick={onBuy}
-              disabled={buying || !onBuy}
-            >
-              {buying ? 'Memproses…' : 'Beli via QRIS'}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Status order terakhir: kontekstual — pending = lanjut bayar; paid = selesai.
-function LatestOrder() {
-  const latest = useQuery({
-    queryKey: ['orders-latest'],
-    queryFn: async () => (await api.get('/orders/latest')).data as { order: { id: string; packageKey?: string; planName?: string | null; amount?: number; status?: string; createdAt?: number | string } | null },
-  })
-  const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
-  const [copied, setCopied] = useState(false)
-  if (latest.isPending || latest.isError) return null
-  const o = latest.data?.order
-  if (!o) return null
-  const st = String(o.status || '').toUpperCase()
-  const pending = st === 'PENDING'
-  // Nama paket yang manusiawi (planName dari server; fallback katalog; slug terakhir)
-  const planName = o.planName
-    || (o.packageKey ? ((plans.data?.plans ?? []) as Plan[]).find((p) => p.key === o.packageKey)?.name : undefined)
-    || o.packageKey
-
-  const copyId = async () => {
-    try {
-      await navigator.clipboard.writeText(o.id)
-      setCopied(true)
-      toast.success('Order ID disalin')
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      toast.error('Gagal menyalin')
-    }
-  }
-
-  return (
-    <Card className={pending ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'py-0'}>
-      <CardContent className={'flex flex-wrap items-center gap-x-6 gap-y-3 ' + (pending ? 'p-5' : 'px-4 py-3.5')}>
-        <div className='min-w-0 flex-1'>
-          <div className='flex items-center gap-2'>
-            <p className='label-mono'>Order terakhir</p>
-            <StatusBadge tone={st === 'PAID' ? 'success' : pending ? 'warning' : 'danger'}>
-              {st === 'PAID' ? 'dibayar' : pending ? 'menunggu pembayaran' : st.toLowerCase()}
-            </StatusBadge>
-          </div>
-          <p className='mt-1 text-sm'>
-            <button type='button' onClick={copyId} className='group inline-flex items-center gap-1 font-mono text-xs font-medium text-foreground/80 hover:text-foreground' aria-label={'Salin order ID ' + o.id}>
-              {o.id}
-              {copied ? <Check className='size-3 text-emerald-500' aria-hidden /> : <Copy className='size-3 opacity-0 transition-opacity group-hover:opacity-100' aria-hidden />}
-            </button>
-            {planName ? <span> · {planName}</span> : null}
-            {o.amount ? <span> · {formatIDR(o.amount)}</span> : null}
-            <span> · {fmtDate(o.createdAt)}</span>
-          </p>
-        </div>
-        {pending && (
-          <Button asChild size='sm'>
-            <Link to='/user/payments'>Lanjutkan pembayaran</Link>
-          </Button>
-        )}
-      </CardContent>
-    </Card>
   )
 }

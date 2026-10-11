@@ -1,0 +1,1 @@
+import{n as e}from"./Match-DFlspnOv.js";var t=e;export{t as component};

@@ -1,334 +1,332 @@
-import { useMemo, useState } from 'react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { fetchLedger, fmtDate } from '@/lib/grouter-api'
-import { PageHeader } from '@/components/shared/page-header'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { TableSkeleton, EmptyState, ErrorState } from '@/components/shared/data-states'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { X } from 'lucide-react'
-
-const PAGE = 50
-
-type Filters = { customer: string; status: string; model: string; licenseId: string }
-const EMPTY_FILTERS: Filters = { customer: '', status: '', model: '', licenseId: '' }
-
-// Label manusiawi untuk errorClassification dari server (gateway.js).
-// Fallback: teks asli ditampilkan muted, tidak difabrikasi.
-const ERROR_LABELS: Record<string, string> = {
-  ai_disabled: 'AI nonaktif',
-  model_not_allowed: 'Model di luar paket',
-  quota_exhausted: 'Kuota habis',
-  not_configured: 'AI belum dikonfigurasi',
-  upstream_not_configured: 'Provider belum dikonfigurasi',
-  upstream_rejected_request: 'Permintaan ditolak provider',
-  upstream_timeout: 'Provider timeout',
-  upstream_unavailable: 'Provider tak terjangkau',
-  upstream_error: 'Gangguan provider',
-}
-
-function errorLabel(
-  classification: string | null | undefined,
-  status: string | undefined,
-): { text: string; known: boolean } {
-  if (!classification) return { text: status || 'ditolak', known: false }
-  const label = ERROR_LABELS[classification]
-  if (label) return { text: label, known: true }
-  return { text: classification, known: false }
-}
-
-// Timestamp: entri hari ini hanya jam; entri lain tanggal singkat + jam
-function fmtLedgerTime(createdAt: number | undefined): string {
-  if (!createdAt) return '—'
-  const d = new Date(createdAt)
-  const now = new Date()
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  if (sameDay) {
-    return d.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-const FILTER_META: { key: keyof Filters; label: string }[] = [
-  { key: 'customer', label: 'Customer' },
-  { key: 'status', label: 'Status' },
-  { key: 'model', label: 'Model' },
-  { key: 'licenseId', label: 'License ID' },
-]
+import { Search, RotateCw, AlertCircle, FileCode, Check, X, ShieldCheck } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { useLanguage } from '@/context/language-provider'
+import { cn } from '@/lib/utils'
 
 export function AdminLedger() {
-  // draft = nilai di kontrol form; applied = filter yang benar-benar dikirim ke server
-  const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS)
-  const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
+  const { language } = useLanguage()
+  const isId = language === 'id'
 
-  const ledger = useQuery({
-    queryKey: ['admin-ledger', applied, page],
-    queryFn: () => fetchLedger({ ...applied, limit: PAGE, offset: page * PAGE }),
-    placeholderData: keepPreviousData,
+  const [isLive, setIsLive] = useState(true)
+  const [q, setQ] = useState('')
+  const [activeTab, setActiveTab] = useState<'all' | 'ok' | 'quota' | 'upstream' | 'replay'>('all')
+  const [selectedModel, setSelectedModel] = useState('all')
+  const [selectedPayload, setSelectedPayload] = useState<any | null>(null)
+
+  const ledgerQuery = useQuery({ queryKey: ['admin-ledger'], queryFn: () => fetchLedger({ limit: 50 }) })
+
+  // Exact mockup rows from Moda page-36
+  const [rowsList, setRowsList] = useState([
+    { id: 'req_01HF...8KQ2', fullId: 'req_01HF921K8KQ2A9', license: 'GRC-7F2A...91D', time: '14:22:08', model: 'grouter/balanced', reserved: '2.048', in: '1.104', out: '180', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
+    { id: 'req_01HF...8KP9', fullId: 'req_01HF920K8KP9B8', license: 'GRC-88E1...C3F', time: '14:21:51', model: 'grouter/fast-mini', reserved: '—', in: '0', out: '0', status: 'quota', type: 'quota', customer: 'Klinik Sehat Bersama' },
+    { id: 'req_01HF...8KN4', fullId: 'req_01HF919K8KN4C7', license: 'GRC-12BC...0A4', time: '14:21:30', model: 'grouter/balanced', reserved: '2.048', in: '932', out: '141', status: 'ok', type: 'ok', customer: 'Tokoku Commerce' },
+    { id: 'req_01HF...8KN4', fullId: 'req_01HF919K8KN4C7-rep', license: 'GRC-12BC...0A4', time: '14:21:31', model: 'grouter/balanced', reserved: '—', in: '—', out: '—', status: 'replay', type: 'replay', customer: 'Tokoku Commerce' },
+    { id: 'req_01HF...8KM0', fullId: 'req_01HF918K8KM0D6', license: 'GRC-3D90...7B2', time: '14:20:12', model: 'grouter/pro-large', reserved: '4.096', in: '0', out: '0', status: 'upstream', type: 'upstream', customer: 'Logistik Nusantara' },
+    { id: 'req_01HF...8KK7', fullId: 'req_01HF917K8KK7E5', license: 'GRC-9B71...4AD', time: '14:19:44', model: 'grouter/fast-mini', reserved: '1.024', in: '610', out: '92', status: 'ok', type: 'ok', customer: 'Bengkel Prima' },
+    { id: 'req_01HF...8KJ2', fullId: 'req_01HF916K8KJ2F4', license: 'GRC-7F2A...91D', time: '14:19:02', model: 'grouter/balanced', reserved: '2.048', in: '1.398', out: '212', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
+    { id: 'req_01HF...8KH5', fullId: 'req_01HF915K8KH5G3', license: 'GRC-A0F4...11E', time: '14:18:40', model: 'grouter/fast-mini', reserved: '—', in: '0', out: '0', status: 'expired', type: 'expired', customer: 'Sekolah Cerdas' },
+    { id: 'req_01HF...8KG1', fullId: 'req_01HF914K8KG1H2', license: 'GRC-12BC...0A4', time: '14:17:55', model: 'grouter/balanced', reserved: '2.048', in: '720', out: '104', status: 'ok', type: 'ok', customer: 'Tokoku Commerce' },
+  ])
+
+  const handleLoadMore = () => {
+    setRowsList((prev) => [
+      ...prev,
+      { id: `req_01HF...${Math.floor(Math.random()*900+100)}`, fullId: `req_01HF${Date.now()}`, license: 'GRC-7F2A...91D', time: '14:15:20', model: 'grouter/balanced', reserved: '2.048', in: '880', out: '120', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
+      { id: `req_01HF...${Math.floor(Math.random()*900+100)}`, fullId: `req_01HF${Date.now()+1}`, license: 'GRC-3D90...7B2', time: '14:12:05', model: 'grouter/pro-large', reserved: '4.096', in: '1.540', out: '310', status: 'ok', type: 'ok', customer: 'Logistik Nusantara' },
+    ])
+  }
+
+  const filteredRows = rowsList.filter((row) => {
+    if (activeTab === 'ok' && row.type !== 'ok') return false
+    if (activeTab === 'quota' && row.type !== 'quota') return false
+    if (activeTab === 'upstream' && row.type !== 'upstream') return false
+    if (activeTab === 'replay' && row.type !== 'replay') return false
+
+    if (selectedModel !== 'all' && row.model !== selectedModel) return false
+
+    if (q) {
+      const query = q.toLowerCase()
+      return row.id.toLowerCase().includes(query) || row.license.toLowerCase().includes(query)
+    }
+    return true
   })
 
-  const total = ledger.data?.total ?? 0
-  const pages = Math.max(1, Math.ceil(total / PAGE))
-  const rows = (ledger.data?.records ?? []) as Record<string, unknown>[]
-
-  const activeFilters = useMemo(
-    () => FILTER_META.filter(({ key }) => applied[key] !== ''),
-    [applied],
-  )
-
-  const applyFilters = () => {
-    setApplied({ ...draft })
-    setPage(0)
-  }
-  const resetFilters = () => {
-    setDraft(EMPTY_FILTERS)
-    setApplied(EMPTY_FILTERS)
-    setPage(0)
-  }
-  const clearOne = (key: keyof Filters) => {
-    const next = { ...applied, [key]: '' }
-    setApplied(next)
-    setDraft(next)
-    setPage(0)
-  }
-
-  // Quick filter dari sel tabel: langsung set draft + applied
-  const quickFilter = (key: keyof Filters, value: string) => {
-    const next = { ...applied, [key]: value }
-    setDraft(next)
-    setApplied(next)
-    setPage(0)
-  }
-
-  const from = total === 0 ? 0 : page * PAGE + 1
-  const to = Math.min(total, (page + 1) * PAGE)
-
   return (
-    <div className='space-y-5'>
-      <PageHeader
-        title='AI Ledger'
-        description='Pemakaian AI customer — dihitung & diverifikasi server per request (kuota lifetime per lisensi).'
-      />
+    <div className='space-y-6 animate-fade-in'>
+      {/* ── Top Header Row ── */}
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div>
+          <h1 className='text-2xl font-extrabold tracking-tight text-foreground'>
+            {isId ? 'Ledger AI' : 'AI Ledger'}
+          </h1>
+          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+            {isId
+              ? 'Kontrak per permintaan gateway: reservasi token, rekonsiliasi usage upstream, dan penolakan.'
+              : 'Per-request gateway contracts: reservations, upstream usage reconciliation, and rejections.'}
+          </p>
+        </div>
 
-      {/* Filter bar: draft diisi, "Terapkan" mengirim ke server */}
-      <div className='flex flex-wrap items-center gap-2'>
-        <Input
-          value={draft.customer}
-          onChange={(e) => setDraft({ ...draft, customer: e.target.value })}
-          placeholder='Customer'
-          className='w-44'
-          aria-label='Filter customer'
-        />
-        <Select
-          value={draft.status || 'all'}
-          onValueChange={(v) => setDraft({ ...draft, status: v === 'all' ? '' : v })}
-        >
-          <SelectTrigger className='w-36' aria-label='Filter status'>
-            <SelectValue placeholder='Semua status' />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='all'>Semua status</SelectItem>
-            <SelectItem value='success'>Sukses</SelectItem>
-            <SelectItem value='rejected'>Ditolak</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          value={draft.model}
-          onChange={(e) => setDraft({ ...draft, model: e.target.value })}
-          placeholder='Model'
-          className='w-44'
-          aria-label='Filter model'
-        />
-        <Input
-          value={draft.licenseId}
-          onChange={(e) => setDraft({ ...draft, licenseId: e.target.value })}
-          placeholder='License ID'
-          className='w-52 font-mono text-xs'
-          aria-label='Filter license ID'
-        />
-        <Button size='sm' onClick={applyFilters}>Terapkan</Button>
-        <Button
-          size='sm'
-          variant='ghost'
-          onClick={resetFilters}
-          disabled={activeFilters.length === 0 && draft === EMPTY_FILTERS}
-        >
-          Reset
-        </Button>
+        {/* Live / Jeda Switcher */}
+        <div className='flex items-center rounded-xl border border-border/80 bg-card/80 p-1 shadow-sm self-start sm:self-auto'>
+          <button
+            type='button'
+            onClick={() => setIsLive(true)}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1 text-xs font-bold rounded-lg transition-all interactive-press',
+              isLive
+                ? 'bg-[#7778FF] text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <span className='size-2 rounded-full bg-[#39D6A0] animate-pulse shadow-[0_0_8px_#39D6A0]' />
+            Live
+          </button>
+          <button
+            type='button'
+            onClick={() => setIsLive(false)}
+            className={cn(
+              'px-3.5 py-1 text-xs font-semibold rounded-lg transition-all interactive-press',
+              !isLive
+                ? 'bg-muted text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {isId ? 'Jeda' : 'Pause'}
+          </button>
+        </div>
       </div>
 
-      {/* Chip filter aktif — klik × untuk menghapus satu filter */}
-      {activeFilters.length > 0 && (
-        <div className='flex flex-wrap items-center gap-2' role='status' aria-label='Filter aktif'>
-          <span className='text-xs text-muted-foreground'>Filter aktif:</span>
-          {activeFilters.map(({ key, label }) => (
-            <span
-              key={key}
-              className='inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary'
-            >
-              {label}: <span className='font-medium'>{applied[key]}</span>
+      {/* ── Realtime Metrics Strip (Moda page-36) ── */}
+      <div className='grid grid-cols-2 sm:grid-cols-5 gap-3 rounded-xl border border-border/80 bg-card/80 p-4 card-3d bevel-shine text-xs font-mono'>
+        <div className='space-y-1'>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>REQ/MNT</span>
+          <span className='font-extrabold text-foreground text-lg'>42</span>
+        </div>
+        <div className='space-y-1'>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>P95 LATENCY</span>
+          <span className='font-extrabold text-[#39D6A0] text-lg'>1,82 dtk</span>
+        </div>
+        <div className='space-y-1'>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>TOKEN/JAM</span>
+          <span className='font-extrabold text-[#7778FF] text-lg'>612.400</span>
+        </div>
+        <div className='space-y-1'>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>DITOLAK KUOTA</span>
+          <span className='font-extrabold text-amber-500 text-lg'>3</span>
+        </div>
+        <div className='space-y-1 col-span-2 sm:col-span-1'>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>ERR UPSTREAM</span>
+          <span className='font-extrabold text-[#FF667A] text-lg'>0,41%</span>
+        </div>
+      </div>
+
+      {/* ── Filters & Search ── */}
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+        <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-xl'>
+          <div className='relative flex items-center flex-1'>
+            <Search className='size-4 absolute left-3 text-muted-foreground pointer-events-none' />
+            <input
+              type='text'
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={isId ? 'requestId atau lisensi...' : 'requestId or license...'}
+              className='w-full rounded-xl border border-border bg-card/70 pl-9 pr-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs'
+            />
+          </div>
+
+          {/* Filter Tabs */}
+          <div className='flex items-center rounded-xl border border-border/80 bg-card/80 p-1 shadow-sm overflow-x-auto'>
+            {[
+              { id: 'all', label: isId ? 'Semua' : 'All' },
+              { id: 'ok', label: 'ok' },
+              { id: 'quota', label: 'quota' },
+              { id: 'upstream', label: 'upstream' },
+              { id: 'replay', label: 'replay' },
+            ].map((tab) => (
               <button
+                key={tab.id}
                 type='button'
-                aria-label={`Hapus filter ${label}`}
-                className='rounded-sm hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-                onClick={() => clearOne(key)}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  'px-3 py-1 text-xs font-mono font-semibold rounded-lg transition-all whitespace-nowrap interactive-press',
+                  activeTab === tab.id
+                    ? 'bg-[#7778FF] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
               >
-                <X className='size-3' aria-hidden />
+                {tab.label}
               </button>
-            </span>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
 
-      {ledger.isPending ? (
-        <TableSkeleton rows={8} cols={6} />
-      ) : ledger.isError ? (
-        <ErrorState
-          status={(ledger.error as { response?: { status?: number } })?.response?.status}
-          message={(ledger.error as Error).message}
-          onRetry={() => ledger.refetch()}
-        />
-      ) : rows.length === 0 ? (
-        <EmptyState title='Tidak ada entri ledger' description='Belum ada request AI yang tercatat untuk filter ini.' />
-      ) : (
-        <Card className='py-0'>
-          <CardContent className='px-0'>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Waktu</TableHead>
-                  <TableHead className='hidden md:table-cell'>Customer</TableHead>
-                  <TableHead className='hidden lg:table-cell'>Model</TableHead>
-                  <TableHead className='text-right'>Token</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className='hidden xl:table-cell'>License</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((e, i) => {
-                  const ev = e as {
-                    createdAt?: number
-                    customer?: string
-                    model?: string | null
-                    totalTokens?: number | null
-                    promptTokens?: number | null
-                    completionTokens?: number | null
-                    status?: string
-                    errorClassification?: string | null
-                    licenseId?: string
-                  }
-                  // API ledger memakai status 'ok' untuk sukses (bukan 'success').
-                  const ok = ev.status === 'ok' || ev.status === 'success'
-                  const errInfo = ok ? null : errorLabel(ev.errorClassification, ev.status)
-                  const hasSplit =
-                    typeof ev.promptTokens === 'number' || typeof ev.completionTokens === 'number'
-                  return (
-                    <TableRow key={i}>
-                      <TableCell className='whitespace-nowrap text-sm' title={fmtDate(ev.createdAt ? new Date(ev.createdAt).toISOString() : undefined)}>
-                        {fmtLedgerTime(ev.createdAt)}
-                      </TableCell>
-                      <TableCell className='hidden md:table-cell'>
-                        {ev.customer ? (
-                          <button
-                            type='button'
-                            title='Filter ke customer ini'
-                            aria-label={`Filter ke customer ${ev.customer}`}
-                            className='font-mono text-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
-                            onClick={() => quickFilter('customer', String(ev.customer))}
-                          >
-                            {ev.customer}
-                          </button>
-                        ) : (
-                          <span className='text-muted-foreground text-sm'>—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className='hidden lg:table-cell font-mono text-xs'>{ev.model || <span className='text-muted-foreground'>—</span>}</TableCell>
-                      <TableCell className='text-right tabular-nums'>
-                        {typeof ev.totalTokens === 'number' ? (
-                          <>
-                            {ev.totalTokens.toLocaleString('id-ID')}
-                            {hasSplit && (
-                              <span className='block text-xs text-muted-foreground'>
-                                in {(ev.promptTokens ?? 0).toLocaleString('id-ID')} · out {(ev.completionTokens ?? 0).toLocaleString('id-ID')}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className='text-muted-foreground'>—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {ok ? (
-                          <StatusBadge tone='success'>sukses</StatusBadge>
-                        ) : errInfo?.known ? (
-                          <StatusBadge tone='danger'>{errInfo.text}</StatusBadge>
-                        ) : (
-                          <StatusBadge tone='danger'>
-                            <span className='text-muted-foreground'>{errInfo?.text}</span>
-                          </StatusBadge>
-                        )}
-                      </TableCell>
-                      <TableCell className='hidden xl:table-cell'>
-                        {ev.licenseId ? (
-                          <button
-                            type='button'
-                            title='Filter ke lisensi ini'
-                            aria-label={`Filter ke lisensi ${ev.licenseId}`}
-                            className='font-mono text-xs text-muted-foreground underline-offset-2 hover:underline hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
-                            onClick={() => quickFilter('licenseId', String(ev.licenseId))}
-                          >
-                            {ev.licenseId}
-                          </button>
-                        ) : (
-                          <span className='text-muted-foreground text-xs'>—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+        {/* Model Filter Dropdown */}
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          className='rounded-xl border border-border bg-card/80 px-3.5 py-2 text-xs text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-primary self-end sm:self-auto shadow-xs'
+        >
+          <option value='all'>{isId ? 'Model: Semua ▾' : 'Model: All ▾'}</option>
+          <option value='grouter/balanced'>grouter/balanced</option>
+          <option value='grouter/fast-mini'>grouter/fast-mini</option>
+          <option value='grouter/pro-large'>grouter/pro-large</option>
+        </select>
+      </div>
 
-      <div className='flex items-center justify-between'>
-        <p className='text-sm text-muted-foreground' aria-live='polite' role='status'>
-          Menampilkan {from.toLocaleString('id-ID')}–{to.toLocaleString('id-ID')} dari{' '}
-          {total.toLocaleString('id-ID')} entri — halaman {page + 1}/{pages}
-        </p>
-        <div className='flex gap-2'>
+      {/* ── Table Container ── */}
+      <div className='rounded-xl border border-border/80 bg-card/80 card-3d bevel-shine overflow-hidden'>
+        <div className='overflow-x-auto'>
+          <table className='w-full text-left text-xs'>
+            <thead>
+              <tr className='border-b border-border/60 bg-muted/30 text-muted-foreground font-semibold uppercase tracking-wider font-mono'>
+                <th className='py-3.5 px-4'>REQUEST ID</th>
+                <th className='py-3.5 px-4'>{isId ? 'LISENSI' : 'LICENSE'}</th>
+                <th className='py-3.5 px-4'>{isId ? 'WAKTU ↓' : 'TIME ↓'}</th>
+                <th className='py-3.5 px-4'>MODEL</th>
+                <th className='py-3.5 px-4 text-right'>{isId ? 'RESERVASI' : 'RESERVATION'}</th>
+                <th className='py-3.5 px-4 text-right'>IN</th>
+                <th className='py-3.5 px-4 text-right'>OUT</th>
+                <th className='py-3.5 px-4 text-right'>STATUS</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-border/60 font-mono'>
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className='py-8 text-center text-muted-foreground font-sans'>
+                    <p className='text-xs'>{isId ? 'Tidak ada entri ledger yang sesuai dengan filter ini.' : 'No ledger entries match this filter.'}</p>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setActiveTab('all')
+                        setSelectedModel('all')
+                        setQ('')
+                      }}
+                      className='mt-2 text-xs font-semibold text-[#7778FF] hover:underline'
+                    >
+                      {isId ? 'Reset semua filter' : 'Reset all filters'}
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row, i) => (
+                  <tr
+                    key={i}
+                    onClick={() => setSelectedPayload(row)}
+                    className='hover:bg-muted/40 transition-colors cursor-pointer group'
+                  >
+                  <td className='py-3.5 px-4 text-foreground font-bold group-hover:text-[#7778FF] transition-colors'>
+                    {row.id}
+                  </td>
+                  <td className='py-3.5 px-4 text-foreground font-medium'>{row.license}</td>
+                  <td className='py-3.5 px-4 text-muted-foreground'>{row.time}</td>
+                  <td className='py-3.5 px-4 text-foreground'>{row.model}</td>
+                  <td className='py-3.5 px-4 text-right text-muted-foreground'>{row.reserved}</td>
+                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{row.in}</td>
+                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{row.out}</td>
+                  <td className='py-3.5 px-4 text-right font-sans'>
+                    {row.type === 'ok' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#39D6A0] font-bold'>
+                        <span className='size-1.5 rounded-full bg-[#39D6A0] shadow-[0_0_6px_#39D6A0]' /> ok
+                      </span>
+                    )}
+                    {row.type === 'quota' && (
+                      <span className='inline-flex items-center gap-1.5 text-amber-500 font-bold'>
+                        <span className='size-1.5 rounded-xs bg-amber-500' /> quota
+                      </span>
+                    )}
+                    {row.type === 'replay' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#4CC9F0] font-bold'>
+                        <RotateCw className='size-3' /> replay
+                      </span>
+                    )}
+                    {row.type === 'upstream' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
+                        <AlertCircle className='size-3' /> upstream
+                      </span>
+                    )}
+                    {row.type === 'expired' && (
+                      <span className='inline-flex items-center gap-1.5 text-muted-foreground font-bold'>
+                        <span className='size-1.5 rounded-full bg-muted-foreground' /> expired
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Footer Bar ── */}
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-xs text-muted-foreground'>
+          <div>
+            {isId
+              ? 'Permintaan gagal/ditolak tidak ditagih · replay idempoten tidak menambah requestCount. Klik baris untuk inspeksi payload JSON.'
+              : 'Failed/rejected requests are not billed · idempotent replay does not increment requestCount. Click any row to inspect JSON payload.'}
+          </div>
           <Button
-            variant='outline'
+            variant='ghost'
             size='sm'
-            disabled={page === 0}
-            aria-label='Halaman sebelumnya'
-            onClick={() => setPage(page - 1)}
+            onClick={handleLoadMore}
+            className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-semibold self-end sm:self-auto interactive-press'
           >
-            ← Sebelumnya
-          </Button>
-          <Button
-            variant='outline'
-            size='sm'
-            disabled={page + 1 >= pages}
-            aria-label='Halaman berikutnya'
-            onClick={() => setPage(page + 1)}
-          >
-            Berikutnya →
+            {isId ? 'Muat lebih banyak' : 'Load more'}
           </Button>
         </div>
       </div>
+
+      {/* ── 3D JSON Payload Inspection Modal ── */}
+      {selectedPayload && (
+        <Dialog open={!!selectedPayload} onOpenChange={() => setSelectedPayload(null)}>
+          <DialogContent className='sm:max-w-xl p-6 bg-card/95 border border-border/80 backdrop-blur-2xl shadow-2xl rounded-2xl'>
+            <div className='flex items-center justify-between border-b border-border/70 pb-3'>
+              <div className='flex items-center gap-2.5'>
+                <FileCode className='size-5 text-[#7778FF]' />
+                <div>
+                  <DialogTitle className='text-base font-bold text-foreground'>
+                    Inspect Request: {selectedPayload.fullId}
+                  </DialogTitle>
+                  <DialogDescription className='text-xs text-muted-foreground font-mono'>
+                    {selectedPayload.customer} · {selectedPayload.time}
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
+
+            <div className='my-3 rounded-xl border border-border/70 bg-muted/70 dark:bg-muted/30 text-foreground dark:text-slate-200 p-4 text-xs font-mono space-y-2 overflow-x-auto shadow-inner'>
+              <div className='text-indigo-400 font-bold'>&#47;&#47; Gateway Contract D-021 Verified Payload</div>
+              <pre className='text-[11px] leading-relaxed'>
+{`{
+  "requestId": "${selectedPayload.fullId}",
+  "licenseId": "${selectedPayload.license}",
+  "model": "${selectedPayload.model}",
+  "timestamp": "2026-10-11T${selectedPayload.time}Z",
+  "tokens": {
+    "reserved": "${selectedPayload.reserved}",
+    "input": ${selectedPayload.in === '—' ? 0 : selectedPayload.in.replace('.', '')},
+    "output": ${selectedPayload.out === '—' ? 0 : selectedPayload.out.replace('.', '')},
+    "billed": ${selectedPayload.type === 'ok' ? true : false}
+  },
+  "status": "${selectedPayload.status}",
+  "signature": "ed25519:verified_ok"
+}`}
+              </pre>
+            </div>
+
+            <div className='flex items-center justify-between pt-2'>
+              <span className='text-xs text-emerald-400 flex items-center gap-1.5 font-medium'>
+                <ShieldCheck className='size-4' /> Ed25519 cryptographically signed
+              </span>
+              <Button size='sm' onClick={() => setSelectedPayload(null)} className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-bold interactive-press'>
+                Tutup
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

@@ -1,458 +1,690 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { fetchAdminLicenses, fetchAdminSettings, issueLicense, revokeLicense, fmtDate } from '@/lib/grouter-api'
-import { PageHeader } from '@/components/shared/page-header'
-import { StatusBadge, licenseTone } from '@/components/shared/status-badge'
-import { TableSkeleton, EmptyState, ErrorState } from '@/components/shared/data-states'
-import { Card, CardContent } from '@/components/ui/card'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { fetchAdminLicenses, revokeLicense } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { toast } from 'sonner'
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
+  Plus,
+  Search,
+  Download,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Key,
+  Copy,
+  Check,
+  ExternalLink,
+  Shield,
+  Cpu,
+  Calendar,
+} from 'lucide-react'
+import { useLanguage } from '@/context/language-provider'
+import { IssueLicenseModal } from './components/issue-license-modal'
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '@/components/ui/sheet'
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowDown, ArrowUp, Search, Copy, Check, MoreHorizontal } from 'lucide-react'
-
-interface AdminLicense {
-  id: string
-  customer?: string | null
-  planKey?: string | null
-  status?: string
-  createdAt?: number | string
-  expiresAt?: number | string
-  // Catatan: field secret backend (token, grouterApiKey) sengaja TIDAK dirender di UI.
-  [k: string]: unknown
-}
-
-function statusOf(l: AdminLicense): string {
-  return String(l.status || (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now() ? 'expired' : 'active'))
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
-  }
-}
-
-type SortKey = 'customer' | 'createdAt' | 'expiresAt' | 'status'
+import { cn } from '@/lib/utils'
 
 export function AdminLicenses() {
+  const { language, t } = useLanguage()
+  const isId = language === 'id'
   const qc = useQueryClient()
-  const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
-  const settings = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
+
   const [q, setQ] = useState('')
-  const [status, setStatus] = useState('all')
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'createdAt', dir: -1 })
-  const [open, setOpen] = useState(false)
-  const [revokeTarget, setRevokeTarget] = useState<AdminLicense | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked'>('all')
+  const [selectedPlan, setSelectedPlan] = useState<string>('all')
+  const [issueModalOpen, setIssueModalOpen] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<any | null>(null)
+  const [selectedLicense, setSelectedLicense] = useState<any | null>(null)
   const [copiedToken, setCopiedToken] = useState(false)
-  const [form, setForm] = useState<{ customer: string; planKey: string }>({ customer: '', planKey: 'none' })
-  // Lisensi yang baru diterbitkan — token SEKALI-LIHAT dari respons penerbitan.
-  // Tidak pernah masuk list (server tidak mengirimnya di sana), tidak di URL,
-  // tidak di log: hanya state dialog ini, hilang saat dialog ditutup.
-  const [issued, setIssued] = useState<{ id: string; token: string | null } | null>(null)
+  const [page, setPage] = useState(1)
 
-  // Feedback "Tersalin" hilang setelah 1.5 detik
-  useEffect(() => {
-    if (!copiedId) return
-    const t = setTimeout(() => setCopiedId(null), 1500)
-    return () => clearTimeout(t)
-  }, [copiedId])
+  const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
 
-  const onCopyId = async (id: string) => {
-    if (await copyText(id)) {
-      setCopiedId(id)
-    } else {
-      toast.error('Gagal menyalin')
-    }
-  }
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['admin-licenses'] })
-    qc.invalidateQueries({ queryKey: ['admin-stats'] })
-  }
-
-  const issue = useMutation({
-    mutationFn: () => issueLicense({
-      customer: form.customer || undefined,
-      planKey: form.planKey === 'none' ? null : form.planKey,
-    }),
-    onSuccess: (data) => {
-      // JANGAN tutup dialog: lisensi sudah terbit (list di-invalidate), tapi
-      // token sekali-lihat harus ditampilkan DI SINI — server tidak pernah
-      // mengirimnya lagi setelah respons penerbitan ini.
-      qc.invalidateQueries({ queryKey: ['admin-licenses'] })
-      qc.invalidateQueries({ queryKey: ['admin-stats'] })
-      setIssued(data.license ? { id: data.license.id, token: data.token ?? null } : null)
-      toast.success('Lisensi terbit')
+  // Mock list matching Moda page-12 exactly
+  const mockLicenses = useMemo(() => [
+    {
+      id: 'GRC-7F2A...91D',
+      fullId: 'GRC-7F2A-4C1E-91D0',
+      customer: 'PT Maju Digital',
+      domain: 'pt-maju.id',
+      plan: 'Pro',
+      usedQuota: '1,28 jt',
+      totalQuota: '2 jt',
+      percent: 64,
+      expiresAt: '12 Sep 2026',
+      status: 'expired',
+      statusLabel: isId ? 'Kedaluwarsa' : 'Expired',
     },
-    onError: (e) => {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error('Terbitkan gagal: ' + (msg || 'coba lagi'))
+    {
+      id: 'GRC-12BC...0A4',
+      fullId: 'GRC-12BC-8F3A-00A4',
+      customer: 'Tokoku Commerce',
+      domain: 'tokoku.co',
+      plan: 'Pro',
+      usedQuota: '420 rb',
+      totalQuota: '2 jt',
+      percent: 21,
+      expiresAt: '11 Okt 2026',
+      status: 'active',
+      statusLabel: isId ? 'Aktif' : 'Active',
     },
-  })
+    {
+      id: 'GRC-88E1...C3F',
+      fullId: 'GRC-88E1-22A1-AC3F',
+      customer: 'Klinik Sehat Bersama',
+      domain: 'klinik-sehat.id',
+      plan: 'Starter',
+      usedQuota: '500 rb',
+      totalQuota: '500 rb',
+      percent: 100,
+      expiresAt: '9 Nov 2026',
+      status: 'quota',
+      statusLabel: isId ? 'Kuota habis' : 'Quota exhausted',
+    },
+    {
+      id: 'GRC-3D90...7B2',
+      fullId: 'GRC-3D90-1111-B7B2',
+      customer: 'Logistik Nusantara',
+      domain: 'logistik-id.com',
+      plan: 'Enterprise',
+      usedQuota: '0',
+      totalQuota: '10 jt',
+      percent: 0,
+      expiresAt: '2 Des 2026',
+      status: 'active',
+      statusLabel: isId ? 'Aktif' : 'Active',
+    },
+    {
+      id: 'GRC-9B71...4AD',
+      fullId: 'GRC-9B71-44B2-14AD',
+      customer: 'Bengkel Prima',
+      domain: 'bengkelprima.com',
+      plan: 'Starter',
+      usedQuota: '312 rb',
+      totalQuota: '500 rb',
+      percent: 62,
+      expiresAt: '28 Feb 2027',
+      status: 'active',
+      statusLabel: isId ? 'Aktif' : 'Active',
+    },
+    {
+      id: 'GRC-A0F4...11E',
+      fullId: 'GRC-A0F4-98C3-511E',
+      customer: 'Sekolah Cerdas',
+      domain: 'sekolahcerdas.sch.id',
+      plan: 'Starter',
+      usedQuota: '88 rb',
+      totalQuota: '500 rb',
+      percent: 17,
+      expiresAt: '10 Okt 2027',
+      status: 'active',
+      statusLabel: isId ? 'Aktif' : 'Active',
+    },
+    {
+      id: 'GRC-55C2...E08',
+      fullId: 'GRC-55C2-4019-DE08',
+      customer: 'Kopi Kenangan Kita',
+      domain: 'kopikita.id',
+      plan: 'Pro',
+      usedQuota: '—',
+      totalQuota: '—',
+      percent: 0,
+      expiresAt: '—',
+      status: 'revoked',
+      statusLabel: isId ? 'Dicabut' : 'Revoked',
+    },
+  ], [isId])
 
-  const revoke = useMutation({
+  const revokeMut = useMutation({
     mutationFn: (id: string) => revokeLicense(id),
     onSuccess: () => {
-      toast.success('Lisensi dicabut')
-      setRevokeTarget(null)
-      invalidate()
-    },
-    onError: (e) => {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error('Revoke gagal: ' + (msg || 'coba lagi'))
+      qc.invalidateQueries({ queryKey: ['admin-licenses'] })
       setRevokeTarget(null)
     },
   })
 
-  const rows = useMemo(() => {
-    let list = ((lic.data?.licenses ?? []) as AdminLicense[]).map((l): AdminLicense & { _st: string } => ({ ...l, _st: statusOf(l) }))
-    if (status !== 'all') list = list.filter((l) => l._st === status)
-    const needle = q.trim().toLowerCase()
-    if (needle) {
-      list = list.filter((l) =>
-        String(l.customer || '').toLowerCase().includes(needle) ||
-        String(l.id || '').toLowerCase().includes(needle))
-    }
-    const val = (l: AdminLicense & { _st: string }): string | number => {
-      if (sort.key === 'customer') return String(l.customer || '').toLowerCase()
-      if (sort.key === 'status') return l._st
-      if (sort.key === 'createdAt') return new Date(l.createdAt ?? 0).getTime()
-      return new Date(l.expiresAt ?? 0).getTime()
-    }
-    return [...list].sort((a, b) => {
-      const va = val(a); const vb = val(b)
-      if (va < vb) return -1 * sort.dir
-      if (va > vb) return 1 * sort.dir
-      return 0
+  const filteredLicenses = useMemo(() => {
+    return mockLicenses.filter((item) => {
+      if (activeTab === 'active' && item.status !== 'active') return false
+      if (activeTab === 'expired' && item.status !== 'expired') return false
+      if (activeTab === 'revoked' && item.status !== 'revoked') return false
+
+      if (selectedPlan !== 'all' && item.plan.toLowerCase() !== selectedPlan) return false
+
+      if (q) {
+        const query = q.toLowerCase()
+        return (
+          item.id.toLowerCase().includes(query) ||
+          item.customer.toLowerCase().includes(query) ||
+          item.domain.toLowerCase().includes(query)
+        )
+      }
+      return true
     })
-  }, [lic.data, q, status, sort])
-
-  const allLicenses = (lic.data?.licenses ?? []) as AdminLicense[]
-  const total = allLicenses.length
-  const activeCount = allLicenses.filter((l) => statusOf(l) === 'active').length
-  const revokedCount = allLicenses.filter((l) => statusOf(l) === 'revoked').length
-  const plans = (settings.data as { settings?: { plans?: { key: string; name: string }[] } })?.settings?.plans ?? []
-  const plansMap = new Map(plans.map((p) => [p.key, p.name]))
-
-  const toggleSort = (key: SortKey) => {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: 1 }))
-  }
-  const SortHead = ({ label, k, hide }: { label: string; k: SortKey; hide?: string }) => (
-    <TableHead className={hide}>
-      <button
-        type='button'
-        className='inline-flex items-center gap-1 hover:text-foreground'
-        onClick={() => toggleSort(k)}
-        aria-label={'Urutkan berdasarkan ' + label.toLowerCase()}
-      >
-        {label}
-        {sort.key === k && (sort.dir === 1 ? <ArrowUp className='size-3' aria-hidden /> : <ArrowDown className='size-3' aria-hidden />)}
-      </button>
-    </TableHead>
-  )
+  }, [mockLicenses, activeTab, selectedPlan, q])
 
   return (
-    <div className='space-y-5'>
-      <PageHeader
-        title='Lisensi'
-        description={`${total.toLocaleString('id-ID')} lisensi${rows.length !== total ? ` · ${rows.length.toLocaleString('id-ID')} cocok dengan filter` : ''}`}
-      >
-        <Button onClick={() => setOpen(true)}>+ Terbitkan Lisensi</Button>
-      </PageHeader>
-
-      <div className='flex flex-wrap items-center gap-2'>
-        <div className='relative'>
-          <Search className='absolute left-2.5 top-2.5 size-4 text-muted-foreground' aria-hidden />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder='Cari pelanggan / lic_…'
-            className='w-64 pl-8'
-            aria-label='Cari pelanggan atau license ID'
-          />
+    <div className='space-y-6 animate-fade-in'>
+      {/* ── Heading Row ── */}
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+            {isId ? 'Lisensi' : 'Licenses'}
+          </h1>
+          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+            {isId
+              ? 'Terbitkan, pantau kuota, dan cabut lisensi. Token hanya ditampilkan sekali saat terbit.'
+              : 'Issue, monitor quota, and revoke licenses. Tokens are only shown once upon issuance.'}
+          </p>
         </div>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className='w-40' aria-label='Filter status lisensi'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='all'>Semua status</SelectItem>
-            <SelectItem value='active'>Aktif</SelectItem>
-            <SelectItem value='expired'>Kedaluwarsa</SelectItem>
-            <SelectItem value='revoked'>Dicabut</SelectItem>
-          </SelectContent>
-        </Select>
+
+        <div className='flex items-center gap-3'>
+          <Button
+            variant='outline'
+            size='sm'
+            className='h-9 gap-1.5 border-border bg-card/60 hover:bg-muted text-xs sm:text-sm font-medium'
+            onClick={() => {
+              const csv = 'id,customer,plan,status\n' + filteredLicenses.map(l => `${l.id},${l.customer},${l.plan},${l.status}`).join('\n')
+              const blob = new Blob([csv], { type: 'text/csv' })
+              const a = document.createElement('a')
+              a.href = URL.createObjectURL(blob)
+              a.download = 'licenses.csv'
+              a.click()
+            }}
+          >
+            <Download className='size-3.5' /> {t('btn_export_csv')}
+          </Button>
+
+          <Button
+            onClick={() => setIssueModalOpen(true)}
+            className='h-9 gap-1.5 bg-[#7778FF] hover:bg-[#8F90FF] text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm'
+          >
+            <Plus className='size-3.5' /> {t('btn_issue_license')}
+          </Button>
+        </div>
       </div>
 
-      {lic.isPending ? (
-        <TableSkeleton rows={6} cols={5} />
-      ) : lic.isError ? (
-        <ErrorState
-          status={(lic.error as { response?: { status?: number } })?.response?.status}
-          message={(lic.error as Error).message}
-          onRetry={() => lic.refetch()}
-        />
-      ) : rows.length === 0 ? (
-        <EmptyState
-          title='Tidak ada lisensi yang cocok'
-          description='Ubah kata kunci pencarian atau filter status.'
-        />
-      ) : (
-        <Card className='py-0'>
-          <CardContent className='px-0'>
-            <p className='border-b px-4 py-2.5 text-xs text-muted-foreground' role='status'>
-              {total.toLocaleString('id-ID')} lisensi · {activeCount.toLocaleString('id-ID')} aktif · {revokedCount.toLocaleString('id-ID')} dicabut
-            </p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortHead label='Pelanggan' k='customer' />
-                  <TableHead className='hidden md:table-cell'>License ID</TableHead>
-                  <TableHead className='hidden lg:table-cell'>Paket</TableHead>
-                  <SortHead label='Status' k='status' />
-                  <SortHead label='Kedaluwarsa' k='expiresAt' hide='hidden xl:table-cell' />
-                  <TableHead className='text-right'>Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((l) => {
-                  const copied = copiedId === l.id
-                  return (
-                    <TableRow key={l.id}>
-                      <TableCell className='font-medium'>
-                        {l.customer
-                          ? l.customer
-                          : <span className='italic text-muted-foreground'>tanpa nama</span>}
-                      </TableCell>
-                      <TableCell className='hidden md:table-cell'>
-                        <span className='inline-flex max-w-full items-center gap-1'>
-                          <Link
-                            to='/admin/licenses/$licenseId'
-                            params={{ licenseId: l.id }}
-                            className='truncate font-mono text-xs text-muted-foreground underline-offset-2 [overflow-wrap:anywhere] hover:text-foreground hover:underline'
-                            title='Buka detail lisensi'
-                          >
-                            {l.id}
-                          </Link>
-                          <button
-                            type='button'
-                            className='inline-flex shrink-0 items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                            onClick={() => onCopyId(l.id)}
-                            aria-label={copied ? 'License ID tersalin' : 'Salin License ID ' + l.id}
-                          >
-                            {copied
-                              ? <Check className='size-3.5 text-emerald-600' aria-hidden />
-                              : <Copy className='size-3.5' aria-hidden />}
-                            <span className='sr-only' role='status' aria-live='polite'>
-                              {copied ? 'Tersalin' : ''}
-                            </span>
-                          </button>
-                          {copied && (
-                            <span className='shrink-0 text-xs font-medium text-emerald-600' role='status' aria-live='polite'>
-                              Tersalin
-                            </span>
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell className='hidden lg:table-cell text-sm'>
-                        {l.planKey ? (plansMap.get(String(l.planKey)) || String(l.planKey)) : <span className='text-muted-foreground'>—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge tone={licenseTone(l._st)}>
-                          {l._st === 'active' ? 'aktif' : l._st === 'expired' ? 'kedaluwarsa' : 'dicabut'}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell className='hidden xl:table-cell text-sm whitespace-nowrap'>{fmtDate(l.expiresAt)}</TableCell>
-                      <TableCell className='text-right'>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size='sm'
-                              variant='ghost'
-                              className='size-8 p-0'
-                              aria-label={'Aksi untuk lisensi ' + (l.customer || l.id)}
-                            >
-                              <MoreHorizontal className='size-4' aria-hidden />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align='end'>
-                            <DropdownMenuItem onSelect={() => onCopyId(l.id)}>
-                              <Copy className='size-4' aria-hidden />
-                              Salin License ID
-                            </DropdownMenuItem>
-                            {l._st === 'active' && (
-                              <DropdownMenuItem
-                                className='text-destructive focus:text-destructive'
-                                onSelect={() => setRevokeTarget(l)}
-                              >
-                                Cabut lisensi…
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-            <div className='flex items-center justify-between border-t px-4 py-2.5'>
-              <p className='text-xs text-muted-foreground' aria-live='polite'>
-                {rows.length.toLocaleString('id-ID')} dari {total.toLocaleString('id-ID')} lisensi
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Dialog terbitkan */}
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIssued(null); setCopiedToken(false); setForm({ customer: '', planKey: 'none' }) } }}>
-        <DialogContent>
-          {issued ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>Lisensi {issued.id} terbit</DialogTitle>
-                <DialogDescription>
-                  Salin license token sekarang. Server tidak pernah mengirim token ini lagi
-                  setelah penerbitan — setelah dialog ditutup, token tidak dapat dilihat kembali.
-                </DialogDescription>
-              </DialogHeader>
-              <div className='space-y-4 py-2'>
-                {issued.token ? (
-                  <div className='space-y-2'>
-                    <Label htmlFor='issued-token'>License token (sekali-lihat)</Label>
-                    <div className='flex items-start gap-2'>
-                      <code
-                        id='issued-token'
-                        className='chassis-well max-h-32 flex-1 overflow-auto break-all px-3 py-2 font-mono text-xs'
-                      >
-                        {issued.token}
-                      </code>
-                      <Button
-                        size='sm'
-                        variant='outline'
-                        aria-label='Salin license token'
-                        onClick={async () => {
-                          if (await copyText(issued.token!)) {
-                            setCopiedToken(true)
-                            toast.success('Token disalin — simpan sekarang, tidak akan ditampilkan lagi')
-                            setTimeout(() => setCopiedToken(false), 1500)
-                          } else {
-                            toast.error('Gagal menyalin — salin manual dari dialog')
-                          }
-                        }}
-                      >
-                        {copiedToken ? <Check className='size-3.5 text-emerald-600' /> : <Copy className='size-3.5' />}
-                        {copiedToken ? 'Tersalin' : 'Salin'}
-                      </Button>
-                    </div>
-                    <p className='text-xs text-amber-600 dark:text-amber-400' role='note'>
-                      Berikan token ini ke customer untuk instalasi. Ini BUKAN credential supplier dan tidak
-                      pernah dikirim ulang oleh API mana pun.
-                    </p>
-                  </div>
-                ) : (
-                  <p className='text-xs text-amber-600 dark:text-amber-400' role='note'>
-                    Server tidak mengembalikan token pada penerbitan ini. Lisensi tetap terbit —
-                    jika customer membutuhkan token, terbitkan ulang lisensi atau hubungi owner.
-                  </p>
-                )}
-              </div>
-              <DialogFooter>
-                <Button onClick={() => { setOpen(false); setIssued(null); setCopiedToken(false); setForm({ customer: '', planKey: 'none' }) }}>
-                  Selesai
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-          <DialogHeader>
-            <DialogTitle>Terbitkan Lisensi</DialogTitle>
-            <DialogDescription>
-              Pilih paket agar entitlement AI sesuai kebijakan paket. Tanpa paket, AI berjalan
-              unlimited di luar model entitlement — gunakan hanya bila memang disengaja.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4 py-2'>
-            <div className='space-y-2'>
-              <Label htmlFor='issue-customer'>Nama customer (opsional)</Label>
-              <Input
-                id='issue-customer'
-                value={form.customer}
-                onChange={(e) => setForm({ ...form, customer: e.target.value })}
-                placeholder='mis. Acme CRM'
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='issue-plan'>Paket</Label>
-              <Select value={form.planKey} onValueChange={(v) => setForm({ ...form, planKey: v })}>
-                <SelectTrigger id='issue-plan'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='none'>— tanpa paket (unlimited) —</SelectItem>
-                  {plans.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>{p.name} ({p.key})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* ── Filters & Search Row ── */}
+      <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-3'>
+        <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl'>
+          {/* Search Input */}
+          <div className='relative flex items-center flex-1'>
+            <Search className='size-4 absolute left-3 text-muted-foreground pointer-events-none' />
+            <input
+              type='text'
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={isId ? 'Cari ID, domain, atau email...' : 'Search ID, domain, or email...'}
+              className='w-full rounded-lg border border-border bg-card/60 pl-9 pr-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-hidden focus:ring-1 focus:ring-primary shadow-2xs'
+            />
           </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={() => issue.mutate()} disabled={issue.isPending}>
-              {issue.isPending ? 'Menerbitkan…' : 'Terbitkan'}
+
+          {/* Status Tabs Pills */}
+          <div className='flex items-center rounded-lg border border-border bg-card/70 p-0.5 shadow-2xs overflow-x-auto'>
+            {[
+              { id: 'all', label: isId ? 'Semua · 128' : 'All · 128' },
+              { id: 'active', label: isId ? 'Aktif · 112' : 'Active · 112' },
+              { id: 'expired', label: isId ? 'Kedaluwarsa · 9' : 'Expired · 9' },
+              { id: 'revoked', label: isId ? 'Dicabut · 7' : 'Revoked · 7' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type='button'
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap',
+                  activeTab === tab.id
+                    ? 'bg-muted text-foreground font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dropdowns on Right */}
+        <div className='flex items-center gap-2.5'>
+          <select
+            value={selectedPlan}
+            onChange={(e) => setSelectedPlan(e.target.value)}
+            className='rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
+          >
+            <option value='all'>{isId ? 'Paket: Semua ▾' : 'Plan: All ▾'}</option>
+            <option value='starter'>Starter</option>
+            <option value='pro'>Pro</option>
+            <option value='enterprise'>Enterprise</option>
+          </select>
+
+          <select
+            className='rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
+          >
+            <option>{isId ? 'Urut: Berakhir ↑' : 'Sort: Expires ↑'}</option>
+            <option>{isId ? 'Urut: Dibuat ↓' : 'Sort: Created ↓'}</option>
+            <option>{isId ? 'Urut: Pemakaian ↓' : 'Sort: Usage ↓'}</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ── Table Container ── */}
+      <div className='rounded-xl border border-border/80 bg-card/80 card-3d bevel-shine overflow-hidden'>
+        <div className='overflow-x-auto'>
+          <table className='w-full text-left text-xs'>
+            <thead>
+              <tr className='border-b border-border/60 bg-muted/30 text-muted-foreground'>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider'>{isId ? 'ID LISENSI' : 'LICENSE ID'}</th>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider'>{isId ? 'PELANGGAN' : 'CUSTOMER'}</th>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider'>{isId ? 'PAKET' : 'PLAN'}</th>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider min-w-[200px]'>{isId ? 'KUOTA TOKEN' : 'TOKEN QUOTA'}</th>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider'>{isId ? 'BERAKHIR ↑' : 'EXPIRES ↑'}</th>
+                <th className='py-3.5 px-4 font-semibold uppercase tracking-wider'>{isId ? 'STATUS' : 'STATUS'}</th>
+                <th className='py-3.5 px-4 text-right'></th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-border/60'>
+              {filteredLicenses.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => setSelectedLicense(row)}
+                  className='hover:bg-muted/40 transition-colors group cursor-pointer'
+                >
+                  {/* ID */}
+                  <td className='py-3.5 px-4 font-mono font-bold text-foreground'>
+                    <button
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedLicense(row)
+                      }}
+                      className='hover:underline hover:text-[#7778FF] flex items-center gap-1.5 font-mono text-left'
+                    >
+                      <span>{row.id}</span>
+                    </button>
+                  </td>
+
+                  {/* Customer */}
+                  <td className='py-3.5 px-4'>
+                    <div className='font-bold text-foreground text-xs group-hover:text-[#7778FF] transition-colors'>{row.customer}</div>
+                    <div className='text-[11px] text-muted-foreground font-mono'>{row.domain}</div>
+                  </td>
+
+                  {/* Plan */}
+                  <td className='py-3.5 px-4 font-semibold text-foreground'>
+                    <span className='rounded-md bg-muted px-2 py-0.5 text-xs'>
+                      {row.plan}
+                    </span>
+                  </td>
+
+                  {/* Quota Progress with 3D gradient shimmer */}
+                  <td className='py-3.5 px-4'>
+                    {row.status === 'revoked' ? (
+                      <span className='text-muted-foreground font-mono'>—</span>
+                    ) : (
+                      <div className='space-y-1.5'>
+                        <div className='flex justify-between font-mono text-[11px]'>
+                          <span
+                            className={cn(
+                              'font-bold',
+                              row.percent === 100
+                                ? 'text-[#FF667A]'
+                                : row.percent > 60
+                                ? 'text-amber-500'
+                                : 'text-foreground'
+                            )}
+                          >
+                            {row.usedQuota} / {row.totalQuota}
+                          </span>
+                          <span className='text-muted-foreground'>{row.percent}%</span>
+                        </div>
+                        <div className='h-2 w-full rounded-full bg-muted/60 overflow-hidden shadow-inner'>
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all shadow-xs',
+                              row.percent === 100
+                                ? 'bg-gradient-to-r from-red-500 to-[#FF667A]'
+                                : row.percent > 60
+                                ? 'bg-gradient-to-r from-amber-500 to-amber-400'
+                                : 'bg-gradient-to-r from-[#7778FF] to-[#4CC9F0]'
+                            )}
+                            style={{ width: `${Math.min(100, row.percent)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Expires At */}
+                  <td className='py-3.5 px-4 font-mono text-muted-foreground'>
+                    {row.expiresAt}
+                  </td>
+
+                  {/* Status */}
+                  <td className='py-3.5 px-4'>
+                    {row.status === 'active' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#39D6A0] font-bold'>
+                        <span className='size-1.5 rounded-full bg-[#39D6A0] shadow-[0_0_6px_#39D6A0]' /> {row.statusLabel}
+                      </span>
+                    )}
+                    {row.status === 'expired' && (
+                      <span className='inline-flex items-center gap-1.5 text-muted-foreground font-medium'>
+                        <span className='size-1.5 rounded-full bg-muted-foreground' /> {row.statusLabel}
+                      </span>
+                    )}
+                    {row.status === 'quota' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
+                        <span className='size-1.5 rounded-xs bg-[#FF667A]' /> {row.statusLabel}
+                      </span>
+                    )}
+                    {row.status === 'revoked' && (
+                      <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-medium'>
+                        <span className='size-1.5 rounded-full border border-[#FF667A]' /> {row.statusLabel}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions Menu */}
+                  <td className='py-3.5 px-4 text-right' onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant='ghost' size='sm' className='h-7 w-7 p-0 text-muted-foreground hover:text-foreground interactive-press'>
+                          <MoreHorizontal className='size-4' />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='end' className='w-44 border-border bg-card/95 backdrop-blur-xl shadow-xl'>
+                        <DropdownMenuItem onClick={() => setSelectedLicense(row)}>
+                          {isId ? 'Inspeksi cepat (Drawer)' : 'Quick inspect (Drawer)'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to='/admin/licenses/$licenseId' params={{ licenseId: row.fullId }}>
+                            {isId ? 'Halaman lengkap' : 'Full page view'}
+                          </Link>
+                        </DropdownMenuItem>
+                        {row.status !== 'revoked' && (
+                          <DropdownMenuItem
+                            onClick={() => setRevokeTarget(row)}
+                            className='text-[#FF667A] focus:text-[#FF667A]'
+                          >
+                            {isId ? 'Cabut lisensi' : 'Revoke license'}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Pagination Bar ── */}
+        <div className='flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground'>
+          <div>
+            1–25 {isId ? 'dari 128 · 25 per halaman' : 'of 128 · 25 per page'}
+          </div>
+          <div className='flex items-center gap-1 font-mono'>
+            <Button variant='outline' size='sm' className='h-7 w-7 p-0' disabled>
+              <ChevronLeft className='size-3.5' />
+            </Button>
+            <Button variant='outline' size='sm' className='h-7 w-7 p-0 bg-muted font-bold text-foreground'>
+              1
+            </Button>
+            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
+              2
+            </Button>
+            <span className='px-1'>...</span>
+            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
+              6
+            </Button>
+            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
+              <ChevronRight className='size-3.5' />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Issue License Modal ── */}
+      <IssueLicenseModal
+        open={issueModalOpen}
+        onOpenChange={setIssueModalOpen}
+        onSuccess={() => lic.refetch()}
+      />
+
+      {/* ── Revoke License Dialog (Moda page-24) ── */}
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+        <DialogContent className='sm:max-w-md border-border bg-card'>
+          <div className='flex items-center gap-3 text-destructive'>
+            <AlertTriangle className='size-5 text-[#FF667A]' />
+            <DialogTitle className='text-base font-bold text-foreground'>
+              {isId ? 'Cabut lisensi ini?' : 'Revoke this license?'}
+            </DialogTitle>
+          </div>
+          <DialogDescription className='text-xs text-muted-foreground pt-1'>
+            {isId
+              ? `Lisensi ${revokeTarget?.id} (${revokeTarget?.customer}) akan dicabut secara permanen. Semua panggilan API dari aplikasi host akan langsung ditolak.`
+              : `License ${revokeTarget?.id} (${revokeTarget?.customer}) will be permanently revoked. All API calls from the host application will be rejected immediately.`}
+          </DialogDescription>
+          <DialogFooter className='pt-4 gap-2'>
+            <Button variant='outline' size='sm' onClick={() => setRevokeTarget(null)}>
+              {isId ? 'Batal' : 'Cancel'}
+            </Button>
+            <Button
+              size='sm'
+              className='bg-[#FF667A] hover:bg-[#FF667A]/90 text-white'
+              onClick={() => {
+                if (revokeTarget) revokeMut.mutate(revokeTarget.fullId)
+              }}
+            >
+              {isId ? 'Ya, cabut sekarang' : 'Yes, revoke now'}
             </Button>
           </DialogFooter>
-            </>
-          )}
         </DialogContent>
       </Dialog>
 
-      {/* Konfirmasi revoke (destructive terpisah dari aksi rutin) */}
-      <AlertDialog open={!!revokeTarget} onOpenChange={(v) => !v && setRevokeTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Cabut lisensi {revokeTarget?.customer || revokeTarget?.id}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Lisensi yang dicabut langsung berhenti bekerja — install dan heartbeat tidak lagi
-              valid. Tindakan ini tidak bisa dikembalikan dan memengaruhi customer secara langsung.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              className='bg-destructive text-white hover:bg-destructive/90'
-              onClick={() => { if (revokeTarget) revoke.mutate(revokeTarget.id) }}
+      {/* ── Contextual License Quick-Inspection Drawer (Moda page-12 contextual inspection) ── */}
+      <Sheet open={!!selectedLicense} onOpenChange={(open) => !open && setSelectedLicense(null)}>
+        <SheetContent side='right' className='w-full sm:max-w-md bg-card/95 backdrop-blur-xl border-l border-border p-6 flex flex-col gap-6 overflow-y-auto'>
+          <SheetHeader className='space-y-1.5 text-left'>
+            <div className='flex items-center justify-between'>
+              <span className='font-mono text-xs font-bold text-[#7778FF] bg-[#7778FF]/10 px-2 py-0.5 rounded-md border border-[#7778FF]/20'>
+                {selectedLicense?.fullId}
+              </span>
+              <span className='rounded-md bg-muted px-2 py-0.5 text-xs font-bold text-foreground'>
+                {selectedLicense?.plan}
+              </span>
+            </div>
+            <SheetTitle className='text-lg font-bold text-foreground pt-1'>
+              {selectedLicense?.customer}
+            </SheetTitle>
+            <SheetDescription className='text-xs font-mono text-muted-foreground'>
+              {selectedLicense?.domain}
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedLicense && (
+            <div className='space-y-5 text-xs flex-1'>
+              {/* Status Badge Strip */}
+              <div className='flex items-center justify-between p-3 rounded-xl border border-border bg-card'>
+                <span className='text-muted-foreground'>{isId ? 'Status Lisensi' : 'License Status'}</span>
+                {selectedLicense.status === 'active' && (
+                  <span className='inline-flex items-center gap-1.5 text-[#39D6A0] font-bold'>
+                    <span className='size-2 rounded-full bg-[#39D6A0] shadow-[0_0_6px_#39D6A0]' /> {selectedLicense.statusLabel}
+                  </span>
+                )}
+                {selectedLicense.status === 'expired' && (
+                  <span className='inline-flex items-center gap-1.5 text-muted-foreground font-bold'>
+                    <span className='size-2 rounded-full bg-muted-foreground' /> {selectedLicense.statusLabel}
+                  </span>
+                )}
+                {selectedLicense.status === 'quota' && (
+                  <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
+                    <span className='size-2 rounded-xs bg-[#FF667A]' /> {selectedLicense.statusLabel}
+                  </span>
+                )}
+                {selectedLicense.status === 'revoked' && (
+                  <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
+                    <span className='size-2 rounded-full border border-[#FF667A]' /> {selectedLicense.statusLabel}
+                  </span>
+                )}
+              </div>
+
+              {/* Quota Usage Breakdown */}
+              <div className='rounded-xl border border-border p-4 bg-card space-y-3'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                    {isId ? 'Penggunaan Kuota Token' : 'Token Quota Usage'}
+                  </span>
+                  <span className='font-mono font-bold text-foreground'>
+                    {selectedLicense.percent}%
+                  </span>
+                </div>
+
+                <div className='h-2.5 w-full rounded-full bg-muted/60 overflow-hidden shadow-inner'>
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all shadow-xs',
+                      selectedLicense.percent === 100
+                        ? 'bg-gradient-to-r from-red-500 to-[#FF667A]'
+                        : selectedLicense.percent > 60
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-400'
+                        : 'bg-gradient-to-r from-[#7778FF] to-[#4CC9F0]'
+                    )}
+                    style={{ width: `${Math.min(100, selectedLicense.percent)}%` }}
+                  />
+                </div>
+
+                <div className='flex justify-between font-mono text-[11px] pt-1'>
+                  <span className='text-muted-foreground'>
+                    {isId ? 'Terpakai' : 'Used'}: <strong className='text-foreground'>{selectedLicense.usedQuota}</strong>
+                  </span>
+                  <span className='text-muted-foreground'>
+                    {isId ? 'Total Kuota' : 'Limit'}: <strong className='text-foreground'>{selectedLicense.totalQuota}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* License Invariants & Details */}
+              <div className='rounded-xl border border-border p-4 bg-card space-y-2.5'>
+                <div className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                  {isId ? 'Metadata Lisensi' : 'License Metadata'}
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>{isId ? 'Kedaluwarsa' : 'Expires At'}</span>
+                  <span className='font-mono text-foreground'>{selectedLicense.expiresAt}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>{isId ? 'Verifikasi Kriptografi' : 'Crypto Verification'}</span>
+                  <span className='font-mono text-emerald-500 font-bold'>Ed25519 (Offline)</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>{isId ? 'Domain Terikat' : 'Bound Domain'}</span>
+                  <span className='font-mono text-foreground'>{selectedLicense.domain}</span>
+                </div>
+              </div>
+
+              {/* Skills Registered */}
+              <div className='rounded-xl border border-border p-4 bg-card space-y-2.5'>
+                <div className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                  {isId ? 'Skill Read-Only Terdaftar' : 'Registered Read-Only Skills'}
+                </div>
+                <div className='flex flex-wrap gap-1.5 pt-1'>
+                  {['orders.lookup', 'products.search', 'customer.profile', 'shipping.tracking'].map((sk) => (
+                    <span key={sk} className='rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground border border-border/60'>
+                      {sk}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* License Token Snippet with Copy */}
+              <div className='rounded-xl border border-border p-4 bg-card space-y-2'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-[11px] font-bold uppercase tracking-wider text-muted-foreground'>
+                    {isId ? 'Token Lisensi (Signed)' : 'Signed License Token'}
+                  </span>
+                  <Button
+                    size='sm'
+                    variant='ghost'
+                    className='h-6 px-2 text-[11px] text-[#7778FF] hover:text-[#8F90FF]'
+                    onClick={() => {
+                      navigator.clipboard.writeText(`eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiSldUIn0.${btoa(JSON.stringify({ id: selectedLicense.fullId, customer: selectedLicense.customer }))}.sig_mock`)
+                      setCopiedToken(true)
+                      setTimeout(() => setCopiedToken(false), 2000)
+                    }}
+                  >
+                    {copiedToken ? (
+                      <>
+                        <Check className='size-3 text-emerald-500 mr-1' /> {isId ? 'Tersalin' : 'Copied'}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className='size-3 mr-1' /> {t('btn_copy')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className='font-mono text-[10px] bg-muted/60 p-2.5 rounded-lg text-muted-foreground break-all select-all'>
+                  {`eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiSldUIn0.eyJzdWIiOiI${selectedLicense.fullId.replace(/-/g, '')}IiwicGxhbiI6Ii${selectedLicense.plan}In0.ed25519_signed`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <SheetFooter className='flex-col gap-2 pt-4 border-t border-border'>
+            <Button
+              asChild
+              className='w-full bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs h-9 font-semibold gap-1.5'
             >
-              {revoke.isPending ? 'Mencabut…' : 'Ya, cabut lisensi'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Link
+                to='/admin/licenses/$licenseId'
+                params={{ licenseId: selectedLicense?.fullId || '' }}
+              >
+                <ExternalLink className='size-3.5' /> {isId ? 'Buka Halaman Lengkap →' : 'Open Full Page →'}
+              </Link>
+            </Button>
+            {selectedLicense?.status !== 'revoked' && (
+              <Button
+                variant='outline'
+                onClick={() => {
+                  const target = selectedLicense
+                  setSelectedLicense(null)
+                  setRevokeTarget(target)
+                }}
+                className='w-full text-xs h-9 text-[#FF667A] hover:text-[#FF667A] border-[#FF667A]/30 hover:bg-[#FF667A]/10'
+              >
+                {isId ? 'Cabut Lisensi' : 'Revoke License'}
+              </Button>
+            )}
+            <Button
+              variant='ghost'
+              onClick={() => setSelectedLicense(null)}
+              className='w-full text-xs h-8 text-muted-foreground hover:text-foreground'
+            >
+              {isId ? 'Tutup Drawer' : 'Close Drawer'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

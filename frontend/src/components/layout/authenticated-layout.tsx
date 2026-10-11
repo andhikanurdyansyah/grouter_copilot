@@ -5,7 +5,8 @@ import { LayoutProvider } from '@/context/layout-provider'
 import { SearchProvider } from '@/context/search-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
-import { ProductThemeScope } from '@/components/layout/product-theme-scope'
+import { ModaHeader } from '@/components/layout/moda-header'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { SkipToMain } from '@/components/skip-to-main'
 
 type AuthenticatedLayoutProps = {
@@ -19,27 +20,23 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       <LayoutProvider>
         <SidebarProvider defaultOpen={defaultOpen}>
           <SkipToMain />
-          {/* Scope tema per produk: admin dark, customer light (rute-driven) */}
-          <ProductThemeScope />
           <AppSidebar />
           <SidebarInset
             className={cn(
-              // Set content container, so we can use container queries
-              '@container/content',
-
-              // If layout is fixed, set the height
-              // to 100svh to prevent overflow
+              '@container/content flex flex-col min-h-screen bg-background text-foreground',
               'has-data-[layout=fixed]:h-svh',
-
-              // If layout is fixed and sidebar is inset,
-              // set the height to 100svh - spacing (total margins) to prevent overflow
               'peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]'
             )}
           >
-            {children ?? <Outlet />}
+            <ModaHeader />
+            <main id='content' tabIndex={-1} className='flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-8 max-w-7xl w-full mx-auto focus:outline-none'>
+              {children ?? <Outlet />}
+            </main>
+            <MobileBottomNav />
           </SidebarInset>
         </SidebarProvider>
       </LayoutProvider>
     </SearchProvider>
   )
 }
+

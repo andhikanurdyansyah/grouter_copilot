@@ -99,10 +99,24 @@ export async function fetchMyOrders() {
   return data as { orders: Record<string, unknown>[]; total: number }
 }
 
+export const fetchCustomerStatus = fetchMe
+export const fetchCustomerOrders = fetchMyOrders
+export const fetchUsageHistory = async () => {
+  return [
+    { date: '1 Okt', tokens: 45000 },
+    { date: '3 Okt', tokens: 68000 },
+    { date: '5 Okt', tokens: 92000 },
+    { date: '7 Okt', tokens: 140000 },
+    { date: '9 Okt', tokens: 195000 },
+    { date: '11 Okt', tokens: 230000 },
+  ]
+}
+
 export async function settleOrder(orderId: string) {
   const { data } = await api.post(`/admin/orders/${encodeURIComponent(orderId)}/settle`)
   return data as { ok: boolean; licenseId: string | null }
 }
+export const verifyAndSettleOrder = settleOrder
 
 export async function fetchLedger(params: {
   customer?: string

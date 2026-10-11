@@ -1,4 +1,4 @@
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 
 const data = [
   {
@@ -69,6 +69,24 @@ export function Overview() {
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => `$${value}`}
+        />
+        <Tooltip
+          cursor={{ fill: 'currentColor', opacity: 0.08 }}
+          content={({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className='rounded-xl border border-border bg-popover/95 text-popover-foreground backdrop-blur-md px-3 py-2 shadow-xl text-xs space-y-1 font-mono'>
+                  <div className='font-bold text-foreground font-sans'>{label}</div>
+                  <div className='flex items-center gap-2 text-primary'>
+                    <span className='size-2 rounded-full bg-primary' />
+                    <span className='text-muted-foreground'>Total:</span>
+                    <span className='font-bold text-foreground'>${payload[0].value?.toLocaleString()}</span>
+                  </div>
+                </div>
+              )
+            }
+            return null
+          }}
         />
         <Bar
           dataKey='total'

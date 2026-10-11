@@ -1,85 +1,143 @@
 import {
-  Gauge,
+  LayoutGrid,
   KeyRound,
+  Receipt,
   ScrollText,
+  LineChart,
   Package,
-  ServerCog,
+  Settings,
   Home,
-  BookOpen,
-  PieChart,
-  ReceiptText,
-  Wallet,
-  ShieldCheck,
-  Cpu,
+  Tag,
+  CreditCard,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
+import { type Language, dictionary } from '@/context/language-provider'
 
-// Dua produk yang sengaja dibedakan (adopsi desain ZIP enterprise-saas,
-// docs/31-design-adoption-map.md):
-// - Admin = OPERATIONAL CONTROL PLANE: kelompok domain Operasi / Manajemen
-//   Pelanggan / Tata Kelola AI / Platform Infrastruktur — bahasa operasional.
-// - Customer = SELF-SERVICE: kelompok MY COPILOT / SUBSCRIPTION / ACCOUNT —
-//   tanpa istilah administratif (revoke, policy, ledger, infrastruktur).
-// Bahasa: satu locale (Indonesia) — label nav = judul halaman (h1) yang dituju.
-export function buildSidebarData(isAdmin: boolean, user?: { name?: string; email?: string }): SidebarData {
+export function buildSidebarData(
+  isAdmin: boolean,
+  lang: Language = 'id',
+  user?: { name?: string; email?: string }
+): SidebarData {
+  const t = (key: string) => {
+    const entry = dictionary[key]
+    return entry ? entry[lang] || entry.id : key
+  }
+
   if (isAdmin) {
     return {
-      user: { name: user?.name || 'Operator', email: user?.email || 'admin', avatar: '' },
+      user: {
+        name: user?.name || t('role_operator'),
+        email: user?.email || t('role_operator_sub'),
+        avatar: '',
+        role: 'admin',
+      },
       teams: [],
       navGroups: [
         {
-          title: 'Operasi',
+          title: t('nav_operations'),
           items: [
-            { title: 'Operasional', url: '/admin', icon: Gauge },
+            {
+              title: t('nav_overview'),
+              url: '/admin',
+              icon: LayoutGrid,
+            },
+            {
+              title: t('nav_licenses'),
+              url: '/admin/licenses',
+              icon: KeyRound,
+              badge: '128',
+              badgeVariant: 'muted',
+            },
+            {
+              title: t('nav_orders'),
+              url: '/admin/orders',
+              icon: Receipt,
+              badge: '4',
+              badgeVariant: 'amber',
+            },
+            {
+              title: t('nav_ledger'),
+              url: '/admin/ledger',
+              icon: ScrollText,
+            },
+            {
+              title: t('nav_usage'),
+              url: '/admin/usage',
+              icon: LineChart,
+            },
           ],
         },
         {
-          title: 'Manajemen Pelanggan',
+          title: t('nav_configuration'),
           items: [
-            { title: 'Lisensi', url: '/admin/licenses', icon: KeyRound },
-            { title: 'Orders & Pembayaran', url: '/admin/orders', icon: Wallet },
-          ],
-        },
-        {
-          title: 'Tata Kelola AI',
-          items: [
-            { title: 'Paket & Kebijakan AI', url: '/admin/packages', icon: Package },
-            { title: 'AI Ledger', url: '/admin/ledger', icon: ScrollText },
-            { title: 'Usage Provider', url: '/admin/usage', icon: Cpu },
-          ],
-        },
-        {
-          title: 'Platform Infrastruktur',
-          items: [
-            { title: 'Infrastruktur & Health', url: '/admin/settings', icon: ServerCog },
+            {
+              title: t('nav_plans_policy'),
+              url: '/admin/packages',
+              icon: Package,
+            },
+            {
+              title: t('nav_settings'),
+              url: '/admin/settings',
+              icon: Settings,
+            },
           ],
         },
       ],
     }
   }
+
+  // Customer Sidebar
   return {
-    user: { name: user?.name || 'Customer', email: user?.email || '', avatar: '' },
-    teams: [],
+    user: {
+      name: user?.name || t('role_customer'),
+      email: user?.email || t('role_customer_sub'),
+      avatar: '',
+      role: 'customer',
+    },
+    teams: [
+      {
+        name: 'PT Maju Digital',
+        plan: 'Pro · pt-maju.id',
+      },
+    ],
     navGroups: [
       {
-        title: 'Copilot Saya',
+        title: t('nav_workspace'),
         items: [
-          { title: 'Status Saya', url: '/user', icon: Home },
-          { title: 'Instalasi & Panduan', url: '/user/install', icon: BookOpen },
-          { title: 'Pemakaian AI', url: '/user/usage', icon: PieChart },
+          {
+            title: t('nav_user_overview'),
+            url: '/user',
+            icon: Home,
+          },
+          {
+            title: t('nav_user_install'),
+            url: '/user/install',
+            icon: KeyRound,
+            badge: '●',
+            badgeVariant: 'dot',
+          },
+          {
+            title: t('nav_user_usage'),
+            url: '/user/usage',
+            icon: LineChart,
+          },
         ],
       },
       {
-        title: 'Langganan',
+        title: t('nav_billing'),
         items: [
-          { title: 'Paket & Perpanjangan', url: '/user/orders', icon: ReceiptText },
-          { title: 'Orders & Pembayaran', url: '/user/payments', icon: Wallet },
-        ],
-      },
-      {
-        title: 'Akun',
-        items: [
-          { title: 'Profil & Keamanan', url: '/user/account', icon: ShieldCheck },
+          {
+            title: t('nav_user_plans'),
+            url: '/user/orders',
+            icon: Tag,
+          },
+          {
+            title: t('nav_user_orders'),
+            url: '/user/payments',
+            icon: CreditCard,
+            badge: '1',
+            badgeVariant: 'amber',
+          },
         ],
       },
     ],

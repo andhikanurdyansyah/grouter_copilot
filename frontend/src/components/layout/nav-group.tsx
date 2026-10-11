@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   Collapsible,
   CollapsibleContent,
@@ -58,8 +59,31 @@ export function NavGroup({ title, items }: NavGroupProps) {
   )
 }
 
-function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className='rounded-full px-1 py-0 text-xs'>{children}</Badge>
+function NavBadge({
+  children,
+  variant = 'default',
+}: {
+  children: ReactNode
+  variant?: 'default' | 'amber' | 'dot' | 'muted'
+}) {
+  if (variant === 'dot') {
+    return <span className='ms-auto size-2 rounded-full bg-[#7778FF] shadow-[0_0_6px_#7778FF]' />
+  }
+  if (variant === 'amber') {
+    return (
+      <span className='ms-auto flex items-center justify-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[11px] font-bold text-amber-500 font-mono leading-none'>
+        {children}
+      </span>
+    )
+  }
+  if (variant === 'muted') {
+    return (
+      <span className='ms-auto font-mono text-xs text-muted-foreground'>
+        {children}
+      </span>
+    )
+  }
+  return <Badge className='ms-auto rounded-full px-1.5 py-0 text-xs'>{children}</Badge>
 }
 
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
@@ -70,11 +94,19 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         asChild
         isActive={checkIsActive(href, item)}
         tooltip={item.title}
+        className={cn(
+          'transition-colors',
+          checkIsActive(href, item)
+            ? 'bg-muted/70 text-foreground font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+        )}
       >
-        <Link to={item.url} onClick={() => setOpenMobile(false)}>
-          {item.icon && <item.icon />}
-          <span>{item.title}</span>
-          {item.badge && <NavBadge>{item.badge}</NavBadge>}
+        <Link to={item.url} onClick={() => setOpenMobile(false)} className='w-full'>
+          {item.icon && <item.icon className='size-4 shrink-0' />}
+          <span className='truncate'>{item.title}</span>
+          {item.badge && (
+            <NavBadge variant={item.badgeVariant}>{item.badge}</NavBadge>
+          )}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

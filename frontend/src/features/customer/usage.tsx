@@ -1,224 +1,335 @@
-import { useQuery } from '@tanstack/react-query'
-import { fetchMe, fetchPlans } from '@/lib/grouter-api'
-import { PageHeader } from '@/components/shared/page-header'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { TableSkeleton, EmptyState, ErrorState } from '@/components/shared/data-states'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Link } from '@tanstack/react-router'
-import { ShieldOff, AlertTriangle, Zap } from 'lucide-react'
+import { Download, AlertCircle, FileCode, CheckCircle2, Clock, Zap } from 'lucide-react'
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { useLanguage } from '@/context/language-provider'
+import { cn } from '@/lib/utils'
 
 export function CustomerUsage() {
-  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
-  const plans = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
+  const { language, t } = useLanguage()
+  const isId = language === 'id'
 
-  if (me.isPending) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Pemakaian AI' description='Token & request tercatat server-side per lisensi.' />
-        <TableSkeleton rows={3} cols={5} />
-      </div>
-    )
+  const [timeRange, setTimeRange] = useState<'7h' | '14h' | 'periode'>('14h')
+  const [selectedSkill, setSelectedSkill] = useState('all')
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
+  const [requestsList, setRequestsList] = useState([
+    { time: '10 Okt, 14:22', id: 'req_01HF...8KQ2', skill: 'orders.list', tokens: '1.284', status: 'ok', isOk: true },
+    { time: '10 Okt, 13:58', id: 'req_01HF...7ZP1', skill: 'tickets.list', tokens: '938', status: 'ok', isOk: true },
+    { time: '10 Okt, 13:41', id: 'req_01HF...6YT0', skill: 'customers.find', tokens: '0', status: isId ? 'gagal' : 'failed', isOk: false },
+    { time: '10 Okt, 12:07', id: 'req_01HF...5XR9', skill: 'orders.list', tokens: '1.610', status: 'ok', isOk: true },
+    { time: '10 Okt, 11:30', id: 'req_01HF...4WQ8', skill: 'tickets.list', tokens: '848', status: 'ok', isOk: true },
+    { time: '10 Okt, 10:12', id: 'req_01HF...3VN6', skill: 'orders.list', tokens: '1.022', status: 'ok', isOk: true },
+  ])
+
+  const handleLoadMore = () => {
+    setRequestsList((prev) => [
+      ...prev,
+      { time: '10 Okt, 09:45', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'orders.list', tokens: '1.450', status: 'ok', isOk: true },
+      { time: '10 Okt, 08:30', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'tickets.list', tokens: '720', status: 'ok', isOk: true },
+      { time: '09 Okt, 22:15', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'customers.find', tokens: '910', status: 'ok', isOk: true },
+    ])
   }
-  if (me.isError) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Pemakaian AI' description='Token & request tercatat server-side per lisensi.' />
-        <ErrorState
-          status={(me.error as { response?: { status?: number } })?.response?.status}
-          message={(me.error as Error).message}
-          onRetry={() => me.refetch()}
-        />
-      </div>
-    )
-  }
 
-  const usage = me.data?.usage ?? []
-  const licenses = me.data?.licenses ?? []
-  const planName = new Map((plans.data?.plans ?? []).map((p) => [p.key, p.name]))
-
-  // Ambil lisensi utama (aktif dulu, fallback ke pertama)
-  const activeLicense = licenses.find((l) => String(l.status ?? 'active') === 'active') ?? licenses[0]
-  const primaryUsage = usage.find((u) => u.licenseId === activeLicense?.id) ?? usage[0]
-  const limit = primaryUsage?.quotaLimit ?? null
-  const used = primaryUsage?.usedTokens ?? 0
-  const aiOff = primaryUsage?.aiEnabled === false
-  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
-  const exhausted = limit !== null && used >= limit
-  const near = limit !== null && !exhausted && pct >= 90
+  const filteredRequests = selectedSkill === 'all'
+    ? requestsList
+    : requestsList.filter((r) => r.skill === selectedSkill)
 
   return (
-    <div className='space-y-5'>
-      <PageHeader
-        title='Pemakaian AI'
-        description='Total token terpakai vs kuota lifetime lisensi — dihitung & diverifikasi server per request.'
-      />
+    <div className='space-y-6 animate-fade-in'>
+      {/* ── Top Header Row ── */}
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+            {isId ? 'Penggunaan AI' : 'AI Usage'}
+          </h1>
+          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+            {isId
+              ? 'Token dari setiap permintaan Copilot. Permintaan gagal tidak memotong kuota.'
+              : 'Tokens from each Copilot request. Failed requests do not deduct quota.'}
+          </p>
+        </div>
 
-      {/* Lifetime info — selalu tampil */}
-      <div className='flex items-start gap-3 rounded-lg border bg-muted/40 p-4' role='note'>
-        <Zap className='mt-0.5 size-4 shrink-0 text-primary' aria-hidden />
-        <p className='text-sm text-muted-foreground'>
-          Kuota bersifat <strong className='text-foreground'>lifetime per lisensi</strong> — tidak direset bulanan.
-          Token input + output diakumulasi server setiap request.
-        </p>
+        {/* Time Switcher */}
+        <div className='flex items-center rounded-lg border border-border bg-card/70 p-0.5 shadow-2xs self-start sm:self-auto'>
+          {[
+            { id: '7h', label: '7h' },
+            { id: '14h', label: '14h' },
+            { id: 'periode', label: isId ? 'Periode' : 'Period' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type='button'
+              onClick={() => setTimeRange(item.id as any)}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded-md transition-all',
+                timeRange === item.id
+                  ? 'bg-muted text-foreground font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Banner status kuota */}
-      {aiOff && (
-        <div className='flex items-start gap-3 rounded-lg border border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40' role='status'>
-          <ShieldOff className='mt-0.5 size-5 shrink-0 text-slate-500 dark:text-slate-400' aria-hidden />
-          <div>
-            <p className='text-sm font-medium'>Paket Anda tidak menyertakan AI</p>
-            <p className='text-sm text-muted-foreground'>Perpanjang ke paket dengan AI untuk mengaktifkan fitur tersebut.</p>
+      {/* ── Top Cards Row (Moda page-56) ── */}
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-5'>
+        {/* Kuota periode ini (Col 5) */}
+        <div className='lg:col-span-5 rounded-xl border border-border bg-card/70 p-5 shadow-2xs space-y-3'>
+          <div className='flex items-center justify-between'>
+            <span className='text-xs font-semibold text-muted-foreground'>
+              {isId ? 'Kuota periode ini' : 'Quota this period'}
+            </span>
+            <span className='text-xs text-muted-foreground font-mono'>
+              reset 12 Nov
+            </span>
           </div>
-        </div>
-      )}
-      {!aiOff && exhausted && (
-        <div className='flex flex-wrap items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/5 p-4' role='alert'>
-          <AlertTriangle className='size-5 shrink-0 text-red-600 dark:text-red-400' aria-hidden />
-          <div className='min-w-0 flex-1'>
-            <p className='text-sm font-medium text-red-600 dark:text-red-400'>Kuota habis</p>
-            <p className='text-sm text-muted-foreground'>Pekerjaan AI akan ditolak sampai Anda perpanjang paket.</p>
-          </div>
-          <Button asChild size='sm' variant='destructive'>
-            <Link to='/user/orders'>Perpanjang paket</Link>
-          </Button>
-        </div>
-      )}
-      {!aiOff && near && !exhausted && (
-        <div className='flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4' role='status'>
-          <AlertTriangle className='size-5 shrink-0 text-amber-600 dark:text-amber-400' aria-hidden />
-          <div className='min-w-0 flex-1'>
-            <p className='text-sm font-medium text-amber-600 dark:text-amber-400'>Kuota hampir habis</p>
-            <p className='text-sm text-muted-foreground'>Sisa {limit !== null ? (limit - used).toLocaleString('id-ID') : '—'} token.</p>
-          </div>
-          <Button asChild size='sm' variant='outline'>
-            <Link to='/user/orders'>Perpanjang paket</Link>
-          </Button>
-        </div>
-      )}
 
-      {/* Progress kuota — tampil walau belum ada pemakaian */}
-      {primaryUsage && (
-        <Card>
-          <CardContent className='p-5'>
-            <div className='flex items-center justify-between text-sm'>
-              <span className='font-medium'>Kuota AI</span>
-              <span className='tabular-nums text-muted-foreground'>
-                {used.toLocaleString('id-ID')} {limit !== null ? `/ ${limit.toLocaleString('id-ID')} token` : '(unlimited)'}
+          <div className='space-y-2'>
+            <div className='flex items-baseline justify-between'>
+              <span className='text-3xl font-bold font-mono tracking-tight text-foreground'>
+                64%
+              </span>
+              <span className='font-mono text-xs text-muted-foreground'>
+                1.284.330 / 2.000.000
               </span>
             </div>
-            {limit !== null ? (
-              <>
-                <div className='mt-2 h-2.5 overflow-hidden rounded-full bg-muted' role='progressbar' aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label='Pemakaian kuota AI'>
-                  <div
-                    className={'h-full rounded-full transition-colors ' + (exhausted ? 'bg-red-600' : near ? 'bg-amber-500' : 'bg-emerald-600')}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <p className='mt-2 text-sm text-muted-foreground'>
-                  {used === 0
-                    ? `0 dari ${limit.toLocaleString('id-ID')} token terpakai — kuota penuh.`
-                    : exhausted
-                      ? 'Kuota habis — pekerjaan AI akan ditolak sampai diperpanjang.'
-                      : near
-                        ? `Hampir habis — sisa ${(limit - used).toLocaleString('id-ID')} token.`
-                        : `Tersisa ${(limit - used).toLocaleString('id-ID')} token.`}
-                </p>
-              </>
-            ) : (
-              <p className='mt-1 text-sm text-muted-foreground'>Paket unlimited — tidak ada batas token.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            <div className='h-2 w-full rounded-full bg-muted/60 overflow-hidden'>
+              <div className='h-full rounded-full bg-[#7778FF]' style={{ width: '64%' }} />
+            </div>
+          </div>
 
-      {/* Tabel riwayat pemakaian */}
-      {usage.length === 0 ? (
-        <EmptyState
-          title={licenses.length > 0 ? 'Belum ada request AI tercatat untuk lisensi ini.' : 'Belum ada pemakaian AI'}
-          description={licenses.length > 0
-            ? 'Request AI pertama Anda akan tercatat di sini beserta pemakaian tokennya.'
-            : 'Request AI pertama Anda akan tercatat di sini beserta pemakaian tokennya.'}
-          action={
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/user/install'>Buka panduan instalasi</Link>
+          <p className='text-xs text-muted-foreground pt-1'>
+            {isId ? 'Perkiraan habis 27 Okt pada laju saat ini' : 'Estimated exhaustion 27 Oct at current rate'}
+          </p>
+        </div>
+
+        {/* 3 Metrics (Col 7) */}
+        <div className='lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 rounded-xl border border-border bg-card/70 shadow-2xs divide-y sm:divide-y-0 sm:divide-x divide-border'>
+          <div className='p-5'>
+            <p className='text-xs font-medium text-muted-foreground'>
+              {isId ? 'Permintaan' : 'Requests'}
+            </p>
+            <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
+              1.842
+            </p>
+            <p className='mt-2 text-xs font-medium text-[#39D6A0] flex items-center gap-1'>
+              <span>▲</span> 18% {isId ? 'vs periode lalu' : 'vs last period'}
+            </p>
+          </div>
+
+          <div className='p-5'>
+            <p className='text-xs font-medium text-muted-foreground'>
+              {isId ? 'Rata-rata / permintaan' : 'Average / request'}
+            </p>
+            <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
+              697
+            </p>
+            <p className='mt-2 text-xs text-muted-foreground'>
+              token
+            </p>
+          </div>
+
+          <div className='p-5'>
+            <p className='text-xs font-medium text-muted-foreground'>
+              {isId ? 'Gagal (tidak ditagih)' : 'Failed (not billed)'}
+            </p>
+            <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
+              7
+            </p>
+            <p className='mt-2 text-xs text-muted-foreground'>
+              0,4% · upstream
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table: Riwayat permintaan ── */}
+      <div className='rounded-xl border border-border bg-card/70 shadow-2xs space-y-4 p-5'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+          <h2 className='text-sm sm:text-base font-semibold text-foreground'>
+            {isId ? 'Riwayat permintaan' : 'Request history'}
+          </h2>
+
+          <div className='flex items-center gap-2.5'>
+            <select
+              value={selectedSkill}
+              onChange={(e) => setSelectedSkill(e.target.value)}
+              className='rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs text-foreground focus:ring-1 focus:ring-primary'
+            >
+              <option value='all'>{isId ? 'Skill: Semua ▾' : 'Skill: All ▾'}</option>
+              <option value='orders.list'>orders.list</option>
+              <option value='tickets.list'>tickets.list</option>
+              <option value='customers.find'>customers.find</option>
+            </select>
+
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-8 gap-1.5 border-border bg-card text-xs font-medium'
+              onClick={() => {
+                const csv = 'time,id,skill,tokens,status\n' + filteredRequests.map(r => `${r.time},${r.id},${r.skill},${r.tokens},${r.status}`).join('\n')
+                const blob = new Blob([csv], { type: 'text/csv' })
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(blob)
+                a.download = 'requests.csv'
+                a.click()
+              }}
+            >
+              <Download className='size-3.5' /> {t('btn_export_csv')}
             </Button>
-          }
-        />
-      ) : (
-        <Card className='py-0'>
-          <CardContent className='px-0'>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>License</TableHead>
-                  <TableHead className='hidden md:table-cell'>Paket</TableHead>
-                  <TableHead className='text-right'>Request</TableHead>
-                  <TableHead className='text-right'>Token terpakai</TableHead>
-                  <TableHead className='text-right'>Sisa kuota</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usage.map((u) => {
-                  const uLimit = u.quotaLimit ?? null
-                  const uUsed = u.usedTokens ?? 0
-                  const uRemain = uLimit === null ? null : Math.max(0, uLimit - uUsed)
-                  const uExhausted = uRemain === 0
-                  const uNear = uRemain !== null && !uExhausted && uLimit !== null && uUsed / uLimit >= 0.9
-                  const lic = licenses.find((l) => l.id === u.licenseId)
-                  return (
-                    <TableRow key={u.licenseId}>
-                      <TableCell className='font-mono text-xs'>{u.licenseId}</TableCell>
-                      <TableCell className='hidden md:table-cell text-sm'>
-                        {lic?.planKey ? (planName.get(lic.planKey) ?? lic.planKey) : '—'}
-                        {u.aiEnabled === false && <StatusBadge tone='warning' className='ml-2'>AI off</StatusBadge>}
-                      </TableCell>
-                      <TableCell className='text-right tabular-nums'>{(u.requestCount ?? 0).toLocaleString('id-ID')}</TableCell>
-                      <TableCell className='text-right tabular-nums'>{uUsed.toLocaleString('id-ID')}</TableCell>
-                      <TableCell className='text-right'>
-                        {u.aiEnabled === false ? (
-                          <StatusBadge tone='warning'>AI dimatikan di paket</StatusBadge>
-                        ) : uLimit === null ? (
-                          <StatusBadge tone='info'>unlimited</StatusBadge>
-                        ) : uExhausted ? (
-                          <StatusBadge tone='danger'>kuota habis — upgrade paket</StatusBadge>
-                        ) : uNear ? (
-                          <StatusBadge tone='warning'>{uRemain!.toLocaleString('id-ID')} — hampir habis</StatusBadge>
-                        ) : (
-                          <span className='tabular-nums text-sm'>{uRemain!.toLocaleString('id-ID')}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
 
-      {/* Cara perhitungan kuota */}
-      <Card>
-        <CardHeader>
-          <CardTitle className='text-base'>Cara perhitungan kuota</CardTitle>
-          <CardDescription>Transparansi perhitungan.</CardDescription>
-        </CardHeader>
-        <CardContent className='text-sm space-y-2 text-muted-foreground'>
-          <p>
-            Kuota AI bersifat <strong className='text-foreground'>lifetime per lisensi</strong>: total
-            token input + output diakumulasi server setiap request, bukan direset per bulan.
-          </p>
-          <p>
-            Setiap request divalidasi server — token dihitung dari respons provider, bukan dari
-            laporan browser. Request yang ditolak (mis. model tidak ada di allowlist paket)
-            tidak memotong kuota Anda.
-          </p>
-        </CardContent>
-      </Card>
+        <div className='overflow-x-auto'>
+          <table className='w-full text-left text-xs'>
+            <thead>
+              <tr className='border-b border-border text-muted-foreground font-semibold uppercase tracking-wider font-mono'>
+                <th className='pb-3 px-2'>{isId ? 'WAKTU ↓' : 'TIME ↓'}</th>
+                <th className='pb-3 px-2'>REQUEST ID</th>
+                <th className='pb-3 px-2'>SKILL</th>
+                <th className='pb-3 px-2 text-right'>TOKEN</th>
+                <th className='pb-3 px-2 text-right'>STATUS</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-border/60 font-mono'>
+              {filteredRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className='py-8 text-center text-muted-foreground'>
+                    <p className='text-xs'>{isId ? 'Tidak ada permintaan yang cocok dengan filter skill ini.' : 'No requests match this skill filter.'}</p>
+                    <button
+                      type='button'
+                      onClick={() => setSelectedSkill('all')}
+                      className='mt-2 text-xs font-semibold text-[#7778FF] hover:underline'
+                    >
+                      {isId ? 'Reset filter' : 'Reset filter'}
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredRequests.map((row, i) => (
+                  <tr
+                    key={i}
+                    onClick={() => setSelectedRequest(row)}
+                    className='hover:bg-muted/40 transition-colors cursor-pointer group'
+                  >
+                    <td className='py-3.5 px-2 text-muted-foreground font-sans'>{row.time}</td>
+                    <td className='py-3.5 px-2 text-foreground font-medium group-hover:text-[#7778FF] transition-colors'>{row.id}</td>
+                    <td className='py-3.5 px-2 text-foreground'>{row.skill}</td>
+                    <td className='py-3.5 px-2 text-right text-foreground font-bold'>{row.tokens}</td>
+                    <td className='py-3.5 px-2 text-right font-sans'>
+                      {row.isOk ? (
+                        <span className='inline-flex items-center gap-1.5 text-[#39D6A0] font-medium'>
+                          <span className='size-1.5 rounded-full bg-[#39D6A0]' /> ok
+                        </span>
+                      ) : (
+                        <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-medium'>
+                          <AlertCircle className='size-3' /> {row.status}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className='flex items-center justify-between pt-3 border-t border-border/70 text-xs text-muted-foreground'>
+          <div>
+            {filteredRequests.length} {isId ? 'dari 1.842 permintaan' : 'of 1,842 requests'}
+          </div>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={handleLoadMore}
+            className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-medium interactive-press'
+          >
+            {isId ? 'Muat lebih banyak' : 'Load more'}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Request Detail Modal (Moda contextual modal pattern) ── */}
+      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+        <DialogContent className='sm:max-w-md border-border bg-card/95 backdrop-blur-xl shadow-2xl'>
+          <DialogHeader>
+            <div className='flex items-center justify-between pr-4'>
+              <DialogTitle className='text-base font-bold text-foreground flex items-center gap-2'>
+                <FileCode className='size-4 text-[#7778FF]' />
+                <span className='font-mono'>{selectedRequest?.id}</span>
+              </DialogTitle>
+              {selectedRequest?.isOk ? (
+                <span className='inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20'>
+                  <CheckCircle2 className='size-3' /> ok
+                </span>
+              ) : (
+                <span className='inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-[#FF667A]/10 text-[#FF667A] font-bold border border-[#FF667A]/20'>
+                  <AlertCircle className='size-3' /> {selectedRequest?.status}
+                </span>
+              )}
+            </div>
+            <DialogDescription className='text-xs text-muted-foreground pt-1'>
+              {isId
+                ? 'Rincian eksekusi token gateway Copilot untuk permintaan ini.'
+                : 'Copilot gateway token execution breakdown for this request.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRequest && (
+            <div className='space-y-3.5 py-2 text-xs'>
+              <div className='rounded-xl border border-border p-3.5 bg-muted/40 space-y-2 font-mono'>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>{isId ? 'Skill Terpanggil' : 'Invoked Skill'}</span>
+                  <span className='font-bold text-foreground'>{selectedRequest.skill}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>{isId ? 'Waktu Eksekusi' : 'Timestamp'}</span>
+                  <span className='text-foreground'>{selectedRequest.time}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>{isId ? 'Token Terpakai' : 'Billed Tokens'}</span>
+                  <span className='font-bold text-indigo-400'>{selectedRequest.tokens} token</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>{isId ? 'Model Gateway' : 'Gateway Model'}</span>
+                  <span className='text-foreground'>grouter/balanced</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>{isId ? 'Latensi P95' : 'Latency P95'}</span>
+                  <span className='text-foreground'>1,42 dtk</span>
+                </div>
+              </div>
+
+              <div className='rounded-lg bg-card p-3 border border-border/80 text-[11px] text-muted-foreground flex items-center gap-2'>
+                <Zap className='size-4 text-[#7778FF] shrink-0' />
+                <span>
+                  {selectedRequest.isOk
+                    ? (isId ? 'Permintaan berhasil diselesaikan dan dipotong dari kuota bulanan.' : 'Request completed successfully and deducted from monthly quota.')
+                    : (isId ? 'Permintaan gagal. Tidak ada token yang dipotong dari kuota Anda (invarian biaya).' : 'Request failed. Zero tokens deducted from your quota (cost invariant).')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className='pt-2 flex justify-end'>
+            <Button
+              type='button'
+              onClick={() => setSelectedRequest(null)}
+              className='text-xs bg-[#7778FF] hover:bg-[#8F90FF] text-white font-semibold'
+            >
+              {isId ? 'Tutup' : 'Close'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

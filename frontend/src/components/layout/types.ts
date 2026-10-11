@@ -4,17 +4,19 @@ type User = {
   name: string
   email: string
   avatar: string
+  role?: string
 }
 
 type Team = {
   name: string
-  logo: React.ElementType
+  logo?: React.ElementType | string
   plan: string
 }
 
 type BaseNavItem = {
   title: string
   badge?: string
+  badgeVariant?: 'default' | 'amber' | 'dot' | 'muted'
   icon?: React.ElementType
 }
 

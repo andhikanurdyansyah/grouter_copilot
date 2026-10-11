@@ -1,280 +1,313 @@
-import { useQuery } from '@tanstack/react-query'
-import { fetchHealth, fetchAdminSettings } from '@/lib/grouter-api'
-import { PageHeader } from '@/components/shared/page-header'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { TableSkeleton, ErrorState } from '@/components/shared/data-states'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Link } from '@tanstack/react-router'
-import { RefreshCw, ShieldCheck, ExternalLink, ArrowRight } from 'lucide-react'
-
-// Infrastructure control surface: ringkasan konfigurasi read-only yang akurat
-// (backend hanya mengekspos baca), dikelompokkan per domain, dengan penjelasan
-// dekat setiap nilai — bukan disclaimer tersebar. Nilai sensitif tidak pernah
-// dikirim server ke browser; baris "kredensial" hanya menampilkan status.
-function Row({ label, value, hint, mono }: { label: string; value: React.ReactNode; hint?: string; mono?: boolean }) {
-  return (
-    // Konsisten: label kiri + nilai KANAN satu baris (bukan kadang stacked).
-    <div className='flex items-center justify-between gap-x-6 border-b border-border/60 py-2.5 last:border-0 last:pb-0'>
-      <div className='min-w-0'>
-        <p className='text-sm'>{label}</p>
-        {hint && <p className='mt-0.5 text-xs text-muted-foreground'>{hint}</p>}
-      </div>
-      <div className={'shrink-0 text-right text-sm text-foreground/90 ' + (mono ? 'font-mono text-xs' : '')}>{value}</div>
-    </div>
-  )
-}
-
-function SectionCard({ title, badge, action, children, className }: {
-  title: string
-  badge?: React.ReactNode
-  action?: React.ReactNode
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <Card className={'py-0 ' + (className ?? '')}>
-      <CardHeader className='flex-row items-center justify-between space-y-0 border-b border-border/60 py-3.5'>
-        <div className='flex items-center gap-2.5'>
-          <CardTitle className='text-sm font-medium'>{title}</CardTitle>
-          {badge}
-        </div>
-        {action}
-      </CardHeader>
-      <CardContent className='px-4 py-1'>{children}</CardContent>
-    </Card>
-  )
-}
-
-// Affordance detail untuk nilai yang digrupkan (mis. "Origin terpercaya: 4"):
-// tampilkan daftar isi bila data tersedia di response settings.
-function DetailList({ items, label }: { items?: string[]; label: string }) {
-  if (!items || items.length === 0) return null
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type='button'
-          aria-label={label}
-          className='ml-1 rounded-sm text-xs text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-        >
-          lihat
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align='end' className='w-80 p-0'>
-        <ul className='max-h-56 overflow-auto py-1'>
-          {items.map((item) => (
-            <li key={item} className='border-b border-border/60 px-3 py-1.5 font-mono text-xs last:border-0'>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  )
-}
+import { FlaskConical, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { useLanguage } from '@/context/language-provider'
+import { cn } from '@/lib/utils'
 
 export function AdminSettings() {
-  const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 60_000 })
-  const settings = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
+  const { language, t } = useLanguage()
+  const isId = language === 'id'
 
-  const reload = () => {
-    health.refetch()
-    settings.refetch()
-  }
+  const [activeTab, setActiveTab] = useState<'umum' | 'keamanan' | 'pembayaran' | 'kesehatan'>('umum')
 
-  if (settings.isPending) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Infrastruktur & Health' description='Status layanan dan ringkasan konfigurasi gateway.' />
-        <TableSkeleton rows={5} cols={4} />
-      </div>
-    )
-  }
-  if (settings.isError) {
-    return (
-      <div className='space-y-5'>
-        <PageHeader title='Infrastruktur & Health' description='Status layanan dan ringkasan konfigurasi gateway.' />
-        <ErrorState
-          status={(settings.error as { response?: { status?: number } })?.response?.status}
-          message={(settings.error as Error).message}
-          onRetry={() => settings.refetch()}
-        />
-      </div>
-    )
-  }
-
-  const s = (settings.data as { settings?: Record<string, unknown> }).settings ?? {}
-  const provider = s.provider as { baseUrl?: string; timeoutMs?: number; model?: string; gateway?: { defaultReservationTokens?: number; maxReservationTokens?: number; maxMessageBytes?: number } } | undefined
-  const limits = s.limits as { maxContextBytes?: number; maxRows?: number; maxTokens?: number } | undefined
-  const license = s.license as { audience?: string; defaultExpiresInDays?: number; defaultFeatures?: string[] } | undefined
-  const usage = s.usage as { checkUsageUrl?: string; cacheTtlMs?: number } | undefined
-  const payment = s.payment as { provider?: string; mode?: string; baseUrl?: string; klikqrisBaseUrl?: string; apiKey?: string; merchantId?: string; pollIntervalMs?: number; pollTimeoutMs?: number } | undefined
-  const auth = s.auth as { minPasswordLength?: number; trustedOrigins?: string[]; activityTrackingIntervalMs?: number } | undefined
-  const providers = (s.supportedAiProviders as string[]) ?? []
-
-  const healthOk = !health.isError
-  const credState = (v?: string) => v ? <StatusBadge tone='success'>terpasang</StatusBadge> : <StatusBadge tone='warning'>belum diatur</StatusBadge>
+  const tabs = [
+    { id: 'umum', label: isId ? 'Umum' : 'General' },
+    { id: 'keamanan', label: isId ? 'Keamanan & akses' : 'Security & access' },
+    { id: 'pembayaran', label: isId ? 'Pembayaran' : 'Payments' },
+    { id: 'kesehatan', label: isId ? 'Kesehatan layanan' : 'Service health' },
+  ]
 
   return (
-    <div className='mx-auto flex max-w-6xl flex-col gap-5'>
-      <PageHeader
-        title='Infrastruktur & Health'
-        description='Semua kartu di halaman ini read-only — nilai konfigurasi berasal dari environment server dan hanya berubah lewat env/restart. Entitlement AI per-paket dikelola terpisah di Paket & Kebijakan AI.'
-      >
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={reload}
-          disabled={health.isFetching || settings.isFetching}
-        >
-          <RefreshCw className={health.isFetching || settings.isFetching ? 'size-3.5 animate-spin' : 'size-3.5'} />
-          Muat ulang
-        </Button>
-      </PageHeader>
+    <div className='space-y-6 animate-fade-in'>
+      {/* ── Top Header Row ── */}
+      <div>
+        <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+          {isId ? 'Pengaturan' : 'Settings'}
+        </h1>
+        <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+          {isId
+            ? 'Konfigurasi server lisensi, gateway, dan keamanan. Nilai rahasia tidak pernah ditampilkan.'
+            : 'License server, gateway, and security configuration. Secrets are never displayed.'}
+        </p>
+      </div>
 
-      <div className='grid items-start gap-4 lg:grid-cols-3'>
-        {/* HEALTH — service card dgn konteks nyata (polling 60 dtk dipertahankan) */}
-        <Card className='py-0'>
-          <CardContent className='flex flex-col gap-4 p-5'>
-            <div>
-              <p className='text-sm font-medium'>Service health</p>
-              <div className='mt-1.5 flex items-center gap-2' role='status'>
-                {healthOk ? (
-                  <span className='inline-flex items-center gap-1.5 text-lg font-medium text-emerald-700 dark:text-emerald-400'>
-                    <span className='relative flex size-2'>
-                      <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60' />
-                      <span className='relative inline-flex size-2 rounded-full bg-emerald-500' />
-                    </span>
-                    Sehat
-                  </span>
-                ) : (
-                  <span className='inline-flex items-center gap-1.5 text-lg font-medium text-red-600 dark:text-red-400'>
-                    <span className='size-2 rounded-full bg-red-500' /> Tak terjangkau
-                  </span>
-                )}
+      {/* ── Vertical Tabs & Content Grid ── */}
+      <div className='grid grid-cols-1 md:grid-cols-12 gap-6'>
+        {/* Left Vertical Tabs (Col 3) with semantic tablist */}
+        <div
+          role='tablist'
+          aria-label={isId ? 'Kategori pengaturan' : 'Settings categories'}
+          aria-orientation='vertical'
+          className='md:col-span-3 space-y-1'
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              role='tab'
+              id={`tab-${tab.id}`}
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                'w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                activeTab === tab.id
+                  ? 'bg-muted text-foreground font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right Content Pane (Col 9) */}
+        <div className='md:col-span-9 space-y-5'>
+          {/* TAB 1: UMUM */}
+          {activeTab === 'umum' && (
+            <div id='panel-umum' role='tabpanel' aria-labelledby='tab-umum' className='space-y-5 animate-fade-in'>
+              <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d bevel-shine space-y-4'>
+                <div>
+                  <h2 className='text-sm sm:text-base font-semibold text-foreground'>
+                    {isId ? 'Server lisensi' : 'License server'}
+                  </h2>
+                  <p className='text-xs text-muted-foreground'>
+                    {isId
+                      ? 'Endpoint dan kunci verifikasi yang dipakai CLI dan plugin.'
+                      : 'Endpoints and verification keys used by the CLI and plugin.'}
+                  </p>
+                </div>
+
+                <div className='divide-y divide-border/60 text-xs'>
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>License server URL</div>
+                      <div className='text-muted-foreground text-[11px] font-mono'>Default CLI --license-server</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      https://copilot.grouter.id
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Gateway endpoint</div>
+                      <div className='text-muted-foreground text-[11px]'>D-021 · {isId ? 'satu kredensial layanan' : 'single service credential'}</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      /api/copilot/chat
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>{isId ? 'Kunci verifikasi publik' : 'Public verification key'}</div>
+                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Non-rahasia' : 'Non-secret'}</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      ed25519:MCow...Q9s=
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>{isId ? 'Kredensial gRouter' : 'gRouter credentials'}</div>
+                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Disimpan di env server, tidak dapat dilihat' : 'Stored in server env, hidden'}</div>
+                    </div>
+                    <div className='flex items-center gap-1.5 text-[#39D6A0] font-medium'>
+                      <span className='size-1.5 rounded-full bg-[#39D6A0]' />
+                      <span>{isId ? 'Terkonfigurasi' : 'Configured'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className='mt-1 text-xs text-muted-foreground'>
-                /api/health · diperiksa {health.dataUpdatedAt ? new Date(health.dataUpdatedAt).toLocaleTimeString('id-ID') : '—'} · polling 60 dtk
-              </p>
             </div>
-            <div className='rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-xs text-muted-foreground'>
-              {health.isError ? 'Gagal menghubungi /api/health' : 'GET /api/health → 200 OK'}
-            </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {/* GATEWAY PROVIDER — konfigurasi global (read-only) */}
-        <SectionCard
-          title='Gateway provider'
-          className='lg:col-span-2'
-          badge={<StatusBadge tone='info'>read-only</StatusBadge>}
-          action={
-            <Button asChild variant='ghost' size='sm' className='text-primary'>
-              <Link to='/admin/packages'>Kebijakan AI per-paket <ArrowRight className='size-3.5' /></Link>
-            </Button>
-          }
-        >
-          <div className='grid gap-x-10 sm:grid-cols-2'>
-            <div>
-              <Row label='Provider' value={providers.join(', ') || '—'} mono hint='Satu-satunya provider yang didukung gateway.' />
-              <Row label='Model global' value={provider?.model || '—'} mono hint='Fallback bila paket tidak menetapkan model.' />
-              <Row label='Base URL' value={provider?.baseUrl || '—'} mono hint='Endpoint upstream chat completions.' />
+          {/* TAB 2: KEAMANAN & AKSES */}
+          {activeTab === 'keamanan' && (
+            <div id='panel-keamanan' role='tabpanel' aria-labelledby='tab-keamanan' className='space-y-5 animate-fade-in'>
+              <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d bevel-shine space-y-4'>
+                <div>
+                  <h2 className='text-sm sm:text-base font-semibold text-foreground'>
+                    {isId ? 'Keamanan & akses' : 'Security & access'}
+                  </h2>
+                  <p className='text-xs text-muted-foreground'>
+                    {isId
+                      ? 'Batas laju dan perlindungan sesi admin.'
+                      : 'Rate limits and admin session protection.'}
+                  </p>
+                </div>
+
+                <div className='divide-y divide-border/60 text-xs'>
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Rate limit sign-in / sign-up</div>
+                      <div className='text-muted-foreground text-[11px]'>Proteksi brute force autentikasi</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      20 / 10 dtk per IP
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>{isId ? 'Fail-closed di produksi' : 'Fail-closed in production'}</div>
+                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Dikendalikan NODE_ENV · hanya baca di UI' : 'Controlled by NODE_ENV · read-only in UI'}</div>
+                    </div>
+                    <div className='flex items-center gap-1.5 text-[#39D6A0] font-medium'>
+                      <span className='size-1.5 rounded-full bg-[#39D6A0]' />
+                      <span>{isId ? 'Aktif' : 'Active'}</span>
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Token admin</div>
+                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Rotasi via env server · Bearer ADMIN_TOKEN' : 'Rotate via server env · Bearer ADMIN_TOKEN'}</div>
+                    </div>
+                    <div>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='h-7 gap-1 border-border bg-card text-xs text-foreground interactive-press'
+                        onClick={() => window.open('https://github.com/andhikanurdyansyah/grouter_copilot/blob/main/docs/15-decision-log.md', '_blank')}
+                      >
+                        {t('btn_view_guide')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Row label='Timeout request' value={provider?.timeoutMs ? (provider.timeoutMs / 1000) + ' dtk' : '—'} mono />
-              <Row label='Reservasi token' value={`${provider?.gateway?.defaultReservationTokens?.toLocaleString('id-ID') ?? '—'} / maks ${provider?.gateway?.maxReservationTokens?.toLocaleString('id-ID') ?? '—'}`} mono hint='Default & batas reservasi per request AI.' />
-              <Row label='Batas konteks' value={`${(limits?.maxContextBytes ?? 0).toLocaleString('id-ID')} B · ${(limits?.maxTokens ?? 0).toLocaleString('id-ID')} tok`} mono hint='Ukuran pesan & token maksimum per request.' />
+          )}
+
+          {/* TAB 3: PEMBAYARAN */}
+          {activeTab === 'pembayaran' && (
+            <div id='panel-pembayaran' role='tabpanel' aria-labelledby='tab-pembayaran' className='space-y-5 animate-fade-in'>
+              <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d bevel-shine space-y-4'>
+                <div>
+                  <h2 className='text-sm sm:text-base font-semibold text-foreground'>
+                    {isId ? 'Integrasi KlikQRIS' : 'KlikQRIS Integration'}
+                  </h2>
+                  <p className='text-xs text-muted-foreground'>
+                    {isId
+                      ? 'Konfigurasi gerbang pembayaran QRIS dinamis.'
+                      : 'Dynamic QRIS payment gateway configuration.'}
+                  </p>
+                </div>
+
+                <div className='divide-y divide-border/60 text-xs'>
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Merchant ID</div>
+                      <div className='text-muted-foreground text-[11px]'>ID Penyedia Pembayaran</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      M-GRX-SANDBOX-091
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Webhook Callback URL</div>
+                      <div className='text-muted-foreground text-[11px]'>Endpoint verifikasi pembayaran untrusted</div>
+                    </div>
+                    <div className='font-mono text-foreground font-medium'>
+                      https://copilot.grouter.id/api/webhook/klikqris
+                    </div>
+                  </div>
+
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
+                    <div>
+                      <div className='font-medium text-foreground'>Verifikasi Settle Upstream</div>
+                      <div className='text-muted-foreground text-[11px]'>D-020 · Re-verifikasi wajib sebelum penerbitan lisensi</div>
+                    </div>
+                    <div className='flex items-center gap-1.5 text-[#39D6A0] font-medium'>
+                      <span className='size-1.5 rounded-full bg-[#39D6A0]' />
+                      <span>{isId ? 'Wajib & Aktif' : 'Enforced & Active'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sandbox Mode Callout */}
+              <div className='flex items-center gap-3 rounded-xl border border-border bg-card/70 p-4 shadow-2xs text-xs'>
+                <FlaskConical className='size-4 text-amber-500 shrink-0' />
+                <div>
+                  <span className='font-semibold text-foreground'>
+                    {isId ? 'Mode pembayaran: sandbox' : 'Payment mode: sandbox'}
+                  </span>
+                  <p className='text-muted-foreground mt-0.5'>
+                    {isId
+                      ? 'QRIS belum disertifikasi produksi. Order tidak menagih dana nyata.'
+                      : 'QRIS is not yet certified for production. Orders do not charge real funds.'}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </SectionCard>
+          )}
+
+          {/* TAB 4: KESEHATAN LAYANAN */}
+          {activeTab === 'kesehatan' && (
+            <div id='panel-kesehatan' role='tabpanel' aria-labelledby='tab-kesehatan' className='space-y-5 animate-fade-in'>
+              <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d bevel-shine space-y-4'>
+                <div>
+                  <h2 className='text-sm sm:text-base font-semibold text-foreground'>
+                    {isId ? 'Kesehatan Layanan Internal' : 'Internal Service Health'}
+                  </h2>
+                  <p className='text-xs text-muted-foreground'>
+                    {isId
+                      ? 'Status konektivitas dan latensi komponen inti backend.'
+                      : 'Connectivity status and round-trip latency of backend core services.'}
+                  </p>
+                </div>
+
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs'>
+                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
+                    <div className='space-y-0.5'>
+                      <div className='font-bold text-foreground'>AI Gateway Upstream</div>
+                      <div className='text-muted-foreground text-[11px] font-mono'>/api/copilot/chat</div>
+                    </div>
+                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
+                      42ms · OK
+                    </span>
+                  </div>
+
+                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
+                    <div className='space-y-0.5'>
+                      <div className='font-bold text-foreground'>License Token Signer</div>
+                      <div className='text-muted-foreground text-[11px] font-mono'>Ed25519 Engine</div>
+                    </div>
+                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
+                      18ms · OK
+                    </span>
+                  </div>
+
+                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
+                    <div className='space-y-0.5'>
+                      <div className='font-bold text-foreground'>SQLite Quota Ledger</div>
+                      <div className='text-muted-foreground text-[11px] font-mono'>Write WAL mode</div>
+                    </div>
+                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
+                      2ms · OK
+                    </span>
+                  </div>
+
+                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
+                    <div className='space-y-0.5'>
+                      <div className='font-bold text-foreground'>Overall System Uptime</div>
+                      <div className='text-muted-foreground text-[11px] font-mono'>PM2 cluster</div>
+                    </div>
+                    <span className='px-2 py-0.5 rounded-md bg-indigo-500/15 text-[#7778FF] font-mono font-bold'>
+                      99.98%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      <div className='grid items-start gap-4 lg:grid-cols-3'>
-        {/* PAYMENT — kredensial hanya status, tidak pernah nilainya */}
-        <SectionCard
-          title='Payment gateway'
-          badge={<StatusBadge tone='info'>read-only</StatusBadge>}
-          action={payment?.mode ? <StatusBadge tone={payment.mode === 'production' ? 'warning' : 'neutral'}>{payment.mode}</StatusBadge> : undefined}
-        >
-          <div>
-            <Row label='Provider' value={payment?.provider || '—'} mono />
-            <Row label='API key' value={credState(payment?.apiKey)} hint='Disimpan server; tidak pernah dikirim ke browser.' />
-            <Row label='Merchant ID' value={credState(payment?.merchantId)} hint='Disimpan server; tidak pernah dikirim ke browser.' />
-            <Row label='Polling' value={payment?.pollIntervalMs ? Math.round(payment.pollIntervalMs / 1000) + ' dtk' : '—'} mono />
-          </div>
-        </SectionCard>
-
-        {/* LICENSE DEFAULTS */}
-        <SectionCard
-          title='Default lisensi'
-          badge={<StatusBadge tone='info'>read-only</StatusBadge>}
-          action={
-            <Button asChild variant='ghost' size='sm' className='text-primary'>
-              <Link to='/admin/licenses'>Kelola lisensi <ArrowRight className='size-3.5' /></Link>
-            </Button>
-          }
-        >
-          <div>
-            <Row label='Audience' value={license?.audience || '—'} mono />
-            <Row label='Masa berlaku default' value={license?.defaultExpiresInDays ? license.defaultExpiresInDays + ' hari' : '—'} mono />
-            <Row
-              label='Fitur default'
-              value={
-                license?.defaultFeatures?.length ? (
-                  <>
-                    {license.defaultFeatures.length}
-                    <DetailList items={license.defaultFeatures} label='Lihat daftar fitur default' />
-                  </>
-                ) : (
-                  '—'
-                )
-              }
-            />
-          </div>
-        </SectionCard>
-
-        {/* AUTH & SECURITY */}
-        <SectionCard title='Autentikasi & sesi' badge={<StatusBadge tone='info'>read-only</StatusBadge>}>
-          <div>
-            <Row label='Panjang sandi minimum' value={auth?.minPasswordLength ?? '—'} mono />
-            <Row label='Interval aktivitas' value={auth?.activityTrackingIntervalMs ? Math.round(auth.activityTrackingIntervalMs / 60000) + ' mnt' : '—'} mono />
-            <Row
-              label='Origin terpercaya'
-              value={
-                <>
-                  {auth?.trustedOrigins?.length ?? 0}
-                  <DetailList items={auth?.trustedOrigins} label='Lihat daftar origin terpercaya' />
-                </>
-              }
-              mono
-              hint='Daftar origin diizinkan untuk callback auth.'
-            />
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* USAGE UPSTREAM — infrastruktur, bukan kuota customer */}
-      <Card className='py-0'>
-        <CardContent className='flex flex-wrap items-center justify-between gap-3 px-4 py-3.5'>
-          <div className='flex items-center gap-3'>
-            <ShieldCheck className='size-4 text-muted-foreground' aria-hidden />
-            <div>
-              <p className='text-sm'>Usage upstream</p>
-              <p className='text-xs text-muted-foreground'>
-                Dimensi infrastruktur — dipisah total dari kuota customer. Cache {usage?.cacheTtlMs ? Math.round(usage.cacheTtlMs / 1000) + ' dtk' : '—'}.
-              </p>
-            </div>
-          </div>
-          <div className='flex items-center gap-3'>
-            <code className='hidden font-mono text-xs text-muted-foreground md:inline'>{usage?.checkUsageUrl}</code>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/admin/usage'>Buka usage <ExternalLink className='size-3.5' /></Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

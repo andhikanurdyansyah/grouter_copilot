@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import { useRouterState, Link } from '@tanstack/react-router'
-import { Sun, Moon, Bell, HelpCircle, X, CheckCircle2, Clock, AlertTriangle, ShieldCheck, ChevronRight } from 'lucide-react'
+import { useRouterState } from '@tanstack/react-router'
+import { Sun, Moon, Bell, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { useTheme } from '@/context/theme-provider'
 import { useLanguage } from '@/context/language-provider'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
@@ -71,7 +69,7 @@ export function ModaHeader() {
     },
   ]
 
-  const [unreadNotifications, setUnreadNotifications] = useState(notifications)
+  const [unreadNotifications] = useState(notifications)
   const [hasUnread, setHasUnread] = useState(true)
 
   return (

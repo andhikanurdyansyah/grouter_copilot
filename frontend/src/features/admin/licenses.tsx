@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchAdminLicenses, revokeLicense } from '@/lib/grouter-api'
+import { fetchAdminLicenses, revokeLicense, fetchLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   Plus,
@@ -11,13 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Key,
   Copy,
   Check,
   ExternalLink,
-  Shield,
-  Cpu,
-  Calendar,
 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { IssueLicenseModal } from './components/issue-license-modal'
@@ -53,107 +49,52 @@ export function AdminLicenses() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked'>('all')
   const [selectedPlan, setSelectedPlan] = useState<string>('all')
   const [issueModalOpen, setIssueModalOpen] = useState(false)
-  const [revokeTarget, setRevokeTarget] = useState<any | null>(null)
-  const [selectedLicense, setSelectedLicense] = useState<any | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<null | (typeof mockLicenses)[number]>(null)
+  const [selectedLicense, setSelectedLicense] = useState<null | (typeof mockLicenses)[number]>(null)
   const [copiedToken, setCopiedToken] = useState(false)
-  const [page, setPage] = useState(1)
 
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
 
-  // Mock list matching Moda page-12 exactly
-  const mockLicenses = useMemo(() => [
-    {
-      id: 'GRC-7F2A...91D',
-      fullId: 'GRC-7F2A-4C1E-91D0',
-      customer: 'PT Maju Digital',
-      domain: 'pt-maju.id',
-      plan: 'Pro',
-      usedQuota: '1,28 jt',
-      totalQuota: '2 jt',
-      percent: 64,
-      expiresAt: '12 Sep 2026',
-      status: 'expired',
-      statusLabel: isId ? 'Kedaluwarsa' : 'Expired',
-    },
-    {
-      id: 'GRC-12BC...0A4',
-      fullId: 'GRC-12BC-8F3A-00A4',
-      customer: 'Tokoku Commerce',
-      domain: 'tokoku.co',
-      plan: 'Pro',
-      usedQuota: '420 rb',
-      totalQuota: '2 jt',
-      percent: 21,
-      expiresAt: '11 Okt 2026',
-      status: 'active',
-      statusLabel: isId ? 'Aktif' : 'Active',
-    },
-    {
-      id: 'GRC-88E1...C3F',
-      fullId: 'GRC-88E1-22A1-AC3F',
-      customer: 'Klinik Sehat Bersama',
-      domain: 'klinik-sehat.id',
-      plan: 'Starter',
-      usedQuota: '500 rb',
-      totalQuota: '500 rb',
-      percent: 100,
-      expiresAt: '9 Nov 2026',
-      status: 'quota',
-      statusLabel: isId ? 'Kuota habis' : 'Quota exhausted',
-    },
-    {
-      id: 'GRC-3D90...7B2',
-      fullId: 'GRC-3D90-1111-B7B2',
-      customer: 'Logistik Nusantara',
-      domain: 'logistik-id.com',
-      plan: 'Enterprise',
-      usedQuota: '0',
-      totalQuota: '10 jt',
-      percent: 0,
-      expiresAt: '2 Des 2026',
-      status: 'active',
-      statusLabel: isId ? 'Aktif' : 'Active',
-    },
-    {
-      id: 'GRC-9B71...4AD',
-      fullId: 'GRC-9B71-44B2-14AD',
-      customer: 'Bengkel Prima',
-      domain: 'bengkelprima.com',
-      plan: 'Starter',
-      usedQuota: '312 rb',
-      totalQuota: '500 rb',
-      percent: 62,
-      expiresAt: '28 Feb 2027',
-      status: 'active',
-      statusLabel: isId ? 'Aktif' : 'Active',
-    },
-    {
-      id: 'GRC-A0F4...11E',
-      fullId: 'GRC-A0F4-98C3-511E',
-      customer: 'Sekolah Cerdas',
-      domain: 'sekolahcerdas.sch.id',
-      plan: 'Starter',
-      usedQuota: '88 rb',
-      totalQuota: '500 rb',
-      percent: 17,
-      expiresAt: '10 Okt 2027',
-      status: 'active',
-      statusLabel: isId ? 'Aktif' : 'Active',
-    },
-    {
-      id: 'GRC-55C2...E08',
-      fullId: 'GRC-55C2-4019-DE08',
-      customer: 'Kopi Kenangan Kita',
-      domain: 'kopikita.id',
-      plan: 'Pro',
-      usedQuota: '—',
-      totalQuota: '—',
-      percent: 0,
-      expiresAt: '—',
-      status: 'revoked',
-      statusLabel: isId ? 'Dicabut' : 'Revoked',
-    },
-  ], [isId])
+  // Data REAL: lisensi dari /api/admin/licenses + kuota dari ledger gateway.
+  const ledgerTotals = useQuery({
+    queryKey: ['admin-ledger-totals'],
+    queryFn: () => fetchLedger({ limit: 200 }),
+  })
+  const usedByLicense = new Map<string, number>()
+  for (const r of ((ledgerTotals.data?.records ?? []) as Array<{ licenseId: string; totalTokens: number | null }>)) {
+    usedByLicense.set(r.licenseId, (usedByLicense.get(r.licenseId) ?? 0) + (r.totalTokens ?? 0))
+  }
+
+  const shortId = (id: string) => (id.length > 15 ? id.slice(0, 9) + '...' + id.slice(-4) : id)
+
+  const [nowMs] = useState(() => Date.now())
+  const mockLicenses = useMemo(() => {
+    const raw = lic.data?.licenses ?? []
+    return raw.map((l) => {
+      const quota = (l.quota ?? null) as { limit?: number | null; usedTokens?: number | null } | null
+      const limit = quota?.limit ?? null
+      const used = usedByLicense.get(l.id) ?? quota?.usedTokens ?? 0
+      const percent = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
+      const expired = l.expiresAt ? new Date(l.expiresAt).getTime() < nowMs : false
+      const status = String(l.status ?? (expired ? 'expired' : 'active'))
+      const statusLabel = isId
+        ? (status === 'active' ? 'Aktif' : status === 'expired' ? 'Kedaluwarsa' : 'Dicabut')
+        : (status === 'active' ? 'Active' : status === 'expired' ? 'Expired' : 'Revoked')
+      return {
+        id: shortId(l.id),
+        fullId: l.id,
+        customer: l.customer ?? '—',
+        domain: (l.planKey ?? '—') as string,
+        plan: (l.planKey ?? '—') as string,
+        usedQuota: used ? used.toLocaleString('id-ID') : '0',
+        totalQuota: limit ? limit.toLocaleString('id-ID') : '—',
+        percent,
+        expiresAt: l.expiresAt ? new Date(l.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        status,
+        statusLabel,
+      }
+    })
+  }, [lic.data, ledgerTotals.data, isId, nowMs])
 
   const revokeMut = useMutation({
     mutationFn: (id: string) => revokeLicense(id),
@@ -250,7 +191,7 @@ export function AdminLicenses() {
               <button
                 key={tab.id}
                 type='button'
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as Parameters<typeof setActiveTab>[0])}
                 className={cn(
                   'px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap',
                   activeTab === tab.id

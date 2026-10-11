@@ -118,6 +118,14 @@ export class JsonStore {
     return order;
   }
 
+  updateOrderStatus(id, status) {
+    const order = this.data.orders.find((o) => o.id === id);
+    if (!order) return null;
+    order.status = status;
+    this._save();
+    return order;
+  }
+
   addLicense(license) {
     this.data.licenses.push(license);
     this._save();

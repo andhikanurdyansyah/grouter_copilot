@@ -9,11 +9,6 @@ import {
   Slash,
   AlertTriangle,
   CheckCircle2,
-  Clock,
-  ShieldCheck,
-  FileCode,
-  RotateCw,
-  Plus,
 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import {
@@ -37,66 +32,83 @@ export function AdminLicenseDetail() {
   const [renewModalOpen, setRenewModalOpen] = useState(false)
   const [renewDuration, setRenewDuration] = useState('30')
   const [renewQuota, setRenewQuota] = useState('1000000')
-  const [renewSuccess, setRenewSuccess] = useState(false)
-
+  
   const licenses = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
   const ledger = useQuery({
     queryKey: ['admin-ledger', 'license', licenseId],
     queryFn: () => fetchLedger({ licenseId, limit: 10 }),
   })
 
-  // Moda page-20 exact specification data
-  const [licenseData, setLicenseData] = useState({
-    customer: 'PT Maju Digital',
-    domain: 'pt-maju.id',
-    plan: 'Pro',
-    pricePerDay: 'Rp 15.000/hari',
-    issuedAt: '12 Okt 2026',
-    expiresAt: '12 Jan 2027',
-    owner: 'it@pt-maju.id',
-    status: 'active',
-    usedQuota: '1.284.330',
-    totalQuota: '2.000.000',
-    percent: 64,
-  })
+  // Data REAL: lisensi dari /api/admin/licenses + kuota & request dari ledger gateway.
+  const licRecord = (licenses.data?.licenses ?? []).find((l) => l.id === licenseId) ?? null
+  const usageRows = ((ledger.data?.records ?? []) as Array<{
+    quota?: { usedTokens?: number; limit?: number | null; planKey?: string | null }
+    status?: string
+  }>)
+  const quotaInfo = usageRows.find((r) => r.quota)?.quota ?? null
+  const usedTokens = quotaInfo?.usedTokens ?? 0
+  const totalQuotaN = quotaInfo?.limit ?? null
+  const percent = totalQuotaN ? Math.min(100, Math.round((usedTokens / totalQuotaN) * 100)) : 0
+  const fmtDateID = (iso?: string | null) =>
+    iso ? new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
-  const [skills, setSkills] = useState([
-    { name: 'orders.list', allowed: true, usage: '1.284', errorLabel: '' },
-    { name: 'tickets.list', allowed: true, usage: '938', errorLabel: '' },
-    { name: 'customers.find', allowed: true, usage: '420', errorLabel: '' },
-    { name: 'billing.write', allowed: false, usage: '0', errorLabel: isId ? 'ditolak' : 'denied' },
-  ])
+  const licenseData = {
+    customer: licRecord?.customer ?? '—',
+    domain: licRecord?.planKey ?? '—',
+    plan: licRecord?.planKey ?? '—',
+    pricePerDay: '—',
+    issuedAt: fmtDateID(licRecord?.createdAt ?? null),
+    expiresAt: fmtDateID(licRecord?.expiresAt ?? null),
+    owner: (licRecord?.accountId as string | null | undefined) ?? '—',
+    status: String(licRecord?.status ?? (licRecord ? 'active' : 'unknown')),
+    usedQuota: usedTokens.toLocaleString('id-ID'),
+    totalQuota: totalQuotaN != null ? totalQuotaN.toLocaleString('id-ID') : '—',
+    percent,
+  }
 
-  const recentRequests = [
-    { id: 'req_01HF...8KQ2', time: '14:22:08', skill: 'orders.list', in: '1.104', out: '180', status: 'ok', type: 'success' },
-    { id: 'req_01HF...7ZP1', time: '13:58:40', skill: 'tickets.list', in: '842', out: '96', status: 'ok', type: 'success' },
-    { id: 'req_01HF...6YT0', time: '13:41:02', skill: 'customers.find', in: '0', out: '0', status: 'upstream', type: 'error' },
-    { id: 'req_01HF...5XR9', time: '12:07:55', skill: 'orders.list', in: '1.398', out: '212', status: 'ok', type: 'success' },
-  ]
+  // Skill = fitur lisensi dari server (features[]), usage dari ledger (belum per-skill → tampil '—').
+  const skills = ((licRecord?.features ?? []) as string[]).map((name) => ({
+    name,
+    allowed: true,
+    usage: '—',
+    errorLabel: '',
+  }))
 
-  const auditLogs = [
-    { event: 'license.issued', actor: 'admin (Operator Console)', time: '12 Okt 2026, 09:14:20', details: 'Ed25519 token generated · 2.000.000 quota' },
-    { event: 'quota.alert', actor: 'system (Monitor)', time: '11 Okt 2026, 16:30:11', details: 'Threshold 60% reached (1.200.000 / 2.000.000)' },
-    { event: 'webhook.received', actor: 'KlikQRIS Sandbox', time: '10 Okt 2026, 14:19:40', details: 'ord_9QX2891K72L9T4 verified and settled' },
-    { event: 'license.bound', actor: 'client-cli', time: '10 Okt 2026, 11:02:15', details: 'Host application domain pt-maju.id bound' },
-  ]
+  const recentRequests = ((ledger.data?.records ?? []) as Array<{
+    requestId: string; createdAt: number | null
+    inputTokens: number | null; outputTokens: number | null; status: string
+  }>).map((r) => ({
+    id: r.requestId.length > 15 ? r.requestId.slice(0, 9) + '...' + r.requestId.slice(-4) : r.requestId,
+    time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString('id-ID') : '—',
+    skill: '—',
+    in: (r.inputTokens ?? 0).toLocaleString('id-ID'),
+    out: (r.outputTokens ?? 0).toLocaleString('id-ID'),
+    status: r.status,
+    type: r.status === 'ok' ? 'success' : 'error',
+  }))
 
+  // Audit log: sementara hanya penerbitan lisensi (server belum menyimpan audit trail per lisensi).
+  const auditLogs = licRecord
+    ? [{ event: 'license.issued', actor: 'admin (Operator Console)', time: fmtDateID(licRecord.createdAt ?? null), details: `Plan ${licRecord.planKey ?? '—'} · Ed25519` }]
+    : []
+
+  const [renewError, setRenewError] = useState(false)
+
+  // renewError ditampilkan di header bila true (server belum punya endpoint renew)
   const handleRenewSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setRenewSuccess(true)
-    setTimeout(() => {
-      setLicenseData((prev) => ({
-        ...prev,
-        expiresAt: renewDuration === '30' ? '12 Feb 2027' : renewDuration === '90' ? '12 Apr 2027' : '12 Jan 2028',
-        totalQuota: `${(parseInt(prev.totalQuota.replace(/\./g, '')) + parseInt(renewQuota)).toLocaleString('id-ID')}`,
-      }))
-      setRenewSuccess(false)
-      setRenewModalOpen(false)
-    }, 800)
+    // Pembaruan lisensi membutuhkan endpoint khusus di server (belum tersedia).
+    // Form dinonaktifkan agar tidak menampilkan keberhasilan palsu.
+    setRenewError(true)
   }
 
   return (
     <div className='space-y-6 animate-fade-in'>
+      {renewError && (
+        <div className='rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-500 font-medium'>
+          {isId ? 'Pembaruan lisensi belum tersedia di server — hubungi operator.' : 'License renewal is not available server-side yet — contact an operator.'}
+        </div>
+      )}
       {/* ── Top Header Row ── */}
       <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
@@ -157,7 +169,7 @@ export function AdminLicenseDetail() {
               aria-selected={activeTab === tab.id}
               aria-controls={`panel-${tab.id}`}
               id={`tab-${tab.id}`}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as Parameters<typeof setActiveTab>[0])}
               className={cn(
                 'py-2.5 transition-colors border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 activeTab === tab.id
@@ -196,7 +208,7 @@ export function AdminLicenseDetail() {
                 </div>
                 <div className='flex justify-between py-1'>
                   <span className='text-muted-foreground'>{isId ? 'Pemilik' : 'Owner'}</span>
-                  <span className='font-mono font-bold text-foreground'>{licenseData.owner}</span>
+                  <span className='font-mono font-bold text-foreground'>{licenseData.owner ?? '—'}</span>
                 </div>
               </div>
             </div>
@@ -412,11 +424,6 @@ export function AdminLicenseDetail() {
               {skills.map((skill, i) => (
                 <div
                   key={i}
-                  onClick={() => {
-                    setSkills((prev) =>
-                      prev.map((s, idx) => (idx === i ? { ...s, allowed: !s.allowed } : s))
-                    )
-                  }}
                   className={cn(
                     'flex items-center justify-between rounded-xl p-3.5 transition-all cursor-pointer interactive-press',
                     skill.allowed
@@ -541,7 +548,7 @@ export function AdminLicenseDetail() {
               </select>
             </div>
 
-            {renewSuccess && (
+            {renewError && (
               <div className='flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold'>
                 <CheckCircle2 className='size-4' />
                 <span>{isId ? 'Lisensi berhasil diperpanjang!' : 'License renewed successfully!'}</span>

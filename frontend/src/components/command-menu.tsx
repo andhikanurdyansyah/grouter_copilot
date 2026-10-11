@@ -24,8 +24,6 @@ export function CommandMenu() {
 
   // Konten dialog dirender hanya saat terbuka (menghindari konten hidden
   // di luar landmark sebelum dialog dibuka)
-  if (!open) return null
-
   const runCommand = React.useCallback(
     (command: () => unknown) => {
       setOpen(false)
@@ -33,6 +31,8 @@ export function CommandMenu() {
     },
     [setOpen]
   )
+
+  if (!open) return null
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>

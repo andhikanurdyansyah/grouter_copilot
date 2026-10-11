@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchMe } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,13 +12,17 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Copy, Check, CheckCircle2, Slash, Plus, ArrowRight, Terminal, Shield, Zap, Sparkles } from 'lucide-react'
+import { Copy, Check, Slash, Plus, Terminal, Shield } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 
 export function CustomerInstall() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
+
+  const meQ = useQuery({ queryKey: ['me'], queryFn: fetchMe })
+  const myLicense = meQ.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? meQ.data?.licenses?.[0]
+  const licenseId = myLicense?.id ?? '—'
 
   const [copiedId, setCopiedId] = useState(false)
   const [copiedCmd, setCopiedCmd] = useState(false)
@@ -27,7 +33,7 @@ export function CustomerInstall() {
   const [newSkillName, setNewSkillName] = useState('')
   const [newSkillAllowed, setNewSkillAllowed] = useState(true)
 
-  const commandText = `$ npx @grouter/copilot install --license GRC-7F2A-4C1E-91D0
+  const commandText = `$ npx @grouter/copilot install --license ${licenseId}
 ✓ Lisensi tervalidasi (Ed25519)
 ✓ .env server diperbarui (nilai tidak dicetak)
 ✓ Route gateway: /api/copilot/chat
@@ -41,7 +47,7 @@ Siap. Mount <CopilotChat /> di UI Anda`
   }
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText('GRC-7F2A-4C1E-91D0')
+    navigator.clipboard.writeText(licenseId)
     setCopiedId(true)
     setTimeout(() => setCopiedId(false), 2000)
   }
@@ -93,7 +99,16 @@ Siap. Mount <CopilotChat /> di UI Anda`
         </p>
       </div>
 
-      {/* ── Grid: Left Steps & 3D Terminal (8 cols) + Right Stepper (4 cols) ── */}
+      {!myLicense && (
+        <div className='rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-500 font-medium bevel-shine'>
+          {isId
+            ? 'Anda belum punya lisensi — beli paket di halaman Paket & Harga untuk mendapatkan lisensi dan panduan instalasi aktif.'
+            : "You don't have a license yet — purchase a plan on the Plans & Pricing page to get a license and active installation guide."}
+        </div>
+      )}
+
+            {/* ── Grid: Left Steps & 3D Terminal (8 cols) + Right Stepper (4 cols) ── */}
+
       <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
         {/* Left Column (8 cols) */}
         <div className='lg:col-span-8 space-y-5'>
@@ -107,7 +122,7 @@ Siap. Mount <CopilotChat /> di UI Anda`
                 className='font-mono font-bold text-foreground flex items-center gap-1.5 hover:text-[#7778FF] transition-colors p-1 rounded-md hover:bg-muted/40 interactive-press'
                 title='Copy ID'
               >
-                <span>GRC-7F2A...91D</span>
+                <span>{licenseId}</span>
                 {copiedId ? <Check className='size-3 text-emerald-500' /> : <Copy className='size-3 text-muted-foreground' />}
               </button>
             </div>

@@ -56,8 +56,10 @@ export const DEFAULT_SETTINGS = {
   payment: {
     provider: 'klikqris',
     mode: 'sandbox',
-    baseUrl: 'https://klikqris.com',
-    klikqrisBaseUrl: 'https://klikqris.com',
+    // '' = pakai mode-derived path dari KlikQris (sandbox → /api/sandbox).
+    // JANGAN set host tanpa path — pernah bikin checkout sandbox menembak endpoint prod (QR null).
+    baseUrl: '',
+    klikqrisBaseUrl: '',
     apiKey: '',
     merchantId: '',
     pollIntervalMs: 10000,
@@ -171,10 +173,23 @@ export function envSeeds(env = process.env) {
  * @param {object} stored  what the store holds (may be {} on a fresh install)
  * @param {object} env
  */
+const URL_PATHS = [
+  ['provider', 'baseUrl'],
+  ['payment', 'baseUrl'],
+  ['payment', 'klikqrisBaseUrl'],
+];
+
 export function resolveSettings(stored = {}, env = process.env) {
   let eff = clone(DEFAULT_SETTINGS);
   eff = deepMerge(eff, envSeeds(env));
   eff = deepMerge(eff, stored);
+  // Empty-string URL di stored settings (hasil edit admin yang mengosongkan
+  // field) TIDAK boleh menimpa default/mode-derived — kembalikan default.
+  for (const [a, b] of URL_PATHS) {
+    if (eff[a] && typeof eff[a][b] === 'string' && eff[a][b].trim() === '') {
+      eff[a][b] = DEFAULT_SETTINGS[a]?.[b] ?? '';
+    }
+  }
   return eff;
 }
 

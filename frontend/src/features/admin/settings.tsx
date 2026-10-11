@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { FlaskConical, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { FlaskConical } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 
@@ -47,7 +47,7 @@ export function AdminSettings() {
               id={`tab-${tab.id}`}
               aria-selected={activeTab === tab.id}
               aria-controls={`panel-${tab.id}`}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as Parameters<typeof setActiveTab>[0])}
               className={cn(
                 'w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 activeTab === tab.id

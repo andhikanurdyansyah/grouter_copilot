@@ -69,10 +69,15 @@ export class KlikQris {
 
   /** Base path per mode (override wins when provided). */
   get baseUrl() {
-    if (this.baseUrlOverride) return this.baseUrlOverride;
+    // Override admin boleh menunjuk proxy/region, TAPI bila nilai override
+    // adalah host tanpa path API (kesalahan konfigurasi umum, mis. base host
+    // yang tersimpan oleh UI lama), tetap tambahkan mode path agar mode
+    // sandbox/production selalu dihormati — jangan menembak endpoint prod.
+    const o = this.baseUrlOverride;
+    if (o && /\/api(\/|$)/.test(o)) return o.replace(/\/$/, '');
     return this.mode === 'production'
-      ? `${KLIKQRIS_BASE_URL}/api`
-      : `${KLIKQRIS_BASE_URL}/api/sandbox`;
+      ? `${o || KLIKQRIS_BASE_URL}/api`.replace(/([^:])\/\/api/, '$1/api')
+      : `${o || KLIKQRIS_BASE_URL}/api/sandbox`.replace(/([^:])\/\/api/, '$1/api');
   }
 
   _headers() {

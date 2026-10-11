@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Search, RotateCw, AlertCircle, FileCode, Check, X, ShieldCheck } from 'lucide-react'
+import { Search, RotateCw, AlertCircle, FileCode, ShieldCheck } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
@@ -15,30 +15,49 @@ export function AdminLedger() {
   const [q, setQ] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'ok' | 'quota' | 'upstream' | 'replay'>('all')
   const [selectedModel, setSelectedModel] = useState('all')
-  const [selectedPayload, setSelectedPayload] = useState<any | null>(null)
+  const [selectedPayload, setSelectedPayload] = useState<null | (typeof rowsList)[number]>(null)
 
-  const ledgerQuery = useQuery({ queryKey: ['admin-ledger'], queryFn: () => fetchLedger({ limit: 50 }) })
+  // Data REAL dari ledger gateway (D-021) — tanpa mock.
+  const ledgerQuery = useQuery({
+    queryKey: ['admin-ledger-live'],
+    queryFn: () => fetchLedger({ limit: 50 }),
+    refetchInterval: isLive ? 15_000 : false,
+  })
+  const records = (ledgerQuery.data?.records ?? []) as Array<{
+    requestId: string
+    licenseId: string
+    customer: string | null
+    model: string | null
+    status: string
+    inputTokens: number | null
+    outputTokens: number | null
+    totalTokens: number | null
+    reservedTokens: number | null
+    errorClassification: string | null
+    createdAt: number | null
+  }>
 
-  // Exact mockup rows from Moda page-36
-  const [rowsList, setRowsList] = useState([
-    { id: 'req_01HF...8KQ2', fullId: 'req_01HF921K8KQ2A9', license: 'GRC-7F2A...91D', time: '14:22:08', model: 'grouter/balanced', reserved: '2.048', in: '1.104', out: '180', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
-    { id: 'req_01HF...8KP9', fullId: 'req_01HF920K8KP9B8', license: 'GRC-88E1...C3F', time: '14:21:51', model: 'grouter/fast-mini', reserved: '—', in: '0', out: '0', status: 'quota', type: 'quota', customer: 'Klinik Sehat Bersama' },
-    { id: 'req_01HF...8KN4', fullId: 'req_01HF919K8KN4C7', license: 'GRC-12BC...0A4', time: '14:21:30', model: 'grouter/balanced', reserved: '2.048', in: '932', out: '141', status: 'ok', type: 'ok', customer: 'Tokoku Commerce' },
-    { id: 'req_01HF...8KN4', fullId: 'req_01HF919K8KN4C7-rep', license: 'GRC-12BC...0A4', time: '14:21:31', model: 'grouter/balanced', reserved: '—', in: '—', out: '—', status: 'replay', type: 'replay', customer: 'Tokoku Commerce' },
-    { id: 'req_01HF...8KM0', fullId: 'req_01HF918K8KM0D6', license: 'GRC-3D90...7B2', time: '14:20:12', model: 'grouter/pro-large', reserved: '4.096', in: '0', out: '0', status: 'upstream', type: 'upstream', customer: 'Logistik Nusantara' },
-    { id: 'req_01HF...8KK7', fullId: 'req_01HF917K8KK7E5', license: 'GRC-9B71...4AD', time: '14:19:44', model: 'grouter/fast-mini', reserved: '1.024', in: '610', out: '92', status: 'ok', type: 'ok', customer: 'Bengkel Prima' },
-    { id: 'req_01HF...8KJ2', fullId: 'req_01HF916K8KJ2F4', license: 'GRC-7F2A...91D', time: '14:19:02', model: 'grouter/balanced', reserved: '2.048', in: '1.398', out: '212', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
-    { id: 'req_01HF...8KH5', fullId: 'req_01HF915K8KH5G3', license: 'GRC-A0F4...11E', time: '14:18:40', model: 'grouter/fast-mini', reserved: '—', in: '0', out: '0', status: 'expired', type: 'expired', customer: 'Sekolah Cerdas' },
-    { id: 'req_01HF...8KG1', fullId: 'req_01HF914K8KG1H2', license: 'GRC-12BC...0A4', time: '14:17:55', model: 'grouter/balanced', reserved: '2.048', in: '720', out: '104', status: 'ok', type: 'ok', customer: 'Tokoku Commerce' },
-  ])
+  const fmtTok = (n: number | null | undefined) =>
+    n == null ? '—' : n.toLocaleString('id-ID')
 
-  const handleLoadMore = () => {
-    setRowsList((prev) => [
-      ...prev,
-      { id: `req_01HF...${Math.floor(Math.random()*900+100)}`, fullId: `req_01HF${Date.now()}`, license: 'GRC-7F2A...91D', time: '14:15:20', model: 'grouter/balanced', reserved: '2.048', in: '880', out: '120', status: 'ok', type: 'ok', customer: 'PT Maju Digital' },
-      { id: `req_01HF...${Math.floor(Math.random()*900+100)}`, fullId: `req_01HF${Date.now()+1}`, license: 'GRC-3D90...7B2', time: '14:12:05', model: 'grouter/pro-large', reserved: '4.096', in: '1.540', out: '310', status: 'ok', type: 'ok', customer: 'Logistik Nusantara' },
-    ])
-  }
+  const fmtTime = (ts: number | null | undefined) =>
+    ts ? new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'
+
+  const shortId = (id: string) => (id.length > 15 ? id.slice(0, 9) + '...' + id.slice(-4) : id)
+
+  const rowsList = records.map((r) => ({
+    id: shortId(r.requestId),
+    fullId: r.requestId,
+    license: r.licenseId,
+    time: fmtTime(r.createdAt),
+    model: r.model ?? '—',
+    reserved: fmtTok(r.reservedTokens),
+    in: fmtTok(r.inputTokens),
+    out: fmtTok(r.outputTokens),
+    status: r.status,
+    type: r.status === 'ok' ? 'ok' : r.status === 'reserved' ? 'replay' : r.status === 'error' ? 'upstream' : 'quota',
+    customer: r.customer ?? '—',
+  }))
 
   const filteredRows = rowsList.filter((row) => {
     if (activeTab === 'ok' && row.type !== 'ok') return false
@@ -150,7 +169,7 @@ export function AdminLedger() {
               <button
                 key={tab.id}
                 type='button'
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as Parameters<typeof setActiveTab>[0])}
                 className={cn(
                   'px-3 py-1 text-xs font-mono font-semibold rounded-lg transition-all whitespace-nowrap interactive-press',
                   activeTab === tab.id
@@ -270,7 +289,7 @@ export function AdminLedger() {
           <Button
             variant='ghost'
             size='sm'
-            onClick={handleLoadMore}
+            onClick={() => ledgerQuery.refetch()}
             className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-semibold self-end sm:self-auto interactive-press'
           >
             {isId ? 'Muat lebih banyak' : 'Load more'}

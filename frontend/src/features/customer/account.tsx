@@ -3,19 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchMe } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
 import {
-  User,
   Shield,
   Building,
   KeyRound,
   LogOut,
   AlertTriangle,
   RotateCw,
-  ExternalLink,
   CheckCircle2,
   XCircle,
   Lock,
-  Layers,
-  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,6 +42,7 @@ export function CustomerAccount() {
     name: userName,
     email: userEmail,
   }
+  void account
   const licenses = me.data?.licenses ?? []
 
   return (
@@ -112,7 +109,7 @@ export function CustomerAccount() {
                     <h2 className='text-lg font-extrabold text-foreground'>{userName}</h2>
                     <p className='text-xs text-muted-foreground font-mono'>{userEmail}</p>
                     <span className='inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#7778FF]/15 text-[#7778FF] border border-[#7778FF]/30 shadow-xs'>
-                      Admin Organisasi · PT Maju Digital
+                      {`Admin · ${userEmail}`}
                     </span>
                   </div>
                 </div>
@@ -132,14 +129,18 @@ export function CustomerAccount() {
                     <Building className='size-4 text-muted-foreground' />
                     {language === 'id' ? 'Organisasi' : 'Organization'}
                   </span>
-                  <span className='font-bold text-foreground'>PT Maju Digital</span>
+                  <span className='font-bold text-foreground'>{userName}</span>
                 </div>
                 <div className='py-3 flex justify-between items-center'>
                   <span className='text-muted-foreground flex items-center gap-2'>
                     <Shield className='size-4 text-muted-foreground' />
                     {language === 'id' ? 'Domain Terikat' : 'Bound Domains'}
                   </span>
-                  <span className='font-mono text-xs text-foreground font-bold'>pt-maju.id, *.pt-maju.id</span>
+                  <span className='font-mono text-xs text-foreground font-bold'>
+                    {licenses.find((l: { status?: string | null }) => String(l.status ?? 'active') === 'active')
+                      ? (licenses.find((l: { status?: string | null }) => String(l.status ?? 'active') === 'active') as { id?: string }).id
+                      : '—'}
+                  </span>
                 </div>
                 <div className='py-3 flex justify-between items-center'>
                   <span className='text-muted-foreground flex items-center gap-2'>
@@ -180,7 +181,7 @@ export function CustomerAccount() {
                 onClick={() => setSignOutOpen(true)}
               >
                 <LogOut className='size-4 mr-2' />
-                {language === 'id' ? 'Keluar' : 'Sign out'}
+                {language === 'id' ? 'Keluar dari akun' : 'Sign out of account'}
               </Button>
             </div>
           </div>

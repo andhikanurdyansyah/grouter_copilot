@@ -332,7 +332,12 @@ export function createCopilotServer({
       let orders = store.listOrders().slice().sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
       const total = orders.length;
       if (statusFilter) orders = orders.filter((o) => String(o.status || '').toUpperCase() === statusFilter);
-      return sendJson(res, 200, { orders: orders.slice(0, limit).map(sanitizeOrder), total, limit });
+      const accountName = new Map(store.listAccounts().map((a) => [a.id, a.name || a.email || a.id]));
+      return sendJson(res, 200, {
+        orders: orders.slice(0, limit).map((o) => ({ ...sanitizeOrder(o), customerName: accountName.get(o.accountId) ?? null })),
+        total,
+        limit,
+      });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/admin/licenses') {
@@ -599,6 +604,42 @@ export function createCopilotServer({
       });
     }
 
+    // Customer: AI ledger milik akun (session-scoped, read-only). Mirip
+    // /api/admin/ledger tapi hanya baris milik lisensi akun ini, tanpa
+    // customer lain, tanpa secret. Dipakai halaman "Penggunaan AI" user.
+    if (req.method === 'GET' && url.pathname === '/api/me/ledger') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const myLicenseIds = new Set(store.licensesByAccount(account.id).map((l) => l.id));
+        let limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+        if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+        limit = Math.min(limit, 200);
+        let offset = parseInt(url.searchParams.get('offset') ?? '0', 10);
+        if (!Number.isSafeInteger(offset) || offset < 0) offset = 0;
+        const rows = store
+          .listUsage()
+          .filter((u) => myLicenseIds.has(u.licenseId))
+          .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+        const total = rows.length;
+        const records = rows.slice(offset, offset + limit).map((u) => ({
+          requestId: u.requestId,
+          licenseId: u.licenseId,
+          skill: u.skill ?? null,
+          model: u.model ?? null,
+          status: u.status,
+          inputTokens: u.inputTokens ?? null,
+          outputTokens: u.outputTokens ?? null,
+          totalTokens: u.totalTokens ?? null,
+          errorClassification: u.errorClassification ?? null,
+          createdAt: u.createdAt ?? null,
+          completedAt: u.completedAt ?? null,
+        }));
+        return sendJson(res, 200, { records, total, limit, offset });
+      })();
+    }
+
     // Customer: the authenticated account's most recent order (for /success).
     if (req.method === 'GET' && url.pathname === '/api/orders/latest') {
       return (async () => {
@@ -615,6 +656,27 @@ export function createCopilotServer({
           order: sanitizeOrder(order),
           license: license ? sanitizeLicense(license, { includeToken: true }) : null,
         });
+      })();
+    }
+
+    // Customer: cancel own PENDING order (session-scoped). Only the owner can
+    // cancel, and only while PENDING — paid/settled orders are never touched
+    // here (settlement upstream keeps its own lifecycle).
+    if (req.method === 'POST' && /^\/api\/orders\/([^/]+)\/cancel$/.test(url.pathname)) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const id = decodeURIComponent(url.pathname.split('/')[3]);
+        const order = store.getOrder(id);
+        if (!order || order.accountId !== account.id) {
+          return sendJson(res, 404, { error: 'not found' });
+        }
+        if (String(order.status || '').toUpperCase() !== 'PENDING') {
+          return sendJson(res, 409, { error: 'order is not pending' });
+        }
+        store.updateOrderStatus(id, 'CANCELLED');
+        return sendJson(res, 200, { ok: true, order: sanitizeOrder(store.getOrder(id)) });
       })();
     }
 

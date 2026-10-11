@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminSettings, patchAdminSettings } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Plus, Edit3, ExternalLink, CheckCircle2, Check } from 'lucide-react'
+import { Plus, Edit3, Check } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/context/language-provider'
-import { cn } from '@/lib/utils'
+import {} from '@/lib/utils'
 
 export function AdminPackages() {
   const { language, t } = useLanguage()
@@ -22,9 +22,8 @@ export function AdminPackages() {
   const qc = useQueryClient()
 
   const [hasChanges, setHasChanges] = useState(true)
-  const [proPrice, setProPrice] = useState('15.000')
-  const [proTokens, setProTokens] = useState('2.000.000')
-  const [proMaxTokens, setProMaxTokens] = useState(true)
+  const [proPrice] = useState('15.000')
+  const [proTokens] = useState('2.000.000')
   const [newPlanOpen, setNewPlanOpen] = useState(false)
   const [saveToast, setSaveToast] = useState(false)
 
@@ -36,6 +35,7 @@ export function AdminPackages() {
   const [newPlanModel, setNewPlanModel] = useState('grouter/balanced')
 
   const settings = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
+  void settings
 
   const saveMut = useMutation({
     mutationFn: () => patchAdminSettings({}),

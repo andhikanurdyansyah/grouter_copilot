@@ -1,22 +1,16 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchMyOrders, formatIDR, fmtDate } from '@/lib/grouter-api'
+import { api, fetchMyOrders, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
-import { Link } from '@tanstack/react-router'
+import {} from '@tanstack/react-router'
 import {
   QrCode,
-  Sparkles,
-  ArrowRight,
-  Download,
   Copy,
   Check,
   Info,
   Clock,
   CheckCircle2,
-  XCircle,
-  FileText,
-  Printer,
-} from 'lucide-react'
+  Printer, Hourglass, ShieldCheck} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,7 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Hourglass, ShieldCheck } from 'lucide-react'
+
 
 // Moda page-68..71: Pesanan & pembayaran (Orders & payments)
 export function CustomerPayments() {
@@ -34,10 +28,10 @@ export function CustomerPayments() {
   const ordersQuery = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null)
-  const [activePaymentOrder, setActivePaymentOrder] = useState<any | null>(null)
-  const [orderStatusMap, setOrderStatusMap] = useState<Record<string, string>>({})
-  const [isSimulatingPayment, setIsSimulatingPayment] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState<null | (typeof effectiveOrders)[number]>(null)
+  const [activePaymentOrder, setActivePaymentOrder] = useState<null | (typeof effectiveOrders)[number]>(null)
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  const [statusNote, setStatusNote] = useState<string | null>(null)
   const [pendingDismissed, setPendingDismissed] = useState(false)
 
   const copyId = async (id: string) => {
@@ -51,71 +45,35 @@ export function CustomerPayments() {
   }
 
   // Real data merged with Moda reference demo items
-  const realOrders = (ordersQuery.data?.orders ?? []) as any[]
+  const realOrders = (ordersQuery.data?.orders ?? []) as Array<{ id: string; planName?: string | null; packageKey?: string; amount?: number; status?: string; createdAt?: number; expiredAt?: string | number | null }>
 
   // Moda canonical items (page-68)
-  const modaOrders = [
-    {
-      id: 'ord_9QX2...T4',
-      fullId: 'ord_9QX2891K72L9T4',
-      plan: language === 'id' ? 'Pro · 30 hari' : 'Pro · 30 days',
-      amount: 450000,
-      date: language === 'id' ? '10 Okt 2026' : '10 Oct 2026',
-      status: 'pending',
-    },
-    {
-      id: 'ord_3JR6...M8',
-      fullId: 'ord_3JR6921X44K8M8',
-      plan: language === 'id' ? 'Pro · 90 hari' : 'Pro · 90 days',
-      amount: 1350000,
-      date: language === 'id' ? '12 Okt 2026' : '12 Oct 2026',
-      status: 'paid',
-    },
-    {
-      id: 'ord_2HQ5...L7',
-      fullId: 'ord_2HQ5110B99P2L7',
-      plan: language === 'id' ? 'Starter · 30 hari' : 'Starter · 30 days',
-      amount: 150000,
-      date: language === 'id' ? '12 Sep 2026' : '12 Sep 2026',
-      status: 'paid',
-    },
-    {
-      id: 'ord_16P4...K6',
-      fullId: 'ord_16P4772A01X5K6',
-      plan: language === 'id' ? 'Starter · 30 hari' : 'Starter · 30 days',
-      amount: 150000,
-      date: language === 'id' ? '11 Sep 2026' : '11 Sep 2026',
-      status: 'expired',
-    },
-    {
-      id: 'ord_0FN3...J5',
-      fullId: 'ord_0FN3554Q88Z1J5',
-      plan: language === 'id' ? 'Starter · 7 hari (uji)' : 'Starter · 7 days (trial)',
-      amount: 35000,
-      date: language === 'id' ? '2 Sep 2026' : '2 Sep 2026',
-      status: 'paid',
-    },
-  ]
-
   // If real server orders exist, prioritize them, but keep canonical Moda shape if empty
-  const displayOrders = realOrders.length > 0
-    ? realOrders.map((o) => ({
+  // Hanya order REAL dari server — tanpa fallback mock.
+  const displayOrders = realOrders.map((o) => ({
         id: o.id.length > 14 ? `${o.id.slice(0, 8)}...${o.id.slice(-2)}` : o.id,
         fullId: o.id,
-        plan: o.planName || o.packageKey || 'Pro · 30 hari',
-        amount: o.amount ?? 450000,
+        plan: o.planName || o.packageKey || '—',
+        amount: o.amount ?? null,
         date: fmtDate(o.createdAt ?? null),
-        status: String(o.status || 'paid').toLowerCase(),
+        status: String(o.status || 'pending').toLowerCase(),
+        expiresAt: o.expiredAt ?? null,
       }))
-    : modaOrders
 
-  const effectiveOrders = displayOrders.map((o) => ({
-    ...o,
-    status: orderStatusMap[o.fullId] || o.status,
-  }))
+  const effectiveOrders = displayOrders
 
   const hasPending = !pendingDismissed && effectiveOrders.some((o) => o.status === 'pending')
   const pendingItem = effectiveOrders.find((o) => o.status === 'pending') || effectiveOrders[0]
+  const [nowMs] = useState(() => Date.now())
+  const pendingExpiresIn = (() => {
+    const raw = pendingItem?.expiresAt as string | number | null | undefined
+    if (!raw || nowMs == null) return null
+    const ms = new Date(raw).getTime() - nowMs
+    if (!Number.isFinite(ms) || ms <= 0) return null
+    const m = Math.floor(ms / 60000)
+    const sec = Math.floor((ms % 60000) / 1000)
+    return `${m}:${sec < 10 ? '0' : ''}${sec}`
+  })()
 
   return (
     <div className='max-w-7xl mx-auto space-y-6 pb-12'>
@@ -146,7 +104,7 @@ export function CustomerPayments() {
                 <span className='font-extrabold text-foreground'>{formatIDR(pendingItem.amount)}</span>
                 <span>·</span>
                 <span className='text-amber-500 font-bold'>
-                  {language === 'id' ? 'kedaluwarsa 12:41' : 'expires 12:41'}
+                  {pendingExpiresIn != null ? `${language === 'id' ? 'kedaluwarsa' : 'expires'} ${pendingExpiresIn}` : (language === 'id' ? 'kedaluwarsa' : 'expires')}
                 </span>
               </div>
               <div className='flex items-center gap-2 text-xs text-amber-400 font-semibold pt-0.5'>
@@ -333,15 +291,18 @@ export function CustomerPayments() {
                 <div className='text-xs font-semibold text-amber-400 flex items-center justify-center gap-1.5'>
                   <Hourglass className='size-3.5' />
                   <span>
-                    {language === 'id' ? 'Menunggu pembayaran · 12:41 tersisa' : 'Awaiting payment · 12:41 remaining'}
+                    {pendingExpiresIn != null ? `${language === 'id' ? 'Menunggu pembayaran ·' : 'Awaiting payment ·'} ${pendingExpiresIn} ${language === 'id' ? 'tersisa' : 'remaining'}` : (language === 'id' ? 'Menunggu pembayaran' : 'Awaiting payment')}
                   </span>
                 </div>
                 <div className='text-sm font-bold text-foreground pt-1'>
-                  {formatIDR(activePaymentOrder.amount)}
+                  {activePaymentOrder.amount != null ? formatIDR(activePaymentOrder.amount) : "—"}
                 </div>
               </div>
             </div>
 
+            {statusNote && (
+              <p className='text-xs text-amber-500 font-medium text-center pt-1'>{statusNote}</p>
+            )}
             <DialogFooter className='flex-col sm:flex-row gap-2 pt-2'>
               <Button
                 type='button'
@@ -355,25 +316,34 @@ export function CustomerPayments() {
               <Button
                 type='button'
                 size='sm'
-                disabled={isSimulatingPayment}
+                disabled={isCheckingStatus}
                 onClick={async () => {
-                  setIsSimulatingPayment(true)
-                  await new Promise((r) => setTimeout(r, 600))
-                  setOrderStatusMap((prev) => ({
-                    ...prev,
-                    [activePaymentOrder.fullId]: 'paid',
-                  }))
-                  const paidOrder = { ...activePaymentOrder, status: 'paid' }
-                  setActivePaymentOrder(null)
-                  setIsSimulatingPayment(false)
-                  setSelectedReceipt(paidOrder)
+                  setIsCheckingStatus(true)
+                  setStatusNote(null)
+                  try {
+                    const { data } = await api.get(`/orders/${encodeURIComponent(activePaymentOrder.fullId)}`)
+                    const st = String((data as { order?: { status?: string } })?.order?.status || '').toUpperCase()
+                    if (st === 'PAID') {
+                      const paidOrder = { ...activePaymentOrder, status: 'paid' }
+                      setActivePaymentOrder(null)
+                      setSelectedReceipt(paidOrder)
+                    } else if (st === 'PENDING') {
+                      setStatusNote(language === 'id' ? 'Upstream belum mencatat pembayaran — coba lagi setelah membayar.' : 'Upstream has not recorded payment yet — retry after paying.')
+                    } else {
+                      setStatusNote(language === 'id' ? `Status order: ${st}` : `Order status: ${st}`)
+                    }
+                  } catch {
+                    setStatusNote(language === 'id' ? 'Gagal memeriksa status — coba lagi.' : 'Failed to check status — please retry.')
+                  } finally {
+                    setIsCheckingStatus(false)
+                  }
                 }}
                 className='bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-1.5 shadow-md interactive-press'
               >
                 <ShieldCheck className='size-3.5' />
-                {isSimulatingPayment
+                {isCheckingStatus
                   ? (language === 'id' ? 'Memverifikasi...' : 'Verifying...')
-                  : (language === 'id' ? 'Simulasi Bayar (Sandbox)' : 'Simulate Pay (Sandbox)')}
+                  : (language === 'id' ? 'Periksa status pembayaran' : 'Check payment status')}
               </Button>
             </DialogFooter>
           </DialogContent>

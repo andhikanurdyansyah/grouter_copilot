@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchMyLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Download, AlertCircle, FileCode, CheckCircle2, Clock, Zap } from 'lucide-react'
+import { Download, AlertCircle, FileCode, CheckCircle2, Zap } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -17,24 +19,35 @@ export function CustomerUsage() {
 
   const [timeRange, setTimeRange] = useState<'7h' | '14h' | 'periode'>('14h')
   const [selectedSkill, setSelectedSkill] = useState('all')
-  const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
-  const [requestsList, setRequestsList] = useState([
-    { time: '10 Okt, 14:22', id: 'req_01HF...8KQ2', skill: 'orders.list', tokens: '1.284', status: 'ok', isOk: true },
-    { time: '10 Okt, 13:58', id: 'req_01HF...7ZP1', skill: 'tickets.list', tokens: '938', status: 'ok', isOk: true },
-    { time: '10 Okt, 13:41', id: 'req_01HF...6YT0', skill: 'customers.find', tokens: '0', status: isId ? 'gagal' : 'failed', isOk: false },
-    { time: '10 Okt, 12:07', id: 'req_01HF...5XR9', skill: 'orders.list', tokens: '1.610', status: 'ok', isOk: true },
-    { time: '10 Okt, 11:30', id: 'req_01HF...4WQ8', skill: 'tickets.list', tokens: '848', status: 'ok', isOk: true },
-    { time: '10 Okt, 10:12', id: 'req_01HF...3VN6', skill: 'orders.list', tokens: '1.022', status: 'ok', isOk: true },
-  ])
+  const [selectedRequest, setSelectedRequest] = useState<null | (typeof requestsList)[number]>(null)
+  // Data REAL dari ledger milik akun (D-021, server-side).
+  const myLedger = useQuery({
+    queryKey: ['my-ledger-live'],
+    queryFn: () => fetchMyLedger(50),
+    refetchInterval: 30_000,
+  })
+  const fmtTok = (n: number | null | undefined) => (n == null ? '0' : n.toLocaleString('id-ID'))
+  const fmtWhen = (ts: number | null | undefined) =>
+    ts ? new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+  const shortId = (id: string) => (id.length > 15 ? id.slice(0, 9) + '...' + id.slice(-4) : id)
 
-  const handleLoadMore = () => {
-    setRequestsList((prev) => [
-      ...prev,
-      { time: '10 Okt, 09:45', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'orders.list', tokens: '1.450', status: 'ok', isOk: true },
-      { time: '10 Okt, 08:30', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'tickets.list', tokens: '720', status: 'ok', isOk: true },
-      { time: '09 Okt, 22:15', id: `req_01HF...${Math.floor(Math.random()*900+100)}`, skill: 'customers.find', tokens: '910', status: 'ok', isOk: true },
-    ])
-  }
+  const requestsList = ((myLedger.data?.records ?? []) as Array<{
+    requestId: string; skill: string | null; model: string | null
+    status: string; totalTokens: number | null
+    inputTokens: number | null; outputTokens: number | null
+    createdAt: number | null
+  }>).map((r) => {
+    const ok = r.status === 'ok'
+    const tokens = r.totalTokens ?? (r.inputTokens ?? 0) + (r.outputTokens ?? 0)
+    return {
+      time: fmtWhen(r.createdAt),
+      id: shortId(r.requestId),
+      skill: r.skill || r.model || '—',
+      tokens: fmtTok(tokens),
+      status: ok ? 'ok' : (isId ? 'gagal' : 'failed'),
+      isOk: ok,
+    }
+  })
 
   const filteredRequests = selectedSkill === 'all'
     ? requestsList
@@ -65,7 +78,7 @@ export function CustomerUsage() {
             <button
               key={item.id}
               type='button'
-              onClick={() => setTimeRange(item.id as any)}
+              onClick={() => setTimeRange(item.id as Parameters<typeof setTimeRange>[0])}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded-md transition-all',
                 timeRange === item.id
@@ -244,12 +257,12 @@ export function CustomerUsage() {
 
         <div className='flex items-center justify-between pt-3 border-t border-border/70 text-xs text-muted-foreground'>
           <div>
-            {filteredRequests.length} {isId ? 'dari 1.842 permintaan' : 'of 1,842 requests'}
+            {filteredRequests.length} {isId ? 'dari' : 'of'} {(myLedger.data?.total ?? filteredRequests.length).toLocaleString('id-ID')} {isId ? 'permintaan' : 'requests'}
           </div>
           <Button
             variant='ghost'
             size='sm'
-            onClick={handleLoadMore}
+            onClick={() => myLedger.refetch()}
             className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-medium interactive-press'
           >
             {isId ? 'Muat lebih banyak' : 'Load more'}
@@ -257,7 +270,16 @@ export function CustomerUsage() {
         </div>
       </div>
 
-      {/* ── Request Detail Modal (Moda contextual modal pattern) ── */}
+      {(myLedger.data?.total ?? 0) === 0 && !myLedger.isPending && (
+        <div className='rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-500 font-medium'>
+          {isId
+            ? 'Belum ada request pemakaian — mulai dari halaman Instalasi untuk menghubungkan Copilot Anda.'
+            : 'No usage requests yet — start from the Installation page to connect your Copilot.'}
+        </div>
+      )}
+
+            {/* ── Request Detail Modal (Moda contextual modal pattern) ── */}
+
       <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
         <DialogContent className='sm:max-w-md border-border bg-card/95 backdrop-blur-xl shadow-2xl'>
           <DialogHeader>

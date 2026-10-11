@@ -22,7 +22,8 @@ test('settings: provider.baseUrl has no /v1 suffix (adapter appends it)', () => 
 
 test('settings: payment has klikqrisBaseUrl + poll fields; auth section complete', () => {
   const eff = resolveSettings({});
-  assert.equal(eff.payment.klikqrisBaseUrl, 'https://klikqris.com');
+  // Default kosong = mode-derived oleh KlikQris (sandbox guard, D-020).
+  assert.equal(eff.payment.klikqrisBaseUrl, '');
   assert.equal(eff.payment.pollIntervalMs, 10000);
   assert.equal(eff.payment.pollTimeoutMs, 900000);
   // be.grouter.id is retired — it must NOT be in the default trusted origins.
@@ -56,7 +57,8 @@ test('klikqris: baseUrl override wins; default derives from mode', async () => {
   };
   const override = new KlikQris({ apiKey: 'k', merchantId: 'm', mode: 'sandbox', baseUrl: 'https://pay.example', fetchImpl: fakeFetch });
   await override.createQris({ orderId: 'o1', amount: 100 });
-  assert.equal(captured, 'https://pay.example/qris/create');
+  // Hardened: override tanpa path /api tetap mendapat mode path (sandbox tak boleh menembak prod endpoint).
+  assert.equal(captured, 'https://pay.example/api/sandbox/qris/create');
 
   const plain = new KlikQris({ apiKey: 'k', merchantId: 'm', mode: 'sandbox', fetchImpl: fakeFetch });
   assert.equal(plain.baseUrl, 'https://klikqris.com/api/sandbox');
@@ -76,7 +78,8 @@ test('server wiring: KlikQris + UsageResolver are configured FROM resolved setti
   try {
     // Mode from settings (default sandbox); baseUrl override = klikqrisBaseUrl default.
     assert.equal(klikqris.mode, 'sandbox');
-    assert.equal(klikqris.baseUrlOverride, 'https://klikqris.com');
+    // Default kosong = mode-derived (sandbox guard). Lihat settings.js payment.
+    assert.equal(klikqris.baseUrlOverride, null);
     assert.equal(usage.checkUsageUrl, DEFAULT_SETTINGS.usage.checkUsageUrl);
     assert.equal(usage.ttlMs, 60000);
 
@@ -126,7 +129,8 @@ test('server wiring: stored payment credentials reach KlikQRIS fetch headers wit
     await klikqris.createQris({ orderId: 'test-order', amount: 100 });
     assert.equal(capturedRequest.options.headers['x-api-key'], paymentApiKey);
     assert.equal(capturedRequest.options.headers.id_merchant, merchantId);
-    assert.equal(capturedRequest.url, 'https://klikqris.com/qris/create');
+    // Stored base tanpa path API tetap mode-derived (D-020 sandbox guard).
+    assert.equal(capturedRequest.url, 'https://klikqris.com/api/sandbox/qris/create');
   } finally {
     server.close();
   }

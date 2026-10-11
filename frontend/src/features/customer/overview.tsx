@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { fetchCustomerStatus, fetchCustomerOrders } from '@/lib/grouter-api'
+import { api, fetchCustomerOrders, fetchMe, fetchMyLedger, fetchUsageHistory, formatIDR } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
-import { Hourglass, ShieldCheck, Zap, KeyRound, ChevronRight, CheckCircle2, AlertCircle, QrCode, Sparkles, X } from 'lucide-react'
+import { Hourglass, ShieldCheck, Zap, KeyRound, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 import {
@@ -19,57 +19,63 @@ export function CustomerOverview() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
 
-  const status = useQuery({ queryKey: ['customer-status'], queryFn: fetchCustomerStatus })
+  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const orders = useQuery({ queryKey: ['customer-orders'], queryFn: fetchCustomerOrders })
+  void orders
+  const myLedger = useQuery({ queryKey: ['my-ledger-live'], queryFn: () => fetchMyLedger(200), refetchInterval: 30_000 })
+  const usageQ = useQuery({ queryKey: ['usage-history'], queryFn: fetchUsageHistory })
+  const latestQ = useQuery({
+    queryKey: ['orders-latest'],
+    queryFn: async () => (await api.get('/orders/latest')).data as {
+      order: { id: string; status?: string; amount?: number } | null
+    },
+  })
 
-  const [qrisModalOpen, setQrisModalOpen] = useState(false)
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [isPaid, setIsPaid] = useState(false)
+  const latestOrder = latestQ.data?.order ?? null
+  const latestStatus = String(latestOrder?.status || '').toUpperCase()
+  const isPaid = latestStatus === 'PAID'
+
   const [selectedReq, setSelectedReq] = useState<{ skill: string; time: string; status: string; isOk: boolean; latency: string } | null>(null)
 
-  const handleSimulatePayment = () => {
-    setIsSimulating(true)
-    setTimeout(() => {
-      setIsSimulating(false)
-      setIsPaid(true)
-      setQrisModalOpen(false)
-    }, 1000)
-  }
+  const myLicense = me.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? me.data?.licenses?.[0]
+  const myUsage = me.data?.usage?.find((u) => u.licenseId === myLicense?.id)
+  const [nowMs] = useState(() => Date.now())
+  const daysLeft = myLicense?.expiresAt && nowMs != null
+    ? Math.max(0, Math.ceil((new Date(myLicense.expiresAt).getTime() - nowMs) / 86_400_000))
+    : null
 
-  // 14-day token usage history with coordinates for interactive hover tracking
-  const usageHistory = [
-    { date: '28/9', fullDate: '28 Sep 2026', tokens: 62450, x: 20, y: 145 },
-    { date: '29/9', fullDate: '29 Sep 2026', tokens: 78100, x: 65, y: 120 },
-    { date: '30/9', fullDate: '30 Sep 2026', tokens: 71200, x: 110, y: 135 },
-    { date: '1/10', fullDate: '1 Okt 2026', tokens: 94800, x: 155, y: 100 },
-    { date: '2/10', fullDate: '2 Okt 2026', tokens: 46200, x: 200, y: 165 },
-    { date: '3/10', fullDate: '3 Okt 2026', tokens: 38900, x: 245, y: 175 },
-    { date: '4/10', fullDate: '4 Okt 2026', tokens: 104500, x: 290, y: 85 },
-    { date: '5/10', fullDate: '5 Okt 2026', tokens: 112000, x: 335, y: 75 },
-    { date: '6/10', fullDate: '6 Okt 2026', tokens: 110400, x: 380, y: 78 },
-    { date: '7/10', fullDate: '7 Okt 2026', tokens: 118200, x: 425, y: 65 },
-    { date: '8/10', fullDate: '8 Okt 2026', tokens: 122800, x: 470, y: 58 },
-    { date: '9/10', fullDate: '9 Okt 2026', tokens: 59300, x: 515, y: 148 },
-    { date: '10/10', fullDate: '10 Okt 2026', tokens: 54100, x: 560, y: 155 },
-    { date: '11/10', fullDate: '11 Okt 2026', tokens: 138420, x: 600, y: 30 },
-  ]
-
+  // 14 hari TERAKHIR dari ledger real — koordinat SVG dihitung dari data.
   const [activePointIndex, setActivePointIndex] = useState<number | null>(null)
-  const activePoint = activePointIndex !== null ? usageHistory[activePointIndex] : null
 
-  // Recent requests mockup matching Moda page-48
-  const recentRequests = [
-    { skill: 'orders.list', time: '14:22 · 1.284 token', status: 'ok', isOk: true, latency: '42ms' },
-    { skill: 'tickets.list', time: '13:58 · 938 token', status: 'ok', isOk: true, latency: '38ms' },
-    {
-      skill: 'customers.find',
-      time: isId ? '13:41 · gagal, tidak ditagih' : '13:41 · failed, not billed',
-      status: 'error',
-      isOk: false,
-      latency: '1.82s',
-    },
-    { skill: 'orders.list', time: '12:07 · 1.610 token', status: 'ok', isOk: true, latency: '45ms' },
-  ]
+  const rawHistory = usageQ.data ?? []
+  const histMax = Math.max(1, ...rawHistory.map((d) => d.tokens))
+  const usageHistory = rawHistory.map((d, i) => ({
+    date: d.date,
+    fullDate: d.date,
+    tokens: d.tokens,
+    x: 20 + Math.round((i / Math.max(1, rawHistory.length - 1)) * 580),
+    y: Math.round(190 - (d.tokens / histMax) * 165),
+  }))
+  const activePoint = activePointIndex !== null ? usageHistory[activePointIndex] : null
+  const avgDaily = usageHistory.length
+    ? Math.round(usageHistory.reduce((sum, d) => sum + d.tokens, 0) / usageHistory.length)
+    : 0
+
+  // Permintaan terbaru REAL dari ledger akun (4 teratas).
+  const recentRequests = ((myLedger.data?.records ?? []) as Array<{
+    requestId: string; skill: string | null; model: string | null
+    status: string; totalTokens: number | null
+    createdAt: number | null; completedAt: number | null
+  }>).slice(0, 4).map((r) => {
+    const latencyMs = r.completedAt && r.createdAt ? Math.max(1, r.completedAt - r.createdAt) : null
+    return {
+      skill: r.skill || r.model || (isId ? 'tanpa skill' : 'no skill'),
+      time: `${r.createdAt ? new Date(r.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'} · ${(r.totalTokens ?? 0).toLocaleString('id-ID')} token`,
+      status: r.status,
+      isOk: r.status === 'ok',
+      latency: latencyMs != null ? (latencyMs < 1000 ? `${latencyMs}ms` : `${(latencyMs / 1000).toFixed(2)}s`) : '—',
+    }
+  })
 
   // Interactive mouse / touch tracker for SVG chart
   const updateActivePointFromClientX = (clientX: number, target: SVGSVGElement) => {
@@ -118,7 +124,7 @@ export function CustomerOverview() {
           </div>
 
           <h1 className='text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground'>
-            {isId ? 'Selamat siang, Rina' : 'Good afternoon, Rina'}
+            {me.data?.account?.name ? (isId ? `Selamat datang, ${me.data.account.name}` : `Welcome, ${me.data.account.name}`) : (isId ? 'Ringkasan' : 'Overview')}
           </h1>
 
           <p className='text-xs sm:text-sm text-muted-foreground leading-relaxed'>
@@ -195,7 +201,7 @@ export function CustomerOverview() {
                 {isId ? 'Pembayaran QRIS Berhasil Dikonfirmasi' : 'QRIS Payment Successfully Confirmed'}
               </span>
               <span className='text-muted-foreground font-mono text-xs block sm:inline sm:ml-2'>
-                · Pro · 30 hari · Lisensi aktif hingga 12 Jan 2027
+                {latestOrder?.amount != null ? ` · ${formatIDR(latestOrder.amount)}` : ''} · {latestOrder ? `#${latestOrder.id.slice(0, 10)}` : ''}
               </span>
             </div>
           </div>
@@ -218,22 +224,21 @@ export function CustomerOverview() {
             </div>
             <div>
               <span className='font-semibold'>
-                {isId
-                  ? 'Perpanjangan Pro · 30 hari menunggu pembayaran QRIS'
-                  : 'Pro renewal · 30 days awaiting QRIS payment'}
+                {isId ? 'Order menunggu pembayaran QRIS' : 'Order awaiting QRIS payment'}
               </span>
               <span className='text-amber-500/90 font-mono text-xs block sm:inline sm:ml-2'>
-                · {isId ? 'kedaluwarsa dalam 12:41' : 'expires in 12:41'}
+                {latestOrder?.amount != null ? ` · ${formatIDR(latestOrder.amount)}` : ''} · {latestOrder ? `#${latestOrder.id.slice(0, 10)}...` : ''}
               </span>
             </div>
           </div>
           <Button
-            type='button'
-            onClick={() => setQrisModalOpen(true)}
+            asChild
             size='sm'
             className='h-8 bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-semibold shadow-xs interactive-press shrink-0'
           >
-            {isId ? 'Lanjutkan pembayaran →' : 'Continue payment →'}
+            <Link to='/user/orders'>
+              {isId ? 'Lanjutkan pembayaran →' : 'Continue payment →'}
+            </Link>
           </Button>
         </div>
       )}
@@ -252,11 +257,11 @@ export function CustomerOverview() {
               <span className='relative inline-flex rounded-full size-3 bg-[#39D6A0] shadow-[0_0_10px_#39D6A0]' />
             </span>
             <span className='text-2xl sm:text-3xl font-extrabold text-foreground'>
-              {isId ? 'Aktif' : 'Active'}
+              {myLicense ? (String(myLicense.status ?? 'active') === 'active' ? (isId ? 'Aktif' : 'Active') : String(myLicense.status)) : (isId ? 'Belum ada' : 'None')}
             </span>
           </div>
           <p className='mt-2 text-[11px] text-muted-foreground font-mono'>
-            Ed25519 · pt-maju.id
+            {myLicense ? `Ed25519 · ${myLicense.id.slice(0, 8)}...${myLicense.id.slice(-4)}` : (isId ? 'Belum ada lisensi' : 'No license yet')}
           </p>
         </div>
 
@@ -266,10 +271,14 @@ export function CustomerOverview() {
             {isId ? 'Sisa kuota token' : 'Remaining tokens'}
           </p>
           <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            715.670
+            {myUsage?.quotaLimit != null
+              ? Math.max(0, myUsage.quotaLimit - (myUsage.usedTokens ?? 0)).toLocaleString('id-ID')
+              : '—'}
           </p>
           <p className='mt-2 text-[11px] text-muted-foreground'>
-            {isId ? 'dari 2.000.000 token bulanan' : 'of 2,000,000 monthly tokens'}
+            {myUsage?.quotaLimit != null
+              ? `${isId ? 'dari' : 'of'} ${myUsage.quotaLimit.toLocaleString('id-ID')} token`
+              : (isId ? 'kuota tidak dibatasi' : 'unlimited quota')}
           </p>
         </div>
 
@@ -279,10 +288,10 @@ export function CustomerOverview() {
             {isId ? 'Permintaan · 14h' : 'Requests · 14d'}
           </p>
           <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            1.842
+            {(myLedger.data?.total ?? 0).toLocaleString('id-ID')}
           </p>
           <p className='mt-2 text-[11px] text-[#39D6A0] font-medium flex items-center gap-1'>
-            <span>▲</span> 18,2% {isId ? 'vs periode lalu' : 'vs last period'}
+            <span className='size-1.5 rounded-full bg-[#39D6A0]' /> {isId ? 'seluruh riwayat' : 'all-time'}
           </p>
         </div>
 
@@ -292,10 +301,10 @@ export function CustomerOverview() {
             {isId ? 'Berakhir' : 'Expires'}
           </p>
           <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            12 Jan 2027
+            {myLicense?.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
           </p>
           <p className='mt-2 text-[11px] text-muted-foreground'>
-            {isId ? '92 hari tersisa' : '92 days remaining'}
+            {daysLeft != null ? `${daysLeft} ${isId ? 'hari tersisa' : 'days remaining'}` : '—'}
           </p>
         </div>
       </div>
@@ -315,7 +324,7 @@ export function CustomerOverview() {
             </div>
             <div className='inline-flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-1 text-xs text-muted-foreground font-mono'>
               <span className='size-2 rounded-full bg-[#7778FF]' />
-              <span>{isId ? 'Rata-rata: 82.710 token/hari' : 'Average: 82,710 tokens/day'}</span>
+              <span>{isId ? `Rata-rata: ${avgDaily.toLocaleString('id-ID')} token/hari` : `Average: ${avgDaily.toLocaleString('id-ID')} tokens/day`}</span>
             </div>
           </div>
 
@@ -512,69 +521,6 @@ export function CustomerOverview() {
         </div>
       </div>
 
-      {/* ── Contextual QRIS Modal (In-place on Overview) ── */}
-      <Dialog open={qrisModalOpen} onOpenChange={setQrisModalOpen}>
-        <DialogContent className='sm:max-w-md border-border bg-card/95 backdrop-blur-xl shadow-2xl'>
-          <DialogHeader>
-            <div className='flex items-center gap-2 text-xs font-mono font-bold text-[#7778FF] uppercase tracking-wider'>
-              <QrCode className='size-4' /> {isId ? 'Pembayaran QRIS · Sandbox' : 'QRIS Payment · Sandbox'}
-            </div>
-            <DialogTitle className='text-lg font-bold text-foreground mt-1'>
-              Pro · 30 hari · Rp 450.000
-            </DialogTitle>
-            <DialogDescription className='text-xs text-muted-foreground'>
-              {isId
-                ? 'Pindai kode QRIS di bawah ini dengan aplikasi perbankan atau e-wallet Anda.'
-                : 'Scan the QRIS code below using any banking app or digital wallet.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className='flex flex-col items-center justify-center p-4 rounded-xl border border-border/80 bg-muted/20 space-y-4'>
-            {/* Scannable QR code container */}
-            <div className='relative size-52 bg-white rounded-xl p-3 shadow-md flex items-center justify-center overflow-hidden'>
-              <img
-                src='/app/images/qris-code.png'
-                alt='QRIS Barcode'
-                className='size-full object-contain'
-              />
-            </div>
-
-            <div className='text-center space-y-1'>
-              <div className='text-xs font-mono text-muted-foreground'>
-                {isId ? 'ID Transaksi:' : 'Transaction ID:'} <span className='text-foreground font-bold'>ord_9QX2...T4</span>
-              </div>
-              <div className='text-xs font-semibold text-amber-400 flex items-center justify-center gap-1.5'>
-                <Hourglass className='size-3.5' />
-                <span>{isId ? 'Menunggu pembayaran · 12:41 tersisa' : 'Awaiting payment · 12:41 remaining'}</span>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className='flex-col sm:flex-row gap-2 pt-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setQrisModalOpen(false)}
-              className='text-xs h-9'
-            >
-              {isId ? 'Tutup' : 'Close'}
-            </Button>
-            <Button
-              type='button'
-              onClick={handleSimulatePayment}
-              disabled={isSimulating}
-              className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs h-9 font-semibold gap-1.5'
-            >
-              {isSimulating ? (
-                <Hourglass className='size-3.5 animate-spin' />
-              ) : (
-                <Sparkles className='size-3.5' />
-              )}
-              {isId ? 'Simulasi Sukses Bayar' : 'Simulate Paid'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Contextual Request Detail Modal ── */}
       <Dialog open={!!selectedReq} onOpenChange={(open) => !open && setSelectedReq(null)}>

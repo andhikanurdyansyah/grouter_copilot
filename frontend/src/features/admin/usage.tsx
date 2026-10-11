@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchLedger } from '@/lib/grouter-api'
 import { Link } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
+import {} from '@/components/ui/button'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 
@@ -10,33 +12,64 @@ export function AdminUsage() {
 
   const [timeRange, setTimeRange] = useState<'24j' | '14h' | '30h'>('14h')
 
-  // Exact mockup bars data for 28/9 to 11/10
-  const barData = [
-    { date: '28/9', in: 1.6, out: 0.4 },
-    { date: '29/9', in: 1.85, out: 0.45 },
-    { date: '30/9', in: 1.65, out: 0.42 },
-    { date: '1/10', in: 2.1, out: 0.5 },
-    { date: '2/10', in: 1.2, out: 0.3 },
-    { date: '3/10', in: 1.0, out: 0.28 },
-    { date: '4/10', in: 2.25, out: 0.55 },
-    { date: '5/10', in: 2.4, out: 0.6 },
-    { date: '6/10', in: 2.3, out: 0.58 },
-    { date: '7/10', in: 2.65, out: 0.65 },
-    { date: '8/10', in: 2.7, out: 0.7 },
-    { date: '9/10', in: 1.45, out: 0.35 },
-    { date: '10/10', in: 1.3, out: 0.3 },
-    { date: '11/10', in: 2.9, out: 0.7 },
-  ]
+  // Data REAL: agregasi ledger gateway (14 hari terakhir) — token in/out per hari dalam juta.
+  const ledger = useQuery({
+    queryKey: ['admin-usage-ledger'],
+    queryFn: () => fetchLedger({ limit: 200 }),
+  })
 
-  // Top licenses list
-  const topLicenses = [
-    { name: 'PT Maju Digital', tokens: '1,28 jt', percent: 85, isExceeded: false },
-    { name: 'Logistik Nusantara', tokens: '1,02 jt', percent: 68, isExceeded: false },
-    { name: isId ? 'Klinik Sehat Bersama · kuota habis' : 'Klinik Sehat Bersama · quota exceeded', tokens: '500 rb', percent: 35, isExceeded: true },
-    { name: 'Tokoku Commerce', tokens: '420 rb', percent: 28, isExceeded: false },
-    { name: 'Bengkel Prima', tokens: '312 rb', percent: 21, isExceeded: false },
-    { name: 'Sekolah Cerdas', tokens: '88 rb', percent: 8, isExceeded: false },
-  ]
+  const [nowMs] = useState(() => Date.now())
+  const { barData, topLicenses } = useMemo(() => {
+    const records = (ledger.data?.records ?? []) as Array<{
+      licenseId: string; customer: string | null
+      inputTokens: number | null; outputTokens: number | null
+      totalTokens: number | null; createdAt: number | null
+    }>
+    const M = 1_000_000
+    const fmtCompact = (n: number) =>
+      n >= M ? (n / M).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' jt'
+        : n >= 1_000 ? (n / 1_000).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' rb'
+        : n.toLocaleString('id-ID')
+
+    const dayKey = (ts: number) => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })
+    const days = new Map<string, { inTok: number; outTok: number }>()
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(nowMs - i * 86_400_000)
+      days.set(dayKey(d.getTime()), { inTok: 0, outTok: 0 })
+    }
+    const byLicense = new Map<string, { tokens: number; customer: string }>()
+    let sumIn = 0, sumOut = 0
+    for (const r of records) {
+      const inT = r.inputTokens ?? 0
+      const outT = r.outputTokens ?? 0
+      const tot = r.totalTokens ?? inT + outT
+      sumIn += inT; sumOut += outT
+      if (r.createdAt) {
+        const k = dayKey(r.createdAt)
+        const d = days.get(k)
+        if (d) { d.inTok += inT; d.outTok += outT }
+      }
+      const lic = byLicense.get(r.licenseId) ?? { tokens: 0, customer: r.customer ?? r.licenseId }
+      lic.tokens += tot
+      byLicense.set(r.licenseId, lic)
+    }
+    const bars = Array.from(days.entries()).map(([date, v]) => ({
+      date,
+      in: v.inTok / M,
+      out: v.outTok / M,
+    }))
+    const maxTokens = Math.max(1, ...Array.from(byLicense.values()).map((v) => v.tokens))
+    const top = Array.from(byLicense.entries())
+      .sort((a, b) => b[1].tokens - a[1].tokens)
+      .slice(0, 6)
+      .map(([, v]) => ({
+        name: v.customer,
+        tokens: fmtCompact(v.tokens),
+        percent: Math.round((v.tokens / maxTokens) * 100),
+        isExceeded: false,
+      }))
+    void sumIn; void sumOut; return { barData: bars, topLicenses: top }
+  }, [ledger.data, nowMs])
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -150,6 +183,7 @@ export function AdminUsage() {
             <div className='ml-7 h-full flex items-end justify-between gap-1 pb-6 border-b border-border'>
               {barData.map((d, i) => {
                 const total = d.in + d.out
+                void total
                 const inHeightPct = (d.in / 4.0) * 100
                 const outHeightPct = (d.out / 4.0) * 100
                 return (

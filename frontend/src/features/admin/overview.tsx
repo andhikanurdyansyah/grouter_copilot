@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { fetchAdminStats, fetchAdminOrders, fetchAdminLicenses, fetchHealth, fetchLedger } from '@/lib/grouter-api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { fetchAdminStats, fetchAdminOrders, fetchAdminLicenses, fetchHealth, fetchLedger, settleOrder } from '@/lib/grouter-api'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Plus, Clock, KeyRound, Receipt, ChevronRight, Activity, Zap, ShieldCheck, RefreshCw, Copy, Check, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, Plus, Clock, KeyRound, Receipt, Activity, ShieldCheck, Copy, Check, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { IssueLicenseModal } from './components/issue-license-modal'
 import {
@@ -29,46 +30,49 @@ export function AdminOverview() {
 
   const [timeRange, setTimeRange] = useState<'24j' | '7h' | '30h'>('30h')
   const [issueModalOpen, setIssueModalOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<null | (typeof events)[number]>(null)
   const [copiedPayload, setCopiedPayload] = useState(false)
   const [pendingOrdersDrawerOpen, setPendingOrdersDrawerOpen] = useState(false)
   const [verifiedOrderIds, setVerifiedOrderIds] = useState<Record<string, boolean>>({})
+  const [verifyingSheetId, setVerifyingSheetId] = useState<string | null>(null)
 
   const orders = useQuery({ queryKey: ['admin-orders'], queryFn: () => fetchAdminOrders(100) })
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats })
   const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 60_000 })
+  void health
   const ledger = useQuery({ queryKey: ['admin-ledger', 'recent'], queryFn: () => fetchLedger({ limit: 4 }) })
 
-  // Chart data for Throughput Gateway based on selected range
+  // Chart throughput REAL: agregasi ledger per hari (ok vs ditolak), 14 hari terakhir.
+  const ledgerAll = useQuery({
+    queryKey: ['admin-ledger', 'chart'],
+    queryFn: () => fetchLedger({ limit: 200 }),
+  })
+  const allRecords = (ledgerAll.data?.records ?? []) as Array<{
+    status: string; createdAt: number | null; totalTokens: number | null; inputTokens: number | null; outputTokens: number | null
+  }>
+
+  const dayKey = (ts: number) => new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+  const [nowMs] = useState(() => Date.now())
+  const days: Array<{ key: string; ok: number; ditolak: number }> = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(nowMs - i * 86_400_000)
+    days.push({ key: dayKey(d.getTime()), ok: 0, ditolak: 0 })
+  }
+  for (const r of allRecords) {
+    if (!r.createdAt) continue
+    const k = dayKey(r.createdAt)
+    const day = days.find((d) => d.key === k)
+    if (!day) continue
+    if (r.status === 'ok') day.ok += 1
+    else day.ditolak += 1
+  }
+  const maxVal = Math.max(1, ...days.map((d) => d.ok + d.ditolak))
   const chartDatasets = {
-    '24j': [
-      { date: '00:00', ok: 110, ditolak: 2, x: 20, yOk: 160, yBad: 195 },
-      { date: '04:00', ok: 45, ditolak: 1, x: 120, yOk: 180, yBad: 198 },
-      { date: '08:00', ok: 340, ditolak: 8, x: 220, yOk: 110, yBad: 190 },
-      { date: '12:00', ok: 580, ditolak: 14, x: 320, yOk: 65, yBad: 185 },
-      { date: '16:00', ok: 620, ditolak: 12, x: 420, yOk: 55, yBad: 187 },
-      { date: '20:00', ok: 490, ditolak: 9, x: 520, yOk: 85, yBad: 189 },
-      { date: '23:59', ok: 280, ditolak: 4, x: 600, yOk: 125, yBad: 194 },
-    ],
-    '7h': [
-      { date: '5 Okt', ok: 2100, ditolak: 45, x: 20, yOk: 120, yBad: 192 },
-      { date: '6 Okt', ok: 2350, ditolak: 52, x: 115, yOk: 105, yBad: 190 },
-      { date: '7 Okt', ok: 2600, ditolak: 48, x: 215, yOk: 90, yBad: 191 },
-      { date: '8 Okt', ok: 2750, ditolak: 60, x: 315, yOk: 80, yBad: 188 },
-      { date: '9 Okt', ok: 3050, ditolak: 290, x: 415, yOk: 60, yBad: 145 },
-      { date: '10 Okt', ok: 2850, ditolak: 75, x: 510, yOk: 75, yBad: 186 },
-      { date: '11 Okt', ok: 3420, ditolak: 85, x: 600, yOk: 35, yBad: 184 },
-    ],
-    '30h': [
-      { date: '12 Sep', ok: 1200, ditolak: 50, x: 20, yOk: 155, yBad: 195 },
-      { date: '18 Sep', ok: 1350, ditolak: 40, x: 135, yOk: 145, yBad: 195 },
-      { date: '24 Sep', ok: 1550, ditolak: 50, x: 250, yOk: 130, yBad: 195 },
-      { date: '30 Sep', ok: 2250, ditolak: 55, x: 365, yOk: 100, yBad: 195 },
-      { date: '6 Okt', ok: 2650, ditolak: 80, x: 480, yOk: 75, yBad: 190 },
-      { date: '9 Okt', ok: 3050, ditolak: 290, x: 540, yOk: 55, yBad: 155 },
-      { date: '11 Okt', ok: 3420, ditolak: 85, x: 600, yOk: 35, yBad: 185 },
-    ],
+    // Rentang tampil: 14 hari terakhir (server menyimpan ledger real; 24j/7h memakai subset hari yang sama)
+    '24j': days.slice(-1).map((d, i) => ({ date: d.key, ok: d.ok, ditolak: d.ditolak, x: 20 + i * 80, yOk: 200 - (d.ok / maxVal) * 160, yBad: 200 - (d.ditolak / maxVal) * 160 })),
+    '7h': days.slice(-7).map((d, i) => ({ date: d.key, ok: d.ok, ditolak: d.ditolak, x: 20 + i * 96, yOk: 200 - (d.ok / maxVal) * 160, yBad: 200 - (d.ditolak / maxVal) * 160 })),
+    '30h': days.map((d, i) => ({ date: d.key, ok: d.ok, ditolak: d.ditolak, x: 20 + i * 41, yOk: 200 - (d.ok / maxVal) * 160, yBad: 200 - (d.ditolak / maxVal) * 160 })),
   }
 
   const currentData = chartDatasets[timeRange]
@@ -107,13 +111,38 @@ export function AdminOverview() {
     }
   }
 
-  // Fallback / real events for Peristiwa terbaru
-  const events = [
-    { time: '14:22:08', license: 'GRC-7F2A...91D', event: 'copilot.chat', tokens: '1.284', status: 'ok', statusType: 'success' },
-    { time: '14:19:40', license: 'GRC-12BC...0A4', event: 'order.paid · Pro', tokens: '—', status: 'PAID', statusType: 'paid' },
-    { time: '14:07:12', license: 'GRC-88E1...C3F', event: 'copilot.chat', tokens: '0', status: 'quota', statusType: 'quota' },
-    { time: '13:55:31', license: 'GRC-3D90...7B2', event: 'license.issued', tokens: '—', status: 'baru', statusType: 'new' },
-  ]
+  // Peristiwa terbaru REAL dari ledger (4 entri teratas)
+  const events = ((ledger.data?.records ?? []) as Array<{
+    requestId: string; licenseId: string; model: string | null
+    status: string; totalTokens: number | null; createdAt: number | null
+  }>).map((r) => ({
+    time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString('id-ID') : '—',
+    license: r.licenseId,
+    event: r.model ?? 'copilot.chat',
+    tokens: r.totalTokens != null ? r.totalTokens.toLocaleString('id-ID') : '—',
+    status: r.status,
+    statusType: r.status === 'ok' ? 'success' : r.status === 'reserved' ? 'paid' : r.status === 'error' ? 'quota' : 'new',
+  }))
+
+  const sheetQc = useQueryClient()
+  const settleSheetMut = useMutation({
+    mutationFn: (orderId: string) => settleOrder(orderId),
+    onSuccess: (res) => {
+      const settledId = verifyingSheetId
+      if (settledId) {
+        setVerifiedOrderIds((prev) => ({ ...prev, [settledId]: true }))
+      }
+      toast.success(res.licenseId
+        ? (isId ? `Lisensi ${res.licenseId.slice(0, 10)}... diterbitkan` : `License ${res.licenseId.slice(0, 10)}... issued`)
+        : (isId ? 'Upstream belum PAID — order belum bisa disettle' : 'Upstream is not PAID yet — cannot settle'))
+      sheetQc.invalidateQueries({ queryKey: ['admin-orders'] })
+      setVerifyingSheetId(null)
+    },
+    onError: () => {
+      toast.error(isId ? 'Verifikasi gagal — coba lagi' : 'Verification failed — please retry')
+      setVerifyingSheetId(null)
+    },
+  })
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -202,36 +231,36 @@ export function AdminOverview() {
             {isId ? `Permintaan · ${timeRange}` : `Requests · ${timeRange}`}
           </p>
           <p className='mt-2 text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            {timeRange === '24j' ? '2.465' : timeRange === '7h' ? '18.120' : '48.920'}
+            {(allRecords.filter((r) => r.status === 'ok')).length.toLocaleString('id-ID')}
           </p>
-          <p className='mt-2 text-xs font-bold text-[#39D6A0] flex items-center gap-1'>
-            <span>▲</span> 18,2% {isId ? 'vs periode lalu' : 'vs last period'}
+          <p className='mt-2 text-xs text-muted-foreground flex items-center gap-1'>
+            <span className='size-1.5 rounded-full bg-emerald-500' /> {ledgerAll.isFetching ? (isId ? 'memuat…' : 'loading…') : (isId ? '14 hari terakhir' : 'last 14 days')}
           </p>
         </div>
 
         {/* KPI 2 */}
         <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-            {isId ? 'Latensi p95' : 'Latency p95'}
+            {isId ? 'Token ditagih' : 'Billed tokens'}
           </p>
           <p className='mt-2 text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            1,82 dtk
+            {allRecords.reduce((sum, r) => sum + (r.totalTokens ?? (r.inputTokens ?? 0) + (r.outputTokens ?? 0)), 0).toLocaleString('id-ID')}
           </p>
           <p className='mt-2 text-xs text-muted-foreground flex items-center gap-1 font-mono'>
-            <span className='size-1.5 rounded-full bg-emerald-500' /> Target &lt; 2,5 dtk
+            <span className='size-1.5 rounded-full bg-emerald-500' /> {isId ? 'akumulasi ledger' : 'ledger total'}
           </p>
         </div>
 
         {/* KPI 3 */}
         <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-            {isId ? 'Error upstream' : 'Upstream error rate'}
+            {isId ? 'Permintaan gagal' : 'Failed requests'}
           </p>
           <p className='mt-2 text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            0,41%
+            {allRecords.length ? ((allRecords.filter((r) => r.status === 'error').length / allRecords.length) * 100).toFixed(1).replace('.', ',') + '%' : '—'}
           </p>
-          <p className='mt-2 text-xs font-bold text-[#FF667A] flex items-center gap-1'>
-            <span>▲</span> 0,12 pt · {isId ? 'tidak ditagih' : 'not billed'}
+          <p className='mt-2 text-xs text-muted-foreground'>
+            {isId ? 'tidak ditagih' : 'not billed'} · {allRecords.filter((r) => r.status === 'error').length} {isId ? 'permintaan' : 'requests'}
           </p>
         </div>
 
@@ -241,10 +270,10 @@ export function AdminOverview() {
             {isId ? 'Lisensi aktif' : 'Active licenses'}
           </p>
           <p className='mt-2 text-3xl font-extrabold font-mono tracking-tight text-foreground'>
-            112
+            {stats.data?.activeLicenses ?? '—'}
           </p>
           <p className='mt-2 text-xs text-muted-foreground'>
-            {isId ? 'dari 128 diterbitkan (87,5%)' : 'of 128 issued (87.5%)'}
+            {isId ? 'dari' : 'of'} {stats.data?.totalLicenses ?? '—'} {isId ? 'diterbitkan' : 'issued'}
           </p>
         </div>
       </div>
@@ -633,52 +662,68 @@ export function AdminOverview() {
           </SheetHeader>
 
           <div className='py-4 space-y-4'>
-            {[
-              { id: 'ord_9QX2891K72L9T4', plan: 'Pro · 30 hari', amount: 'Rp 450.000', customer: 'pt-solusi@corp.id', date: '10 Okt 2026, 14:15' },
-              { id: 'ord_5TR8192A43M1X9', plan: 'Starter · 30 hari', amount: 'Rp 150.000', customer: 'dev-team@startup.io', date: '11 Okt 2026, 09:30' },
-              { id: 'ord_1BA9921Z88C7P3', plan: 'Pro · 90 hari', amount: 'Rp 1.350.000', customer: 'fintech-lead@alpha.com', date: '11 Okt 2026, 11:45' },
-              { id: 'ord_7LK3310N55R2D8', plan: 'Enterprise · 365 hari', amount: 'Rp 4.500.000', customer: 'admin@bumn.co.id', date: '11 Okt 2026, 13:00' },
-            ].map((ord) => {
-              const isSettled = verifiedOrderIds[ord.id]
-              return (
-                <div key={ord.id} className='p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3'>
-                  <div className='flex items-start justify-between gap-2'>
-                    <div>
-                      <div className='font-mono font-bold text-xs text-foreground flex items-center gap-1.5'>
-                        <span>{ord.id.slice(0, 12)}...{ord.id.slice(-4)}</span>
+            {(() => {
+              const list = (((orders.data as unknown as { orders?: Array<{ id: string; status?: string; planName?: string | null; packageKey?: string; amount?: number | null; customerName?: string | null; createdAt?: number | null }> })?.orders ?? []))
+                .filter((o) => String(o.status || '').toUpperCase() === 'PENDING')
+                .slice(0, 8)
+              if (list.length === 0) {
+                return (
+                  <div className='p-6 text-center text-xs text-muted-foreground rounded-xl border border-dashed border-border/70'>
+                    {isId ? 'Tidak ada order menunggu verifikasi.' : 'No orders awaiting verification.'}
+                  </div>
+                )
+              }
+              return list.map((ord) => {
+                const ordId = ord.id
+                const ordPlan = ord.planName || ord.packageKey || '—'
+                const ordAmount = ord.amount != null ? 'Rp ' + ord.amount.toLocaleString('id-ID') : '—'
+                const ordCustomer = ord.customerName ?? '—'
+                const ordDate = ord.createdAt ? new Date(ord.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+                const isSettled = verifiedOrderIds[ordId]
+                return (
+                  <div key={ordId} className='p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3'>
+                    <div className='flex items-start justify-between gap-2'>
+                      <div>
+                        <div className='font-mono font-bold text-xs text-foreground flex items-center gap-1.5'>
+                          <span>{ordId.slice(0, 12)}...{ordId.slice(-4)}</span>
+                        </div>
+                        <div className='text-xs text-muted-foreground'>{ordCustomer}</div>
                       </div>
-                      <div className='text-xs text-muted-foreground'>{ord.customer}</div>
+                      <span className='font-mono font-extrabold text-xs text-foreground'>{ordAmount}</span>
                     </div>
-                    <span className='font-mono font-extrabold text-xs text-foreground'>{ord.amount}</span>
-                  </div>
 
-                  <div className='flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40'>
-                    <span>{ord.plan}</span>
-                    <span>{ord.date}</span>
-                  </div>
+                    <div className='flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40'>
+                      <span>{ordPlan}</span>
+                      <span>{ordDate}</span>
+                    </div>
 
-                  <div className='flex items-center justify-end gap-2 pt-1'>
-                    {isSettled ? (
-                      <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 py-1 px-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20'>
-                        <CheckCircle2 className='size-3.5' />
-                        {isId ? 'Terverifikasi & Lisensi Diterbitkan' : 'Verified & License Issued'}
-                      </span>
-                    ) : (
-                      <Button
-                        size='sm'
-                        onClick={() => {
-                          setVerifiedOrderIds((prev) => ({ ...prev, [ord.id]: true }))
-                        }}
-                        className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs h-8 interactive-press font-semibold'
-                      >
-                        <ShieldCheck className='size-3.5 mr-1' />
-                        {isId ? 'Verifikasi & Settle' : 'Verify & Settle'}
-                      </Button>
-                    )}
+                    <div className='flex items-center justify-end gap-2 pt-1'>
+                      {isSettled ? (
+                        <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 py-1 px-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20'>
+                          <CheckCircle2 className='size-3.5' />
+                          {isId ? 'Terverifikasi & Lisensi Diterbitkan' : 'Verified & License Issued'}
+                        </span>
+                      ) : (
+                        <Button
+                          size='sm'
+                          onClick={() => {
+                            setVerifyingSheetId(ordId)
+                            settleSheetMut.mutate(ordId)
+                          }}
+                          disabled={settleSheetMut.isPending && verifyingSheetId === ordId}
+                          className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs h-8 interactive-press font-semibold'
+                        >
+                          <ShieldCheck className='size-3.5 mr-1' />
+                          {settleSheetMut.isPending && verifyingSheetId === ordId
+                            ? (isId ? 'Memverifikasi...' : 'Verifying...')
+                            : (isId ? 'Verifikasi & Settle' : 'Verify & Settle')}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })
+            })()}
           </div>
 
           <div className='pt-2 border-t border-border/60 flex items-center justify-between'>

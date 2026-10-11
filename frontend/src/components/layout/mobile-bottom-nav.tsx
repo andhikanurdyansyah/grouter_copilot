@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 export function MobileBottomNav() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
-  const { language, t } = useLanguage()
+  const { language } = useLanguage()
 
   // Only render for customer routes, and only on mobile screens (< 768px)
   if (pathname.startsWith('/admin')) {

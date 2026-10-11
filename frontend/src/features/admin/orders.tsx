@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchAdminOrders, verifyAndSettleOrder } from '@/lib/grouter-api'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+import { fetchAdminOrders, settleOrder } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import { Download, CheckCircle2, Clock, Hourglass, RefreshCw, X, Receipt } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 import {
+
+
   Sheet,
   SheetContent,
   SheetHeader,
@@ -18,8 +20,6 @@ import {
 export function AdminOrders() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
-  const qc = useQueryClient()
-
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'paid' | 'expired'>('all')
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<{
@@ -33,84 +33,58 @@ export function AdminOrders() {
   } | null>(null)
   const [toastMessage, setToastMessage] = useState<{ title: string; subtitle: string } | null>(null)
 
-  const ordersQuery = useQuery({ queryKey: ['admin-orders'], queryFn: () => fetchAdminOrders(100) })
-
-  // Moda page-32 exact mockup data
-  const [ordersList, setOrdersList] = useState([
-    {
-      id: 'ord_9QX2...T4',
-      customer: 'Bengkel Prima',
-      plan: isId ? 'Pro · 30 hari' : 'Pro · 30 days',
-      amount: 'Rp 450.000',
-      createdAt: '10 Okt 14:31',
-      status: 'pending',
-      statusLabel: 'Pending',
-    },
-    {
-      id: 'ord_8PW1...S3',
-      customer: 'Kopi Kenangan Kita',
-      plan: isId ? 'Starter · 30 hari' : 'Starter · 30 days',
-      amount: 'Rp 150.000',
-      createdAt: '10 Okt 13:12',
-      status: 'verifying',
-      statusLabel: isId ? 'Memeriksa...' : 'Verifying...',
-    },
-    {
-      id: 'ord_7NV0...R2',
-      customer: 'Tokoku Commerce',
-      plan: isId ? 'Pro · 30 hari' : 'Pro · 30 days',
-      amount: 'Rp 450.000',
-      createdAt: '10 Okt 14:19',
-      status: 'paid',
-      statusLabel: isId ? 'Lunas' : 'Paid',
-    },
-    {
-      id: 'ord_6MU9...Q1',
-      customer: 'Logistik Nusantara',
-      plan: isId ? 'Enterprise · 1 thn' : 'Enterprise · 1 yr',
-      amount: 'Rp 16.425.000',
-      createdAt: '9 Okt 09:44',
-      status: 'paid',
-      statusLabel: isId ? 'Lunas' : 'Paid',
-    },
-    {
-      id: 'ord_5LT8...P0',
-      customer: 'Sekolah Cerdas',
-      plan: isId ? 'Starter · 30 hari' : 'Starter · 30 days',
-      amount: 'Rp 150.000',
-      createdAt: '8 Okt 16:02',
-      status: 'expired',
-      statusLabel: isId ? 'Kedaluwarsa' : 'Expired',
-    },
-    {
-      id: 'ord_4KS7...N9',
-      customer: 'Klinik Sehat Bersama',
-      plan: isId ? 'Starter · 30 hari' : 'Starter · 30 days',
-      amount: 'Rp 150.000',
-      createdAt: '8 Okt 10:20',
-      status: 'paid',
-      statusLabel: isId ? 'Lunas' : 'Paid',
-    },
-  ])
-
-  const handleVerify = (orderId: string) => {
-    setVerifyingId(orderId)
-    setTimeout(() => {
+  const qc = useQueryClient()
+  const settleMut = useMutation({
+    mutationFn: (orderId: string) => settleOrder(orderId),
+    onSuccess: (res) => {
       setVerifyingId(null)
-      setOrdersList((prev) =>
-        prev.map((o) =>
-          o.id === orderId
-            ? { ...o, status: 'paid', statusLabel: isId ? 'Lunas' : 'Paid' }
-            : o
-        )
-      )
       setToastMessage({
-        title: `${orderId} ${isId ? 'diverifikasi' : 'verified'}`,
-        subtitle: isId ? 'Upstream: LUNAS · lisensi +30 hari' : 'Upstream: PAID · license +30 days',
+        title: res.licenseId ? (isId ? 'Pembayaran terverifikasi' : 'Payment verified') : (isId ? 'Belum terbayar' : 'Not paid yet'),
+        subtitle: res.licenseId
+          ? (isId ? `Lisensi ${res.licenseId.slice(0, 10)}... diterbitkan` : `License ${res.licenseId.slice(0, 10)}... issued`)
+          : (isId ? 'Status upstream belum PAID — coba lagi nanti' : 'Upstream status is not PAID yet — retry later'),
       })
-      setTimeout(() => setToastMessage(null), 5000)
-    }, 1200)
+      qc.invalidateQueries({ queryKey: ['admin-orders'] })
+    },
+    onError: () => {
+      setVerifyingId(null)
+      setToastMessage({ title: isId ? 'Verifikasi gagal' : 'Verification failed', subtitle: isId ? 'Coba lagi' : 'Please retry' })
+    },
+  })
+  const handleVerify = (id: string) => {
+    setVerifyingId(id)
+    settleMut.mutate(id)
   }
+
+  const ordersQuery = useQuery({ queryKey: ['admin-orders'], queryFn: () => fetchAdminOrders(100), refetchInterval: 30_000 })
+
+  // Data REAL dari /api/admin/orders (join customerName server-side).
+  const fmtRp = (n: number | null | undefined) =>
+    n == null ? '—' : 'Rp ' + n.toLocaleString('id-ID')
+  const fmtWhen = (ts: number | null | undefined) =>
+    ts ? new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+  const shortId = (id: string) => (id.length > 14 ? id.slice(0, 8) + '...' + id.slice(-2) : id)
+
+  const ordersList = ((ordersQuery.data?.orders ?? []) as Array<{
+    id: string; packageKey: string | null; planName: string | null
+    amount: number | null; status: string; createdAt: number | null; customerName: string | null
+  }>).map((o) => {
+    const st = String(o.status || 'pending').toLowerCase()
+    return {
+      id: shortId(o.id),
+      fullId: o.id,
+      customer: o.customerName ?? '—',
+      plan: o.planName || o.packageKey || '—',
+      amount: fmtRp(o.amount),
+      createdAt: fmtWhen(o.createdAt),
+      status: st,
+      statusLabel:
+        st === 'paid' ? (isId ? 'Lunas' : 'Paid')
+        : st === 'pending' ? (isId ? 'Menunggu' : 'Pending')
+        : st === 'cancelled' ? (isId ? 'Dibatalkan' : 'Cancelled')
+        : (isId ? 'Hangus' : 'Expired'),
+    }
+  })
 
   const filteredOrders = ordersList.filter((o) => {
     if (activeTab === 'pending' && o.status !== 'pending' && o.status !== 'verifying') return false
@@ -203,7 +177,7 @@ export function AdminOrders() {
             <button
               key={tab.id}
               type='button'
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as Parameters<typeof setActiveTab>[0])}
               className={cn(
                 'px-3.5 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap',
                 activeTab === tab.id

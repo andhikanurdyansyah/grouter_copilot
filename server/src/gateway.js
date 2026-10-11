@@ -290,9 +290,10 @@ export class CopilotGateway {
  */
 export function createGateway({ store, licenseService, publicKeyPem, settings, fetchImpl, env = process.env } = {}) {
   const eff = resolveSettings(settings?.() ?? {}, env);
+  const providerBase = (eff.provider?.baseUrl || '').replace(/\/v1\/?$/, '');
   const adapter = new GrouterAdapter({
     apiKey: env.GROUTER_API_KEY || null,
-    baseUrl: eff.provider?.baseUrl,
+    baseUrl: providerBase,
     timeoutMs: eff.provider?.timeoutMs ?? 60000,
     ...(fetchImpl ? { fetchImpl } : {}),
   });

@@ -26,7 +26,7 @@ test('customer: register → dashboard nyata (tanpa data palsu)', async () => {
   const { page, errors } = await registerViaUi(browser, newQaAccount('journey'))
   try {
     // Dashboard customer: judul & nav nyata.
-    await expect(page.getByRole('heading', { name: /ringkasan|kopi|copilot/i }).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('heading', { name: /ringkasan|kopi|copilot|selamat datang|welcome/i }).first()).toBeVisible({ timeout: 20_000 })
     // Akun baru: state kosong yang jujur (belum ada lisensi).
     await expect(page.locator('body')).not.toContainText('undefined')
     await expect(page.locator('body')).not.toContainText('NaN')
@@ -46,22 +46,24 @@ test('customer: paket → checkout sandbox → order PENDING terverifikasi serve
     await page.goto('/user/orders')
     await page.waitForLoadState('networkidle')
 
-    // Minimal satu paket berharga tersedia (katalog produksi: 3B/15B berharga).
-    const buyButtons = page.getByRole('button', { name: /beli via qris/i })
-    await expect(buyButtons.first()).toBeVisible({ timeout: 20_000 })
+    // Minimal satu paket tersedia (katalog produksi: 3B/15B berharga).
+    const payButton = page.getByRole('button', { name: /bayar dengan qris/i })
+    await expect(payButton).toBeVisible({ timeout: 20_000 })
 
-    // Klik beli pada paket pertama yang berharga.
-    await buyButtons.first().click()
-    // Dialog QR muncul dengan order ID + status polling.
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible({ timeout: 20_000 })
-    await expect(dialog.getByText(/order/i).first()).toBeVisible()
-    await expect(dialog.getByText(/menunggu pembayaran|memeriksa status/i).first()).toBeVisible({ timeout: 20_000 })
+    // Desain Moda: kartu paket = pilihan (klik untuk memilih), tombol "Bayar
+    // dengan QRIS" aktif setelah paket terpilih.
+    await page.getByText(/^3B · 3 months$/).first().click()
+    await expect(payButton).toBeEnabled({ timeout: 10_000 })
+    await payButton.click()
+    // Desain Moda: QR tampil INLINE di panel checkout (bukan dialog) dengan status polling.
+    const qrImage = page.locator('img[alt^=QRIS]')
+    await expect(qrImage).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/menunggu pembayaran|memeriksa status/i).first()).toBeVisible({ timeout: 20_000 })
 
-    // BUKA cegah klaim palsu: dialog TIDAK boleh mengatakan "berhasil/terverifikasi"
+    // BUKA cegah klaim palsu: halaman TIDAK boleh mengatakan lisensi terbit
     // selagi order masih PENDING di server.
-    const dialogText = await dialog.innerText()
-    expect(dialogText).not.toMatch(/terverifikasi — lisensi diterbitkan/i)
+    const bodyText = await page.locator('body').innerText()
+    expect(bodyText).not.toMatch(/terverifikasi — lisensi diterbitkan/i)
 
     // Verifikasi status server-side: order terakhir = PENDING (bukan PAID palsu).
     const latest = await page.evaluate(async () => {
@@ -70,17 +72,8 @@ test('customer: paket → checkout sandbox → order PENDING terverifikasi serve
     })
     expect(latest?.order?.status ?? 'PENDING').toBe('PENDING')
 
-    // Tutup dialog → polling berhenti (tidak ada request /api/orders/<id> lagi).
-    const orderId = /ord_[a-z0-9_]+/.exec(dialogText)?.[0]
-    await page.keyboard.press('Escape')
-    await expect(dialog).not.toBeVisible()
-    await page.waitForTimeout(4500) // melewati satu interval polling 4 dtk
-    if (orderId) {
-      const hits = await page.evaluate((oid) => performance.getEntriesByType('resource')
-        .filter((r) => r.name.includes(`/api/orders/${oid}`)).length, orderId)
-      // Setelah dialog ditutup, tidak boleh ada poll baru (yang terakhir boleh 1x in-flight).
-      expect(hits).toBeLessThanOrEqual(3)
-    }
+    // Inline QR panel: tidak ada dialog yang perlu ditutup. Cukup pastikan
+    // polling berjalan wajar dan tidak ada API error.
     expect(apiErrors).toEqual([])
   } finally {
     await page.context().close()

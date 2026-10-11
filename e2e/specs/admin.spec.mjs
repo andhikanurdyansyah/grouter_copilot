@@ -78,12 +78,14 @@ test('admin: issue lisensi → token sekali-lihat → tidak bocor di list/API �
     await dialog.getByRole('button', { name: /^terbitkan$/i }).click()
 
     // Panel token sekali-lihat muncul dengan peringatan + tombol salin.
-    await expect(dialog.getByText(/sekali-lihat|tidak dapat dilihat kembali/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(dialog.getByText(/tampil sekali|sekali-lihat|tidak dapat dilihat kembali/i).first()).toBeVisible({ timeout: 20_000 })
     const tokenText = await dialog.locator('#issued-token').innerText()
     expect(tokenText.length).toBeGreaterThan(20)
     expect(tokenText).toMatch(/^eyJ|eyJhbGciOi/) // JWT lisensi bertanda tangan
     licenseId = /lic_[a-z0-9_]+/.exec(await dialog.innerText())?.[0] ?? null
 
+    // Konfirmasi token tersimpan (guard UI) → tombol Selesai aktif.
+    await dialog.getByText(/sudah menyimpan token/i).first().click()
     // Tutup dialog → token HILANG dari DOM (sekali-lihat).
     await dialog.getByRole('button', { name: /selesai/i }).click()
     await expect(dialog).not.toBeVisible()

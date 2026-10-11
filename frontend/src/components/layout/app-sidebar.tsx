@@ -20,7 +20,6 @@ import {
   User,
   LogOut,
   Settings,
-  Building,
   Check,
 } from 'lucide-react'
 import {

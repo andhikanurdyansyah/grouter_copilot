@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { issueLicense, fetchPlans } from '@/lib/grouter-api'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { EyeOff, Copy, Check, Download, ShieldCheck, X } from 'lucide-react'
+import { EyeOff, Copy, Check, Download, ShieldCheck } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 
 type IssueLicenseModalProps = {
@@ -15,12 +17,15 @@ export function IssueLicenseModal({ open, onOpenChange, onSuccess }: IssueLicens
   const isId = language === 'id'
 
   const [step, setStep] = useState<1 | 2>(1)
-  const [customer, setCustomer] = useState('PT Maju Digital')
-  const [domain, setDomain] = useState('pt-maju.id')
-  const [plan, setPlan] = useState<'starter' | 'pro' | 'enterprise'>('pro')
-  const [duration, setDuration] = useState('30')
+  const [customer, setCustomer] = useState('')
+  const [planKey, setPlanKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
+
+  // Katalog paket REAL dari server (SSOT: plan key + expiresInDays).
+  const plansQ = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
+  const planOptions = (plansQ.data?.plans ?? []).filter((p) => p.amount > 0 && p.key !== 'custom')
+  const selectedPlanObj = planOptions.find((p) => p.key === planKey) ?? planOptions[0]
 
   // Generated token payload for step 2
   const [issuedLicense, setIssuedLicense] = useState<{
@@ -30,20 +35,30 @@ export function IssueLicenseModal({ open, onOpenChange, onSuccess }: IssueLicens
     expiresAt: string
   } | null>(null)
 
-  const handleNext = () => {
-    // Generate deterministic mockup matching Moda page-16
-    const licenseId = `GRC-${Math.random().toString(36).substring(2, 6).toUpperCase()}-4C1E-91D0`
-    const fakeToken = `${licenseId} eyJwbGFuIjoicHJvIn0ed25519:${Math.random().toString(36).substring(2, 6)}...Qk2`
-    const quota = plan === 'starter' ? '500.000' : plan === 'pro' ? '2.000.000' : '10.000.000'
-    const expiresAt = '12 Jan 2027'
 
-    setIssuedLicense({
-      id: licenseId,
-      token: fakeToken,
-      quota,
-      expiresAt,
-    })
-    setStep(2)
+  const issueMut = useMutation({
+    mutationFn: () =>
+      issueLicense({
+        customer: customer.trim() || undefined,
+        planKey: selectedPlanObj?.key ?? null,
+        expiresInDays: selectedPlanObj?.expiresInDays ?? null,
+      }),
+    onSuccess: (data) => {
+      const quota = (data as { license?: { quota?: { limit?: number | null } | null } }).license?.quota?.limit
+      setIssuedLicense({
+        id: data.license.id,
+        token: data.token ?? '',
+        quota: quota != null ? quota.toLocaleString('id-ID') + ' token' : '—',
+        expiresAt: '—',
+      })
+      setStep(2)
+      onSuccess?.()
+    },
+  })
+
+  const handleNext = () => {
+    if (!customer.trim()) return
+    issueMut.mutate()
   }
 
   const handleCopy = () => {
@@ -58,8 +73,8 @@ export function IssueLicenseModal({ open, onOpenChange, onSuccess }: IssueLicens
     if (!issuedLicense) return
     const content = `gRouter Copilot License
 ID: ${issuedLicense.id}
-Customer: ${customer} (${domain})
-Plan: ${plan.toUpperCase()}
+Customer: ${customer}
+Plan: ${selectedPlanObj?.name ?? '-'}
 Quota: ${issuedLicense.quota} tokens
 Expires: ${issuedLicense.expiresAt}
 Token:
@@ -119,12 +134,14 @@ ${issuedLicense.token}
 
                 <div className='space-y-1.5'>
                   <label className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
-                    {isId ? 'Domain Host' : 'Host Domain'}
+                    {isId ? 'Nama Pelanggan' : 'Customer Name'}
                   </label>
                   <input
+                    id='issue-customer'
                     type='text'
-                    value={domain}
-                    onChange={(e) => setDomain(e.target.value)}
+                    value={customer}
+                    onChange={(e) => setCustomer(e.target.value)}
+                    placeholder={isId ? 'mis. PT Maju Digital' : 'e.g. PT Maju Digital'}
                     className='w-full rounded-lg border border-border bg-card/60 px-3.5 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
                   />
                 </div>
@@ -135,13 +152,15 @@ ${issuedLicense.token}
                       {isId ? 'Paket Layanan' : 'Service Plan'}
                     </label>
                     <select
-                      value={plan}
-                      onChange={(e) => setPlan(e.target.value as any)}
+                      value={selectedPlanObj?.key ?? ''}
+                      onChange={(e) => setPlanKey(e.target.value)}
                       className='w-full rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
                     >
-                      <option value='starter'>Starter (500 rb token)</option>
-                      <option value='pro'>Pro (2 jt token)</option>
-                      <option value='enterprise'>Enterprise (10 jt token)</option>
+                      {planOptions.map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.name} · {p.amount.toLocaleString('id-ID')} IDR · {p.expiresInDays}h
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -149,15 +168,9 @@ ${issuedLicense.token}
                     <label className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
                       {isId ? 'Masa Berlaku' : 'Duration'}
                     </label>
-                    <select
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      className='w-full rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
-                    >
-                      <option value='7'>7 {isId ? 'hari' : 'days'}</option>
-                      <option value='30'>30 {isId ? 'hari' : 'days'}</option>
-                      <option value='365'>1 {isId ? 'tahun' : 'year'}</option>
-                    </select>
+                    <div className='w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground'>
+                      {selectedPlanObj ? `${selectedPlanObj.expiresInDays} ${isId ? 'hari' : 'days'}` : '—'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -166,8 +179,8 @@ ${issuedLicense.token}
                 <Button variant='outline' onClick={handleClose}>
                   {isId ? 'Batal' : 'Cancel'}
                 </Button>
-                <Button onClick={handleNext} className='bg-[#7778FF] hover:bg-[#8F90FF] text-white'>
-                  {isId ? 'Lanjut ke pembuatan →' : 'Continue to issue →'}
+                <Button onClick={handleNext} disabled={issueMut.isPending} className='bg-[#7778FF] hover:bg-[#8F90FF] text-white'>
+                  {issueMut.isPending ? (isId ? 'Menerbitkan…' : 'Issuing…') : (isId ? 'Terbitkan' : 'Issue')}
                 </Button>
               </div>
             </div>
@@ -183,8 +196,8 @@ ${issuedLicense.token}
                     </DialogTitle>
                     <DialogDescription className='text-xs text-muted-foreground'>
                       {isId
-                        ? `Langkah 2 dari 2 · ${customer} · ${plan.toUpperCase()} · ${duration} hari`
-                        : `Step 2 of 2 · ${customer} · ${plan.toUpperCase()} · ${duration} days`}
+                        ? `Langkah 2 dari 2 · ${customer} · ${selectedPlanObj?.name ?? ''}`
+                        : `Step 2 of 2 · ${customer} · ${selectedPlanObj?.name ?? ''}`}
                     </DialogDescription>
                   </div>
                 </div>
@@ -206,7 +219,7 @@ ${issuedLicense.token}
                   {isId ? 'TOKEN LISENSI' : 'LICENSE TOKEN'}
                 </label>
                 <div className='relative flex items-center justify-between rounded-xl border border-border bg-muted/40 p-3.5 font-mono text-xs text-foreground'>
-                  <span className='break-all pr-20 select-all'>{issuedLicense?.token}</span>
+                  <span id='issued-token' className='break-all pr-20 select-all'>{issuedLicense?.token}</span>
                   <Button
                     size='sm'
                     variant='outline'

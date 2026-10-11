@@ -101,15 +101,25 @@ export async function fetchMyOrders() {
 
 export const fetchCustomerStatus = fetchMe
 export const fetchCustomerOrders = fetchMyOrders
+// Ledger milik akun yang sedang login (session-scoped, read-only).
+export async function fetchMyLedger(limit = 50) {
+  const { data } = await api.get(`/me/ledger?limit=${limit}`)
+  return data as { records: Record<string, unknown>[]; total: number; limit: number; offset: number }
+}
+
 export const fetchUsageHistory = async () => {
-  return [
-    { date: '1 Okt', tokens: 45000 },
-    { date: '3 Okt', tokens: 68000 },
-    { date: '5 Okt', tokens: 92000 },
-    { date: '7 Okt', tokens: 140000 },
-    { date: '9 Okt', tokens: 195000 },
-    { date: '11 Okt', tokens: 230000 },
-  ]
+  // Agregasi REAL dari ledger milik akun (per request → per hari, 14 hari).
+  const { records } = await fetchMyLedger(200)
+  const byDay = new Map<string, number>()
+  for (const r of records) {
+    const createdAt = Number(r.createdAt ?? 0)
+    if (!createdAt) continue
+    const d = new Date(createdAt)
+    const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+    const total = Number(r.totalTokens ?? (Number(r.inputTokens ?? 0) + Number(r.outputTokens ?? 0)))
+    byDay.set(key, (byDay.get(key) ?? 0) + (Number.isFinite(total) ? total : 0))
+  }
+  return Array.from(byDay.entries()).map(([date, tokens]) => ({ date, tokens }))
 }
 
 export async function settleOrder(orderId: string) {

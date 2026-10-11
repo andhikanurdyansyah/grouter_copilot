@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { FlaskConical } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
@@ -7,6 +8,21 @@ import { cn } from '@/lib/utils'
 export function AdminSettings() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
+
+  // Kesehatan layanan REAL: /api/health + latensi round-trip terukur (bukan angka fabrikasi).
+  const healthQ = useQuery({
+    queryKey: ['admin-health'],
+    queryFn: async () => {
+      const t0 = performance.now()
+      const res = await fetch('/api/health', { credentials: 'include' })
+      const ms = Math.round(performance.now() - t0)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = (await res.json()) as { status?: string; checks?: Record<string, boolean> }
+      return { ...json, latencyMs: ms }
+    },
+    refetchInterval: 60_000,
+  })
+  const healthChecks = healthQ.data?.checks ?? {}
 
   const [activeTab, setActiveTab] = useState<'umum' | 'keamanan' | 'pembayaran' | 'kesehatan'>('umum')
 
@@ -263,45 +279,28 @@ export function AdminSettings() {
                 </div>
 
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs'>
-                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
-                    <div className='space-y-0.5'>
-                      <div className='font-bold text-foreground'>AI Gateway Upstream</div>
-                      <div className='text-muted-foreground text-[11px] font-mono'>/api/copilot/chat</div>
-                    </div>
-                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
-                      42ms · OK
-                    </span>
-                  </div>
-
-                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
-                    <div className='space-y-0.5'>
-                      <div className='font-bold text-foreground'>License Token Signer</div>
-                      <div className='text-muted-foreground text-[11px] font-mono'>Ed25519 Engine</div>
-                    </div>
-                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
-                      18ms · OK
-                    </span>
-                  </div>
-
-                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
-                    <div className='space-y-0.5'>
-                      <div className='font-bold text-foreground'>SQLite Quota Ledger</div>
-                      <div className='text-muted-foreground text-[11px] font-mono'>Write WAL mode</div>
-                    </div>
-                    <span className='px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono font-bold'>
-                      2ms · OK
-                    </span>
-                  </div>
-
-                  <div className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
-                    <div className='space-y-0.5'>
-                      <div className='font-bold text-foreground'>Overall System Uptime</div>
-                      <div className='text-muted-foreground text-[11px] font-mono'>PM2 cluster</div>
-                    </div>
-                    <span className='px-2 py-0.5 rounded-md bg-indigo-500/15 text-[#7778FF] font-mono font-bold'>
-                      99.98%
-                    </span>
-                  </div>
+                  {[
+                    { name: 'License Token Signer', sub: 'Ed25519 Engine', key: 'licenseService' },
+                    { name: 'Payment Gateway', sub: 'KlikQRIS Config', key: 'paymentConfigured' },
+                    { name: 'AI Provider', sub: 'gRouter Supplier', key: 'providerConfigured' },
+                  ].map((svc) => {
+                    const ok = healthChecks[svc.key] === true
+                    return (
+                      <div key={svc.key} className='p-3.5 rounded-xl border border-border/70 bg-card flex items-center justify-between'>
+                        <div className='space-y-0.5'>
+                          <div className='font-bold text-foreground'>{svc.name}</div>
+                          <div className='text-muted-foreground text-[11px] font-mono'>{svc.sub}</div>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-mono font-bold ${
+                            ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-destructive/15 text-destructive'
+                          }`}
+                        >
+                          {healthQ.isLoading ? '…' : ok ? `${healthQ.data?.latencyMs ?? '—'}ms · OK` : 'DOWN'}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>

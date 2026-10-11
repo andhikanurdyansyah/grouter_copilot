@@ -33,10 +33,6 @@ export const dictionary: Translations = {
   nav_user_help: { id: 'Bantuan & dokumentasi', en: 'Help & docs' },
 
   // User Profile
-  role_operator: { id: 'Operator', en: 'Operator' },
-  role_operator_sub: { id: 'Admin · sesi token', en: 'Admin · token session' },
-  role_customer: { id: 'Rina Saputri', en: 'Rina Saputri' },
-  role_customer_sub: { id: 'rina@pt-maju.id', en: 'rina@pt-maju.id' },
 
   // Common Controls & Buttons
   btn_issue_license: { id: 'Terbitkan lisensi', en: 'Issue license' },
@@ -66,10 +62,6 @@ export const dictionary: Translations = {
   alert_services_normal: { id: '5 layanan lain normal', en: '5 other services normal' },
   kpi_requests_30d: { id: 'Permintaan · 30h', en: 'Requests · 30d' },
   kpi_vs_prev_period: { id: '▲ 18,2% vs periode lalu', en: '▲ 18.2% vs previous period' },
-  kpi_latency_p95: { id: 'Latensi p95', en: 'p95 latency' },
-  kpi_target_latency: { id: 'Target < 2,5 dtk', en: 'Target < 2.5 s' },
-  kpi_error_upstream: { id: 'Tingkat error upstream', en: 'Upstream error rate' },
-  kpi_not_billed: { id: '▲ 0,12 pt · tidak ditagih', en: '▲ 0.12 pt · not billed' },
   kpi_active_licenses: { id: 'Lisensi aktif', en: 'Active licenses' },
   kpi_of_issued: { id: 'dari 128 diterbitkan', en: 'of 128 issued' },
 
@@ -161,9 +153,6 @@ export const dictionary: Translations = {
   sandbox_banner_sub: { id: 'QRIS belum disertifikasi produksi. Order tidak menagih dana nyata.', en: 'QRIS is not yet certified for production. Orders do not charge real funds.' },
 
   // Customer Overview
-  customer_step_label: { id: 'Langkah 3 dari 5 · Definisikan skill', en: 'Step 3 of 5 · Define skills' },
-  customer_greeting: { id: 'Selamat siang, Rina', en: 'Good afternoon, Rina' },
-  customer_hero_desc: { id: 'Copilot aktif di pt-maju.id. Tambahkan skill read-only agar Copilot bisa menjawab pertanyaan tentang data Anda.', en: 'Copilot active at pt-maju.id. Add read-only skills so Copilot can answer questions about your data.' },
   customer_banner_pending: { id: 'Perpanjangan Pro · 30 hari menunggu pembayaran QRIS · kedaluwarsa 12:41', en: 'Pro renewal · 30 days pending QRIS payment · expires 12:41' },
   customer_continue_pay: { id: 'Lanjutkan pembayaran', en: 'Continue payment' },
   kpi_license_status: { id: 'Status lisensi', en: 'License status' },
@@ -189,14 +178,10 @@ export const dictionary: Translations = {
   pay_with_qris: { id: 'Bayar dengan QRIS', en: 'Pay with QRIS' },
   awaiting_payment_polling: { id: 'Menunggu pembayaran · cek tiap 4 dtk', en: 'Awaiting payment · checks every 4s' },
   expires_in_timer: { id: 'Kedaluwarsa dalam 12:41 · total dihitung server', en: 'Expires in 12:41 · total calculated by server' },
-  payment_success_title: { id: 'Pembayaran berhasil', en: 'Payment successful' },
-  payment_success_sub: { id: 'Server mengonfirmasi pembayaran. Lisensi Pro Anda diperpanjang hingga 12 Jan 2027.', en: 'Server confirmed payment. Your Pro license is extended until 12 Jan 2027.' },
 
   // Customer Payments History (Moda page-68..71)
   payments_title: { id: 'Pesanan & pembayaran', en: 'Orders & payments' },
   payments_sub: { id: 'Riwayat order dan status pembayaran QRIS Anda.', en: 'Your order history and QRIS payment status.' },
-  payments_pending_banner_title: { id: 'Pro · 30 hari menunggu pembayaran', en: 'Pro · 30 days awaiting payment' },
-  payments_pending_banner_sub: { id: 'ord_9QX2...T4 · Rp 450.000 · kedaluwarsa 12:41', en: 'ord_9QX2...T4 · Rp 450,000 · expires 12:41' },
   payments_checking_status: { id: 'Memeriksa status tiap 4 detik', en: 'Checking status every 4 seconds' },
   payments_btn_cancel: { id: 'Batalkan', en: 'Cancel' },
   payments_btn_continue: { id: 'Lanjutkan pembayaran', en: 'Continue payment' },

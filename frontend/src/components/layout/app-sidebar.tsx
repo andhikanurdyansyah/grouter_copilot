@@ -39,7 +39,10 @@ export function AppSidebar() {
   const isAdmin = location.pathname.startsWith('/admin')
   const { data } = useMe(!isAdmin)
   const [signOutOpen, setSignOutOpen] = useState(false)
-  const [selectedTeam, setSelectedTeam] = useState('PT Maju Digital')
+  // Organisasi = domain email akun (data sesi server) — tanpa daftar organisasi mock.
+  const accountEmail = data && 'account' in data ? data.account.email : null
+  const orgName = accountEmail?.includes('@') ? accountEmail.split('@')[1] : null
+  const orgInitials = (orgName ?? '?').slice(0, 2).toUpperCase()
 
   const sidebarData = buildSidebarData(
     isAdmin,
@@ -106,14 +109,14 @@ export function AppSidebar() {
                   className='flex items-center gap-2.5 rounded-xl border border-border/80 bg-card/80 p-2.5 card-3d bevel-shine hover-lift-3d cursor-pointer interactive-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
                 >
                   <div className='flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#7778FF] to-[#4CC9F0] text-white font-extrabold text-xs shadow-sm'>
-                    PM
+                    {orgInitials}
                   </div>
                   <div className='grid flex-1 text-left leading-tight'>
                     <span className='truncate font-bold text-xs text-foreground'>
-                      {selectedTeam}
+                      {orgName ?? (language === 'id' ? 'Tanpa organisasi' : 'No organization')}
                     </span>
                     <span className='truncate text-[11px] text-muted-foreground font-mono'>
-                      Pro · pt-maju.id
+                      {accountEmail ?? '—'}
                     </span>
                   </div>
                   <ChevronsUpDown className='size-3.5 text-muted-foreground shrink-0' />
@@ -123,20 +126,16 @@ export function AppSidebar() {
                 <DropdownMenuLabel className='text-[11px] font-mono text-muted-foreground uppercase'>
                   {language === 'id' ? 'Organisasi Terdaftar' : 'Registered Organizations'}
                 </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => setSelectedTeam('PT Maju Digital')}
-                  className='flex items-center justify-between text-xs cursor-pointer'
-                >
-                  <span>PT Maju Digital</span>
-                  {selectedTeam === 'PT Maju Digital' && <Check className='size-3.5 text-[#7778FF]' />}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSelectedTeam('Tokoku Commerce')}
-                  className='flex items-center justify-between text-xs cursor-pointer'
-                >
-                  <span>Tokoku Commerce</span>
-                  {selectedTeam === 'Tokoku Commerce' && <Check className='size-3.5 text-[#7778FF]' />}
-                </DropdownMenuItem>
+                {orgName ? (
+                  <DropdownMenuItem className='flex items-center justify-between text-xs cursor-default'>
+                    <span className='truncate'>{orgName}</span>
+                    <Check className='size-3.5 text-[#7778FF] shrink-0' />
+                  </DropdownMenuItem>
+                ) : (
+                  <div className='px-2 py-1.5 text-[11px] text-muted-foreground'>
+                    {language === 'id' ? 'Belum terhubung ke organisasi.' : 'Not linked to an organization yet.'}
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

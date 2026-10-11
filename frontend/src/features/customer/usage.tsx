@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useMe } from '@/features/shared/use-me'
 import { fetchMyLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import { Download, AlertCircle, FileCode, CheckCircle2, Zap } from 'lucide-react'
@@ -26,6 +27,15 @@ export function CustomerUsage() {
     queryFn: () => fetchMyLedger(50),
     refetchInterval: 30_000,
   })
+  const { data: meData } = useMe(true)
+  // Kuota & pemakaian dari server (/api/me) — bukan angka hardcode.
+  const usageRows = ((meData && 'usage' in meData ? meData.usage : []) ?? []) as Array<{
+    licenseId?: string; usedTokens?: number | null; quotaLimit?: number | null; requestCount?: number | null
+  }>
+  const quotaRow = usageRows[0]
+  const quotaLimit = quotaRow?.quotaLimit ?? null
+  const usedTokens = quotaRow?.usedTokens ?? 0
+  const quotaPercent = quotaLimit ? Math.min(100, Math.round((usedTokens / quotaLimit) * 100)) : null
   const fmtTok = (n: number | null | undefined) => (n == null ? '0' : n.toLocaleString('id-ID'))
   const fmtWhen = (ts: number | null | undefined) =>
     ts ? new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
@@ -101,26 +111,32 @@ export function CustomerUsage() {
               {isId ? 'Kuota periode ini' : 'Quota this period'}
             </span>
             <span className='text-xs text-muted-foreground font-mono'>
-              reset 12 Nov
+              {isId ? 'periode berjalan' : 'current period'}
             </span>
           </div>
 
           <div className='space-y-2'>
             <div className='flex items-baseline justify-between'>
               <span className='text-3xl font-bold font-mono tracking-tight text-foreground'>
-                64%
+                {quotaPercent != null ? `${quotaPercent}%` : quotaLimit == null ? '∞' : '—'}
               </span>
               <span className='font-mono text-xs text-muted-foreground'>
-                1.284.330 / 2.000.000
+                {quotaLimit != null
+                  ? `${fmtTok(usedTokens)} / ${fmtTok(quotaLimit)}`
+                  : usedTokens > 0
+                    ? `${fmtTok(usedTokens)} token`
+                    : '—'}
               </span>
             </div>
             <div className='h-2 w-full rounded-full bg-muted/60 overflow-hidden'>
-              <div className='h-full rounded-full bg-[#7778FF]' style={{ width: '64%' }} />
+              <div className='h-full rounded-full bg-[#7778FF]' style={{ width: `${quotaPercent ?? 0}%` }} />
             </div>
           </div>
 
           <p className='text-xs text-muted-foreground pt-1'>
-            {isId ? 'Perkiraan habis 27 Okt pada laju saat ini' : 'Estimated exhaustion 27 Oct at current rate'}
+            {isId
+              ? 'Kuota berkurang dari pemakaian nyata per permintaan; permintaan gagal tidak memotong kuota.'
+              : 'Quota decrements from real usage per request; failed requests do not deduct quota.'}
           </p>
         </div>
 
@@ -131,10 +147,10 @@ export function CustomerUsage() {
               {isId ? 'Permintaan' : 'Requests'}
             </p>
             <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-              1.842
+              {fmtTok(requestsList.length)}
             </p>
-            <p className='mt-2 text-xs font-medium text-[#39D6A0] flex items-center gap-1'>
-              <span>▲</span> 18% {isId ? 'vs periode lalu' : 'vs last period'}
+            <p className='mt-2 text-xs text-muted-foreground'>
+              {isId ? '50 terakhir dari ledger' : 'last 50 from ledger'}
             </p>
           </div>
 
@@ -143,7 +159,9 @@ export function CustomerUsage() {
               {isId ? 'Rata-rata / permintaan' : 'Average / request'}
             </p>
             <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-              697
+              {requestsList.length
+                ? fmtTok(Math.round((quotaRow?.usedTokens ?? 0) / requestsList.length))
+                : '0'}
             </p>
             <p className='mt-2 text-xs text-muted-foreground'>
               token
@@ -155,10 +173,12 @@ export function CustomerUsage() {
               {isId ? 'Gagal (tidak ditagih)' : 'Failed (not billed)'}
             </p>
             <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-              7
+              {fmtTok(requestsList.filter((r) => !r.isOk).length)}
             </p>
             <p className='mt-2 text-xs text-muted-foreground'>
-              0,4% · upstream
+              {requestsList.length
+                ? `${Math.round((requestsList.filter((r) => !r.isOk).length / requestsList.length) * 1000) / 10}%`
+                : '—'}
             </p>
           </div>
         </div>

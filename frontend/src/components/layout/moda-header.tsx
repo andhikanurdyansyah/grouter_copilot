@@ -10,12 +10,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useMe } from '@/features/shared/use-me'
 
 export function ModaHeader() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const { resolvedTheme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
+
+  const isAdmin = pathname.startsWith('/admin')
+  // Admin console tidak punya sesi customer (/api/me = 401) — JANGAN fetch /api/me
+  // di area admin: useMe me-redirect ke /login pada 401 (memutus halaman admin).
+  const { data: meData } = useMe(!isAdmin)
 
   // Dynamic Breadcrumb resolver matching Moda 1:1
   const getBreadcrumb = () => {
@@ -45,32 +51,29 @@ export function ModaHeader() {
     }
   }
 
-  const notifications = [
-    {
-      title: language === 'id' ? 'Pembayaran QRIS Dikonfirmasi' : 'QRIS Payment Confirmed',
-      desc: 'Pro · 30 hari · ord_9QX2...T4',
-      time: '12m lalu',
-      icon: CheckCircle2,
-      color: 'text-emerald-500',
-    },
-    {
-      title: language === 'id' ? 'Peringatan Kuota 80%' : 'Quota 80% Warning',
-      desc: 'PT Maju Digital · 1.600.000 / 2.000.000',
-      time: '1j lalu',
-      icon: AlertTriangle,
-      color: 'text-amber-500',
-    },
-    {
-      title: language === 'id' ? 'Lisensi Diterbitkan' : 'License Issued',
-      desc: 'GRC-7F2A...91D · Ed25519',
-      time: '3j lalu',
-      icon: ShieldCheck,
-      color: 'text-[#7778FF]',
-    },
-  ]
+  // Notifikasi dari data sesi nyata (/api/me) — tanpa event mock.
+  const notifications = (() => {
+    const items: Array<{ title: string; desc: string; time: string; icon: typeof CheckCircle2; color: string }> = []
+    const licenses = (meData && 'licenses' in meData ? meData.licenses : []) as Array<{
+      id?: string; status?: string | null; planKey?: string | null; expiresAt?: string | number | null; createdAt?: number | null
+    }>
+    const active = licenses.find((l) => String(l.status ?? 'active') === 'active')
+    if (active) {
+      const fmt = (ts?: string | number | null) =>
+        ts ? new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+      items.push({
+        title: language === 'id' ? 'Lisensi Aktif' : 'Active License',
+        desc: `${String(active.planKey ?? '—')} · ${active.id?.slice(0, 12) ?? '—'} · s/d ${fmt(active.expiresAt)}`,
+        time: language === 'id' ? 'sekarang' : 'now',
+        icon: ShieldCheck,
+        color: 'text-[#7778FF]',
+      })
+    }
+    return items
+  })()
 
-  const [unreadNotifications] = useState(notifications)
-  const [hasUnread, setHasUnread] = useState(true)
+  const unreadNotifications = notifications
+  const hasUnread = notifications.length > 0
 
   return (
     <header className='sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/80 bg-background/85 px-4 md:px-6 backdrop-blur-xl bevel-shine transition-colors'>
@@ -211,13 +214,12 @@ export function ModaHeader() {
               })}
             </div>
             <div className='p-2.5 border-t border-border/70 text-center bg-muted/20'>
-              <button
-                type='button'
-                onClick={() => setHasUnread(false)}
-                className='text-[11px] text-[#7778FF] font-semibold hover:underline cursor-pointer bg-transparent border-0'
+              <a
+                href='/user/payments'
+                className='block text-[11px] text-[#7778FF] font-semibold hover:underline'
               >
-                {language === 'id' ? 'Tandai semua dibaca' : 'Mark all as read'}
-              </button>
+                {language === 'id' ? 'Lihat paket & tagihan' : 'View plans & billing'}
+              </a>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

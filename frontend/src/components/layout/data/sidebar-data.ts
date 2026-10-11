@@ -94,12 +94,7 @@ export function buildSidebarData(
       avatar: '',
       role: 'customer',
     },
-    teams: [
-      {
-        name: 'PT Maju Digital',
-        plan: 'Pro · pt-maju.id',
-      },
-    ],
+    teams: [],
     navGroups: [
       {
         title: t('nav_workspace'),

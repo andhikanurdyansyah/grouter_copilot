@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 // Entry root: redirect ke /admin jika ada adminToken di sessionStorage,
-// atau ke /user (dashboard customer PT Maju Digital) jika tidak.
+// atau ke /user (dashboard customer) jika tidak.
 export const Route = createFileRoute('/')({
   beforeLoad: () => {
     if (typeof window !== 'undefined') {

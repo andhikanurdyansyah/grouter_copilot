@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchMe } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
 import {
@@ -28,22 +28,37 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 
 export function CustomerAccount() {
   const { language, t } = useLanguage()
+  const qc = useQueryClient()
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'profile' | 'states'>('profile')
   const [editProfileOpen, setEditProfileOpen] = useState(false)
-  const [userName, setUserName] = useState('Rina Saputri')
-  const [userEmail, setUserEmail] = useState('rina@pt-maju.id')
-  const [tempName, setTempName] = useState('Rina Saputri')
-  const [tempEmail, setTempEmail] = useState('rina@pt-maju.id')
   const [profileSuccess, setProfileSuccess] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [tempName, setTempName] = useState('')
+  const [profileError, setProfileError] = useState('')
 
-  const account = me.data?.account ?? {
-    name: userName,
-    email: userEmail,
-  }
-  void account
+  // Identitas dari sesi server (/api/me) — tanpa fallback mock.
+  const account = me.data?.account
+  const userName = account?.name ?? '—'
+  const userEmail = account?.email ?? '—'
   const licenses = me.data?.licenses ?? []
+  const usageRows = me.data?.usage ?? []
+
+  // Lisensi aktif pertama = sumber kuota/kedaluwarsa (data server, bukan angka hardcode).
+  const activeLicense = licenses.find((l: { status?: string | null }) => {
+    const st = String(l.status ?? 'active')
+    const expired = (l as { expiresAt?: string | number | null }).expiresAt
+      ? new Date((l as { expiresAt: string | number }).expiresAt).getTime() < Date.now()
+      : false
+    return st === 'active' && !expired
+  })
+  const activeUsage = activeLicense ? usageRows.find((u: { licenseId?: string }) => u.licenseId === (activeLicense as { id?: string }).id) : undefined
+  const quotaLimit = (activeUsage as { quotaLimit?: number | null } | undefined)?.quotaLimit ?? null
+  const usedTokens = (activeUsage as { usedTokens?: number | null } | undefined)?.usedTokens ?? 0
+  const quotaPercent = quotaLimit ? Math.min(100, Math.round((usedTokens / quotaLimit) * 100)) : null
+  const emailDomain = userEmail.includes('@') ? userEmail.split('@')[1] : null
+  const activeExpiresAt = activeLicense ? (activeLicense as { expiresAt?: string | number | null }).expiresAt ?? null : null
 
   return (
     <div className='max-w-7xl mx-auto space-y-6 pb-12'>
@@ -103,20 +118,24 @@ export function CustomerAccount() {
               <div className='flex items-center justify-between gap-4'>
                 <div className='flex items-center gap-4'>
                   <div className='size-14 rounded-full bg-gradient-to-br from-[#7778FF] to-[#4CC9F0] text-white font-extrabold text-lg flex items-center justify-center shadow-lg border-2 border-white/20'>
-                    RS
+                    {(userName || '?').split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <h2 className='text-lg font-extrabold text-foreground'>{userName}</h2>
                     <p className='text-xs text-muted-foreground font-mono'>{userEmail}</p>
                     <span className='inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#7778FF]/15 text-[#7778FF] border border-[#7778FF]/30 shadow-xs'>
-                      {`Admin · ${userEmail}`}
+                      {language === 'id' ? 'Akun terverifikasi' : 'Verified account'}
                     </span>
                   </div>
                 </div>
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => setEditProfileOpen(true)}
+                  onClick={() => {
+                    setTempName(userName === '—' ? '' : userName)
+                    setProfileError('')
+                    setEditProfileOpen(true)
+                  }}
                   className='h-8 text-xs font-semibold border-border bg-card hover:bg-muted interactive-press'
                 >
                   {language === 'id' ? 'Ubah profil' : 'Edit profile'}
@@ -129,7 +148,7 @@ export function CustomerAccount() {
                     <Building className='size-4 text-muted-foreground' />
                     {language === 'id' ? 'Organisasi' : 'Organization'}
                   </span>
-                  <span className='font-bold text-foreground'>{userName}</span>
+                  <span className='font-bold text-foreground'>{emailDomain ?? '—'}</span>
                 </div>
                 <div className='py-3 flex justify-between items-center'>
                   <span className='text-muted-foreground flex items-center gap-2'>
@@ -148,7 +167,9 @@ export function CustomerAccount() {
                     {language === 'id' ? 'Paket Aktif' : 'Active Plan'}
                   </span>
                   <span className='font-bold text-foreground'>
-                    Pro · 2.000.000 token / bln
+                    {activeLicense
+                      ? `${String((activeLicense as { planKey?: string | null }).planKey ?? '—')} · ${quotaLimit != null ? `${quotaLimit.toLocaleString('id-ID')} token` : 'tanpa batas kuota AI'}`
+                      : '—'}
                   </span>
                 </div>
                 <div className='py-3 flex justify-between items-center'>
@@ -195,17 +216,28 @@ export function CustomerAccount() {
               <div className='space-y-3 text-sm'>
                 <div className='flex justify-between items-center'>
                   <span className='text-muted-foreground'>{language === 'id' ? 'Status' : 'Status'}</span>
-                  <span className='text-emerald-500 font-bold text-xs flex items-center gap-1.5'>
-                    <span className='size-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#39D6A0]' /> Aktif
+                  <span className={`font-bold text-xs flex items-center gap-1.5 ${activeLicense ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                    <span className={`size-2 rounded-full ${activeLicense ? 'bg-emerald-500 shadow-[0_0_6px_#39D6A0]' : 'bg-muted-foreground/50'}`} />
+                    {activeLicense ? (language === 'id' ? 'Aktif' : 'Active') : (language === 'id' ? 'Tidak ada lisensi' : 'No license')}
                   </span>
                 </div>
                 <div className='flex justify-between items-center'>
                   <span className='text-muted-foreground'>{language === 'id' ? 'Sisa Kuota' : 'Remaining Quota'}</span>
-                  <span className='font-mono font-bold text-foreground'>64% (1.284.330)</span>
+                  <span className='font-mono font-bold text-foreground'>
+                    {quotaPercent != null
+                      ? `${100 - quotaPercent}% (${(Math.max(0, (quotaLimit ?? 0) - usedTokens)).toLocaleString('id-ID')})`
+                      : quotaLimit == null && activeLicense
+                        ? '∞'
+                        : '—'}
+                  </span>
                 </div>
                 <div className='flex justify-between items-center'>
                   <span className='text-muted-foreground'>{language === 'id' ? 'Berlaku Hingga' : 'Valid Until'}</span>
-                  <span className='text-xs font-mono font-bold text-foreground'>12 Jan 2027</span>
+                  <span className='text-xs font-mono font-bold text-foreground'>
+                    {activeExpiresAt
+                      ? new Date(activeExpiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : '—'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -425,16 +457,31 @@ export function CustomerAccount() {
           </DialogHeader>
 
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
               if (!tempName.trim()) return
-              setUserName(tempName)
-              setUserEmail(tempEmail)
-              setProfileSuccess(true)
-              setTimeout(() => {
-                setProfileSuccess(false)
-                setEditProfileOpen(false)
-              }, 900)
+              setProfileSaving(true)
+              setProfileError('')
+              try {
+                // Simpan ke server (Better Auth update-user) — bukan sekadar state lokal.
+                const res = await fetch('/api/auth/update-user', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ name: tempName.trim() }),
+                })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                await qc.invalidateQueries({ queryKey: ['me'] })
+                setProfileSuccess(true)
+                setTimeout(() => {
+                  setProfileSuccess(false)
+                  setEditProfileOpen(false)
+                }, 900)
+              } catch (err) {
+                setProfileError(err instanceof Error ? err.message : 'gagal menyimpan')
+              } finally {
+                setProfileSaving(false)
+              }
             }}
             className='space-y-4 py-2'
           >
@@ -459,13 +506,26 @@ export function CustomerAccount() {
               <Input
                 id='account-email'
                 type='email'
-                value={tempEmail}
-                onChange={(e) => setTempEmail(e.target.value)}
-                required
-                className='text-xs'
-                placeholder='email@domain.com'
+                value={userEmail}
+                disabled
+                className='text-xs opacity-70'
               />
+              <p className='text-[11px] text-muted-foreground'>
+                {language === 'id'
+                  ? 'Email tidak dapat diubah (terikat sesi login server).'
+                  : 'Email cannot be changed (bound to the server session).'}
+              </p>
             </div>
+
+            {profileError && (
+              <div className='flex items-center gap-2 p-2 rounded-lg bg-destructive/15 text-destructive text-xs font-semibold'>
+                <XCircle className='size-4' />
+                <span>
+                  {language === 'id' ? 'Gagal menyimpan: ' : 'Save failed: '}
+                  {profileError}
+                </span>
+              </div>
+            )}
 
             {profileSuccess && (
               <div className='flex items-center gap-2 p-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold'>

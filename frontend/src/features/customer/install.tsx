@@ -134,13 +134,19 @@ Siap. Mount <CopilotChat /> di UI Anda`
                   <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-[#39D6A0] opacity-75' />
                   <span className='relative inline-flex rounded-full size-2 bg-[#39D6A0]' />
                 </span>
-                {isId ? 'Aktif · Ed25519' : 'Active · Ed25519'}
+                {myLicense
+                  ? (isId ? 'Aktif · Ed25519' : 'Active · Ed25519')
+                  : (isId ? 'Belum ada lisensi aktif' : 'No active license')}
               </span>
             </div>
 
             <div>
               <span className='text-muted-foreground'>{isId ? 'Berlaku hingga' : 'Valid until'}: </span>
-              <span className='font-mono font-semibold text-foreground'>12 Jan 2027</span>
+              <span className='font-mono font-semibold text-foreground'>
+                {myLicense?.expiresAt
+                  ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : '—'}
+              </span>
             </div>
           </div>
 

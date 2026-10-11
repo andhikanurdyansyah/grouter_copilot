@@ -128,9 +128,18 @@ export function CustomerOverview() {
           </h1>
 
           <p className='text-xs sm:text-sm text-muted-foreground leading-relaxed'>
-            {isId
-              ? 'Copilot aktif di pt-maju.id. Tambahkan skill read-only agar Copilot bisa menjawab pertanyaan tentang data Anda secara real-time dan terisolasi.'
-              : 'Copilot is active on pt-maju.id. Add read-only skills so Copilot can answer questions about your data in real-time and isolated.'}
+            {(() => {
+              const hasLicense = (me.data?.licenses ?? []).length > 0
+              const emailDomain = me.data?.account?.email?.includes('@') ? me.data.account.email.split('@')[1] : null
+              if (!hasLicense) {
+                return isId
+                  ? 'Belum ada lisensi aktif. Pilih paket dan selesaikan pembayaran untuk mulai mengaktifkan Copilot.'
+                  : 'No active license yet. Pick a plan and complete payment to start activating Copilot.'
+              }
+              return isId
+                ? `Lisensi aktif${emailDomain ? ` untuk ${emailDomain}` : ''}. Tambahkan skill read-only agar Copilot bisa menjawab pertanyaan tentang data Anda secara real-time dan terisolasi.`
+                : `Active license${emailDomain ? ` for ${emailDomain}` : ''}. Add read-only skills so Copilot can answer questions about your data in real time and in isolation.`
+            })()}
           </p>
 
           <div className='flex flex-wrap items-center gap-3 pt-2'>
@@ -177,7 +186,7 @@ export function CustomerOverview() {
             {/* Holographic Badge 2 */}
             <div className='absolute -bottom-1 -right-1 hidden sm:flex items-center gap-1.5 rounded-full border border-[#4CC9F0]/30 bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-semibold text-[#4CC9F0] shadow-md'>
               <Zap className='size-3 text-[#4CC9F0]' />
-              <span>42ms Latency</span>
+              <span>Server-side proxy</span>
             </div>
 
             {/* Holographic Badge 3 */}

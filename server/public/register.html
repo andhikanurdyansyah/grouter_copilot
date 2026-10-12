@@ -3,197 +3,437 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Daftar — gRouter Copilot</title>
-  <meta name="description" content="Buat akun atau masuk ke gRouter Copilot untuk mengelola license, purchase, dan usage." />
+  <title>Masuk — gRouter Copilot</title>
+  <meta name="description" content="Masuk atau buat akun gRouter Copilot — kelola license, purchase, dan monitor usage." />
+  <link rel="icon" href="/favicon.ico" />
+
+  <!-- Aurora background: Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- Geist via Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/grx.css" />
-  <link rel="stylesheet" href="/assets/grx-v3.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
   <style>
-    /* Page-local layout only — references grx.css v2 tokens, no new palette/variables. */
-    .auth-shell {
-      position: relative; z-index: 1;
-      min-height: 100dvh;
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Geist', sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden; /* sumber: hard overflow hidden */
+      -webkit-font-smoothing: antialiased;
+    }
+    a, button, input { transition: all 0.3s ease; }
+
+    /* LAYER 1 — background */
+    #container {
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+    }
+    #container canvas { display: block; }
+
+    /* LAYER 2 — main UI */
+    .ui-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* LAYER 3 — glass form */
+    .glass-form {
+      position: relative;
+      border-radius: 24px; /* rounded-3xl */
+      max-width: 448px;
+      width: 100%;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.15) transparent;
+      background: rgba(15, 15, 15, 0.7);
+      -webkit-backdrop-filter: blur(30px); /* Safari prefix WAJIB */
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 25px 60px -12px rgba(0, 0, 0, 0.8),
+        0 0 40px -12px rgba(139, 92, 246, 0.45),
+        0 0 24px -8px rgba(79, 70, 229, 0.35),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+      padding: 36px;
+      animation: animate-float 6s ease-in-out infinite;
+    }
+    @keyframes animate-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .glass-form { animation: none; }
+    }
+
+    /* HEADER */
+    .head-icon {
+      width: 64px; height: 64px;
       display: flex; align-items: center; justify-content: center;
-      padding: var(--sp-8) var(--sp-6);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
     }
-    .auth-grid {
-      width: 100%; max-width: 1000px;
-      display: grid; grid-template-columns: 1.05fr 0.95fr;
-      gap: var(--sp-6); align-items: stretch;
+    .head-icon svg { color: #c084fc; } /* text-purple-400 */
+    h1 {
+      margin: 24px 0 8px;
+      font-size: 30px; line-height: 1.15;
+      font-weight: 600; letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .sub { margin: 0 0 28px; color: #9ca3af; font-size: 15px; line-height: 1.5; }
+
+    /* FIELDS */
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      color: #d1d5db; /* text-gray-300 */
+      font-size: 13.5px; font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .input-glass {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 15px; font-family: inherit;
+      transition: all 0.3s ease;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      outline: none;
+    }
+    .input-glass::placeholder { color: rgba(156, 163, 175, 0.55); }
+    .input-glass:focus {
+      border-color: rgba(139, 92, 246, 0.5);   /* border-purple-500/50 */
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3); /* shadow-purple-500/30 */
+    }
+    .hint { display: none; margin: 6px 2px 0; font-size: 12.5px; color: #6b7280; }
+    .field:focus-within .hint { display: block; }
+
+    /* ACTION ROW */
+    .action-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 2px 0 22px;
+      font-size: 13.5px;
+    }
+    .action-row label {
+      display: flex; align-items: center; gap: 8px;
+      color: #9ca3af; cursor: pointer; user-select: none;
+    }
+    .action-row input[type="checkbox"] {
+      appearance: none;
+      width: 16px; height: 16px;
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      display: inline-grid; place-content: center;
+      transition: all 0.3s ease;
+    }
+    .action-row input[type="checkbox"]:checked { background: #8b5cf6; border-color: #8b5cf6; }
+    .action-row input[type="checkbox"]:checked::before {
+      content: "";
+      width: 8px; height: 8px;
+      background: #fff;
+      border-radius: 2px;
+      transform: scale(1);
+    }
+    .action-row a { color: #c084fc; text-decoration: none; } /* purple-400 */
+    .action-row a:hover { color: #d8b4fe; }
+
+    /* SUBMIT */
+    .btn-glass {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.8), rgba(139, 92, 246, 0.8));
+      color: #fff;
+      font-size: 15px; font-weight: 500; font-family: inherit;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+    }
+    .btn-glass:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -8px rgba(139, 92, 246, 0.55);
+    }
+    .btn-glass:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-glass:focus-visible { outline: 2px solid #c084fc; outline-offset: 2px; }
+
+    /* DIVIDER */
+    .divider-row {
+      display: flex; align-items: center; gap: 14px;
+      margin: 24px 0 18px;
+      color: #9ca3af; font-size: 13px;
+    }
+    .divider-row::before, .divider-row::after {
+      content: "";
+      flex: 1;
+      border-top: 1px solid #4b5563; /* border-t-gray-600 */
     }
 
-    /* Brand / value panel */
-    .auth-brand .panel {
-      height: 100%;
-      display: flex; flex-direction: column; gap: var(--sp-5);
-      padding: var(--sp-8);
+    /* SOCIAL GRID */
+    .social-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 22px;
     }
-    .auth-brand .brand { padding: 0; margin-bottom: var(--sp-2); font-size: 15px; }
-    .auth-brand h1 { font-size: clamp(1.55rem, 1.1rem + 1.5vw, 2.35rem); margin: var(--sp-3) 0 var(--sp-3); }
-    .auth-points { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-2); }
-    .auth-points li { display: flex; align-items: flex-start; gap: var(--sp-3); font-size: 13.5px; color: var(--grx-ink-dim); line-height: 1.5; }
-    .auth-points svg { flex-shrink: 0; margin-top: 3px; width: 15px; height: 15px; }
-    .auth-foot { margin-top: auto; }
+    .glass {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 11px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      color: #9ca3af; /* gray-400 */
+      font-size: 14px; font-weight: 500; font-family: inherit;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+    }
+    .glass:hover { color: #fff; border-color: rgba(255,255,255,.22); }
+    .glass:disabled { opacity: 0.5; cursor: not-allowed; }
+    .glass svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-    /* Form panel */
-    .auth-panel .panel { padding: var(--sp-8); }
-    .auth-head { margin-bottom: var(--sp-5); }
-    .auth-head h2 { margin-bottom: var(--sp-2); }
+    /* FOOTER */
+    .foot { margin: 0; text-align: center; color: #9ca3af; font-size: 13.5px; }
+    .foot a { color: #c084fc; text-decoration: none; font-weight: 500; }
+    .foot a:hover { color: #d8b4fe; }
 
-    .auth-or { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0; }
-    .auth-or .divider { flex: 1; }
-    .auth-or-label { font-size: 12px; color: var(--grx-ink-faint); white-space: nowrap; }
-
+    /* ERROR BANNER */
     .auth-error {
-      display: flex; align-items: flex-start; gap: var(--sp-2);
-      background: rgba(248,113,113,0.1);
-      border: 1px solid rgba(248,113,113,0.35);
-      color: var(--grx-err);
-      border-radius: var(--r-sm);
-      padding: 10px 12px; font-size: 13px; line-height: 1.5;
-      margin-bottom: var(--sp-4);
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      color: #f87171;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13.5px; line-height: 1.5;
+      margin-bottom: 18px;
     }
     .auth-error[hidden] { display: none; }
 
-    .auth-fine { color: var(--grx-ink-faint); font-size: 12.5px; line-height: 1.6; margin-top: var(--sp-4); }
-    .auth-fine a { color: var(--grx-cyan); text-decoration: none; }
-    .auth-fine a:hover { text-decoration: underline; }
+    /* FINE PRINT */
+    .auth-fine { margin: 14px 0 0; font-size: 12.5px; color: #6b7280; text-align: center; }
+    .auth-fine a { color: #c084fc; text-decoration: none; }
 
-    .auth-switch { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-top: var(--sp-4); font-size: 13px; color: var(--grx-ink-dim); }
-    .auth-switch a { color: var(--grx-cyan); font-weight: 600; text-decoration: none; }
-    .auth-switch a:hover { text-decoration: underline; }
-
-    @media (max-width: 860px) {
-      .auth-shell { align-items: flex-start; padding: var(--sp-5) var(--sp-5); }
-      .auth-grid { grid-template-columns: 1fr; max-width: 540px; gap: var(--sp-4); }
-      .auth-brand .panel { padding: var(--sp-5); gap: var(--sp-3); }
-      .auth-panel .panel { padding: var(--sp-5); }
-      .auth-brand h1 { margin: var(--sp-2) 0; }
-      .auth-points { display: none; }
-      .auth-foot { display: none; }
+    /* BRAND (atas kiri) */
+    .brand {
+      position: fixed;
+      top: 20px; left: 24px;
+      z-index: 20;
+      display: flex; align-items: center; gap: 10px;
+      color: #fff; text-decoration: none;
+      font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em;
     }
+    .brand-mark {
+      width: 28px; height: 28px;
+      display: grid; place-content: center;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(79,70,229,.9), rgba(139,92,246,.9));
+      font-size: 13px; font-weight: 700;
+    }
+
     @media (max-width: 480px) {
-      .auth-shell { padding: var(--sp-4) var(--sp-3); }
-      .auth-brand .panel { padding: var(--sp-4); }
-      .auth-panel .panel { padding: var(--sp-4); }
-      .auth-brand h1 { font-size: 1.35rem; }
-      .auth-brand .lead { font-size: 13.5px; }
+      .glass-form { padding: 26px 22px; }
+      h1 { font-size: 25px; }
+      .social-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
-<body class="grx-v3">
-  <a class="skip-link" href="#authPanel">Lewati ke formulir</a>
+<body>
+  <!-- LAYER 1: Aurora shader background -->
+  <div id="container"></div>
 
-  <div class="grx-surface">
-    <main class="auth-shell">
-      <div class="auth-grid">
+  <!-- Brand -->
+  <a class="brand" href="/copilot">
+    <span class="brand-mark">G</span> gRouter Copilot
+  </a>
 
-        <!-- Brand / value panel -->
-        <section class="metal-panel auth-brand reveal" aria-label="Tentang gRouter Copilot">
-          <div class="panel">
-            <a class="brand" href="/copilot">
-              <span class="brand-mark">G</span> gRouter Copilot
-            </a>
-
-            <div class="auth-value">
-              <span class="eyebrow">Enterprise AI</span>
-              <h1 class="chrome-text">Copilot di atas data Anda sendiri</h1>
-              <p class="lead">Satu akun untuk mengelola license, purchase, dan memantau usage. Terkontrol, ter-audit, dan berjalan di infrastruktur AI gRouter.</p>
-
-              <ul class="auth-points">
-                <li>
-                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>License terpusat untuk semua tim dan workspace.</span>
-                </li>
-                <li>
-                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>Monitoring usage real-time dengan audit trail.</span>
-                </li>
-                <li>
-                  <svg class="chip-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>Pembelian dan upgrade yang transparan.</span>
-                </li>
-              </ul>
-            </div>
-
-            <span class="mono-label auth-foot">gRouter Copilot — Enterprise</span>
-          </div>
-        </section>
-
-        <!-- Auth form panel -->
-        <section class="metal-panel auth-panel reveal-2" id="authPanel" tabindex="-1" aria-labelledby="authTitle">
-          <div class="panel">
-            <header class="auth-head">
-              <span class="mono-label">Akun</span>
-              <h2 id="authTitle">Buat akun Anda</h2>
-              <p class="sub" id="authSub">Satu akun untuk manage license, purchase, dan monitor usage.</p>
-            </header>
-
-            <!-- Google social block — hidden until /api/config confirms providers.google -->
-            <div id="socialBlock" class="stack" hidden>
-              <a class="btn btn-google btn-block" href="#" id="googleBtn" role="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                <span id="googleLabel">Lanjut dengan Google</span>
-              </a>
-
-              <div class="auth-or" id="authOr" aria-hidden="true">
-                <span class="divider"></span>
-                <span class="auth-or-label">atau dengan email</span>
-                <span class="divider"></span>
-              </div>
-            </div>
-
-            <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
-
-            <!-- Sign-up form -->
-            <form id="signupForm" novalidate aria-labelledby="authTitle">
-              <div class="field">
-                <label for="suName">Nama</label>
-                <input id="suName" name="name" type="text" autocomplete="name" placeholder="Nama Anda" required aria-required="true" />
-              </div>
-              <div class="field">
-                <label for="suEmail">Email</label>
-                <input id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
-              </div>
-              <div class="field">
-                <label for="suPassword">Password</label>
-                <input id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" minlength="8" required aria-required="true" aria-describedby="suPasswordHint" />
-                <p class="hint" id="suPasswordHint">Minimal 8 karakter.</p>
-              </div>
-              <button class="btn btn-primary btn-block" type="submit" id="registerBtn">Buat Akun</button>
-              <p class="auth-fine">
-                Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>.
-              </p>
-              <p class="auth-switch">
-                Sudah punya akun? <a href="#signin" id="toSignin">Masuk</a>
-              </p>
-            </form>
-
-            <!-- Sign-in form -->
-            <form id="signinForm" novalidate hidden aria-labelledby="authTitle">
-              <div class="field">
-                <label for="siEmail">Email</label>
-                <input id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
-              </div>
-              <div class="field">
-                <label for="siPassword">Password</label>
-                <input id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required aria-required="true" />
-              </div>
-              <button class="btn btn-primary btn-block" type="submit" id="loginBtn">Masuk</button>
-              <p class="auth-switch">
-                Belum punya akun? <a href="#signup" id="toSignup">Buat Akun</a>
-              </p>
-            </form>
-          </div>
-        </section>
-
+  <!-- LAYER 2: main UI -->
+  <div class="ui-layer">
+    <!-- LAYER 3: glass form -->
+    <section class="glass-form" id="authPanel" aria-labelledby="authTitle">
+      <!-- HEADER -->
+      <div class="head-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
       </div>
-    </main>
+      <h1 id="authTitle">Welcome Back</h1>
+      <p class="sub" id="authSub">Sign in to your account to continue</p>
+
+      <!-- Google block (tampil hanya bila /api/config menyatakan aktif) -->
+      <div id="socialBlock" hidden>
+        <div class="divider-row">Or continue with</div>
+        <div class="social-grid">
+          <button class="glass" type="button" id="googleBtn" role="button">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <span id="googleLabel">Google</span>
+          </button>
+          <button class="glass" type="button" id="facebookBtn" aria-label="Lanjut dengan Facebook">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span>Facebook</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+
+      <!-- SIGN-IN FORM -->
+      <form id="signinForm" novalidate aria-labelledby="authTitle">
+        <div class="field">
+          <label for="siEmail">Email</label>
+          <input class="input-glass" id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
+        </div>
+        <div class="field">
+          <label for="siPassword">Password</label>
+          <input class="input-glass" id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required aria-required="true" />
+        </div>
+        <div class="action-row">
+          <label><input type="checkbox" id="rememberMe" /> Ingat saya</label>
+          <a href="#" id="forgotLink">Forgot password?</a>
+        </div>
+        <button class="btn-glass" type="submit" id="loginBtn">Masuk</button>
+        <p class="foot" style="margin-top:22px">
+          Belum punya akun? <a href="#signup" id="toSignup">Sign up</a>
+        </p>
+      </form>
+
+      <!-- SIGN-UP FORM -->
+      <form id="signupForm" novalidate hidden aria-labelledby="authTitle">
+        <div class="field">
+          <label for="suName">Nama</label>
+          <input class="input-glass" id="suName" name="name" type="text" autocomplete="name" placeholder="Nama Anda" required aria-required="true" />
+        </div>
+        <div class="field">
+          <label for="suEmail">Email</label>
+          <input class="input-glass" id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
+        </div>
+        <div class="field">
+          <label for="suPassword">Password</label>
+          <input class="input-glass" id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" minlength="8" required aria-required="true" aria-describedby="suPasswordHint" />
+          <p class="hint" id="suPasswordHint" style="display:block">Minimal 8 karakter.</p>
+        </div>
+        <button class="btn-glass" type="submit" id="registerBtn">Buat Akun</button>
+        <p class="auth-fine">Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>.</p>
+        <p class="foot" style="margin-top:22px">
+          Sudah punya akun? <a href="#signin" id="toSignin">Masuk</a>
+        </p>
+      </form>
+    </section>
   </div>
 
   <script>
+    /* ================= AURORA SHADER BACKGROUND ================= */
+    (function () {
+      'use strict';
+      var container = document.getElementById('container');
+      if (typeof THREE === 'undefined') return; // CDN gagal → background hitam polos, form tetap usable
+
+      var scene = new THREE.Scene();
+      var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); // ortho, bukan perspective
+      var renderer = new THREE.WebGLRenderer({ antialias: true });
+      // QUIRK: pixel ratio 2-3x ukuran window
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio * 2, 3));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      container.appendChild(renderer.domElement);
+
+      var uniforms = {
+        iTime: { value: 0 },
+        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+      };
+
+      var vertexShader = [
+        'varying vec2 vUv;',
+        'void main() {',
+        '  vUv = uv;',
+        '  gl_Position = vec4(position, 1.0);',
+        '}'
+      ].join('\n');
+
+      var fragmentShader = [
+        'precision highp float;',
+        'uniform float iTime;',
+        'uniform vec2 iResolution;',
+        'varying vec2 vUv;',
+        '',
+        'float line(vec2 uv, float offset, float freq, float amp, float speed, float width) {',
+        '  float y = sin(uv.x * freq + iTime * speed + offset) * amp;',
+        '  float d = abs(uv.y - y);',
+        '  return smoothstep(width, 0.0, d);',
+        '}',
+        '',
+        'void main() {',
+        '  vec2 uv = vUv;',
+        '  vec3 col = vec3(0.0);',
+        '',
+        '  for (int i = 0; i < 5; i++) {',
+        '    float fi = float(i);',
+        '    float offset = fi * 1.7;',
+        '    float freq   = 3.0 + fi * 1.3;',
+        '    float amp    = 0.12 + fi * 0.05;',
+        '    float speed  = 0.4 + fi * 0.23;',
+        '    float l = line(uv, offset, freq, amp, speed, 0.012 + fi * 0.006);',
+        '    vec3 aurora = mix(vec3(0.0, 0.8, 0.6), vec3(0.7, 0.2, 0.9),',
+        '                      0.5 + 0.5 * sin(iTime * 0.35 + fi));',
+        '    col += l * aurora * (0.85 - fi * 0.12);',
+        '  }',
+        '',
+        '  float glow = exp(-length((uv - vec2(0.5, 0.45)) * vec2(1.4, 2.2))) * 0.22;',
+        '  col += glow * vec3(0.35, 0.2, 0.7);',
+        '  gl_FragColor = vec4(col, 1.0);',
+        '}'
+      ].join('\n');
+
+      var material = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: vertexShader, fragmentShader: fragmentShader });
+      var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+      scene.add(mesh);
+
+      var clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        uniforms.iTime.value = clock.getElapsedTime();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+      });
+    })();
+
+    /* ================= AUTH WIRING (perilaku existing, tak diubah) ================= */
     (function () {
       'use strict';
 
@@ -207,17 +447,16 @@
       var googleLabel = document.getElementById('googleLabel');
 
       var SIGNUP_COPY = {
-        title: 'Buat akun Anda',
-        sub: 'Satu akun untuk manage license, purchase, dan monitor usage.',
+        title: 'Create your account',
+        sub: 'One account to manage licenses, purchases, and monitor usage.',
         doc: 'Daftar — gRouter Copilot',
       };
       var SIGNIN_COPY = {
-        title: 'Masuk ke akun Anda',
-        sub: 'Kelola license, purchase, dan monitor usage Anda.',
+        title: 'Welcome Back',
+        sub: 'Sign in to your account to continue',
         doc: 'Masuk — gRouter Copilot',
       };
 
-      /* ---------- Error banner ---------- */
       function showError(msg) {
         errorBox.textContent = msg || 'Terjadi kesalahan. Coba lagi.';
         errorBox.hidden = false;
@@ -226,14 +465,12 @@
         errorBox.textContent = '';
         errorBox.hidden = true;
       }
-
       function parseError(data) {
         if (!data) return null;
         if (typeof data === 'string') return data;
         return data.message || data.error || (data.errors && data.errors[0] && data.errors[0].message) || null;
       }
 
-      /* ---------- Sign-up / sign-in toggle ---------- */
       function toggleForm(mode) {
         clearError();
         var isSignin = mode === 'signin';
@@ -243,9 +480,7 @@
         titleEl.textContent = copy.title;
         subEl.textContent = copy.sub;
         document.title = copy.doc;
-        try {
-          history.replaceState(null, '', isSignin ? '#signin' : '#signup');
-        } catch (e) { /* ignore */ }
+        try { history.replaceState(null, '', isSignin ? '#signin' : '#signup'); } catch (e) { /* ignore */ }
       }
 
       document.getElementById('toSignin').addEventListener('click', function (e) {
@@ -257,7 +492,6 @@
         toggleForm('signup');
       });
 
-      /* ---------- Email submit (sign-up / sign-in) ---------- */
       async function submitAuth(url, payload, btn) {
         clearError();
         var label = btn.textContent;
@@ -302,14 +536,14 @@
         submitAuth('/api/auth/sign-in/email', { email: email, password: password }, document.getElementById('loginBtn'));
       });
 
-      /* ---------- Google social sign-in ---------- */
+      /* Google social — hanya bila backend menyatakan aktif via /api/config */
       function setGoogleBusy(busy) {
         if (busy) {
           googleBtn.setAttribute('aria-disabled', 'true');
           googleLabel.textContent = 'Menghubungkan...';
         } else {
           googleBtn.removeAttribute('aria-disabled');
-          googleLabel.textContent = 'Lanjut dengan Google';
+          googleLabel.textContent = 'Google';
         }
       }
 
@@ -324,8 +558,6 @@
             body: JSON.stringify({
               provider: 'google',
               callbackURL: location.origin + '/user',
-              // On failure return the user to the CUSTOMER origin, not the raw
-              // backend error page, so they never see the admin surface.
               errorCallbackURL: location.origin + '/login',
             }),
             credentials: 'same-origin',
@@ -344,7 +576,6 @@
         }
       });
 
-      /* Google is only shown when the backend actually has credentials. */
       function googleEnabled(cfg) {
         return !!(cfg && cfg.providers && cfg.providers.google === true);
       }
@@ -355,17 +586,17 @@
           socialBlock.hidden = !googleEnabled(cfg);
         })
         .catch(function () {
-          socialBlock.hidden = true; /* treat fetch failure as disabled */
+          socialBlock.hidden = true;
         });
 
-      /* ---------- Deep link: #signin / ?mode=signin ---------- */
+      /* Deep link: #signin / ?mode=signin */
       var wantsSignin = location.hash === '#signin';
       try {
         if (!wantsSignin && new URLSearchParams(location.search).get('mode') === 'signin') wantsSignin = true;
       } catch (e) { /* ignore */ }
       toggleForm(wantsSignin ? 'signin' : 'signup');
 
-      /* ---------- Surface an OAuth failure back on the customer page ---------- */
+      /* OAuth failure surface */
       try {
         var authErr = new URLSearchParams(location.search).get('error');
         if (authErr) {

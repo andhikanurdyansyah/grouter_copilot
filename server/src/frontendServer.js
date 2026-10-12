@@ -110,6 +110,14 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
         res.writeHead(200, { 'content-type': type, 'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable' });
         return res.end(readFileSync(resolved));
       }
+      // SPA fallback: /app/<route> tanpa ekstensi (mis. /app/sign-up) → app shell.
+      if (!path.extname(rel)) {
+        const spaIndex = path.join(PUBLIC_DIR, 'app', 'index.html');
+        if (existsSync(spaIndex)) {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
+          return res.end(readFileSync(spaIndex));
+        }
+      }
       res.writeHead(404); return res.end('not found');
     }
 

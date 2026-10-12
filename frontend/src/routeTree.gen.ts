@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as AdminGateRouteImport } from './routes/admin-gate'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ import { Route as AuthenticatedAdminLicensesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminLedgerRouteImport } from './routes/_authenticated/admin/ledger'
 import { Route as AuthenticatedAdminLicensesLicenseIdRouteImport } from './routes/_authenticated/admin/licenses_.$licenseId'
 
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminGateRoute = AdminGateRouteImport.update({
   id: '/admin-gate',
   path: '/admin-gate',
@@ -143,6 +149,7 @@ const AuthenticatedAdminLicensesLicenseIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-gate': typeof AdminGateRoute
+  '/sign-up': typeof SignUpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/user': typeof AuthenticatedUserRouteRouteWithChildren
   '/admin/ledger': typeof AuthenticatedAdminLedgerRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-gate': typeof AdminGateRoute
+  '/sign-up': typeof SignUpRoute
   '/admin/ledger': typeof AuthenticatedAdminLedgerRoute
   '/admin/licenses': typeof AuthenticatedAdminLicensesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin-gate': typeof AdminGateRoute
+  '/sign-up': typeof SignUpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/user': typeof AuthenticatedUserRouteRouteWithChildren
   '/_authenticated/admin/ledger': typeof AuthenticatedAdminLedgerRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin-gate'
+    | '/sign-up'
     | '/admin'
     | '/user'
     | '/admin/ledger'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin-gate'
+    | '/sign-up'
     | '/admin/ledger'
     | '/admin/licenses'
     | '/admin/orders'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/admin-gate'
+    | '/sign-up'
     | '/_authenticated/admin'
     | '/_authenticated/user'
     | '/_authenticated/admin/ledger'
@@ -272,10 +284,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminGateRoute: typeof AdminGateRoute
+  SignUpRoute: typeof SignUpRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-gate': {
       id: '/admin-gate'
       path: '/admin-gate'
@@ -491,6 +511,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminGateRoute: AdminGateRoute,
+  SignUpRoute: SignUpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

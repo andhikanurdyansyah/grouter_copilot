@@ -134,6 +134,10 @@ export const auth = betterAuth({
     // rate limiting keys on the actual client, not one shared bucket.
     ipAddress: {
       ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for', 'x-real-ip'],
+      // Percayai loopback proxy (frontendServer 4601 → 4600, cloudflared) agar
+      // rantai x-forwarded-for dengan hop loopback tetap resolve ke client IP;
+      // tanpa ini, x-forwarded-for berisi ≥2 hop → null → rate limit satu bucket.
+      trustedProxies: ['127.0.0.1', '::1'],
     },
     // gRouter Copilot runs on TWO origins that must share auth cookies:
     //   copilot.grouter.id (frontend: starts the Google flow)

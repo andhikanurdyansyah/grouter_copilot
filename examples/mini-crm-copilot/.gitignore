@@ -1,0 +1,10 @@
+# data demo di-generate deterministik oleh `node seed.js`
+data/
+
+# env lisensi gRouter Copilot (lihat CONTRACT.md)
+.env
+
+node_modules/
+
+# bukti visual e2e (dihasilkan saat journey)
+shots/

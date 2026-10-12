@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini CRM — gRouter Copilot Demo</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◈</span>
+        <div>
+          <div class="brand-name">Mini CRM</div>
+          <div class="brand-sub">gRouter Copilot — demo</div>
+        </div>
+      </div>
+      <nav class="tabs" id="tabs" aria-label="Navigasi utama">
+        <button class="tab is-active" data-tab="dashboard">Dashboard</button>
+        <button class="tab" data-tab="customers">Customers</button>
+        <button class="tab" data-tab="leads">Leads</button>
+        <button class="tab" data-tab="deals">Deals</button>
+        <button class="tab" data-tab="activities">Activities</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main">
+    <!-- Panel dashboard -->
+    <section id="panel-dashboard" class="panel" hidden>
+      <h1 class="panel-title">Dashboard</h1>
+      <p class="panel-desc">Ringkasan pipeline dan aktivitas CRM. Data demo di-generate deterministik oleh <code>node seed.js</code>.</p>
+      <div class="cards" id="overview-cards">
+        <div class="card"><div class="card-label">Total Customers</div><div class="card-value" id="ov-total">—</div></div>
+        <div class="card"><div class="card-label">Active Customers</div><div class="card-value" id="ov-active">—</div></div>
+        <div class="card"><div class="card-label">Open Deals</div><div class="card-value" id="ov-open-deals">—</div></div>
+        <div class="card"><div class="card-label">Nilai Pipeline Terbuka</div><div class="card-value" id="ov-open-value">—</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="box">
+          <h2 class="box-title">Leads per Status</h2>
+          <div id="ov-leads"><div class="skeleton"></div></div>
+        </div>
+        <div class="box">
+          <h2 class="box-title">Deals per Stage</h2>
+          <div id="ov-deals"><div class="skeleton"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel customers -->
+    <section id="panel-customers" class="panel" hidden>
+      <div class="panel-head">
+        <h1 class="panel-title">Customers</h1>
+        <span class="count-badge" id="cus-count"></span>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="cus-search" placeholder="Cari nama, perusahaan, email… (juga catatan aktivitas)" aria-label="Cari customer" />
+        <select id="cus-status" aria-label="Filter status">
+          <option value="">Semua status</option>
+          <option value="active">Active</option>
+          <option value="prospect">Prospect</option>
+          <option value="churned">Churned</option>
+        </select>
+      </div>
+      <div id="cus-list" class="table-wrap"><div class="state state-loading">Memuat customers…</div></div>
+    </section>
+
+    <!-- Panel leads -->
+    <section id="panel-leads" class="panel" hidden>
+      <div class="panel-head">
+        <h1 class="panel-title">Leads</h1>
+        <span class="count-badge" id="lead-count"></span>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="lead-search" placeholder="Cari nama atau perusahaan lead…" aria-label="Cari lead" />
+        <select id="lead-status" aria-label="Filter status lead">
+          <option value="">Semua status</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="unqualified">Unqualified</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div id="lead-list" class="table-wrap"><div class="state state-loading">Memuat leads…</div></div>
+    </section>
+
+    <!-- Panel deals -->
+    <section id="panel-deals" class="panel" hidden>
+      <div class="panel-head">
+        <h1 class="panel-title">Deals</h1>
+        <span class="count-badge" id="deal-count"></span>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="deal-search" placeholder="Cari judul deal…" aria-label="Cari deal" />
+        <select id="deal-stage" aria-label="Filter stage">
+          <option value="">Semua stage</option>
+          <option value="discovery">Discovery</option>
+          <option value="proposal">Proposal</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div id="deal-list" class="table-wrap"><div class="state state-loading">Memuat deals…</div></div>
+    </section>
+
+    <!-- Panel activities -->
+    <section id="panel-activities" class="panel" hidden>
+      <div class="panel-head">
+        <h1 class="panel-title">Activities</h1>
+        <span class="count-badge" id="act-count"></span>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="act-search" placeholder="Cari catatan aktivitas…" aria-label="Cari aktivitas" />
+      </div>
+      <div id="act-list" class="table-wrap"><div class="state state-loading">Memuat activities…</div></div>
+    </section>
+
+    <!-- Panel detail customer -->
+    <section id="panel-customer-detail" class="panel" hidden>
+      <button class="btn-link" id="detail-back">← Kembali ke daftar customers</button>
+      <div id="detail-body"><div class="state state-loading">Memuat detail…</div></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/app.js"></script>
+  <!-- copilot: widget/panel demo (copilot-panel.js) ditambahkan oleh integrasi -->
+    <script src="/copilot-panel.js" defer></script>
+</body>
+</html>

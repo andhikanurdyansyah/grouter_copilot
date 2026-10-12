@@ -1,1 +1,0 @@
-import{h as e}from"./index-DyvKbWle.js";var t=e;export{t as component};

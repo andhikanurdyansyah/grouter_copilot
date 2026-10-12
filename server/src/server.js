@@ -107,6 +107,7 @@ const authHandler = toNodeHandler(auth.handler);
 export function createCopilotServer({
   port = 4600,
   dataFile = path.join(__dirname, '..', 'data', 'store.json'),
+  klikqrisRequestTimeoutMs = 15_000,
   privateKeyPem = null,
   publicKeyPem = null,
   adminToken = process.env.ADMIN_TOKEN || null,
@@ -152,6 +153,7 @@ export function createCopilotServer({
   });
   const klikqris = new KlikQris({
     fetchImpl: fetch,
+    requestTimeoutMs: klikqrisRequestTimeoutMs,
     apiKey: effSettings.payment.apiKey,
     merchantId: effSettings.payment.merchantId,
     mode: effSettings.payment.mode,

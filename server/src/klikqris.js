@@ -52,10 +52,12 @@ export class KlikQris {
     mode = process.env.KLIKQRIS_MODE || 'sandbox',
     baseUrl = null,
     fetchImpl = globalThis.fetch,
+    requestTimeoutMs = 15_000,
   } = {}) {
     this.apiKey = apiKey;
     this.merchantId = merchantId;
     this.mode = mode;
+    this.requestTimeoutMs = requestTimeoutMs;
     // Settings SSOT (D-020): the deployment can override the KlikQRIS host via
     // settings (`payment.klikqrisBaseUrl`) — e.g. a proxy or a future region —
     // while the default stays the mode-derived klikqris.com URL.
@@ -95,9 +97,12 @@ export class KlikQris {
     }
     let res;
     try {
+      // Bounded upstream call: a hung KlikQRIS must fail fast (-> 502 for the
+      // webhook, which the provider retries) instead of blocking forever.
       res = await this.fetch(`${this.baseUrl}${path}`, {
         method,
         headers: this._headers(),
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
     } catch (err) {
@@ -105,6 +110,12 @@ export class KlikQris {
     }
 
     const data = await res.json().catch(() => ({}));
+    // A non-2xx upstream response (e.g. 500 with a plain-text/HTML body) must
+    // never be read as a valid "UNKNOWN" status. Treat it as an upstream
+    // failure so the webhook answers 502 (provider retries) and nothing settles.
+    if (!res.ok && data.status !== false) {
+      throw new KlikQrisError(`KlikQRIS HTTP ${res.status}`, { code: 'REQUEST_FAILED' });
+    }
     if (data.status === false) {
       const msg = data.message || 'KlikQRIS error.';
       if (res.status === 401 || /invalid api key|unauthorized|inactive/i.test(msg)) {

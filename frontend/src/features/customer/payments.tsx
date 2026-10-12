@@ -58,6 +58,8 @@ export function CustomerPayments() {
         date: fmtDate(o.createdAt ?? null),
         status: String(o.status || 'pending').toLowerCase(),
         expiresAt: o.expiredAt ?? null,
+        qrImage: (o as { qrImage?: string | null }).qrImage ?? null,
+        qrUrl: (o as { qrUrl?: string | null }).qrUrl ?? null,
       }))
 
   const effectiveOrders = displayOrders
@@ -276,11 +278,19 @@ export function CustomerPayments() {
 
             <div className='flex flex-col items-center justify-center p-4 rounded-xl border border-border/80 bg-muted/20 space-y-4'>
               <div className='relative size-52 bg-white rounded-xl p-3 shadow-md flex items-center justify-center overflow-hidden'>
-                <img
-                  src='/app/images/qris-code.png'
-                  alt='QRIS Barcode'
-                  className='size-full object-contain'
-                />
+                {/* QR dari provider utk order INI (KlikQRIS createQris). Fallback statis
+                    hanya bila provider tidak mengirim image — jangan pernah pakai QR statis
+                    sebagai QR pembayaran riil (setiap order punya kode berbeda). */}
+                {(() => {
+                  const qr = activePaymentOrder.qrImage || activePaymentOrder.qrUrl || '/app/images/qris-code.png'
+                  return (
+                    <img
+                      src={qr}
+                      alt='QRIS Barcode'
+                      className='size-full object-contain'
+                    />
+                  )
+                })()}
               </div>
 
               <div className='text-center space-y-1'>

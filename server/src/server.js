@@ -653,7 +653,7 @@ export function createCopilotServer({
           .filter((l) => l.createdAt >= order.createdAt)
           .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
         return sendJson(res, 200, {
-          order: sanitizeOrder(order),
+          order: sanitizeOrder(order, { includeQr: true }),
           license: license ? sanitizeLicense(license, { includeToken: true }) : null,
         });
       })();
@@ -691,7 +691,7 @@ export function createCopilotServer({
         if (!order || order.accountId !== account.id) {
           return sendJson(res, 404, { error: 'not found' });
         }
-        return sendJson(res, 200, { order: sanitizeOrder(order) });
+        return sendJson(res, 200, { order: sanitizeOrder(order, { includeQr: true }) });
       })();
     }
 
@@ -706,7 +706,7 @@ export function createCopilotServer({
         const orders = store.listOrders()
           .filter((o) => o.accountId === account.id)
           .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-          .map(sanitizeOrder);
+          .map((o) => sanitizeOrder(o, { includeQr: true }));
         return sendJson(res, 200, { orders, total: orders.length });
       })();
     }
@@ -848,8 +848,8 @@ function sanitizeLicense(l, { includeToken = false } = {}) {
   };
 }
 
-function sanitizeOrder(o) {
-  return {
+function sanitizeOrder(o, { includeQr = false } = {}) {
+  const out = {
     id: o.id,
     accountId: o.accountId,
     packageKey: o.packageKey,
@@ -861,6 +861,15 @@ function sanitizeOrder(o) {
     paidAt: o.paidAt ?? null,
     expiredAt: o.expiredAt ?? null,
   };
+  // QR pembayaran milik order ini (dari KlikQRIS createQris). Bukan secret,
+  // tetapi HANYA untuk PEMILIK order (customer orders endpoint): dibutuhkan
+  // untuk membayar. Admin listing tetap tanpa QR payload (kontrak teruji di
+  // admin-orders.test.js) — verifikasi pembayaran admin memakai upstream.
+  if (includeQr) {
+    out.qrImage = typeof o.qrImage === 'string' ? o.qrImage : null;
+    out.qrUrl = typeof o.qrUrl === 'string' ? o.qrUrl : null;
+  }
+  return out;
 }
 
 function requireAdmin(req, adminToken, allowUnauthenticatedAdmin = false) {

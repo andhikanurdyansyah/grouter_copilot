@@ -1,4 +1,5 @@
-/* Mini CRM demo — dark-neutral professional (lihat CONTRACT.md) */
+/* Mini CRM demo — dark-neutral professional (lihat CONTRACT.md)
+   Accent Copilot: cyan #22d3ee (dipakai panel + badge demo). */
 :root {
   --bg: #101214;
   --bg-elev: #16191c;
@@ -9,6 +10,8 @@
   --text-faint: #6b747c;
   --accent: #4c8dff;
   --accent-soft: rgba(76, 141, 255, 0.14);
+  --copilot: #22d3ee;
+  --copilot-soft: rgba(34, 211, 238, 0.14);
   --green: #34b374;
   --amber: #d99b2b;
   --red: #e05252;
@@ -45,6 +48,14 @@ body {
 }
 .brand-name { font-weight: 650; letter-spacing: 0.2px; }
 .brand-sub { font-size: 11.5px; color: var(--text-faint); }
+.demo-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 650; letter-spacing: 0.4px;
+  color: var(--copilot); background: var(--copilot-soft);
+  border: 1px solid rgba(34, 211, 238, 0.35); border-radius: 99px;
+  padding: 2px 9px; margin-left: 10px; white-space: nowrap;
+  text-transform: uppercase;
+}
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .tab {
   appearance: none; background: transparent; border: 1px solid transparent;
@@ -115,6 +126,7 @@ tr.row-click { cursor: pointer; }
   display: inline-block; font-size: 11.5px; font-weight: 600;
   padding: 2px 9px; border-radius: 99px; border: 1px solid var(--border);
   background: var(--bg-elev-2); color: var(--text-dim); white-space: nowrap;
+  text-transform: capitalize;
 }
 .badge.active, .badge.won, .badge.qualified { color: var(--green); border-color: rgba(52, 179, 116, 0.4); }
 .badge.prospect, .badge.contacted, .badge.negotiation, .badge.proposal { color: var(--amber); border-color: rgba(217, 155, 43, 0.4); }
@@ -167,3 +179,10 @@ code { background: var(--bg-elev-2); padding: 1px 6px; border-radius: 5px; font-
   th, td { padding: 8px 8px; font-size: 13px; }
   .detail-meta { gap: 10px; }
 }
+
+/* Tabel markdown di jawaban Copilot (GFM sederhana) */
+.md-table-wrap { overflow-x: auto; margin: 8px 0; border: 1px solid var(--grx-border, rgba(148,163,184,.18)); border-radius: 10px; }
+.md-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.md-table-wrap th { text-align: left; font-weight: 600; color: var(--grx-fg-muted, #7c8b9b); padding: 6px 10px; background: rgba(148,163,184,.06); white-space: nowrap; }
+.md-table-wrap td { padding: 6px 10px; border-top: 1px solid var(--grx-border, rgba(148,163,184,.12)); }
+.md-table-wrap tr:first-child td { border-top: 0; }

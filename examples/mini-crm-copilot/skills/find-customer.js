@@ -44,11 +44,16 @@ export default {
     // Natural-language: pecah query jadi token (>=4 huruf) dan terima jika SEMUA token ada di note
     // ATAU substring penuh gagal tapi mayoritas token cocok (>= setengah, min 1). Tanpa ini kata
     // filler ("keluhan", "dengan") membuat pencarian kalimat natural selalu 0 hasil.
-    const tokens = q.split(/[^a-z0-9]+/).filter((t) => t.length >= 4);
+    // Stopword umum (ID/EN) tidak dihitung — tanpa ini kata sambung membuat query kalimat
+    // natural ("customer dengan keluhan keterlambatan pengiriman") gagal semua threshold.
+    const STOP = new Set(['yang', 'dengan', 'untuk', 'pada', 'adalah', 'para', 'semua', 'banyak', 'ada', 'dari', 'kecil', 'besar',
+      'cari', 'coba', 'tolong', 'please', 'find', 'customer', 'customers', 'data', 'list', 'daftar', 'yang', 'mengalami', 'keluhan']);
+    const tokens = [...new Set(q.split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !STOP.has(t)))];
     const noteHit = (note) => {
       if (!tokens.length) return 0;
       const hit = tokens.filter((t) => note.includes(t)).length;
-      return hit === tokens.length || (tokens.length >= 2 && hit >= Math.ceil(tokens.length / 2) && hit >= 1) ? hit : 0;
+      // Lulus bila semua token inti ada, ATAU >= 2 token inti cocok (note singkat sering hanya memuat frasa inti).
+      return hit === tokens.length || hit >= Math.min(2, tokens.length) ? hit : 0;
     };
     if (matches.size < MAX_MATCHES) {
       for (const a of db.activities) {

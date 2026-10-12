@@ -23,7 +23,7 @@ npm start               # http://localhost:4602
 export DEMO_LICENSE="<token lisensi Anda>"
 npm run install:copilot   # atau: node ../../bin/grouter-copilot.js install --license "$DEMO_LICENSE" --license-server https://copilot.grouter.id
 ```
-**Berhasil jika:** output menampilkan `✔ Saved gateway configuration to .env` dan file `.env` berisi GROUTER_GATEWAY_URL + GROUTER_LICENSE_PUBLIC_KEY (tanpa provider secret — D-021).
+**Berhasil jika:** output menampilkan `✔ Created .env (GROUTER_GATEWAY_URL, GROUTER_LICENSE, GROUTER_LICENSE_SERVER, GROUTER_LICENSE_PUBLIC_KEY)` — atau `· Unchanged (already configured) .env (…)` jika sudah terkonfigurasi — dan file `.env` berisi GROUTER_GATEWAY_URL + GROUTER_LICENSE_PUBLIC_KEY (tanpa provider secret — D-021). Lisensi hanya tampil ter-masked (`****…last4`), tidak pernah penuh.
 
 ## Langkah 3 — Hubungkan route + panel ke CRM
 Patch integrasi sudah diterapkan pada repo ini (server.js mount `/api/copilot`, index.html memuat `copilot-panel.js`). Jika membangun dari nol: ikuti komentar slot di `server.js` + instruksi `routes/copilot.js`.
@@ -70,7 +70,7 @@ CONTRACT.md         # kontrak antarmodul (locked)
 ## Troubleshooting
 | Masalah | Penyebab | Solusi |
 |---|---|---|
-| `License verification failed` | token salah/expired | periksa token, minta lisensi baru |
+| `✗ License validation failed — …` | token salah/expired/server tidak terjangkau | ikuti baris `Cause:` dan `Fix:` pada output CLI |
 | Panel error `failed to fetch` | gateway tidak terjangkau | cek GROUTER_GATEWAY_URL di .env |
 | Jawaban generik/karangan | skill tidak terdaftar | cek copilot.config.js skills[] |
 | `EADDRINUSE` 4602 | port dipakai | DEMO_PORT=4603 npm start |

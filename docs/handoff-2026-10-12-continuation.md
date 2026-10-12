@@ -1,6 +1,8 @@
 # Handoff — 2026-10-12 continuation (product readiness mandate)
 
-Status: PARTIAL. Workstreams 1–5 are NOT complete. This file records what was
+Status: UPDATED 2026-10-12 17:31 UTC. See "Update" section at the end.
+
+Status (original): PARTIAL. Workstreams 1–5 are NOT complete. This file records what was
 actually executed and exactly what remains. Nothing here is a pass claim unless
 listed under "Executed and verified".
 
@@ -41,3 +43,21 @@ listed under "Executed and verified".
 - KlikQRIS sandbox simulator: manual dashboard action required to finish the settlement E2E.
 - npm publication: explicitly out of scope; remains unpublished.
 - Production payment cutover: requires production credentials and provider contract verification (not started).
+
+## Update 2026-10-12 17:31 UTC (supersedes earlier "Not completed" items where stated)
+
+Verified on prod (sandbox mode, `payment.mode=sandbox`):
+- Sandbox order created via backend `POST /api/orders` (server-resolved amount 10000).
+- Operator ran the KlikQRIS sandbox simulator (Transaction Signature Key). Upstream status became SUCCESS (paid_at 2026-10-13 00:27:46).
+- Local order became PAID and exactly one license was issued (planKey quota-3b-90d).
+- Idempotency: two replayed webhooks returned 200 with licenseId null; license count stayed 1.
+- Forged/unknown: unknown order 404; malformed body 400; wrong-amount claim 200 ignored (no settle).
+- BUG FIXED (commit 4cf49c9): settlePaid marked the order PAID and saved BEFORE issuing the license. A failed issuance would leave a PAID order with no license, and retries were idempotent. Fix: issue first, then mark PAID and store licenseId. Regression test: server/test/settle-license-order.test.js (fails on old code, passes on fix).
+- Tests: server `NODE_ENV=test node --test` 100/100 pass; root `npm test` 71/71 pass.
+- Deployed 4cf49c9 to prod (backup /home/ubuntu/backups/copilot-20261012T173153Z); health 200; public 200.
+- QA license lic_mv5iz5wy_1 revoked via admin API; live gateway returns LICENSE_REVOKED (403).
+
+Open:
+- Real KlikQRIS callback to our webhook is NOT proven. Prod log and cloudflared logs record no webhook request path. Proof needs a fresh sandbox order whose upstream callback is observed in app logs.
+- The order settled before the fix has no licenseId link (pre-fix record). Not backfilled.
+- Restore drill, gateway model/plan/default matrix, mini-CRM from tarball, and docs reconciliation (71 vs 112, 99/100 vs 55) are still pending.

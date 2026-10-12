@@ -53,6 +53,7 @@ export function AdminGate() {
                 id='admin-token'
                 type='password'
                 autoComplete='off'
+                autoFocus
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder='ADMIN_TOKEN'

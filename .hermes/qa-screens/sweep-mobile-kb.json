@@ -1,0 +1,72 @@
+[
+ {
+  "name": "mobile: sidebar trigger visible",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "mobile: drawer opens with nav links",
+  "status": "ok",
+  "detail": "links=8"
+ },
+ {
+  "name": "mobile: drawer closes (Esc/overlay)",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "mobile: issue-modal opens",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "mobile: modal no ICB overflow",
+  "status": "ok",
+  "detail": "sw=390 cw=390"
+ },
+ {
+  "name": "mobile: issue submit guarded empty",
+  "status": "ok",
+  "detail": "no-op guard (JS logic)"
+ },
+ {
+  "name": "mobile: no pageerrors",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "mobile customer: drawer opens",
+  "status": "ok",
+  "detail": "links=7"
+ },
+ {
+  "name": "mobile customer: bottom nav reachable",
+  "status": "ok",
+  "detail": "links=4"
+ },
+ {
+  "name": "keyboard: token login via keyboard only",
+  "status": "ok",
+  "detail": "auto-focus"
+ },
+ {
+  "name": "a11y: main landmark exists",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "a11y: nav landmark exists",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "a11y: h1 exists",
+  "status": "ok",
+  "detail": ""
+ },
+ {
+  "name": "a11y: focus indicator present",
+  "status": "ok",
+  "detail": ""
+ }
+]

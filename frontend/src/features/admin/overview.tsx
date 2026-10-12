@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminStats, fetchAdminOrders, fetchAdminLicenses, fetchHealth, fetchLedger, settleOrder } from '@/lib/grouter-api'
@@ -85,7 +85,28 @@ export function AdminOverview() {
 
   const currentData = chartDatasets[timeRange]
   const [activePointIndex, setActivePointIndex] = useState<number | null>(null)
+  const [pointerPx, setPointerPx] = useState<number | null>(null)
   const activePoint = activePointIndex !== null ? currentData[activePointIndex] : null
+
+  // Ukuran terpasang host chart (px) untuk penempatan tooltip & guard flip/overflow.
+  const chartWrapRef = useRef<HTMLDivElement | null>(null)
+  const [svgW, setSvgW] = useState(0)
+  const [svgH, setSvgH] = useState(0)
+  useLayoutEffect(() => {
+    const el = chartWrapRef.current
+    if (!el) return
+    const measure = () => {
+      const svg = el.querySelector('svg')
+      if (svg) {
+        setSvgW(svg.clientWidth)
+        setSvgH(svg.clientHeight)
+      }
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Interactive mouse / touch tracker for SVG chart
   const updateActivePointFromClientX = (clientX: number, target: SVGSVGElement) => {
@@ -96,6 +117,7 @@ export function AdminOverview() {
       Math.max(0, Math.round(relativeX * (currentData.length - 1)))
     )
     setActivePointIndex(targetIdx)
+    setPointerPx(clientX - rect.left)
   }
 
   const handleChartMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -111,9 +133,11 @@ export function AdminOverview() {
     if (e.key === 'ArrowRight') {
       e.preventDefault()
       setActivePointIndex((prev) => (prev === null ? 0 : Math.min(currentData.length - 1, prev + 1)))
+      setPointerPx(null)
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
       setActivePointIndex((prev) => (prev === null ? currentData.length - 1 : Math.max(0, prev - 1)))
+      setPointerPx(null)
     } else if (e.key === 'Escape') {
       setActivePointIndex(null)
     }
@@ -152,6 +176,11 @@ export function AdminOverview() {
       setVerifyingSheetId(null)
     },
   })
+
+  // Ringkasan numerik chart untuk aria-label (fallback aksesibilitas titik data fokusable)
+  const chartSummary = currentData
+    .map((d) => `${d.date}: ${d.ok.toLocaleString('id-ID')} ok, ${d.ditolak.toLocaleString('id-ID')} ditolak`)
+    .join('; ')
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -314,14 +343,17 @@ export function AdminOverview() {
           </div>
 
           {/* SVG Smooth Interactive Chart */}
-          <div className='relative h-64 w-full pt-4'>
+          <div ref={chartWrapRef} className='relative h-64 w-full pt-4'>
             <svg
               className='h-full w-full overflow-visible cursor-crosshair focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#7778FF]'
               viewBox='0 0 620 200'
               preserveAspectRatio='none'
               tabIndex={0}
-              role='region'
-              aria-label={isId ? 'Grafik throughput gateway' : 'Gateway throughput chart'}
+              role='img'
+              aria-label={
+                (isId ? 'Grafik throughput gateway 14 hari terakhir. ' : 'Gateway throughput chart, last 14 days. ') +
+                chartSummary
+              }
               onMouseMove={handleChartMouseMove}
               onMouseLeave={() => setActivePointIndex(null)}
               onTouchStart={handleChartTouchMove}
@@ -389,21 +421,32 @@ export function AdminOverview() {
               )}
             </svg>
 
-            {/* Structured Multi-Series Floating Tooltip Overlay */}
+            {/* Floating pointer-following tooltip (offset dari kursor, flip saat mendekati tepi, pointer-events-none) */}
             {activePoint && (() => {
               const total = activePoint.ok + activePoint.ditolak
-              const okPct = total > 0 ? ((activePoint.ok / total) * 100).toFixed(1) : '0'
-              const badPct = total > 0 ? ((activePoint.ditolak / total) * 100).toFixed(1) : '0'
+              const okPct = total > 0 ? ((activePoint.ok / total) * 100).toFixed(1).replace('.', ',') : '0'
+              const badPct = total > 0 ? ((activePoint.ditolak / total) * 100).toFixed(1).replace('.', ',') : '0'
+              const TOOLTIP_W = 190
+              const TOOLTIP_H = 110
+              const hostW = svgW
+              const hostH = svgH
+              // Mengikuti pointer saat hover/touch; saat navigasi keyboard, anchor ke titik data.
+              const leftRaw = pointerPx != null ? pointerPx + 14 : (activePoint.x / 620) * hostW - TOOLTIP_W / 2
+              const flip = leftRaw + TOOLTIP_W > hostW - 8
+              const left = flip ? Math.max(8, leftRaw - TOOLTIP_W - 28) : Math.max(8, leftRaw)
+              const belowPoint = (activePoint.yOk / 200) * hostH
+              const topRaw = belowPoint + 14
+              const flipY = topRaw + TOOLTIP_H > hostH - 8
+              const top = flipY ? Math.max(4, belowPoint - TOOLTIP_H - 14) : topRaw
               return (
                 <div
-                  className='absolute top-1 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground backdrop-blur-xl p-3 shadow-2xl text-xs space-y-2 pointer-events-none transition-all duration-150 z-20 min-w-[185px]'
-                  style={{
-                    left: `clamp(12px, calc(${(activePoint.x / 620) * 100}% - 92px), calc(100% - 200px))`,
-                  }}
+                  role='status'
+                  className='absolute rounded-xl border border-border/80 bg-popover/95 text-popover-foreground backdrop-blur-xl p-3 shadow-2xl text-xs space-y-2 pointer-events-none z-20 min-w-[190px] w-max'
+                  style={{ left, top }}
                 >
                   <div className='flex items-center justify-between pb-1.5 border-b border-border/60 text-[11px] font-semibold'>
                     <span className='text-foreground'>{activePoint.date}</span>
-                    <span className='font-mono text-muted-foreground'>{total.toLocaleString()} total</span>
+                    <span className='font-mono text-muted-foreground'>{total.toLocaleString('id-ID')} total</span>
                   </div>
                   <div className='space-y-1 font-mono'>
                     <div className='flex items-center justify-between gap-3'>
@@ -412,7 +455,7 @@ export function AdminOverview() {
                         <span>ok:</span>
                       </span>
                       <span className='font-bold text-[#7778FF]'>
-                        {activePoint.ok.toLocaleString()} <span className='text-[10px] text-muted-foreground'>({okPct}%)</span>
+                        {activePoint.ok.toLocaleString('id-ID')} <span className='text-[10px] text-muted-foreground'>({okPct}%)</span>
                       </span>
                     </div>
                     <div className='flex items-center justify-between gap-3'>
@@ -421,7 +464,7 @@ export function AdminOverview() {
                         <span>{isId ? 'ditolak:' : 'rejected:'}</span>
                       </span>
                       <span className='font-bold text-[#FF667A]'>
-                        {activePoint.ditolak.toLocaleString()} <span className='text-[10px] text-muted-foreground'>({badPct}%)</span>
+                        {activePoint.ditolak.toLocaleString('id-ID')} <span className='text-[10px] text-muted-foreground'>({badPct}%)</span>
                       </span>
                     </div>
                   </div>

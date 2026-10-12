@@ -337,3 +337,17 @@ test('admin auth sweep: every admin route rejects missing and wrong tokens', asy
     server.close();
   }
 });
+
+// Regression (readiness gap): /api/health must not report licenseService:true
+// as a hardcoded constant. With a healthy store + keypair it stays 200 'ok';
+// the response must never leak filesystem paths or key material.
+test('health readiness: ok response exposes booleans only, no paths or key material', async () => {
+  const { baseUrl, server } = await startServer();
+  try {
+    const res = await req(baseUrl, 'GET', '/api/health');
+    assert.equal(res.status, 200);
+    assert.equal(typeof res.json.checks.licenseService, 'boolean');
+    assert.equal(res.json.checks.licenseService, true);
+    assert.doesNotMatch(JSON.stringify(res.json), /PRIVATE KEY|PUBLIC KEY|\/home\/|\.pem|store\.json/);
+  } finally { server.close(); }
+});

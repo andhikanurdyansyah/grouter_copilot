@@ -547,15 +547,24 @@ export function createCopilotServer({
     // Public health contract for host onboarding. It reports capability state only;
     // never return provider credentials or license tokens from this endpoint.
     if (req.method === 'GET' && url.pathname === '/api/health') {
+      // Real readiness (booleans only — no paths, hosts, or secret values).
+      // licenseService: the signing keypair is loaded and the store answers.
+      // Any failing check flips status to 'degraded' with HTTP 503 so PM2 /
+      // external monitors see a broken instance instead of a false 200.
       const eff = resolveSettings(store.getSettings());
-      return sendJson(res, 200, {
-        status: 'ok',
+      let storeOk = false;
+      try { storeOk = Array.isArray(store.listLicenses()); } catch { storeOk = false; }
+      const licenseServiceOk = Boolean(keys.privateKeyPem && keys.publicKeyPem) && storeOk;
+      const checks = {
+        licenseService: licenseServiceOk,
+        providerConfigured: Boolean(eff.provider?.baseUrl),
+        paymentConfigured: Boolean(klikqris.configured),
+      };
+      const healthy = licenseServiceOk;
+      return sendJson(res, healthy ? 200 : 503, {
+        status: healthy ? 'ok' : 'degraded',
         contractVersion: 1,
-        checks: {
-          licenseService: true,
-          providerConfigured: Boolean(eff.provider?.baseUrl),
-          paymentConfigured: Boolean(klikqris.configured),
-        },
+        checks,
       });
     }
 

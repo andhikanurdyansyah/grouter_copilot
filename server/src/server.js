@@ -801,15 +801,20 @@ export function createCopilotServer({
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         const orderId = body?.order_id ?? body?.data?.order_id ?? null;
         const claimed = String(body?.status ?? body?.data?.status ?? '').toUpperCase();
+        // Observability: record the callback (orderId + claimed status + outcome
+        // only — never the body or signature) so provider callbacks are provable
+        // in logs instead of being inferred by timestamp correlation.
+        const logOutcome = (outcome) => console.log(`klikqris-webhook: order=${orderId} claimed=${claimed || 'none'} outcome=${outcome}`);
         if (!orderId) return sendJson(res, 400, { error: 'order_id required' });
 
         // Resolve the local order first. Never let an upstream response for a
         // different transaction authorize settlement of the requested order.
         const localOrder = payment.store.getOrder(orderId);
-        if (!localOrder) return sendJson(res, 404, { error: 'order not found' });
+        if (!localOrder) { logOutcome('unknown_order'); return sendJson(res, 404, { error: 'order not found' }); }
 
         // Ignore non-paid claims outright (accept SUCCESS/PAID/SETTLEMENT).
         if (!isPaidStatus(claimed)) {
+          logOutcome(`ignored_claim:${claimed || 'unknown'}`);
           return sendJson(res, 200, { ok: true, ignored: claimed || 'unknown' });
         }
 
@@ -818,23 +823,28 @@ export function createCopilotServer({
         try {
           const status = await klikqris.checkStatus(orderId);
           if (status.orderId !== orderId) {
+            logOutcome('unverified:order_id_mismatch');
             return sendJson(res, 200, { ok: true, ignored: 'unverified:order_id_mismatch' });
           }
           if (!amountMatchesOrder(status.raw?.amount, localOrder.amount)) {
+            logOutcome('unverified:amount_mismatch');
             return sendJson(res, 200, { ok: true, ignored: 'unverified:amount_mismatch' });
           }
           verifiedStatus = String(status.status || '').toUpperCase();
         } catch (err) {
+          logOutcome('verify_error:upstream_unreachable');
           return sendJson(res, 502, { error: 'unable to verify payment status' });
         }
         // KlikQRIS reports a completed payment as SUCCESS (older payloads may say
         // PAID/SETTLEMENT) — treat all as paid, or real payments get dropped.
         if (!isPaidStatus(verifiedStatus)) {
+          logOutcome(`unverified:${verifiedStatus || 'unknown'}`);
           return sendJson(res, 200, { ok: true, ignored: `unverified:${verifiedStatus || 'unknown'}` });
         }
 
         const { order, license } = await payment.settlePaid(orderId);
-        if (!order) return sendJson(res, 404, { error: 'order not found' });
+        if (!order) { logOutcome('unknown_order:settle'); return sendJson(res, 404, { error: 'order not found' }); }
+        logOutcome(license ? `settled:license=${license.id}` : 'settled:already_paid');
         return sendJson(res, 200, { ok: true, licenseId: license?.id ?? null });
       });
     }

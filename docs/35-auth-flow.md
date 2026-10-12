@@ -73,8 +73,27 @@ Dashboard → menu user (sidebar) → **Sign out** → dialog konfirmasi → `PO
 - Token reset sekali pakai, 1 jam, revoke semua sesi setelah reset.
 - **Belum ada**: security headers (CSP/X-Frame-Options) di `frontendServer.js` — lihat `docs/25-pending-implementations.md`.
 
-## 7. Temuan Audit 2026-10-12 (non-blocking)
+## 7. Hasil Audit 2026-10-12 & Tindak Lanjut
 
-1. **Ganti password dari UI dashboard belum ada** — endpoint `/api/auth/change-password` siap; perlu form di `/app/user` (backlog UX).
-2. **Email reset belum terkirim nyata** — URL reset hanya di log server; aktivasi butuh mailer (SMTP/Resend) + kredensial (keputusan PO; runbook menyusul di docs ini §8).
-3. Security headers belum diset (lihat atas).
+Audit live pertama: semua endpoint ✓ (lihat riwayat di handoff-2026-10-12). Tindak lanjut yang
+**sudah dieksekusi** di hari yang sama:
+
+1. **Ganti password dari UI dashboard — SELESAI.** Dialog `ChangePasswordDialog`
+   (`frontend/src/components/change-password-dialog.tsx`), diakses dari dropdown akun di sidebar
+   (`app-sidebar.tsx` → menu "Ubah password"). Alur: currentPassword+newPassword+confirm →
+   `POST /api/auth/change-password` (Origin otomatis dari browser) → state sukses.
+   E2E terverifikasi: submit → "Password diubah" → login pw baru 200, pw lama 401.
+   Catatan: change-password TIDAK mencabut sesi lain (hanya reset password yang mencabut —
+   `revokeSessionsOnPasswordReset`).
+2. **Mailer reset password — FONDASI AKTIF (env-driven, zero-dependency).** `sendResetPassword`
+   di `auth.js`: bila env `RESEND_API_KEY` diset → kirim email nyata via Resend HTTP API (fetch
+   bawaan Node); bila tidak → URL reset di-log server (perilaku lama). `MAIL_FROM` opsional.
+   Kredensial diisi di `server/.env` (JANGAN di-commit; contoh di `.env.example`). Menunggu
+   kredensial/keputusan PO untuk aktivasi nyata.
+3. **Security headers — SELESAI.** `frontendServer.js` menyuntik header ke SEMUA response
+   frontend via wrapper `res.writeHead`: `X-Content-Type-Options: nosniff`,
+   `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, dan CSP
+   (inline script diizinkan utk Aurora login + Tailwind CDN + fonts + Three.js CDN;
+   `frame-ancestors 'none'`). Terverifikasi live di `/login`.
+
+Regresi setelah perubahan: backend 91/91, plugin 175/175, tsc 0 error.

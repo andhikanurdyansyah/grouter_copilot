@@ -95,12 +95,14 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 
 ## Auth backlog (hasil audit 2026-10-12 — lihat docs/35-auth-flow.md §7)
 
-1. **Ganti password dari UI dashboard** — endpoint `POST /api/auth/change-password` sudah aktif
-   (wajib header Origin); perlu form "Ubah password" di `/app/user` (mis. di menu user/nav).
-2. **Kirim email reset password nyata** — `sendResetPassword` saat ini hanya mencatat URL reset
-   ke log server. Aktivasi butuh mailer (SMTP/Resend/layanan lain) + kredensial = keputusan PO
-   (aturan: jangan tambah layanan/kredensial tanpa OK).
-3. **Security headers di frontendServer** — `X-Frame-Options`/`frame-ancestors`, CSP dasar,
-   `X-Content-Type-Options: nosniff` belum diset untuk halaman statis (auth pages included).
+1. ~~**Ganti password dari UI dashboard**~~ — **SELESAI 2026-10-12**: dialog
+   `ChangePasswordDialog` di dropdown akun sidebar (`app-sidebar.tsx`); E2E terverifikasi.
+2. **Kirim email reset password nyata** — kode mailer Resend (env-driven, zero-dep) sudah AKTIF
+   di `auth.js` (`sendResetPassword`): bila `RESEND_API_KEY` diset di `server/.env` → email nyata
+   terkirim; bila tidak → URL di-log server. **Tersisa: isi kredensial Resend (keputusan PO —
+   jangan commit kredensial) + verifikasi email masuk.**
+3. ~~**Security headers di frontendServer**~~ — **SELESAI 2026-10-12**: nosniff, X-Frame-Options
+   DENY, Referrer-Policy, Permissions-Policy, CSP (inline utk Aurora/Tailwind CDN, frame-ancestors
+   'none'); disuntik ke semua response frontend; terverifikasi live.
 4. Halaman `/app/sign-up` (SPA) masih mode showcase/simulasi — pertahankan sebagai demo komponen;
    jalur sign-up resmi = `/login/sign-up`.

@@ -47,9 +47,46 @@ const PAGES = {
   '/checkout/success': 'success.html',
 };
 
+// Security headers utk SEMUA response frontend (halaman statis, SPA, aset).
+// API tetap lewat proxy backend (backend punya policy sendiri).
+const SEC_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+  // CSP: halaman butuh inline script (Aurora login) + Tailwind CDN (register/login) + fonts + Three.js CDN.
+  'content-security-policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; '),
+};
+
 export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } = {}) {
   return createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+
+    // Suntik security headers ke SEMUA response frontend (termasuk writeHead eksisting).
+    const _origWriteHead = res.writeHead.bind(res);
+    res.writeHead = (statusCode, headersOrReason, headersArg) => {
+      let extra = { ...SEC_HEADERS };
+      let args;
+      if (typeof headersOrReason === 'string') {
+        args = [statusCode, headersOrReason, { ...(headersArg || {}), ...extra }];
+      } else if (headersOrReason && typeof headersOrReason === 'object') {
+        // jangan timpa header yang sudah diset eksplisit pemanggil
+        args = [statusCode, { ...headersOrReason, ...extra }];
+      } else {
+        args = [statusCode, extra];
+      }
+      return _origWriteHead(...args);
+    };
 
     // Proxy all /api/* to backend
     if (url.pathname.startsWith('/api/')) {

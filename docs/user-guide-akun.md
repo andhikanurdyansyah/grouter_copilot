@@ -39,7 +39,11 @@ Setelah masuk, di halaman akun Anda Anda bisa melihat:
 - **Lisensi** — lisensi yang Anda beli beserta masa berlakunya.
 - **Riwayat pemakaian** — pemakaian Copilot di aplikasi Anda.
 
-Untuk keluar, klik ikon akun di bagian bawah menu samping (sidebar), lalu pilih **Sign out** dan konfirmasi. Selalu keluar kalau Anda memakai komputer bersama.
+Di menu akun (bagian bawah menu samping/sidebar, klik nama akun Anda) Anda bisa:
+
+- **Akun & Profil** — kelola data akun Anda.
+- **Ubah password** — ganti password kapan saja (lihat bagian 5).
+- **Keluar (Sign out)** — akhiri sesi. Selalu keluar kalau Anda memakai komputer bersama.
 
 ---
 
@@ -60,7 +64,17 @@ Untuk keluar, klik ikon akun di bagian bawah menu samping (sidebar), lalu pilih 
 
 ## 5. Ganti Password (saat masih ingat yang lama)
 
-Fitur ubah password dari dalam halaman akun sedang disiapkan. Untuk sekarang: keluar dari akun, lalu gunakan alur **Forgot password?** di bagian 4 — itu cara resmi mengganti password.
+1. Masuk ke akun Anda.
+2. Di menu samping (sidebar), klik **nama akun Anda** di bagian paling bawah.
+3. Pilih **Ubah password**.
+4. Masukkan **password saat ini**, lalu **password baru** (minimal 8 karakter) dan ketik ulang untuk konfirmasi.
+5. Klik **Simpan**. Selesai — gunakan password baru saat masuk berikutnya.
+
+Lupa password saat ini? Gunakan alur **Forgot password?** di bagian 4.
+
+> Catatan: mengganti password lewat menu ini TIDAK mengeluarkan perangkat lain yang sedang masuk.
+> Kalau Anda curiga ada orang lain yang tahu password Anda, gunakan **Forgot password?** (alur bagian 4)
+> karena cara itu otomatis mengeluarkan semua perangkat.
 
 ---
 
@@ -91,7 +105,8 @@ Yang bisa Anda lakukan:
 | "This email address appears to be invalid" | Format email salah / domain ditolak | Periksa penulisan email; coba email lain (mis. Gmail) |
 | "Too many requests" | Terlalu banyak percobaan dalam waktu singkat | Tunggu ±10 detik lalu coba lagi |
 | Tautan reset "invalid or expired" | Tautan sudah lewat 1 jam / sudah dipakai | Minta tautan baru lewat Forgot password |
-| Halaman reset bilang link tidak valid | Sama dengan di atas | Sama dengan di atas |
+| Halaman reset bilang link tidak valid | Tautan sudah lewat 1 jam / sudah dipakai | Minta tautan baru lewat Forgot password |
+| "Password saat ini salah" (saat ubah password) | Password lama yang Anda masukkan tidak cocok | Cek ejaan; kalau lupa, pakai Forgot password |
 
 ---
 

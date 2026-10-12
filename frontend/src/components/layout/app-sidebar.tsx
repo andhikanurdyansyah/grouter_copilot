@@ -19,6 +19,7 @@ import {
   MoreVertical,
   User,
   LogOut,
+  KeyRound,
   Settings,
   Check,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SignOutDialog } from '@/components/sign-out-dialog'
+import { ChangePasswordDialog } from '@/components/change-password-dialog'
 
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
@@ -39,6 +41,7 @@ export function AppSidebar() {
   const isAdmin = location.pathname.startsWith('/admin')
   const { data } = useMe(!isAdmin)
   const [signOutOpen, setSignOutOpen] = useState(false)
+  const [changePwOpen, setChangePwOpen] = useState(false)
   // Organisasi = domain email akun (data sesi server) — tanpa daftar organisasi mock.
   const accountEmail = data && 'account' in data ? data.account.email : null
   const orgName = accountEmail?.includes('@') ? accountEmail.split('@')[1] : null
@@ -206,12 +209,21 @@ export function AppSidebar() {
                   </Link>
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem asChild className='text-xs cursor-pointer'>
-                  <Link to='/user/account'>
-                    <User className='size-3.5 mr-2' />
-                    {language === 'id' ? 'Akun & Profil' : 'Account & Profile'}
-                  </Link>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild className='text-xs cursor-pointer'>
+                    <Link to='/user/account'>
+                      <User className='size-3.5 mr-2' />
+                      {language === 'id' ? 'Akun & Profil' : 'Account & Profile'}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className='text-xs cursor-pointer'
+                    onClick={() => setChangePwOpen(true)}
+                  >
+                    <KeyRound className='size-3.5 mr-2' />
+                    {language === 'id' ? 'Ubah password' : 'Change password'}
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuItem
                 className='text-xs text-destructive focus:text-destructive cursor-pointer'
@@ -228,6 +240,7 @@ export function AppSidebar() {
 
       {/* Global SignOut Dialog */}
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
+      <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
     </>
   )
 }

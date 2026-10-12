@@ -43,6 +43,7 @@ const PAGES = {
   '/landing': 'landing.html',
   '/login': 'register.html',
   '/login/sign-up': 'register-signup.html',
+  '/reset-password': 'reset-password.html',
   '/success': 'success.html',
   '/checkout/success': 'success.html',
 };

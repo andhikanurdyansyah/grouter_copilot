@@ -250,6 +250,9 @@ export function createCopilotServer({
     if (req.method === 'GET' && url.pathname === '/login/sign-up') {
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'register-signup.html'), 'utf8'));
     }
+    if (req.method === 'GET' && url.pathname === '/reset-password') {
+      return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'reset-password.html'), 'utf8'));
+    }
 
     if (req.method === 'GET' && url.pathname === '/login') {
       return sendHtml(res, 200, readFileSync(path.join(__dirname, '..', 'public', 'register.html'), 'utf8'));

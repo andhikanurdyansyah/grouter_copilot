@@ -341,7 +341,7 @@
           var res = await fetch('/api/auth/request-password-reset', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ email: email, redirectTo: location.origin + '/login' }),
+            body: JSON.stringify({ email: email, redirectTo: location.origin + '/reset-password' }),
             credentials: 'same-origin',
           });
           clearError();

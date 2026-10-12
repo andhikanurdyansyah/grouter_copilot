@@ -121,6 +121,11 @@ export const auth = betterAuth({
       console.log(`[auth] password reset untuk ${user.email}: ${url}`);
     },
     resetPasswordTokenExpiresIn: 3600, // 1 jam
+    // Reset password = logout semua sesi user (keamanan standar).
+    revokeSessionsOnPasswordReset: true,
+    onPasswordReset: ({ user }) => {
+      console.log(`[auth] password direset untuk ${user.email}`);
+    },
   },
   // Rate limit auth endpoints. Default Better Auth: special rule 3 req/10 dtk
   // untuk /sign-up+/sign-in per IP — terlalu ketat untuk satu kantor/NAT sah

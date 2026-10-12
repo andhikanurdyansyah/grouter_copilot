@@ -1,52 +1,63 @@
-# MVP Backlog — gRouter Copilot (v0.1)
+# MVP Backlog — gRouter Copilot
 
-## EPIC-1 Install & scaffold
+> Status direkonsiliasi 2026-10-12 terhadap kode aktual (commit `fd75163`,
+> plugin tests 159/159). Bukti: test files + release evidence
+> `docs/release-evidence-2026-10-06.md`. Checklist EPIC-1..6 DONE saat master
+> plan Phase 0 selesai; daftar di bawah mencerminkan realita kode.
 
-- [ ] CLI `init` command.
-- [ ] Framework detection (Next.js App Router, Pages Router, Express, plain Node).
-- [ ] Generate `copilot.config.js`, `.env`, `skills/`, API route, widget mount.
-- [ ] Install di clean project → widget muncul.
+## EPIC-1 Install & scaffold — DONE
 
-## EPIC-2 Skill system
+- [x] CLI `init` command. *(test/cli-install.test.js; verified — bin/grouter-copilot.js, npm pack 15 files)*
+- [x] Framework detection (Next.js App Router, Pages Router, Express, plain Node).
+- [x] Generate `copilot.config.js`, `.env`, `skills/`, API route, widget mount.
+- [x] Install di clean project → widget muncul. *(server/test/customer-register-to-chat.e2e.test.js: real CLI HTTP install → heartbeat → chat)*
 
-- [ ] Skill registry + validator (name, description, parameters, readOnly, run).
-- [ ] Skill resolution (skillHint + intent match).
-- [ ] Skill execution dengan arg tervalidasi + user context.
-- [ ] Invalid skill → warn + exclude (tidak crash app).
+## EPIC-2 Skill system — DONE
 
-## EPIC-3 Runtime chat
+- [x] Skill registry + validator (name, description, parameters, readOnly, run). *(test/registry.test.js, test/validator.test.js)*
+- [x] Skill resolution (skillHint + intent match). *(test/runtime.test.js — ambiguous → safe error)*
+- [x] Skill execution dengan arg tervalidasi + user context. *(SKILL_INVALID_ARGS taxonomy)*
+- [x] Invalid skill → warn + exclude (tidak crash app). *(validator exclude path)*
 
-- [ ] `/api/copilot/chat` route.
-- [ ] Request validation (message, userId, sessionId).
-- [ ] Context builder (system + data + sources, limit row/byte/token).
-- [ ] Error taxonomy.
+## EPIC-3 Runtime chat — DONE
 
-## EPIC-4 gRouter adapter
+- [x] `/api/copilot/chat` route. *(src/runtime/chat.js + gatewayChat)*
+- [x] Request validation (message, userId, sessionId). *(validateChatRequest)*
+- [x] Context builder (system + data + sources, limit row/byte/token). *(test/context.test.js — maxRows, maxContextBytes fail-closed)*
+- [x] Error taxonomy. *(SKILL_FAILED/INTERNAL_ERROR/SCOPE_DENIED/UPSTREAM_UNAVAILABLE/TIMEOUT/NOT_CONFIGURED; eval-fixtures)*
 
-- [ ] `complete()` + `stream()`.
-- [ ] Timeout, retry terbatas, cancel.
-- [ ] Usage (token, latency).
-- [ ] Fake supplier untuk test.
+## EPIC-4 gRouter adapter — DONE
 
-## EPIC-5 Widget
+- [x] `complete()` + `stream()`. *(src/adapter/grouter.js)*
+- [x] Timeout, retry terbatas, cancel. *(timeoutMs + AbortController → TIMEOUT retryable, fixtures 2026-10-12; cancel via signal)*
+- [x] Usage (token, latency). *(input/outputTokens propagate; eval-fixtures 2026-10-12)*
+- [x] Fake supplier untuk test. *(FakeSupplier)*
 
-- [ ] `CopilotChat` React component.
-- [ ] Streaming, loading/error/empty.
-- [ ] Source/freshness display.
-- [ ] Theme-aware.
+## EPIC-5 Widget — DONE (v1)
 
-## EPIC-6 Config & safety
+- [x] `CopilotChat` React component. *(src/widget/CopilotChat.jsx)*
+- [x] Streaming, loading/error/empty. *(test/widget.test.js)*
+- [x] Source/freshness display. *(protocol fields v1)*
+- [x] Theme-aware. *(CSS variables; dark default)*
 
-- [ ] `copilot.config.js` (skills, model, prompt, limits).
-- [ ] Key server-only + bundle scan test.
-- [ ] Read-only enforcement + mutating gate stub.
+## EPIC-6 Config & safety — DONE
 
-## EPIC-7 Docs & sample
+- [x] `copilot.config.js` (skills, model, prompt, limits). *(src/config.js, normalizeConfig)*
+- [x] Key server-only + bundle scan test. *(test/widget.test.js + server/test/handoff.test.js, settings.test.js)*
+- [x] Read-only enforcement + mutating gate stub. *(SCOPE_DENIED; registry rejects mutating)*
 
-- [ ] README + quickstart.
+## EPIC-7 Docs & sample — PARTIAL
+
+- [x] README + quickstart. *(README.md; registry publish masih pending kredensial publisher)*
 - [ ] Sample CRM (orders summary).
 - [ ] Sample POS (sales summary).
 - [ ] Skill authoring guide + template.
+
+## Open items (direkonsiliasi 2026-10-12)
+
+1. Sample CRM/POS + skill authoring guide (EPIC-7).
+2. Next.js first-class integration (master plan Phase 2) — sebagian ada di plugin; demo CRM/POS jadi gate-nya.
+3. Usage ledger rekonsiliasi upstream (server side) — usage records per lisensi ada; reconcile job belum ada.
 
 ## Prioritization rule
 

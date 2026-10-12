@@ -154,6 +154,18 @@
 
         <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
 
+        <!-- Forgot password (fondasi: kirim email via /api/auth/request-password-reset) -->
+        <form id="forgotForm" novalidate hidden>
+          <div class="space-y-4">
+            <div>
+              <label for="fpEmail" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <input id="fpEmail" name="email" type="email" autocomplete="email" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your email" required="" aria-required="true">
+              <p class="hint" style="display:block">We'll send you a reset link if the account exists.</p>
+            </div>
+          </div>
+          <button type="submit" id="forgotBtn" class="w-full py-3 px-4 btn-glass text-white font-medium rounded-xl mt-6">Send reset link</button>
+        </form>
+
         <!-- Sign In Form -->
         <form id="signinForm" class="space-y-6" novalidate>
           <div class="space-y-4">
@@ -173,7 +185,7 @@
               <input type="checkbox" class="w-4 h-4 rounded border-gray-600 bg-transparent mr-2">
               Remember me
             </label>
-            <a href="#" class="text-purple-400 hover:text-purple-300 transition-colors">
+            <a href="#" id="forgotLink" class="text-purple-400 hover:text-purple-300 transition-colors">
               Forgot password?
             </a>
           </div>
@@ -184,63 +196,9 @@
           </button>
         </form>
 
-        <!-- Sign Up Form -->
-        <form id="signupForm" class="space-y-6" novalidate hidden>
-          <div class="space-y-4">
-            <div>
-              <label for="suName" class="block text-sm font-medium text-gray-300 mb-2">Full name</label>
-              <input id="suName" name="name" type="text" autocomplete="name" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your name" required="" aria-required="true">
-            </div>
-            <div>
-              <label for="suEmail" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-              <input id="suEmail" name="email" type="email" autocomplete="email" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your email" required="" aria-required="true">
-            </div>
-            <div>
-              <label for="suPassword" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-              <input id="suPassword" name="password" type="password" autocomplete="new-password" minlength="8" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your password" required="" aria-required="true" aria-describedby="suPasswordHint">
-              <p class="hint" id="suPasswordHint">At least 8 characters.</p>
-            </div>
-          </div>
-
-          <button type="submit" id="registerBtn" class="w-full py-3 px-4 btn-glass text-white font-medium rounded-xl">
-            Create Account
-          </button>
-        </form>
-
-        <!-- Social (tampil hanya bila /api/config mengonfirmasi provider aktif) -->
-        <div id="socialBlock" hidden>
-          <!-- Divider -->
-          <div class="relative my-6">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-600"></div>
-            </div>
-            <div class="relative flex justify-center text-sm">
-              <span class="px-4 bg-transparent text-gray-400">Or continue with</span>
-            </div>
-          </div>
-
-          <!-- Social Login -->
-          <div class="grid grid-cols-1 gap-3" id="socialGrid">
-            <button type="button" id="googleBtn" class="flex items-center justify-center py-3 px-4 glass rounded-xl text-gray-300 hover:text-white transition-colors">
-              <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"></path>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"></path>
-              </svg>
-              <span id="googleLabel">Google</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Toggle -->
-        <p class="text-center text-sm text-gray-400 mt-6" id="footerSignup">
+        <p class="text-center text-sm text-gray-400 mt-6">
           Don't have an account?
-          <a href="#signup" id="toSignup" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign up</a>
-        </p>
-        <p class="text-center text-sm text-gray-400 mt-6" id="footerSignin" hidden>
-          Already have an account?
-          <a href="#signin" id="toSignin" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign in</a>
+          <a href="/login/sign-up" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign up</a>
         </p>
       </div>
     </div>
@@ -340,27 +298,12 @@
     (function () {
       'use strict';
 
-      var signupForm = document.getElementById('signupForm');
       var signinForm = document.getElementById('signinForm');
       var errorBox = document.getElementById('authError');
       var titleEl = document.getElementById('authTitle');
       var subEl = document.getElementById('authSub');
-      var socialBlock = document.getElementById('socialBlock');
-      var googleBtn = document.getElementById('googleBtn');
-      var googleLabel = document.getElementById('googleLabel');
-      var footerSignup = document.getElementById('footerSignup');
-      var footerSignin = document.getElementById('footerSignin');
-
-      var SIGNUP_COPY = {
-        title: 'Create your account',
-        sub: 'One account to manage licenses, purchases, and monitor usage.',
-        doc: 'Sign up — gRouter Copilot',
-      };
-      var SIGNIN_COPY = {
-        title: 'Welcome Back',
-        sub: 'Sign in to your account to continue',
-        doc: 'Sign in — gRouter Copilot',
-      };
+      var forgotForm = document.getElementById('forgotForm');
+      var forgotLink = document.getElementById('forgotLink');
 
       function showError(msg) {
         errorBox.textContent = msg || 'Something went wrong. Please try again.';
@@ -376,27 +319,43 @@
         return data.message || data.error || (data.errors && data.errors[0] && data.errors[0].message) || null;
       }
 
-      function toggleForm(mode) {
+      /* Forgot password: tampilkan panel inline, sembunyikan form signin */
+      forgotLink.addEventListener('click', function (e) {
+        e.preventDefault();
         clearError();
-        var isSignin = mode === 'signin';
-        signupForm.hidden = isSignin;
-        signinForm.hidden = !isSignin;
-        footerSignup.hidden = !isSignin;  /* 'Don't have an account? Sign up' hanya di mode signin */
-        footerSignin.hidden = isSignin;   /* 'Already have an account? Sign in' hanya di mode signup */
-        var copy = isSignin ? SIGNIN_COPY : SIGNUP_COPY;
-        titleEl.textContent = copy.title;
-        subEl.textContent = copy.sub;
-        document.title = copy.doc;
-        try { history.replaceState(null, '', isSignin ? '#signin' : '#signup'); } catch (e) { /* ignore */ }
-      }
-
-      document.getElementById('toSignin').addEventListener('click', function (e) {
-        e.preventDefault();
-        toggleForm('signin');
+        var show = forgotForm.hidden;
+        forgotForm.hidden = !show;
+        signinForm.hidden = show;
       });
-      document.getElementById('toSignup').addEventListener('click', function (e) {
+
+      forgotForm.addEventListener('submit', async function (e) {
         e.preventDefault();
-        toggleForm('signup');
+        var email = document.getElementById('fpEmail').value.trim();
+        if (!email) { showError('Enter your email first.'); return; }
+        var btn = document.getElementById('forgotBtn');
+        var label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        try {
+          // Response selalu 200 generik (anti user-enumeration) — jangan bocorkan keberadaan akun.
+          var res = await fetch('/api/auth/request-password-reset', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: email, redirectTo: location.origin + '/login' }),
+            credentials: 'same-origin',
+          });
+          clearError();
+          forgotForm.hidden = true;
+          signinForm.hidden = false;
+          errorBox.classList.remove('auth-error');
+          errorBox.classList.add('auth-error'); /* keep styling */
+          showError("If the account exists, we've sent a reset link. Check your inbox.");
+        } catch (err) {
+          showError('Cannot reach the server. Check your connection.');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = label;
+        }
       });
 
       async function submitAuth(url, payload, btn) {
@@ -426,15 +385,6 @@
         }
       }
 
-      signupForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var name = document.getElementById('suName').value.trim();
-        var email = document.getElementById('suEmail').value.trim();
-        var password = document.getElementById('suPassword').value;
-        if (!name || !email || !password) { showError('All fields are required.'); return; }
-        submitAuth('/api/auth/sign-up/email', { name: name, email: email, password: password }, document.getElementById('registerBtn'));
-      });
-
       signinForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var email = document.getElementById('siEmail').value.trim();
@@ -442,68 +392,6 @@
         if (!email || !password) { showError('Email and password are required.'); return; }
         submitAuth('/api/auth/sign-in/email', { email: email, password: password }, document.getElementById('loginBtn'));
       });
-
-      /* Google social — hanya bila backend menyatakan aktif via /api/config */
-      function setGoogleBusy(busy) {
-        if (busy) {
-          googleBtn.setAttribute('aria-disabled', 'true');
-          googleLabel.textContent = 'Connecting...';
-        } else {
-          googleBtn.removeAttribute('aria-disabled');
-          googleLabel.textContent = 'Google';
-        }
-      }
-
-      googleBtn.addEventListener('click', async function (e) {
-        e.preventDefault();
-        clearError();
-        setGoogleBusy(true);
-        try {
-          var res = await fetch('/api/auth/sign-in/social', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              provider: 'google',
-              callbackURL: location.origin + '/user',
-              errorCallbackURL: location.origin + '/login',
-            }),
-            credentials: 'same-origin',
-          });
-          var data = null;
-          try { data = await res.json(); } catch (err) { data = null; }
-          if (res.ok && data && (data.url || data.redirect)) {
-            window.location.href = data.url || data.redirect;
-            return;
-          }
-          showError(parseError(data) || ('Google is unavailable (' + res.status + ').'));
-        } catch (err) {
-          showError('Cannot reach the server. Check your connection.');
-        } finally {
-          setGoogleBusy(false);
-        }
-      });
-
-      function googleEnabled(cfg) {
-        return !!(cfg && cfg.providers && cfg.providers.google === true);
-      }
-
-      fetch('/api/config', { credentials: 'same-origin' })
-        .then(function (res) { return res.ok ? res.json() : null; })
-        .then(function (cfg) {
-          socialBlock.hidden = !googleEnabled(cfg);
-        })
-        .catch(function () {
-          socialBlock.hidden = true;
-        });
-
-      /* Mode awal: /register → sign-up; selain itu sign-in. Deep link: #signup/#signin, ?mode= */
-      var isRegisterPath = /\/register\/?$/.test(location.pathname);
-      var qMode = null;
-      try { qMode = new URLSearchParams(location.search).get('mode'); } catch (e) { /* ignore */ }
-      var hash = location.hash;
-      var wantsSignup = isRegisterPath || hash === '#signup' || qMode === 'signup';
-      var wantsSignin = hash === '#signin' || qMode === 'signin';
-      toggleForm(wantsSignup && !wantsSignin ? 'signup' : 'signin');
 
       /* Surface OAuth failure */
       try {
@@ -517,7 +405,6 @@
             account_not_linked: 'This Google account is not linked yet. Sign up with email & password first.',
             oauth_account_already_linked: 'This email is already linked to another account.',
           })[authErr] || 'Google login failed (' + authErr + '). Please try again.';
-          toggleForm('signin');
           showError(authErrMsg);
         }
       } catch (e) { /* ignore */ }

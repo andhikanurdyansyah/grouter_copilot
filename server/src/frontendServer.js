@@ -41,8 +41,8 @@ const PAGES = {
   '/': 'intro.html',
   '/copilot': 'landing.html',
   '/landing': 'landing.html',
-  '/register': 'register.html',
   '/login': 'register.html',
+  '/login/sign-up': 'register-signup.html',
   '/success': 'success.html',
   '/checkout/success': 'success.html',
 };
@@ -125,6 +125,12 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       const f = path.join(PUBLIC_DIR, 'app', 'index.html');
       return existsSync(f) ? f : null;
     };
+
+    // Legacy /register → halaman sign-up baru (hierarki: /login = signin, /login/sign-up = signup)
+    if (req.method === 'GET' && (url.pathname === '/register' || url.pathname === '/register/')) {
+      res.writeHead(302, { location: '/login/sign-up' });
+      return res.end();
+    }
 
     // Pages (exact map)
     if (req.method === 'GET' && PAGES[url.pathname]) {

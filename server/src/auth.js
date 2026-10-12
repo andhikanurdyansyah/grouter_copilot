@@ -113,6 +113,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: effAuth.minPasswordLength ?? 8,
+    // Fondasi forgot password: token reset dibuat & disimpan di DB (verification table),
+    // endpoint /api/auth/forget-password + /reset-password aktif. Pengiriman email nyata
+    // menyusul bila mailer (SMTP/resend) tersedia — sementara URL reset dicatat di log
+    // server (bukan ke client, anti user-enumeration: response selalu 200 generik).
+    sendResetPassword: async ({ user, url }) => {
+      console.log(`[auth] password reset untuk ${user.email}: ${url}`);
+    },
+    resetPasswordTokenExpiresIn: 3600, // 1 jam
   },
   // Rate limit auth endpoints. Default Better Auth: special rule 3 req/10 dtk
   // untuk /sign-up+/sign-in per IP — terlalu ketat untuk satu kantor/NAT sah

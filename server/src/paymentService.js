@@ -78,10 +78,9 @@ export class PaymentService {
     if (!order) return { order: null, license: null };
     if (order.status === 'PAID') return { order, license: null }; // idempotent
 
-    order.status = 'PAID';
-    order.paidAt = Date.now();
-    this.store._save();
-
+    // Issue the license BEFORE marking the order PAID. If issuance throws, the
+    // order stays PENDING so the next verified webhook can retry; a PAID order
+    // with no license would be treated as idempotent forever (lost entitlement).
     const eff = this.resolveSettings(this.store.getSettings());
     const plan = (eff.plans || []).find((p) => p.key === order.packageKey);
     const features = plan?.features ?? eff.license.defaultFeatures;
@@ -96,6 +95,11 @@ export class PaymentService {
       expiresInDays,
       quota,
     });
+
+    order.status = 'PAID';
+    order.paidAt = Date.now();
+    order.licenseId = record.id;
+    this.store._save();
 
     return { order, license: record };
   }

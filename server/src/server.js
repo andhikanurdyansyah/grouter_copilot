@@ -888,6 +888,9 @@ function sanitizeOrder(o, { includeQr = false } = {}) {
     createdAt: o.createdAt,
     paidAt: o.paidAt ?? null,
     expiredAt: o.expiredAt ?? null,
+    // License issued by settlement (non-secret id) — lets the customer receipt
+    // link the payment to the activated license (readiness).
+    licenseId: o.licenseId ?? null,
   };
   // QR pembayaran milik order ini (dari KlikQRIS createQris). Bukan secret,
   // tetapi HANYA untuk PEMILIK order (customer orders endpoint): dibutuhkan

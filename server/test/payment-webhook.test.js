@@ -153,3 +153,38 @@ test('non-paid webhook claim is ignored without upstream verification', async (t
   assert.equal(app.store.getOrder('local-order').status, 'PENDING');
   assert.equal(app.store.listLicenses().length, 0);
 });
+
+test('webhook rejects malformed body without order_id (400, no upstream call)', async (t) => {
+  const app = await fixture(t);
+  const response = await fetch(`${app.baseUrl}/api/payment/klikqris/webhook`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ status: 'SUCCESS' }),
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.match(body.error, /order_id/);
+  assert.equal(app.statusCalls(), 0, 'tidak boleh menghubungi upstream untuk body tanpa order_id');
+  assert.equal(app.store.getOrder('local-order').status, 'PENDING');
+});
+
+test('webhook with PAID claim but unreachable upstream returns 502 without settling', async (t) => {
+  const dataFile = path.join(mkdtempSync(path.join(tmpdir(), 'copilot-webhook-')), 'store.json');
+  const app = createCopilotServer({
+    dataFile,
+    fetch: async () => { throw new Error('upstream connection refused'); },
+  });
+  await new Promise((resolve) => app.server.listen(0, resolve));
+  t.after(() => new Promise((resolve) => app.server.close(resolve)));
+  const baseUrl = `http://127.0.0.1:${app.server.address().port}`;
+  app.store.addOrder({
+    id: 'local-order', accountId: 'account-1', packageKey: 'basic', planName: 'Basic',
+    amount: 1000, status: 'PENDING', createdAt: Date.now(), paidAt: null,
+  });
+  const response = await fetch(`${baseUrl}/api/payment/klikqris/webhook`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ order_id: 'local-order', status: 'SUCCESS' }),
+  });
+  assert.equal(response.status, 502);
+  assert.equal(app.store.getOrder('local-order').status, 'PENDING', 'order TIDAK boleh settle saat upstream tak terjangkau');
+  assert.equal(app.store.listLicenses().length, 0, 'tidak ada lisensi terbit tanpa verifikasi upstream');
+});

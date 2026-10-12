@@ -1,247 +1,120 @@
-<!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Masuk — gRouter Copilot</title>
-  <meta name="description" content="Masuk atau buat akun gRouter Copilot — kelola license, purchase, dan monitor usage." />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — gRouter Copilot</title>
+  <meta name="description" content="Sign in to gRouter Copilot — manage licenses, purchases, and monitor usage." />
   <link rel="icon" href="/favicon.ico" />
 
-  <!-- Aurora background: Three.js r128 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Geist via Google Fonts -->
+  <!-- Geist via Google Fonts (300, 400, 500, 600) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: 'Geist', sans-serif;
-      background: #000;
-      color: #fff;
-      overflow: hidden; /* sumber: hard overflow hidden */
-      -webkit-font-smoothing: antialiased;
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            geist: ['Geist', 'sans-serif']
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 3s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-10px)' }
+            }
+          }
+        }
+      }
     }
-    a, button, input { transition: all 0.3s ease; }
+  </script>
 
-    /* LAYER 1 — background */
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+    }
     #container {
-      position: fixed;
-      top: 0; left: 0;
-      z-index: 1;
       width: 100vw;
       height: 100vh;
-    }
-    #container canvas { display: block; }
-
-    /* LAYER 2 — main UI */
-    .ui-layer {
       position: fixed;
-      inset: 0;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    /* LAYER 3 — glass form */
-    .glass-form {
-      position: relative;
-      border-radius: 24px; /* rounded-3xl */
-      max-width: 448px;
-      width: 100%;
-      max-height: calc(100vh - 40px);
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,.15) transparent;
-      background: rgba(15, 15, 15, 0.7);
-      -webkit-backdrop-filter: blur(30px); /* Safari prefix WAJIB */
-      backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow:
-        0 25px 60px -12px rgba(0, 0, 0, 0.8),
-        0 0 40px -12px rgba(139, 92, 246, 0.45),
-        0 0 24px -8px rgba(79, 70, 229, 0.35),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
-      padding: 36px;
-      animation: animate-float 6s ease-in-out infinite;
-    }
-    @keyframes animate-float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .glass-form { animation: none; }
-    }
-
-    /* HEADER */
-    .head-icon {
-      width: 64px; height: 64px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      -webkit-backdrop-filter: blur(20px);
-      backdrop-filter: blur(20px);
-    }
-    .head-icon svg { color: #c084fc; } /* text-purple-400 */
-    h1 {
-      margin: 24px 0 8px;
-      font-size: 30px; line-height: 1.15;
-      font-weight: 600; letter-spacing: -0.02em;
-      color: #fff;
-    }
-    .sub { margin: 0 0 28px; color: #9ca3af; font-size: 15px; line-height: 1.5; }
-
-    /* FIELDS */
-    .field { margin-bottom: 18px; }
-    .field label {
-      display: block;
-      color: #d1d5db; /* text-gray-300 */
-      font-size: 13.5px; font-weight: 500;
-      margin-bottom: 8px;
-    }
-    .input-glass {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #fff;
-      font-size: 15px; font-family: inherit;
-      transition: all 0.3s ease;
-      -webkit-backdrop-filter: blur(10px);
-      backdrop-filter: blur(10px);
-      outline: none;
-    }
-    .input-glass::placeholder { color: rgba(156, 163, 175, 0.55); }
-    .input-glass:focus {
-      border-color: rgba(139, 92, 246, 0.5);   /* border-purple-500/50 */
-      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3); /* shadow-purple-500/30 */
-    }
-    .hint { display: none; margin: 6px 2px 0; font-size: 12.5px; color: #6b7280; }
-    .field:focus-within .hint { display: block; }
-
-    /* ACTION ROW */
-    .action-row {
-      display: flex; align-items: center; justify-content: space-between;
-      margin: 2px 0 22px;
-      font-size: 13.5px;
-    }
-    .action-row label {
-      display: flex; align-items: center; gap: 8px;
-      color: #9ca3af; cursor: pointer; user-select: none;
-    }
-    .action-row input[type="checkbox"] {
-      appearance: none;
-      width: 16px; height: 16px;
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 4px;
-      background: transparent;
-      cursor: pointer;
-      display: inline-grid; place-content: center;
-      transition: all 0.3s ease;
-    }
-    .action-row input[type="checkbox"]:checked { background: #8b5cf6; border-color: #8b5cf6; }
-    .action-row input[type="checkbox"]:checked::before {
-      content: "";
-      width: 8px; height: 8px;
-      background: #fff;
-      border-radius: 2px;
-      transform: scale(1);
-    }
-    .action-row a { color: #c084fc; text-decoration: none; } /* purple-400 */
-    .action-row a:hover { color: #d8b4fe; }
-
-    /* SUBMIT */
-    .btn-glass {
-      width: 100%;
-      padding: 13px 16px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(79, 70, 229, 0.8), rgba(139, 92, 246, 0.8));
-      color: #fff;
-      font-size: 15px; font-weight: 500; font-family: inherit;
-      cursor: pointer;
-      -webkit-backdrop-filter: blur(20px);
-      backdrop-filter: blur(20px);
-      transition: all 0.3s ease;
-    }
-    .btn-glass:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 30px -8px rgba(139, 92, 246, 0.55);
-    }
-    .btn-glass:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-glass:focus-visible { outline: 2px solid #c084fc; outline-offset: 2px; }
-
-    /* DIVIDER */
-    .divider-row {
-      display: flex; align-items: center; gap: 14px;
-      margin: 24px 0 18px;
-      color: #9ca3af; font-size: 13px;
-    }
-    .divider-row::before, .divider-row::after {
-      content: "";
-      flex: 1;
-      border-top: 1px solid #4b5563; /* border-t-gray-600 */
-    }
-
-    /* SOCIAL GRID */
-    .social-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 22px;
+      top: 0;
+      left: 0;
+      z-index: 1;
     }
     .glass {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 11px 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      color: #9ca3af; /* gray-400 */
-      font-size: 14px; font-weight: 500; font-family: inherit;
-      cursor: pointer;
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-form {
+      background: rgba(15, 15, 15, 0.7);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(79, 70, 229, 0.3);
+      box-shadow:
+        inset 0 0 30px rgba(79, 70, 229, 0.1),
+        inset 0 0 60px rgba(59, 130, 246, 0.05),
+        0 0 50px rgba(139, 92, 246, 0.15),
+        0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .input-glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.3s ease;
     }
-    .glass:hover { color: #fff; border-color: rgba(255,255,255,.22); }
-    .glass:disabled { opacity: 0.5; cursor: not-allowed; }
-    .glass svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .input-glass:focus {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(79, 70, 229, 0.5);
+      box-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
+    }
+    .btn-glass {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.8), rgba(139, 92, 246, 0.8));
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(79, 70, 229, 0.3);
+      transition: all 0.3s ease;
+    }
+    .btn-glass:hover {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 1), rgba(139, 92, 246, 1));
+      box-shadow: 0 0 30px rgba(79, 70, 229, 0.5);
+      transform: translateY(-2px);
+    }
+    .btn-glass:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-glass:focus-visible, .glass:focus-visible { outline: 2px solid rgba(192, 132, 252, 0.8); outline-offset: 2px; }
 
-    /* FOOTER */
-    .foot { margin: 0; text-align: center; color: #9ca3af; font-size: 13.5px; }
-    .foot a { color: #c084fc; text-decoration: none; font-weight: 500; }
-    .foot a:hover { color: #d8b4fe; }
+    /* Scrollable form pada layar pendek (overflow hidden body tetap terjaga) */
+    .form-scroll { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
+    @media (prefers-reduced-motion: reduce) { .animate-float { animation: none !important; } }
 
-    /* ERROR BANNER */
+    /* Error banner (gaya glass merah, konsisten tema) */
     .auth-error {
       display: flex; align-items: flex-start; gap: 10px;
       background: rgba(248, 113, 113, 0.1);
       border: 1px solid rgba(248, 113, 113, 0.35);
       color: #f87171;
-      border-radius: 12px;
+      border-radius: 0.75rem;
       padding: 10px 14px;
       font-size: 13.5px; line-height: 1.5;
-      margin-bottom: 18px;
+      margin-bottom: 1rem;
     }
     .auth-error[hidden] { display: none; }
 
-    /* FINE PRINT */
-    .auth-fine { margin: 14px 0 0; font-size: 12.5px; color: #6b7280; text-align: center; }
-    .auth-fine a { color: #c084fc; text-decoration: none; }
-
-    /* BRAND (atas kiri) */
+    /* Brand */
     .brand {
-      position: fixed;
-      top: 20px; left: 24px;
-      z-index: 20;
+      position: fixed; top: 20px; left: 24px; z-index: 20;
       display: flex; align-items: center; gap: 10px;
       color: #fff; text-decoration: none;
       font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em;
@@ -254,15 +127,10 @@
       font-size: 13px; font-weight: 700;
     }
 
-    @media (max-width: 480px) {
-      .glass-form { padding: 26px 22px; }
-      h1 { font-size: 25px; }
-      .social-grid { grid-template-columns: 1fr; }
-    }
+    .hint { margin: 6px 2px 0; font-size: 12px; color: #6b7280; }
   </style>
 </head>
-<body>
-  <!-- LAYER 1: Aurora shader background -->
+<body class="font-geist">
   <div id="container"></div>
 
   <!-- Brand -->
@@ -270,170 +138,205 @@
     <span class="brand-mark">G</span> gRouter Copilot
   </a>
 
-  <!-- LAYER 2: main UI -->
-  <div class="ui-layer">
-    <!-- LAYER 3: glass form -->
-    <section class="glass-form" id="authPanel" aria-labelledby="authTitle">
-      <!-- HEADER -->
-      <div class="head-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      </div>
-      <h1 id="authTitle">Welcome Back</h1>
-      <p class="sub" id="authSub">Sign in to your account to continue</p>
-
-      <!-- Google block (tampil hanya bila /api/config menyatakan aktif) -->
-      <div id="socialBlock" hidden>
-        <div class="divider-row">Or continue with</div>
-        <div class="social-grid">
-          <button class="glass" type="button" id="googleBtn" role="button">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  <div class="fixed inset-0 flex items-center justify-center p-4 z-10">
+    <div class="w-full max-w-md animate-float">
+      <div class="glass-form rounded-3xl p-8 relative overflow-hidden form-scroll" id="authPanel" aria-labelledby="authTitle">
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl glass mb-4">
+            <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
-            <span id="googleLabel">Google</span>
-          </button>
-          <button class="glass" type="button" id="facebookBtn" aria-label="Lanjut dengan Facebook">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span>Facebook</span>
-          </button>
+          </div>
+          <h1 class="text-2xl font-semibold text-white mb-2" id="authTitle">Welcome Back</h1>
+          <p class="text-gray-400 text-sm" id="authSub">Sign in to your account to continue</p>
         </div>
+
+        <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
+
+        <!-- Sign In Form -->
+        <form id="signinForm" class="space-y-6" novalidate>
+          <div class="space-y-4">
+            <div>
+              <label for="siEmail" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <input id="siEmail" name="email" type="email" autocomplete="email" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your email" required="" aria-required="true">
+            </div>
+            <div>
+              <label for="siPassword" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <input id="siPassword" name="password" type="password" autocomplete="current-password" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your password" required="" aria-required="true">
+            </div>
+          </div>
+
+          <!-- Remember & Forgot -->
+          <div class="flex items-center justify-between text-sm">
+            <label class="flex items-center text-gray-300 cursor-pointer select-none">
+              <input type="checkbox" class="w-4 h-4 rounded border-gray-600 bg-transparent mr-2">
+              Remember me
+            </label>
+            <a href="#" class="text-purple-400 hover:text-purple-300 transition-colors">
+              Forgot password?
+            </a>
+          </div>
+
+          <!-- Sign In Button -->
+          <button type="submit" id="loginBtn" class="w-full py-3 px-4 btn-glass text-white font-medium rounded-xl">
+            Sign In
+          </button>
+        </form>
+
+        <!-- Sign Up Form -->
+        <form id="signupForm" class="space-y-6" novalidate hidden>
+          <div class="space-y-4">
+            <div>
+              <label for="suName" class="block text-sm font-medium text-gray-300 mb-2">Full name</label>
+              <input id="suName" name="name" type="text" autocomplete="name" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your name" required="" aria-required="true">
+            </div>
+            <div>
+              <label for="suEmail" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <input id="suEmail" name="email" type="email" autocomplete="email" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your email" required="" aria-required="true">
+            </div>
+            <div>
+              <label for="suPassword" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <input id="suPassword" name="password" type="password" autocomplete="new-password" minlength="8" class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-400 outline-none" placeholder="Enter your password" required="" aria-required="true" aria-describedby="suPasswordHint">
+              <p class="hint" id="suPasswordHint">At least 8 characters.</p>
+            </div>
+          </div>
+
+          <button type="submit" id="registerBtn" class="w-full py-3 px-4 btn-glass text-white font-medium rounded-xl">
+            Create Account
+          </button>
+        </form>
+
+        <!-- Social (tampil hanya bila /api/config mengonfirmasi provider aktif) -->
+        <div id="socialBlock" hidden>
+          <!-- Divider -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-600"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-4 bg-transparent text-gray-400">Or continue with</span>
+            </div>
+          </div>
+
+          <!-- Social Login -->
+          <div class="grid grid-cols-1 gap-3" id="socialGrid">
+            <button type="button" id="googleBtn" class="flex items-center justify-center py-3 px-4 glass rounded-xl text-gray-300 hover:text-white transition-colors">
+              <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"></path>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"></path>
+              </svg>
+              <span id="googleLabel">Google</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Toggle -->
+        <p class="text-center text-sm text-gray-400 mt-6" id="footerSignup">
+          Don't have an account?
+          <a href="#signup" id="toSignup" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign up</a>
+        </p>
+        <p class="text-center text-sm text-gray-400 mt-6" id="footerSignin" hidden>
+          Already have an account?
+          <a href="#signin" id="toSignin" class="text-purple-400 hover:text-purple-300 font-medium transition-colors">Sign in</a>
+        </p>
       </div>
-
-      <div id="authError" class="auth-error" role="alert" aria-live="polite" hidden></div>
-
-      <!-- SIGN-IN FORM -->
-      <form id="signinForm" novalidate aria-labelledby="authTitle">
-        <div class="field">
-          <label for="siEmail">Email</label>
-          <input class="input-glass" id="siEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
-        </div>
-        <div class="field">
-          <label for="siPassword">Password</label>
-          <input class="input-glass" id="siPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required aria-required="true" />
-        </div>
-        <div class="action-row">
-          <label><input type="checkbox" id="rememberMe" /> Ingat saya</label>
-          <a href="#" id="forgotLink">Forgot password?</a>
-        </div>
-        <button class="btn-glass" type="submit" id="loginBtn">Masuk</button>
-        <p class="foot" style="margin-top:22px">
-          Belum punya akun? <a href="#signup" id="toSignup">Sign up</a>
-        </p>
-      </form>
-
-      <!-- SIGN-UP FORM -->
-      <form id="signupForm" novalidate hidden aria-labelledby="authTitle">
-        <div class="field">
-          <label for="suName">Nama</label>
-          <input class="input-glass" id="suName" name="name" type="text" autocomplete="name" placeholder="Nama Anda" required aria-required="true" />
-        </div>
-        <div class="field">
-          <label for="suEmail">Email</label>
-          <input class="input-glass" id="suEmail" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-required="true" />
-        </div>
-        <div class="field">
-          <label for="suPassword">Password</label>
-          <input class="input-glass" id="suPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" minlength="8" required aria-required="true" aria-describedby="suPasswordHint" />
-          <p class="hint" id="suPasswordHint" style="display:block">Minimal 8 karakter.</p>
-        </div>
-        <button class="btn-glass" type="submit" id="registerBtn">Buat Akun</button>
-        <p class="auth-fine">Dengan mendaftar Anda menyetujui <a href="#">Syarat &amp; Ketentuan</a>.</p>
-        <p class="foot" style="margin-top:22px">
-          Sudah punya akun? <a href="#signin" id="toSignin">Masuk</a>
-        </p>
-      </form>
-    </section>
+    </div>
   </div>
 
   <script>
-    /* ================= AURORA SHADER BACKGROUND ================= */
-    (function () {
-      'use strict';
-      var container = document.getElementById('container');
-      if (typeof THREE === 'undefined') return; // CDN gagal → background hitam polos, form tetap usable
+    /* ================= AURORA SHADER BACKGROUND (referensi asli) ================= */
+    let scene, camera, renderer, material;
+    let startTime = Date.now();
 
-      var scene = new THREE.Scene();
-      var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); // ortho, bukan perspective
-      var renderer = new THREE.WebGLRenderer({ antialias: true });
-      // QUIRK: pixel ratio 2-3x ukuran window
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio * 2, 3));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      container.appendChild(renderer.domElement);
+    const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
 
-      var uniforms = {
-        iTime: { value: 0 },
-        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-      };
+    const fragmentShader = `
+        uniform float iTime;
+        uniform vec2 iResolution;
+        varying vec2 vUv;
 
-      var vertexShader = [
-        'varying vec2 vUv;',
-        'void main() {',
-        '  vUv = uv;',
-        '  gl_Position = vec4(position, 1.0);',
-        '}'
-      ].join('\n');
+        #define S smoothstep
 
-      var fragmentShader = [
-        'precision highp float;',
-        'uniform float iTime;',
-        'uniform vec2 iResolution;',
-        'varying vec2 vUv;',
-        '',
-        'float line(vec2 uv, float offset, float freq, float amp, float speed, float width) {',
-        '  float y = sin(uv.x * freq + iTime * speed + offset) * amp;',
-        '  float d = abs(uv.y - y);',
-        '  return smoothstep(width, 0.0, d);',
-        '}',
-        '',
-        'void main() {',
-        '  vec2 uv = vUv;',
-        '  vec3 col = vec3(0.0);',
-        '',
-        '  for (int i = 0; i < 5; i++) {',
-        '    float fi = float(i);',
-        '    float offset = fi * 1.7;',
-        '    float freq   = 3.0 + fi * 1.3;',
-        '    float amp    = 0.12 + fi * 0.05;',
-        '    float speed  = 0.4 + fi * 0.23;',
-        '    float l = line(uv, offset, freq, amp, speed, 0.012 + fi * 0.006);',
-        '    vec3 aurora = mix(vec3(0.0, 0.8, 0.6), vec3(0.7, 0.2, 0.9),',
-        '                      0.5 + 0.5 * sin(iTime * 0.35 + fi));',
-        '    col += l * aurora * (0.85 - fi * 0.12);',
-        '  }',
-        '',
-        '  float glow = exp(-length((uv - vec2(0.5, 0.45)) * vec2(1.4, 2.2))) * 0.22;',
-        '  col += glow * vec3(0.35, 0.2, 0.7);',
-        '  gl_FragColor = vec4(col, 1.0);',
-        '}'
-      ].join('\n');
+        vec4 Line(vec2 uv, float speed, float height, vec3 col) {
+            uv.y += S(1., 0., abs(uv.x)) * sin(iTime * speed + uv.x * height) * 0.2;
+            return vec4(S(0.06 * S(0.2, 0.9, abs(uv.x)), 0., abs(uv.y) - 0.004) * col, 1.0) * S(1., 0.3, abs(uv.x));
+        }
 
-      var material = new THREE.ShaderMaterial({ uniforms: uniforms, vertexShader: vertexShader, fragmentShader: fragmentShader });
-      var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-      scene.add(mesh);
+        void main() {
+            vec2 uv = (vUv - 0.5) * vec2(iResolution.x / iResolution.y, 1.0);
+            vec4 O = vec4(0.);
 
-      var clock = new THREE.Clock();
-      function animate() {
-        requestAnimationFrame(animate);
-        uniforms.iTime.value = clock.getElapsedTime();
-        renderer.render(scene, camera);
-      }
-      animate();
+            for (float i = 0.; i <= 5.; i += 1.) {
+                float t = i / 5.;
+                float timeOffset = iTime * 0.3 + t * 2.0;
 
-      window.addEventListener('resize', function () {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
+                vec3 auroraColor = vec3(
+                    0.1 + 0.6 * sin(timeOffset + t * 3.14159),
+                    0.3 + 0.7 * sin(timeOffset * 1.3 + t * 2.0),
+                    0.4 + 0.6 * cos(timeOffset * 0.8 + t * 1.5)
+                );
+
+                auroraColor = mix(auroraColor, vec3(0.0, 0.8, 0.6), sin(timeOffset + t) * 0.5 + 0.5);
+                auroraColor = mix(auroraColor, vec3(0.7, 0.2, 0.9), cos(timeOffset * 0.7 + t * 1.2) * 0.3 + 0.3);
+
+                O += Line(uv, 1. + t * 0.8, 4. + t, auroraColor);
+            }
+
+            gl_FragColor = O;
+        }
+    `;
+
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio * 2, 3));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
-      });
-    })();
+        document.getElementById('container').appendChild(renderer.domElement);
 
-    /* ================= AUTH WIRING (perilaku existing, tak diubah) ================= */
+        material = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: {
+                iTime: { value: 0 },
+                iResolution: { value: new THREE.Vector2(window.innerWidth * 2, window.innerHeight * 2) }
+            }
+        });
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const plane = new THREE.Mesh(geometry, material);
+        scene.add(plane);
+
+        animate();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        material.uniforms.iTime.value = (Date.now() - startTime) * 0.001;
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        material.uniforms.iResolution.value.set(window.innerWidth * 2, window.innerHeight * 2);
+    }
+
+    if (typeof THREE !== 'undefined') {
+        window.addEventListener('resize', onWindowResize);
+        init();
+    }
+    /* CDN gagal → background hitam, form tetap berfungsi penuh */
+
+    /* ================= AUTH WIRING (perilaku produksi existing) ================= */
     (function () {
       'use strict';
 
@@ -445,20 +348,22 @@
       var socialBlock = document.getElementById('socialBlock');
       var googleBtn = document.getElementById('googleBtn');
       var googleLabel = document.getElementById('googleLabel');
+      var footerSignup = document.getElementById('footerSignup');
+      var footerSignin = document.getElementById('footerSignin');
 
       var SIGNUP_COPY = {
         title: 'Create your account',
         sub: 'One account to manage licenses, purchases, and monitor usage.',
-        doc: 'Daftar — gRouter Copilot',
+        doc: 'Sign up — gRouter Copilot',
       };
       var SIGNIN_COPY = {
         title: 'Welcome Back',
         sub: 'Sign in to your account to continue',
-        doc: 'Masuk — gRouter Copilot',
+        doc: 'Sign in — gRouter Copilot',
       };
 
       function showError(msg) {
-        errorBox.textContent = msg || 'Terjadi kesalahan. Coba lagi.';
+        errorBox.textContent = msg || 'Something went wrong. Please try again.';
         errorBox.hidden = false;
       }
       function clearError() {
@@ -476,6 +381,8 @@
         var isSignin = mode === 'signin';
         signupForm.hidden = isSignin;
         signinForm.hidden = !isSignin;
+        footerSignup.hidden = !isSignin;  /* 'Don't have an account? Sign up' hanya di mode signin */
+        footerSignin.hidden = isSignin;   /* 'Already have an account? Sign in' hanya di mode signup */
         var copy = isSignin ? SIGNIN_COPY : SIGNUP_COPY;
         titleEl.textContent = copy.title;
         subEl.textContent = copy.sub;
@@ -496,7 +403,7 @@
         clearError();
         var label = btn.textContent;
         btn.disabled = true;
-        btn.textContent = 'Memproses...';
+        btn.textContent = 'Processing...';
         try {
           var res = await fetch(url, {
             method: 'POST',
@@ -510,9 +417,9 @@
             location.href = '/user';
             return;
           }
-          showError(parseError(data) || ('Gagal (' + res.status + '). Silakan coba lagi.'));
+          showError(parseError(data) || ('Failed (' + res.status + '). Please try again.'));
         } catch (e) {
-          showError('Tidak dapat menghubungi server. Periksa koneksi Anda.');
+          showError('Cannot reach the server. Check your connection.');
         } finally {
           btn.disabled = false;
           btn.textContent = label;
@@ -524,7 +431,7 @@
         var name = document.getElementById('suName').value.trim();
         var email = document.getElementById('suEmail').value.trim();
         var password = document.getElementById('suPassword').value;
-        if (!name || !email || !password) { showError('Semua field wajib diisi.'); return; }
+        if (!name || !email || !password) { showError('All fields are required.'); return; }
         submitAuth('/api/auth/sign-up/email', { name: name, email: email, password: password }, document.getElementById('registerBtn'));
       });
 
@@ -532,7 +439,7 @@
         e.preventDefault();
         var email = document.getElementById('siEmail').value.trim();
         var password = document.getElementById('siPassword').value;
-        if (!email || !password) { showError('Email dan password wajib diisi.'); return; }
+        if (!email || !password) { showError('Email and password are required.'); return; }
         submitAuth('/api/auth/sign-in/email', { email: email, password: password }, document.getElementById('loginBtn'));
       });
 
@@ -540,7 +447,7 @@
       function setGoogleBusy(busy) {
         if (busy) {
           googleBtn.setAttribute('aria-disabled', 'true');
-          googleLabel.textContent = 'Menghubungkan...';
+          googleLabel.textContent = 'Connecting...';
         } else {
           googleBtn.removeAttribute('aria-disabled');
           googleLabel.textContent = 'Google';
@@ -568,9 +475,9 @@
             window.location.href = data.url || data.redirect;
             return;
           }
-          showError(parseError(data) || ('Google tidak tersedia (' + res.status + ').'));
+          showError(parseError(data) || ('Google is unavailable (' + res.status + ').'));
         } catch (err) {
-          showError('Tidak dapat menghubungi server. Periksa koneksi Anda.');
+          showError('Cannot reach the server. Check your connection.');
         } finally {
           setGoogleBusy(false);
         }
@@ -589,25 +496,27 @@
           socialBlock.hidden = true;
         });
 
-      /* Deep link: #signin / ?mode=signin */
-      var wantsSignin = location.hash === '#signin';
-      try {
-        if (!wantsSignin && new URLSearchParams(location.search).get('mode') === 'signin') wantsSignin = true;
-      } catch (e) { /* ignore */ }
-      toggleForm(wantsSignin ? 'signin' : 'signup');
+      /* Mode awal: /register → sign-up; selain itu sign-in. Deep link: #signup/#signin, ?mode= */
+      var isRegisterPath = /\/register\/?$/.test(location.pathname);
+      var qMode = null;
+      try { qMode = new URLSearchParams(location.search).get('mode'); } catch (e) { /* ignore */ }
+      var hash = location.hash;
+      var wantsSignup = isRegisterPath || hash === '#signup' || qMode === 'signup';
+      var wantsSignin = hash === '#signin' || qMode === 'signin';
+      toggleForm(wantsSignup && !wantsSignin ? 'signup' : 'signin');
 
-      /* OAuth failure surface */
+      /* Surface OAuth failure */
       try {
         var authErr = new URLSearchParams(location.search).get('error');
         if (authErr) {
           var authErrMsg = ({
-            state_mismatch: 'Sesi login Google kedaluwarsa. Silakan coba lagi.',
-            invalid_code: 'Login Google gagal diverifikasi. Silakan coba lagi.',
-            unable_to_get_user_info: 'Tidak dapat mengambil data akun Google Anda.',
-            email_not_found: 'Google tidak memberikan alamat email akun Anda.',
-            account_not_linked: 'Akun Google ini belum tertaut. Daftar dengan email & kata sandi dahulu.',
-            oauth_account_already_linked: 'Email ini sudah tertaut ke akun lain.',
-          })[authErr] || 'Login Google gagal (' + authErr + '). Silakan coba lagi.';
+            state_mismatch: 'Your Google session expired. Please try again.',
+            invalid_code: 'Google login could not be verified. Please try again.',
+            unable_to_get_user_info: 'Could not retrieve your Google account details.',
+            email_not_found: 'Google did not provide your account email.',
+            account_not_linked: 'This Google account is not linked yet. Sign up with email & password first.',
+            oauth_account_already_linked: 'This email is already linked to another account.',
+          })[authErr] || 'Google login failed (' + authErr + '). Please try again.';
           toggleForm('signin');
           showError(authErrMsg);
         }

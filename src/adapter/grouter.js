@@ -168,6 +168,9 @@ export class GrouterAdapter {
       });
     } catch (err) {
       clearTimeout(timer);
+      if (err?.name === 'AbortError') {
+        throw new CopilotError(ErrorCode.TIMEOUT, 'Upstream request timed out.', { retryable: true });
+      }
       throw new CopilotError(ErrorCode.UPSTREAM_UNAVAILABLE, 'Unable to reach the upstream AI service.', {
         retryable: true,
       });

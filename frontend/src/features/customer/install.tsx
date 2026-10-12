@@ -33,12 +33,19 @@ export function CustomerInstall() {
   const [newSkillName, setNewSkillName] = useState('')
   const [newSkillAllowed, setNewSkillAllowed] = useState(true)
 
-  const commandText = `$ npx @grouter/copilot install --license ${licenseId}
+  const commandText = isId
+    ? `$ npx @grouter/copilot install --license ${licenseId}
 ✓ Lisensi tervalidasi (Ed25519)
 ✓ .env server diperbarui (nilai tidak dicetak)
 ✓ Route gateway: /api/copilot/chat
 
 Siap. Mount <CopilotChat /> di UI Anda`
+    : `$ npx @grouter/copilot install --license ${licenseId}
+✓ License validated (Ed25519)
+✓ Server .env updated (values never printed)
+✓ Gateway route: /api/copilot/chat
+
+Ready. Mount <CopilotChat /> in your UI`
 
   const handleCopyCmd = () => {
     navigator.clipboard.writeText(commandText)
@@ -181,17 +188,17 @@ Siap. Mount <CopilotChat /> di UI Anda`
                 <span className='text-emerald-400 font-bold'>$</span> npx @grouter/copilot install --license GRC-••••
               </div>
               <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>Lisensi tervalidasi (Ed25519)</span>
+                <span>✓</span> <span>{isId ? 'Lisensi tervalidasi (Ed25519)' : 'License validated (Ed25519)'}</span>
               </div>
               <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>.env server diperbarui (nilai tidak dicetak)</span>
+                <span>✓</span> <span>{isId ? '.env server diperbarui (nilai tidak dicetak)' : 'Server .env updated (values never printed)'}</span>
               </div>
               <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>Route gateway: /api/copilot/chat</span>
+                <span>✓</span> <span>{isId ? 'Route gateway: /api/copilot/chat' : 'Gateway route: /api/copilot/chat'}</span>
               </div>
               <div className='pt-2 text-slate-100 flex items-center gap-2'>
-                <span className='text-emerald-400 font-bold'>Siap.</span>
-                <span>Mount &lt;CopilotChat /&gt; di UI Anda</span>
+                <span className='text-emerald-400 font-bold'>{isId ? 'Siap.' : 'Ready.'}</span>
+                <span>{isId ? 'Mount <CopilotChat /> di UI Anda' : 'Mount <CopilotChat /> in your UI'}</span>
                 <span className='inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse' />
               </div>
               <div className='pt-3 text-muted-foreground text-[11px] border-t border-slate-800/80'>

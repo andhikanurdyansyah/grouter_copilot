@@ -1,0 +1,37 @@
+
+import { chromium } from 'playwright'
+import fs from 'node:fs'
+const env = fs.readFileSync('/home/ubuntu/grouter_copilot/server/.env', 'utf8')
+const ADMIN_TOKEN = (env.match(/^ADMIN_TOKEN=(.+)$/m) || [])[1]?.trim()
+const exe = '/root/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux-arm64/chrome-headless-shell'
+const b = await chromium.launch({ executablePath: exe, args: ['--no-sandbox', '--disable-dev-shm-usage'] })
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } })
+const p = await ctx.newPage()
+await p.addInitScript(() => localStorage.setItem('grouter_lang', 'en'))
+await p.goto('http://localhost:4601/user/licenses', { waitUntil: 'domcontentloaded' })
+await p.waitForTimeout(800)
+if (!p.url().includes('/user')) {
+  const stamp = Date.now().toString(36)
+  await p.goto('http://localhost:4601/register', { waitUntil: 'networkidle' })
+  await p.locator('#suName').fill('QA en v')
+  await p.locator('#suEmail').fill(`qa.env.${stamp}@gmail.com`)
+  await p.locator('#suPassword').fill(`Gr0ut3r-${stamp}-Zq!`)
+  await p.locator('#registerBtn').click()
+  await p.waitForURL('**/user', { timeout: 15000 })
+}
+await p.goto('http://localhost:4601/user/licenses', { waitUntil: 'networkidle' })
+await p.waitForTimeout(800)
+const body = await p.locator('body').innerText()
+console.log('EN licenses title:', body.includes('Licenses & setup') ? 'OK' : 'MISS')
+console.log('EN empty state:', body.includes('No licenses yet') ? 'OK' : (body.includes('Belum ada') ? 'LEAK' : 'n/a (has licenses)'))
+console.log('EN install steps:', body.includes('How to install') ? 'OK' : 'MISS')
+const bc = await p.locator('nav[aria-label=Breadcrumb]').innerText().catch(() => '')
+console.log('breadcrumb:', bc.replace(/\n/g, ' '))
+await p.screenshot({ path: '/home/ubuntu/grouter_copilot/.hermes/qa-screens/en-user-licenses-fixed.png' })
+await p.goto('http://localhost:4601/user/install', { waitUntil: 'networkidle' })
+await p.waitForTimeout(800)
+const b2 = await p.locator('body').innerText()
+console.log('EN install terminal:', b2.includes('License validated') || b2.includes('Ready.') ? 'OK' : 'MISS/LEAK')
+console.log('ID leak in install:', b2.includes('tervalidasi') ? 'LEAK' : 'none')
+await p.screenshot({ path: '/home/ubuntu/grouter_copilot/.hermes/qa-screens/en-user-install-fixed.png' })
+await b.close()

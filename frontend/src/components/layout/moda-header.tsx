@@ -43,10 +43,11 @@ export function ModaHeader() {
       const accountPrefix = language === 'id' ? 'Akun' : 'Account'
 
       if (pathname.includes('/install')) return `${prefix} / ${t('nav_user_install')}`
+      if (pathname.includes('/licenses')) return `${prefix} / ${t('nav_user_install')}`
       if (pathname.includes('/usage')) return `${prefix} / ${t('nav_user_usage')}`
       if (pathname.includes('/orders')) return `${billingPrefix} / ${t('nav_user_plans')}`
       if (pathname.includes('/payments')) return `${billingPrefix} / ${t('nav_user_orders')}`
-      if (pathname.includes('/account')) return `${accountPrefix} / Profil & keamanan`
+      if (pathname.includes('/account')) return `${accountPrefix} / ${language === 'id' ? 'Profil & keamanan' : 'Profile & security'}`
       return `${prefix} / ${t('nav_overview')}`
     }
   }

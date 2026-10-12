@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Check, Copy } from 'lucide-react'
+import { useLanguage } from '@/context/language-provider'
 import { toast } from 'sonner'
 
 function statusOf(l: { status?: string; expiresAt?: string }): string {
@@ -19,6 +20,8 @@ function statusOf(l: { status?: string; expiresAt?: string }): string {
 }
 
 export function CustomerLicenses() {
+  const { language } = useLanguage()
+  const isId = language === 'id'
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -26,17 +29,20 @@ export function CustomerLicenses() {
     try {
       await navigator.clipboard.writeText(text)
       setCopied(text)
-      toast.success(label + ' disalin ke clipboard')
+      toast.success(isId ? label + ' disalin ke clipboard' : label + ' copied to clipboard')
       setTimeout(() => setCopied(null), 1500)
     } catch {
-      toast.error('Gagal menyalin — salin manual dari tabel')
+      toast.error(isId ? 'Gagal menyalin — salin manual dari tabel' : 'Copy failed — copy manually from the table')
     }
   }
 
   if (me.isPending) {
     return (
       <div className='space-y-5'>
-        <PageHeader title='Lisensi & Install' description='Lisensi aktif, paket, dan konfigurasi install Copilot Anda.' />
+        <PageHeader
+          title={isId ? 'Lisensi & instalasi' : 'Licenses & setup'}
+          description={isId ? 'Lisensi aktif, paket, dan konfigurasi install Copilot Anda.' : 'Active licenses, plans, and your Copilot install configuration.'}
+        />
         <TableSkeleton rows={4} cols={4} />
       </div>
     )
@@ -44,7 +50,10 @@ export function CustomerLicenses() {
   if (me.isError) {
     return (
       <div className='space-y-5'>
-        <PageHeader title='Lisensi & Install' description='Lisensi aktif, paket, dan konfigurasi install Copilot Anda.' />
+        <PageHeader
+          title={isId ? 'Lisensi & instalasi' : 'Licenses & setup'}
+          description={isId ? 'Lisensi aktif, paket, dan konfigurasi install Copilot Anda.' : 'Active licenses, plans, and your Copilot install configuration.'}
+        />
         <ErrorState
           status={(me.error as { response?: { status?: number } })?.response?.status}
           message={(me.error as Error).message}
@@ -59,14 +68,18 @@ export function CustomerLicenses() {
   return (
     <div className='space-y-5'>
       <PageHeader
-        title='Lisensi & Install'
-        description='Daftar lisensi, status, dan masa berlaku. Salin License ID untuk registrasi install.'
+        title={isId ? 'Lisensi & instalasi' : 'Licenses & setup'}
+        description={isId
+          ? 'Daftar lisensi, status, dan masa berlaku. Salin License ID untuk registrasi install.'
+          : 'License list, status, and validity. Copy the License ID to register an install.'}
       />
 
       {licenses.length === 0 ? (
         <EmptyState
-          title='Belum ada lisensi'
-          description='Lisensi terbit otomatis setelah pembayaran paket Anda terverifikasi.'
+          title={isId ? 'Belum ada lisensi' : 'No licenses yet'}
+          description={isId
+            ? 'Lisensi terbit otomatis setelah pembayaran paket Anda terverifikasi.'
+            : 'Licenses are issued automatically once your plan payment is verified.'}
         />
       ) : (
         <Card className='py-0'>
@@ -76,8 +89,8 @@ export function CustomerLicenses() {
                 <TableRow>
                   <TableHead>License ID</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className='hidden md:table-cell'>Berlaku s.d.</TableHead>
-                  <TableHead className='text-right'>Aksi</TableHead>
+                  <TableHead className='hidden md:table-cell'>{isId ? 'Berlaku s.d.' : 'Valid until'}</TableHead>
+                  <TableHead className='text-right'>{isId ? 'Aksi' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -88,7 +101,7 @@ export function CustomerLicenses() {
                       <TableCell className='font-mono text-xs'>{l.id}</TableCell>
                       <TableCell>
                         <StatusBadge tone={st === 'active' ? 'success' : st === 'expired' ? 'warning' : 'danger'}>
-                          {st === 'active' ? 'aktif' : st === 'expired' ? 'kedaluwarsa' : 'dicabut'}
+                          {st === 'active' ? (isId ? 'aktif' : 'active') : st === 'expired' ? (isId ? 'kedaluwarsa' : 'expired') : (isId ? 'dicabut' : 'revoked')}
                         </StatusBadge>
                       </TableCell>
                       <TableCell className='hidden md:table-cell text-sm whitespace-nowrap'>{fmtDate(l.expiresAt)}</TableCell>
@@ -97,10 +110,10 @@ export function CustomerLicenses() {
                           size='sm'
                           variant='outline'
                           onClick={() => copy(l.id, 'License ID')}
-                          aria-label={'Salin License ID ' + l.id}
+                          aria-label={(isId ? 'Salin License ID ' : 'Copy License ID ') + l.id}
                         >
                           {copied === l.id ? <Check className='size-3.5 text-emerald-600' /> : <Copy className='size-3.5' />}
-                          Salin ID
+                          {isId ? 'Salin ID' : 'Copy ID'}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -114,22 +127,22 @@ export function CustomerLicenses() {
 
       <Card>
         <CardHeader>
-          <CardTitle className='text-base'>Cara install</CardTitle>
-          <CardDescription>Tiga langkah menghubungkan Copilot ke workspace Anda.</CardDescription>
+          <CardTitle className='text-base'>{isId ? 'Cara install' : 'How to install'}</CardTitle>
+          <CardDescription>{isId ? 'Tiga langkah menghubungkan Copilot ke workspace Anda.' : 'Three steps to connect Copilot to your workspace.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <ol className='space-y-3 text-sm'>
             <li className='flex gap-3'>
               <span className='flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary'>1</span>
-              <span>Salin <strong>License ID</strong> dari tabel di atas.</span>
+              <span>{isId ? <>Salin <strong>License ID</strong> dari tabel di atas.</> : <>Copy the <strong>License ID</strong> from the table above.</>}</span>
             </li>
             <li className='flex gap-3'>
               <span className='flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary'>2</span>
-              <span>Jalankan installer Copilot dari dokumentasi produk, lalu tempel License ID saat diminta.</span>
+              <span>{isId ? 'Jalankan installer Copilot dari dokumentasi produk, lalu tempel License ID saat diminta.' : 'Run the Copilot installer from the product docs, then paste the License ID when prompted.'}</span>
             </li>
             <li className='flex gap-3'>
               <span className='flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary'>3</span>
-              <span>Plugin melakukan heartbeat & memakai AI sesuai kuota paket — entitlement divalidasi server per request, kredensial tidak pernah dibagikan ke client.</span>
+              <span>{isId ? 'Plugin melakukan heartbeat & memakai AI sesuai kuota paket — entitlement divalidasi server per request, kredensial tidak pernah dibagikan ke client.' : 'The plugin heartbeats and uses AI within your plan quota — entitlement is validated server-side per request; credentials are never shared with the client.'}</span>
             </li>
           </ol>
         </CardContent>

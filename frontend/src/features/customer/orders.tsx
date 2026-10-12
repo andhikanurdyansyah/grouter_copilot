@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   ReceiptText,
   Info,
+  Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/language-provider'
@@ -43,6 +44,7 @@ type ActiveOrder = {
   id: string
   qrUrl?: string
   qrImage?: string
+  signature?: string | null
   amount?: number | null
   expiredAt?: string | null
   status?: string
@@ -82,6 +84,7 @@ export function CustomerOrders() {
           id: pendingFromLatest.id,
           qrUrl: pendingFromLatest.qrUrl,
           qrImage: (pendingFromLatest as { qrImage?: string }).qrImage,
+          signature: (pendingFromLatest as { signature?: string | null }).signature ?? null,
           amount: pendingFromLatest.amount,
           expiredAt: pendingFromLatest.expiredAt ? String(pendingFromLatest.expiredAt) : null,
           status: pendingFromLatest.status,
@@ -156,7 +159,7 @@ export function CustomerOrders() {
       (
         await api.post<{
           order: { id: string; amount?: number; packageKey?: string }
-          qr: { qrUrl?: string; qrImage?: string; expiredAt?: string }
+          qr: { qrUrl?: string; qrImage?: string; signature?: string | null; expiredAt?: string }
         }>('/orders', { packageKey })
       ).data,
     onSuccess: (data) => {
@@ -164,6 +167,7 @@ export function CustomerOrders() {
         id: data.order.id,
         qrUrl: data.qr?.qrUrl,
         qrImage: data.qr?.qrImage,
+        signature: data.qr?.signature ?? null,
         amount: data.order.amount,
         expiredAt: data.qr?.expiredAt ?? null,
       })
@@ -646,6 +650,37 @@ export function CustomerOrders() {
 
               {/* receipt lines */}
               <div className='space-y-2.5 text-xs pt-1 border-t border-border/60'>
+                {/* Transaction signature (owner-only) — for snap.js / sandbox simulator */}
+                {polled?.signature ? (
+                  <div className='rounded-lg border border-border/70 bg-muted/40 p-2.5 space-y-1.5'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
+                        {isId ? 'Signature transaksi' : 'Transaction signature'}
+                      </span>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          navigator.clipboard
+                            .writeText(String(polled.signature))
+                            .then(() => toast.success(isId ? 'Signature disalin' : 'Signature copied'))
+                            .catch(() => toast.error(isId ? 'Gagal menyalin' : 'Copy failed'));
+                        }}
+                        className='inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-semibold text-[#7778FF] hover:bg-[#7778FF]/10 transition-colors interactive-press'
+                      >
+                        <Copy className='size-3' />
+                        {isId ? 'Salin' : 'Copy'}
+                      </button>
+                    </div>
+                    <p className='font-mono text-[10px] text-foreground/80 break-all leading-relaxed select-all'>
+                      {polled.signature}
+                    </p>
+                    <p className='text-[10px] text-muted-foreground/80'>
+                      {isId
+                        ? 'Dipakai snap.js / simulator pembayaran provider untuk order ini.'
+                        : 'Used by the provider snap.js / payment simulator for this order.'}
+                    </p>
+                  </div>
+                ) : null}
                 <div className='flex justify-between text-muted-foreground'>
                   <span>{isId ? 'Nominal' : 'Amount'}</span>
                   <span className='font-mono font-medium text-foreground tabular-nums'>

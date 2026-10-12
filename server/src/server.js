@@ -785,7 +785,10 @@ export function createCopilotServer({
         }
         try {
           const { order, qr } = await payment.createOrder({ plan, accountId: account.id });
-          return sendJson(res, 201, { order, qr: { qrUrl: qr.qrUrl, qrImage: qr.qrImage, expiredAt: qr.expiredAt } });
+          return sendJson(res, 201, {
+            order,
+            qr: { qrUrl: qr.qrUrl, qrImage: qr.qrImage, signature: qr.signature ?? null, expiredAt: qr.expiredAt },
+          });
         } catch (err) {
           return sendJson(res, err.code === 'AUTH_FAILED' ? 502 : 500, { error: err.message });
         }
@@ -899,6 +902,12 @@ function sanitizeOrder(o, { includeQr = false } = {}) {
   if (includeQr) {
     out.qrImage = typeof o.qrImage === 'string' ? o.qrImage : null;
     out.qrUrl = typeof o.qrUrl === 'string' ? o.qrUrl : null;
+    // Transaction signature from KlikQRIS create — per-order payment-session
+    // reference, NOT a secret: it authorizes the provider's payment UI /
+    // sandbox simulator for THIS order only. Our settlement security comes
+    // from upstream re-verification, never from this value. Owner-only
+    // (includeQr=true is only used by the customer's own orders endpoints).
+    out.signature = typeof o.signature === 'string' ? o.signature : null;
   }
   return out;
 }

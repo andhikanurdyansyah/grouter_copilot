@@ -103,11 +103,17 @@ test('GET /api/orders: 401 tanpa sesi, kosong untuk akun baru, hanya order milik
     assert.equal(theirs.status, 200);
     assert.equal(theirs.json.total, 0);
 
-    // Field tersanitasi: tidak ada kunci asing (qris/signature dsb) di payload
+    // Field tersanitasi: tidak ada KREDENSIAL (API key provider/gateway) di payload.
+    // Perubahan kontrak 2026-10-13: `signature` transaksi KlikQRIS SENGAKA
+    // diekspos ke PEMILIK order (owner-only, includeQr) — itu referensi sesi
+    // bayar per-order untuk snap.js/simulator, BUKAN secret; settlement tidak
+    // pernah mengandalkan nilai ini (selalu re-verify upstream).
     const keys = Object.keys(mine.json.orders[0]);
-    for (const forbidden of ['qris', 'signature', 'apikey', 'grouterApiKey']) {
+    for (const forbidden of ['qris', 'apikey', 'grouterapikey', 'secret', 'token']) {
       assert.ok(!keys.some((k) => k.toLowerCase().includes(forbidden)), `field terlarang: ${forbidden}`);
     }
+    const sig = mine.json.orders[0].signature;
+    assert.ok(sig === null || sig === undefined || typeof sig === 'string', 'signature harus null atau string');
   } finally {
     server.close();
   }

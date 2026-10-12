@@ -115,14 +115,14 @@ export function CustomerAccount() {
           {/* Identity Card */}
           <div className='lg:col-span-2 space-y-6'>
             <div className='rounded-xl border border-border/80 bg-card/80 p-6 space-y-6 card-3d bevel-shine hover-lift-3d'>
-              <div className='flex items-center justify-between gap-4'>
-                <div className='flex items-center gap-4'>
+              <div className='flex flex-wrap items-center justify-between gap-4'>
+                <div className='flex items-center gap-4 min-w-0'>
                   <div className='size-14 rounded-full bg-gradient-to-br from-[#7778FF] to-[#4CC9F0] text-white font-extrabold text-lg flex items-center justify-center shadow-lg border-2 border-white/20'>
                     {(userName || '?').split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <h2 className='text-lg font-extrabold text-foreground'>{userName}</h2>
-                    <p className='text-xs text-muted-foreground font-mono'>{userEmail}</p>
+                    <h2 className='text-lg font-extrabold text-foreground truncate max-w-[220px]'>{userName}</h2>
+                    <p className='text-xs text-muted-foreground font-mono truncate max-w-[240px]'>{userEmail}</p>
                     <span className='inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#7778FF]/15 text-[#7778FF] border border-[#7778FF]/30 shadow-xs'>
                       {language === 'id' ? 'Akun terverifikasi' : 'Verified account'}
                     </span>

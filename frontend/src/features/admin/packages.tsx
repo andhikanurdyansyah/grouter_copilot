@@ -37,7 +37,8 @@ export function AdminPackages() {
   const qc = useQueryClient()
 
   const settings = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
-  const plans = ((settings.data?.plans ?? []) as Plan[]).filter((p) => p.active !== false)
+  // GET /api/admin/settings = { settings: {...} } — plans ada di dalamnya.
+  const plans = (((settings.data?.settings)?.plans ?? []) as Plan[]).filter((p) => p.active !== false)
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
 

@@ -119,27 +119,49 @@ export function AdminLedger() {
         </div>
       </div>
 
-      {/* ── Realtime Metrics Strip (Moda page-36) ── */}
+      {/* ── Metrics Strip — dihitung dari ledger nyata (50 terakhir) ── */}
       <div className='grid grid-cols-2 sm:grid-cols-5 gap-3 rounded-xl border border-border/80 bg-card/80 p-4 card-3d bevel-shine text-xs font-mono'>
         <div className='space-y-1'>
-          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>REQ/MNT</span>
-          <span className='font-extrabold text-foreground text-lg'>42</span>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>
+            {isId ? 'TOTAL REQ' : 'TOTAL REQ'}
+          </span>
+          <span className='font-extrabold text-foreground text-lg'>{records.length}</span>
         </div>
         <div className='space-y-1'>
-          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>P95 LATENCY</span>
-          <span className='font-extrabold text-[#39D6A0] text-lg'>1,82 dtk</span>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>
+            {isId ? 'TOKEN/REQ' : 'TOKENS/REQ'}
+          </span>
+          <span className='font-extrabold text-[#39D6A0] text-lg'>
+            {records.length
+              ? Math.round(records.reduce((acc, r) => acc + (r.totalTokens ?? 0), 0) / records.length).toLocaleString('id-ID')
+              : '—'}
+          </span>
         </div>
         <div className='space-y-1'>
-          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>TOKEN/JAM</span>
-          <span className='font-extrabold text-[#7778FF] text-lg'>612.400</span>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>
+            {isId ? 'TOTAL TOKEN' : 'TOTAL TOKENS'}
+          </span>
+          <span className='font-extrabold text-[#7778FF] text-lg'>
+            {records.reduce((acc, r) => acc + (r.totalTokens ?? 0), 0).toLocaleString('id-ID')}
+          </span>
         </div>
         <div className='space-y-1'>
-          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>DITOLAK KUOTA</span>
-          <span className='font-extrabold text-amber-500 text-lg'>3</span>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>
+            {isId ? 'DITOLAK KUOTA' : 'QUOTA DENIED'}
+          </span>
+          <span className='font-extrabold text-amber-500 text-lg'>
+            {records.filter((r) => r.status === 'error' && (r.errorClassification ?? '').includes('quota')).length}
+          </span>
         </div>
         <div className='space-y-1 col-span-2 sm:col-span-1'>
-          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>ERR UPSTREAM</span>
-          <span className='font-extrabold text-[#FF667A] text-lg'>0,41%</span>
+          <span className='text-muted-foreground font-sans block text-[11px] font-semibold uppercase'>
+            {isId ? 'ERR UPSTREAM' : 'UPSTREAM ERR'}
+          </span>
+          <span className='font-extrabold text-[#FF667A] text-lg'>
+            {records.length
+              ? `${Math.round((records.filter((r) => r.status === 'error').length / records.length) * 1000) / 10}%`
+              : '—'}
+          </span>
         </div>
       </div>
 
@@ -187,7 +209,7 @@ export function AdminLedger() {
         <select
           value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
-          className='rounded-xl border border-border bg-card/80 px-3.5 py-2 text-xs text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-primary self-end sm:self-auto shadow-xs'
+          className='max-w-full min-w-0 rounded-xl border border-border bg-card/80 px-3.5 py-2 text-xs text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-primary self-end sm:self-auto shadow-xs'
         >
           <option value='all'>{isId ? 'Model: Semua ▾' : 'Model: All ▾'}</option>
           <option value='grouter/balanced'>grouter/balanced</option>

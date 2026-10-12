@@ -39,7 +39,15 @@ export function AdminOverview() {
   const orders = useQuery({ queryKey: ['admin-orders'], queryFn: () => fetchAdminOrders(100) })
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: fetchAdminStats })
-  const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth, refetchInterval: 60_000 })
+  const health = useQuery({
+    queryKey: ['health-measured'],
+    queryFn: async () => {
+      const t0 = performance.now()
+      const data = await fetchHealth()
+      return { ...data, latencyMs: Math.round(performance.now() - t0) }
+    },
+    refetchInterval: 60_000,
+  })
   void health
   const ledger = useQuery({ queryKey: ['admin-ledger', 'recent'], queryFn: () => fetchLedger({ limit: 4 }) })
 
@@ -333,28 +341,34 @@ export function AdminOverview() {
                 <line key={i} x1='0' y1={y} x2='620' y2={y} stroke='currentColor' className='text-border/40' strokeDasharray='4 4' />
               ))}
 
-              {/* Area Ok */}
-              <path
-                d='M 20 155 C 135 145, 250 130, 365 100 C 480 75, 540 55, 600 35 L 600 200 L 20 200 Z'
-                fill='url(#gradOk)'
-              />
-
-              {/* Line Ok */}
-              <path
-                d='M 20 155 C 135 145, 250 130, 365 100 C 480 75, 540 55, 600 35'
-                fill='none'
-                stroke='#7778FF'
-                strokeWidth='3'
-                className='animate-draw-path'
-              />
-
-              {/* Line Ditolak */}
-              <path
-                d='M 20 195 C 135 195, 250 195, 365 195 C 480 190, 540 155, 600 185'
-                fill='none'
-                stroke='#FF667A'
-                strokeWidth='2'
-              />
+              {/* Area/Line dari data ledger REAL (bukan path dekoratif) */}
+              {(() => {
+                const n = currentData.length
+                if (n < 2) return null
+                const xs = currentData.map((d) => d.x)
+                const x0 = Math.min(...xs)
+                const x1 = Math.max(...xs)
+                const line = (vals: number[]) =>
+                  vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${currentData[i].x} ${v}`).join(' ')
+                const area = `${line(currentData.map((d) => d.yOk))} L ${x1} 200 L ${x0} 200 Z`
+                return (
+                  <>
+                    <path d={area} fill='url(#gradOk)' />
+                    <path
+                      d={line(currentData.map((d) => d.yOk))}
+                      fill='none'
+                      stroke='#7778FF'
+                      strokeWidth='3'
+                    />
+                    <path
+                      d={line(currentData.map((d) => d.yBad))}
+                      fill='none'
+                      stroke='#FF667A'
+                      strokeWidth='2'
+                    />
+                  </>
+                )
+              })()}
 
               {/* Active Hover Crosshair & Points */}
               {activePoint && (
@@ -432,93 +446,59 @@ export function AdminOverview() {
           </div>
         </div>
 
-        {/* Kesehatan layanan with live radar dots */}
-        <div className='lg:col-span-4 rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine space-y-4'>
+        {/* Kesehatan layanan — dari /api/health + latensi terukur (bukan angka fabrikasi) */}
+        <div className='lg:col-span-4 rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
           <div className='flex items-center justify-between'>
             <h2 className='text-base font-bold text-foreground flex items-center gap-2'>
               <Activity className='size-4 text-[#39D6A0]' />
               {isId ? 'Kesehatan layanan' : 'Service health'}
             </h2>
             <span className='text-[11px] text-muted-foreground font-mono'>
-              60 dtk lalu
+              {health.isFetching ? '…' : (isId ? '60 dtk refetch' : '60s refetch')}
             </span>
           </div>
 
-          <div className='divide-y divide-border/60 text-xs'>
-            {/* Service 1 */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
-                <span className='font-semibold text-foreground'>License API</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>42 ms</span>
-                <span className='text-[#39D6A0] font-bold'>Normal</span>
-              </div>
-            </div>
-
-            {/* Service 2 */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
-                <span className='font-semibold text-foreground'>AI Gateway</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>1,82 dtk</span>
-                <span className='text-[#39D6A0] font-bold'>Normal</span>
-              </div>
-            </div>
-
-            {/* Service 3 */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
-                <span className='font-semibold text-foreground'>gRouter upstream</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>99,6%</span>
-                <span className='text-[#39D6A0] font-bold'>Normal</span>
-              </div>
-            </div>
-
-            {/* Service 4: Degraded */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='relative flex size-2'>
-                  <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75' />
-                  <span className='relative inline-flex rounded-full size-2 bg-amber-500' />
-                </span>
-                <span className='font-semibold text-foreground'>QRIS (sandbox)</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>4,1 dtk</span>
-                <span className='text-amber-500 font-bold'>{isId ? 'Degradasi' : 'Degraded'}</span>
-              </div>
-            </div>
-
-            {/* Service 5 */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
-                <span className='font-semibold text-foreground'>Database</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>8 ms</span>
-                <span className='text-[#39D6A0] font-bold'>Normal</span>
-              </div>
-            </div>
-
-            {/* Service 6 */}
-            <div className='flex items-center justify-between py-2.5'>
-              <div className='flex items-center gap-2.5'>
-                <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
-                <span className='font-semibold text-foreground'>Cloudflare tunnel</span>
-              </div>
-              <div className='flex items-center gap-3 font-mono'>
-                <span className='text-muted-foreground'>aktif</span>
-                <span className='text-[#39D6A0] font-bold'>Normal</span>
-              </div>
-            </div>
+          <div className='divide-y divide-border/60 text-xs mt-3'>
+            {(() => {
+              const checks = (health.data?.checks ?? {}) as Record<string, boolean>
+              const loading = health.isLoading
+              const rows = [
+                { name: 'License API', key: 'licenseService', sub: 'Ed25519 signer' },
+                { name: 'Payment gateway', key: 'paymentConfigured', sub: 'KlikQRIS config' },
+                { name: 'AI provider', key: 'providerConfigured', sub: 'gRouter supplier' },
+              ]
+              return rows.map((svc) => {
+                const ok = checks[svc.key] === true
+                return (
+                  <div key={svc.key} className='flex items-center justify-between py-2.5'>
+                    <div className='flex items-center gap-2.5 min-w-0'>
+                      {loading ? (
+                        <span className='size-2 rounded-full bg-muted-foreground/40 inline-block' />
+                      ) : ok ? (
+                        <span className='size-2 rounded-full bg-[#39D6A0] inline-block shadow-[0_0_6px_#39D6A0]' />
+                      ) : (
+                        <span className='relative flex size-2'>
+                          <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75' />
+                          <span className='relative inline-flex rounded-full size-2 bg-red-500' />
+                        </span>
+                      )}
+                      <div className='min-w-0'>
+                        <div className='font-semibold text-foreground truncate'>{svc.name}</div>
+                        <div className='text-[10px] text-muted-foreground font-mono truncate'>{svc.sub}</div>
+                      </div>
+                    </div>
+                    <div className='flex items-center gap-3 font-mono'>
+                      <span className='text-muted-foreground'>
+                        {loading ? '…' : ok ? `${health.data?.latencyMs ?? '—'} ms` : 'down'}
+                      </span>
+                      <span className={`${loading ? 'text-muted-foreground' : ok ? 'text-[#39D6A0]' : 'text-red-500'} font-bold`}>
+                        {loading ? '…' : ok ? (isId ? 'Normal' : 'Healthy') : (isId ? 'Gagal' : 'Failing')}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       </div>

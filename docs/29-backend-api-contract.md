@@ -24,13 +24,19 @@ yang dipakai frontend:
 
 | Endpoint | Ket |
 |---|---|
-| `POST /api/auth/sign-up/email` `{email,password,name}` | daftar; set cookie sesi |
-| `POST /api/auth/sign-in/email` `{email,password}` | masuk; set cookie sesi |
-| `POST /api/auth/sign-out` | keluar |
-| `GET /api/auth/get-session` | sesi aktif |
+| `POST /api/auth/sign-up/email` `{email,password,name}` | daftar; set cookie sesi. Sentinel: email invalid → 400, password HIBP → 400 `COMPROMISED_PASSWORD`; min 8 char |
+| `POST /api/auth/sign-in/email` `{email,password}` | masuk; set cookie `__Secure-better-auth.session_token` (HttpOnly, Secure, SameSite=Lax, 7 hari); salah → 401 |
+| `POST /api/auth/sign-out` | keluar; sesi dihapus |
+| `GET /api/auth/get-session` | sesi aktif; **200 body `null` bila tak ada sesi** (bukan error) |
+| `POST /api/auth/change-password` `{currentPassword,newPassword}` | wajib header `Origin` (CSRF origin-check; tanpa → 403) |
+| `POST /api/auth/request-password-reset` `{email,redirectTo}` | **selalu 200** (anti user-enumeration); token reset dibuat utk email terdaftar; URL ke `sendResetPassword` (saat ini log server) |
+| `GET /api/auth/reset-password/:token?callbackURL=…` | 302 ke `callbackURL?token=…` atau `?error=INVALID_TOKEN` |
+| `POST /api/auth/reset-password` `{newPassword,token}` | `{status:true}`; token sekali pakai, 1 jam; **mencabut semua sesi user** (`revokeSessionsOnPasswordReset`) |
 | `POST /api/auth/organization/create` `{name,slug}` | buat organisasi (D-017) |
 | `GET /api/auth/organization/list` | daftar organisasi akun |
 | `GET /api/auth/organization/get-full-organization?organizationId=…` | members + invitations |
+
+> Alur lengkap + halaman: lihat **`docs/35-auth-flow.md`** (source of truth alur auth).
 
 ### Customer (session cookie)
 

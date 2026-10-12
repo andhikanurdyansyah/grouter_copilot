@@ -90,3 +90,17 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 - Start with `sandbox` mode; switch to `production` only when ready to accept real money.
 - Do NOT store API key in frontend; only server-side (admin API returns it masked).
 - Webhook dipakai + di-re-verify upstream; polling browser (QR modal) hanya untuk UI.
+
+---
+
+## Auth backlog (hasil audit 2026-10-12 — lihat docs/35-auth-flow.md §7)
+
+1. **Ganti password dari UI dashboard** — endpoint `POST /api/auth/change-password` sudah aktif
+   (wajib header Origin); perlu form "Ubah password" di `/app/user` (mis. di menu user/nav).
+2. **Kirim email reset password nyata** — `sendResetPassword` saat ini hanya mencatat URL reset
+   ke log server. Aktivasi butuh mailer (SMTP/Resend/layanan lain) + kredensial = keputusan PO
+   (aturan: jangan tambah layanan/kredensial tanpa OK).
+3. **Security headers di frontendServer** — `X-Frame-Options`/`frame-ancestors`, CSP dasar,
+   `X-Content-Type-Options: nosniff` belum diset untuk halaman statis (auth pages included).
+4. Halaman `/app/sign-up` (SPA) masih mode showcase/simulasi — pertahankan sebagai demo komponen;
+   jalur sign-up resmi = `/login/sign-up`.

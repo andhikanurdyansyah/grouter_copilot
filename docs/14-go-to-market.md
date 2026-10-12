@@ -38,3 +38,18 @@ Developer aplikasi bisnis (CRM/POS) yang sudah pakai Node.js/Next.js. Mulai dari
 ## 6. Launch risks
 
 Jangan market "baca seluruh data" atau "autonomous agent". Market "skill layer yang developer-kontrol". Overpromise = objection keamanan.
+
+
+---
+
+## Rekonsiliasi status (2026-10-12)
+
+- Funnel §2-4: `npx @grouter/copilot init` **belum bisa dijalankan customer
+  dari registry** — publish npm BLOCKED menunggu kredensial publisher.
+  Persiapan selesai (tarball verified, LICENSE, README, E2E clean-install).
+- Design-partner offer §2 dapat dijalankan via install tarball/manual oleh
+  operator — tidak menunggu publish.
+- Beachhead metrics §5: usage ledger + admin ledger sudah tersedia di
+  produksi untuk mengukur time-to-first-install dan retensi.
+- Launch risks §6 tetap berlaku; positioning "skill layer yang
+  developer-kontrol" konsisten dengan PRD §5.

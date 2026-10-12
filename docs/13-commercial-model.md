@@ -44,3 +44,28 @@ gRouter Copilot dijual sebagai **plugin/module** yang menambah AI copilot ke apl
 ## 7. Monetization timing
 
 Jangan blokir adopsi dengan paywall terlalu awal. Bebaskan install + proof-of-value dulu, monetize di Pro/Enterprise setelah retensi terbukti.
+
+
+---
+
+## Rekonsiliasi implementasi aktual (2026-10-12)
+
+Model yang **sudah live di produksi** (store.json `settings.plans`, SSOT
+server-side, A1-safe) berbeda dari hipotesis §3-4 di atas:
+
+| Paket aktif | Harga | Kuota | Masa berlaku | AI |
+|---|---|---|---|---|
+| `quota-3b-90d` | Rp 10.000 sekali bayar | 3.000.000 token | 90 hari | `ai.enabled=false` |
+| `quota-15b-365d` | sekali bayar | 15.000.000 token | 365 hari | `ai.enabled=false` |
+| `custom` | dikonfirmasi operator | Custom | 365 hari | — |
+
+- Skema: **lisensi pre-paid per kuota token** (sekali bayar), bukan
+  subscription Free/Pro/Enterprise. Hipotesis §3-4 tetap sebagai arah masa
+  depan, bukan kondisi sekarang.
+- AI quota semantics + entitlement ditentukan plan & lisensi (D-020/D-021);
+  harga TIDAK pernah dari browser (A1, cost-integrity.test.js).
+- Unit economics §5: sumber data nyata tersedia via usage ledger
+  (`/api/me` usage, admin ledger) — perlu agregasi sebelum dipakai pricing.
+
+*Dokumen ini TIDAK mengubah harga produksi. Perubahan harga = keputusan PO
+terpisah via admin packages.*

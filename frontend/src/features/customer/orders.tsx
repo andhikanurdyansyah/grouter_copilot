@@ -24,6 +24,7 @@ import {
   BadgeCheck,
   AlertTriangle,
   ReceiptText,
+  Info,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/language-provider'
@@ -301,6 +302,7 @@ export function CustomerOrders() {
                   isActive
                     ? 'border-[#7778FF] bg-card/95 ring-2 ring-[#7778FF]/30 shadow-[0_0_30px_rgba(119,120,255,0.18)]'
                     : 'border-border/80 bg-card/70 hover:border-[#7778FF]/40 hover:bg-card/90 hover-lift-3d',
+                  highlighted && !isActive && 'border-[#7778FF]/40 bg-gradient-to-b from-[#7778FF]/[0.06] to-card/70',
                 )}
               >
                 {/* ambient corner glow on active */}
@@ -323,13 +325,13 @@ export function CustomerOrders() {
 
                 <div className='space-y-1.5 relative'>
                   <h3 className='text-base font-bold text-foreground'>{p.name}</h3>
-                  <p className='text-xs text-muted-foreground'>
-                    {isId ? 'Lisensi' : 'License'} · {p.quota ?? '—'}
+                  <p className='text-[11px] uppercase tracking-wider text-muted-foreground font-semibold'>
+                    {p.quota ?? (isId ? 'Lisensi' : 'License')}
                   </p>
                 </div>
 
                 <div className='mt-5 flex items-baseline gap-1.5'>
-                  <span className='font-mono text-3xl font-extrabold tracking-tight text-foreground tabular-nums'>
+                  <span className='font-mono text-[2rem] leading-none font-extrabold tracking-tight text-foreground tabular-nums'>
                     {p.price}
                   </span>
                   <span className='text-[11px] text-muted-foreground font-mono'>{p.period}</span>
@@ -577,29 +579,39 @@ export function CustomerOrders() {
                 </div>
               </DialogHeader>
 
-              {/* QR area */}
-              <div className='relative flex flex-col items-center justify-center p-5 rounded-2xl bg-muted/40 border border-border/80 shadow-inner overflow-hidden'>
+              {/* QR area — sandbox note: provider sandbox returns a generic sample QR.
+                  In production this is the real per-transaction QRIS code. */}
+              <div className='relative flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-b from-muted/60 to-muted/30 border border-border/80 shadow-inner overflow-hidden'>
                 {polled?.qrUrl || polled?.qrImage ? (
                   <a
                     href={polled?.qrUrl || polled?.qrImage}
                     target='_blank'
                     rel='noreferrer'
-                    className='group relative block rounded-2xl bg-white p-3.5 shadow-2xl transition-shadow duration-200 hover:shadow-[0_0_24px_rgba(119,120,255,0.3)]'
+                    className='group relative block rounded-xl bg-white p-2.5 shadow-2xl ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_0_28px_rgba(119,120,255,0.35)]'
                     title={isId ? 'Buka QR di tab baru' : 'Open QR in a new tab'}
                   >
                     <img
                       src={polled?.qrImage || polled?.qrUrl}
                       alt='QRIS'
-                      className='w-52 h-52 object-contain'
+                      className='w-48 h-48 object-contain rounded-lg'
                     />
                   </a>
                 ) : (
-                  <div className='flex w-52 h-52 items-center justify-center'>
+                  <div className='flex w-48 h-48 items-center justify-center'>
                     <RefreshCw className='size-6 animate-spin text-muted-foreground' />
                   </div>
                 )}
 
-                <div className='mt-4 font-mono text-2xl font-extrabold text-foreground tracking-tight tabular-nums'>
+                <div className='mt-3 flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 px-3 py-1 text-[10px] font-semibold text-amber-600 dark:text-amber-500'>
+                  <Info className='size-3 shrink-0' />
+                  <span>
+                    {isId
+                      ? 'Sandbox: QR contoh dari provider — pembayaran via simulator'
+                      : 'Sandbox: provider sample QR — pay via the simulator'}
+                  </span>
+                </div>
+
+                <div className='mt-3 font-mono text-3xl font-extrabold text-foreground tracking-tight tabular-nums'>
                   {polled?.amount != null ? formatIDR(polled.amount) : activePlan?.price ?? '—'}
                 </div>
 

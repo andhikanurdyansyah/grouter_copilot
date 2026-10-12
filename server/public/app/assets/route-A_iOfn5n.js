@@ -1,1 +1,0 @@
-import{p as e}from"./index-DANOzUPH.js";var t=e;export{t as component};

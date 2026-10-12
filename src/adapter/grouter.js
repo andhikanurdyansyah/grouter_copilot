@@ -57,7 +57,10 @@ function parseFirstJsonObject(text) {
 
 export class GrouterAdapter {
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = globalThis.fetch } = {}) {
-    this.apiKey = apiKey || process.env.GROUTER_API_KEY || null;
+    // Fail-closed: kredensial WAJIB eksplisit dari caller (createGateway pass
+    // env.GROUTER_API_KEY). Tanpa fallback process.env di sini — fallback global
+    // menyembunyikan salah-konfigurasi dan melanggar kontrak env-only (D-021).
+    this.apiKey = apiKey || null;
     this.baseUrl = baseUrl;
     this.timeoutMs = timeoutMs;
     this.fetch = fetchImpl;

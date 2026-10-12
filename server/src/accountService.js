@@ -23,6 +23,12 @@ export class AccountService {
         existing.authUserId = user.id;
         this.store._save();
       }
+      // keep display name in sync with the auth source (Better Auth user table)
+      // — update-user changes auth.sqlite, the store mirror must follow.
+      if (user.name && existing.name !== user.name) {
+        existing.name = user.name;
+        this.store._save();
+      }
       return existing;
     }
     const account = {

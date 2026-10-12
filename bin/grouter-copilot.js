@@ -81,7 +81,10 @@ const CONFIG_TEMPLATE = `// gRouter Copilot configuration.
 import exampleSkill from "./skills/example.js";
 
 export default {
-  model: process.env.GROUTER_MODEL || "grouter-default",
+  // TANPA override model: gateway memakai model default paket lisensi
+  // (server-side policy). Set model hanya jika ada di allowlist paket Anda,
+  // atau via env GROUTER_MODEL. Placeholder "grouter-default" DITOLAK upstream.
+  model: process.env.GROUTER_MODEL || undefined,
   systemPrompt:
     "You are a helpful assistant for this application. Answer only from the data provided. If data is insufficient, say so.",
   skills: [exampleSkill],

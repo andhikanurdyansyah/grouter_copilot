@@ -37,7 +37,14 @@ export async function createCopilot({ configPath, adapter, licenseGate } = {}) {
   const gate = licenseGate ?? new LicenseGate({
     publicKeyPem: process.env.GROUTER_LICENSE_PUBLIC_KEY ?? undefined,
   });
-  const runtime = new CopilotRuntime({ config, adapter: grouterAdapter, registry, licenseGate: gate });
+  const runtime = new CopilotRuntime({
+    config,
+    adapter: grouterAdapter,
+    registry,
+    licenseGate: gate,
+    // Host apps resolve args via the gateway (D-021) unless an embedded adapter is injected.
+    gatewayUrl: adapter ? undefined : process.env.GROUTER_GATEWAY_URL || null,
+  });
   return { config, registry, adapter: grouterAdapter, runtime };
 }
 

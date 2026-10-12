@@ -7,7 +7,9 @@ import { pathToFileURL } from 'node:url';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-export const DEFAULT_MODEL = process.env.GROUTER_MODEL || 'grouter-default';
+// TANPA placeholder model: 'grouter-default' DITOLAK upstream AI nyata (bukan id katalog).
+// model undefined/null → Copilot backend memakai model default paket lisensi (server-side policy).
+export const DEFAULT_MODEL = process.env.GROUTER_MODEL || null;
 export const DEFAULT_SYSTEM_PROMPT =
   'You are a helpful assistant for this application. ' +
   'Answer only from the data provided to you. ' +

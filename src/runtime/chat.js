@@ -14,11 +14,14 @@ function nextRequestId() {
 }
 
 export class CopilotRuntime {
-  constructor({ config, adapter, registry, licenseGate } = {}) {
+  constructor({ config, adapter, registry, licenseGate, gatewayUrl } = {}) {
     this.config = config;
     this.adapter = adapter;
     this.registry = registry ?? new SkillRegistry({ skills: config?.skills ?? [] });
     this.licenseGate = licenseGate ?? null;
+    // Gateway URL (D-021): satu-satunya jalur LLM bagi host app tanpa provider key.
+    // Dipakai untuk arg extraction pada skill berparameter wajib.
+    this.gatewayUrl = gatewayUrl ?? null;
   }
 
   /**
@@ -28,6 +31,76 @@ export class CopilotRuntime {
     if (!this.licenseGate) return; // gate optional (tests / open build)
     const token = process.env.GROUTER_LICENSE;
     this.licenseGate.enforce(token);
+  }
+
+  /**
+   * Extract required skill arguments from the user message via the model.
+   * v1 runtime has no local NLU: skills with required parameters previously
+   * failed with SKILL_INVALID_ARGS whenever the host did not pass `args`
+   * explicitly. Natural-language requests are the primary customer path, so
+   * the runtime now performs one strict JSON-extraction call to the adapter.
+   * Fail-closed: any error/empty/garbage output falls back to the original
+   * behavior (SKILL_INVALID_ARGS) — never invented values.
+   * @returns {Promise<object>} args (provided overrides extraction)
+   */
+  async _resolveSkillArgs(skill, req) {
+    const provided = { ...(req.args ?? {}) };
+    const required = skill?.parameters?.required ?? [];
+    const missing = required.filter((k) => provided[k] === undefined || provided[k] === null || provided[k] === '');
+    if (missing.length === 0) return provided;
+    const schema = skill?.parameters;
+    if (!schema || !req.message || typeof req.message !== 'string') return provided;
+    const extractionPrompt =
+      'Extract skill arguments from the user message. Respond with ONLY a JSON object, no prose, no markdown. ' +
+      `Required keys: ${missing.map((k) => JSON.stringify(k)).join(', ')}. ` +
+      `Schema: ${JSON.stringify(schema)}. ` +
+      'If a required value cannot be determined from the message, omit it. ' +
+      `User message: ${JSON.stringify(req.message)}`;
+    const extractionMessages = [{ role: 'user', content: extractionPrompt }];
+    let answer = null;
+    if (this.gatewayUrl) {
+      // D-021 path: host apps hold no provider key. The ONLY LLM access is the
+      // Copilot backend gateway, which owns the credential and validates the
+      // host license. One small non-greedy extraction call, same ledger rules.
+      const token = process.env.GROUTER_LICENSE ?? '';
+      if (!token || !this.gatewayUrl) return provided;
+      try {
+        const res = await fetch(this.gatewayUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token, messages: extractionMessages, maxTokens: 300 }),
+        });
+        const body = await res.json().catch(() => null);
+        if (res.ok && body?.status === 'ok') answer = body.answer ?? null;
+      } catch {
+        return provided; // fail closed
+      }
+    } else if (this.adapter?.complete) {
+      // Embedded-adapter build (provider key configured host-side, tests with FakeSupplier).
+      try {
+        ({ answer } = await this.adapter.complete({
+          model: this.config?.model,
+          messages: extractionMessages,
+          maxTokens: 300,
+        }));
+      } catch {
+        return provided; // fail closed
+      }
+    }
+    if (answer !== null) {
+      const match = answer && answer.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            for (const k of missing) {
+              if (parsed[k] !== undefined && parsed[k] !== null && parsed[k] !== '') provided[k] = parsed[k];
+            }
+          }
+        } catch { /* garbage JSON → fail closed */ }
+      }
+    }
+    return provided;
   }
 
   /**
@@ -54,7 +127,9 @@ export class CopilotRuntime {
         );
       }
 
-      const { data, sources } = await this.registry.run(skillName, req.args ?? {}, {
+      const skill = this.registry.get(skillName);
+      const args = await this._resolveSkillArgs(skill, req);
+      const { data, sources } = await this.registry.run(skillName, args, {
         user: req.user ?? { id: req.userId },
         requestId,
         sessionId: req.sessionId,
@@ -113,7 +188,9 @@ export class CopilotRuntime {
       );
     }
 
-    const { data, sources } = await this.registry.run(skillName, req.args ?? {}, {
+    const skill = this.registry.get(skillName);
+    const args = await this._resolveSkillArgs(skill, req);
+    const { data, sources } = await this.registry.run(skillName, args, {
       user: req.user ?? { id: req.userId },
       requestId,
       sessionId: req.sessionId,
@@ -156,7 +233,9 @@ export class CopilotRuntime {
 
       yield { type: 'retrieval.status', requestId, skill: skillName, state: 'running' };
 
-      const { data, sources } = await this.registry.run(skillName, req.args ?? {}, {
+      const skill = this.registry.get(skillName);
+      const args = await this._resolveSkillArgs(skill, req);
+      const { data, sources } = await this.registry.run(skillName, args, {
         user: req.user ?? { id: req.userId },
         requestId,
         sessionId: req.sessionId,

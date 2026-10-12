@@ -42,7 +42,6 @@ const PAGES = {
   '/copilot': 'landing.html',
   '/landing': 'landing.html',
   '/login': 'register.html',
-  '/login/sign-up': 'register-signup.html',
   '/reset-password': 'reset-password.html',
   '/success': 'success.html',
   '/checkout/success': 'success.html',
@@ -96,6 +95,15 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
         return res.end(readFileSync(file));
       }
       res.writeHead(404); return res.end('not found');
+    }
+
+    // SPA: /login/sign-up memakai design shadcn sign-up (route SPA /login/sign-up)
+    if (url.pathname === '/login/sign-up') {
+      const spaIndex = path.join(PUBLIC_DIR, 'app', 'index.html');
+      if (existsSync(spaIndex)) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
+        return res.end(readFileSync(spaIndex));
+      }
     }
 
     // SPA dashboard baru (Vite build di public/app, base '/app/')

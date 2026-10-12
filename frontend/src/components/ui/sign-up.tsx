@@ -166,9 +166,11 @@ export interface AuthComponentProps {
   onSignUp?: (payload: { email: string; password: string }) => Promise<void> | void;
   /** Real social sign-in (Better Auth social). Default: window.location to /api/auth/sign-in/social. */
   onSocial?: (provider: 'google' | 'github') => void | Promise<void>;
+  /** Sembunyikan tombol social + divider (pure email sign-up). */
+  hideSocial?: boolean;
 }
 
-export const AuthComponent = ({ logo = <DefaultLogo />, brandName = "gRouter", onSignUp, onSocial }: AuthComponentProps) => {
+export const AuthComponent = ({ logo = <DefaultLogo />, brandName = "gRouter", onSignUp, onSocial, hideSocial = false }: AuthComponentProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -311,6 +313,20 @@ useEffect(() => {
     </AnimatePresence>
   );
 
+  // Social + divider (email step) — disembunyikan bila hideSocial (pure email sign-up).
+  const emailStepExtras: React.ReactNode = hideSocial ? (
+    <BlurFade delay={0.25 * 2}><p className="text-sm font-medium text-muted-foreground">Continue with email</p></BlurFade>
+  ) : (
+    <>
+      <BlurFade delay={0.25 * 2}><p className="text-sm font-medium text-muted-foreground">Continue with</p></BlurFade>
+      <BlurFade delay={0.25 * 3}><div className="flex items-center justify-center gap-4 w-full">
+        <GlassButton contentClassName="flex items-center justify-center gap-2" size="sm" onClick={() => handleSocial('google')}><GoogleIcon /><span className="font-semibold text-foreground">Google</span></GlassButton>
+        <GlassButton contentClassName="flex items-center justify-center gap-2" size="sm" onClick={() => handleSocial('github')}><GitHubIcon /><span className="font-semibold text-foreground">GitHub</span></GlassButton>
+      </div></BlurFade>
+      <BlurFade delay={0.25 * 4} className="w-[300px]"><div className="flex items-center w-full gap-2 py-2"><hr className="w-full border-border"/><span className="text-xs font-semibold text-muted-foreground">OR</span><hr className="w-full border-border"/></div></BlurFade>
+    </>
+  );
+
   return (
     <div className="bg-background min-h-screen w-screen flex flex-col">
         <style>{`
@@ -335,12 +351,7 @@ useEffect(() => {
                 <AnimatePresence mode="wait">
                     {authStep === "email" && <motion.div key="email-content" initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }} className="w-full flex flex-col items-center gap-4">
                         <BlurFade delay={0.25 * 1} className="w-full"><div className="text-center"><p className="font-serif font-light text-4xl sm:text-5xl md:text-6xl tracking-tight text-foreground whitespace-nowrap">Get started with Us</p></div></BlurFade>
-                        <BlurFade delay={0.25 * 2}><p className="text-sm font-medium text-muted-foreground">Continue with</p></BlurFade>
-                        <BlurFade delay={0.25 * 3}><div className="flex items-center justify-center gap-4 w-full">
-                            <GlassButton contentClassName="flex items-center justify-center gap-2" size="sm" onClick={() => handleSocial('google')}><GoogleIcon /><span className="font-semibold text-foreground">Google</span></GlassButton>
-                            <GlassButton contentClassName="flex items-center justify-center gap-2" size="sm" onClick={() => handleSocial('github')}><GitHubIcon /><span className="font-semibold text-foreground">GitHub</span></GlassButton>
-                        </div></BlurFade>
-                        <BlurFade delay={0.25 * 4} className="w-[300px]"><div className="flex items-center w-full gap-2 py-2"><hr className="w-full border-border"/><span className="text-xs font-semibold text-muted-foreground">OR</span><hr className="w-full border-border"/></div></BlurFade>
+                        {emailStepExtras}
                     </motion.div>}
                     {authStep === "password" && <motion.div key="password-title" initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }} className="w-full flex flex-col items-center text-center gap-4">
                         <BlurFade delay={0} className="w-full"><div className="text-center"><p className="font-serif font-light text-4xl sm:text-5xl tracking-tight text-foreground whitespace-nowrap">Create your password</p></div></BlurFade>

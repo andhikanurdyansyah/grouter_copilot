@@ -13,6 +13,7 @@ import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as AdminGateRouteImport } from './routes/admin-gate'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginSignUpRouteImport } from './routes/login/sign-up'
 import { Route as AuthenticatedUserRouteRouteImport } from './routes/_authenticated/user/route'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedUserIndexRouteImport } from './routes/_authenticated/user/index'
@@ -48,6 +49,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginSignUpRoute = LoginSignUpRouteImport.update({
+  id: '/login/sign-up',
+  path: '/login/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedUserRouteRoute = AuthenticatedUserRouteRouteImport.update({
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof SignUpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/user': typeof AuthenticatedUserRouteRouteWithChildren
+  '/login/sign-up': typeof LoginSignUpRoute
   '/admin/ledger': typeof AuthenticatedAdminLedgerRoute
   '/admin/licenses': typeof AuthenticatedAdminLicensesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-gate': typeof AdminGateRoute
   '/sign-up': typeof SignUpRoute
+  '/login/sign-up': typeof LoginSignUpRoute
   '/admin/ledger': typeof AuthenticatedAdminLedgerRoute
   '/admin/licenses': typeof AuthenticatedAdminLicensesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/sign-up': typeof SignUpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/user': typeof AuthenticatedUserRouteRouteWithChildren
+  '/login/sign-up': typeof LoginSignUpRoute
   '/_authenticated/admin/ledger': typeof AuthenticatedAdminLedgerRoute
   '/_authenticated/admin/licenses': typeof AuthenticatedAdminLicensesRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin'
     | '/user'
+    | '/login/sign-up'
     | '/admin/ledger'
     | '/admin/licenses'
     | '/admin/orders'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-gate'
     | '/sign-up'
+    | '/login/sign-up'
     | '/admin/ledger'
     | '/admin/licenses'
     | '/admin/orders'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/_authenticated/admin'
     | '/_authenticated/user'
+    | '/login/sign-up'
     | '/_authenticated/admin/ledger'
     | '/_authenticated/admin/licenses'
     | '/_authenticated/admin/orders'
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminGateRoute: typeof AdminGateRoute
   SignUpRoute: typeof SignUpRoute
+  LoginSignUpRoute: typeof LoginSignUpRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -315,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/sign-up': {
+      id: '/login/sign-up'
+      path: '/login/sign-up'
+      fullPath: '/login/sign-up'
+      preLoaderRoute: typeof LoginSignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/user': {
@@ -512,6 +532,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminGateRoute: AdminGateRoute,
   SignUpRoute: SignUpRoute,
+  LoginSignUpRoute: LoginSignUpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

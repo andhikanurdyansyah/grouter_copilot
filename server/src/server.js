@@ -15,7 +15,8 @@
  */
 
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JsonStore } from './store.js';
@@ -106,9 +107,31 @@ function isRateLimited(ip, pathname) {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const authHandler = toNodeHandler(auth.handler);
 
+/**
+ * Resolve the store (JSON) file path.
+ *
+ * SAFETY — test isolation. An unset DATA_FILE used to default to the PRODUCTION
+ * `server/data/store.json` regardless of NODE_ENV, so any `node --test` run that
+ * booted the server wrote QA licenses/orders straight into the production store
+ * (the store-side twin of the auth-DB leak fixed in auth.js). Under NODE_ENV=test
+ * we now DERIVE an isolated per-process temp store unless the caller explicitly
+ * passed `dataFile` or set DATA_FILE.
+ */
+function resolveDataFile(explicit) {
+  if (explicit) return explicit;
+  const envFile = (process.env.DATA_FILE || '').trim();
+  if (envFile) return envFile;
+  const prodFile = path.join(__dirname, '..', 'data', 'store.json');
+  if (process.env.NODE_ENV !== 'test') return prodFile;
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-store-test-'));
+  const file = path.join(dir, 'store.json');
+  console.log(`[server] NODE_ENV=test tanpa DATA_FILE → store terisolasi: ${file}`);
+  return file;
+}
+
 export function createCopilotServer({
   port = 4600,
-  dataFile = path.join(__dirname, '..', 'data', 'store.json'),
+  dataFile = null,
   klikqrisRequestTimeoutMs = 15_000,
   privateKeyPem = null,
   publicKeyPem = null,
@@ -135,7 +158,7 @@ export function createCopilotServer({
     keys = generateKeyPair();
   }
 
-  const store = new JsonStore(dataFile);
+  const store = new JsonStore(resolveDataFile(dataFile));
   if (initialSettings) {
     store.updateSettings(validateSettings(initialSettings));
   }
@@ -361,6 +384,17 @@ export function createCopilotServer({
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
+        // Fail closed on an operator-supplied planKey that does not resolve in the
+        // catalogue: issuing it would create a license that is dead on arrival at
+        // the gateway (PLAN_NOT_FOUND). An empty/absent planKey stays valid (the
+        // "issued without a package" path). Cost/entitlement integrity (A3/D-020).
+        const rawPlanKey = body.planKey;
+        if (rawPlanKey !== undefined && rawPlanKey !== null && String(rawPlanKey).trim() !== '') {
+          const eff = resolveSettings(store.getSettings());
+          if (!findPlan(eff, String(rawPlanKey).trim())) {
+            return sendJson(res, 400, { error: 'unknown planKey', code: 'PLAN_NOT_FOUND', planKey: String(rawPlanKey).trim() });
+          }
+        }
         const { record, token } = service.issue({
           customer: body.customer,
           accountId: body.accountId ?? null,

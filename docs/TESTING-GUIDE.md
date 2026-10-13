@@ -26,19 +26,27 @@ Halaman admin: `/admin` (operasional) · `/admin/licenses` · `/admin/licenses/<
 Semua perintah dijalankan di host (`/home/ubuntu/grouter_copilot`):
 
 ```bash
-# 1) Semua test backend + plugin (server 103 + root 95 = 198 test; terukur 2026-10-13)
+# 1) Semua test backend + plugin (server 113 + root 105 = 218 test; terukur 2026-10-13)
 cd server && npm test && cd .. && npm test
 
 # 2) Typecheck + build frontend
 cd frontend && npx tsc -b --noEmit && npm run build
 
-# 3) Browser E2E (desktop + mobile, 22 test) — SATU PERINTAH:
+# 3) Browser E2E (desktop + mobile, 22 test) — SATU PERINTAH, TERISOLASI:
 npm run e2e
+
+# 4) (Opsional) Smoke produksi READ-ONLY — tanpa mutasi:
+npm run smoke:live
 ```
 
-`npm run e2e` otomatis: membaca Admin Token dari `server/.env` (tidak pernah dicetak), memeriksa pm2 services hidup, lalu menjalankan Playwright di atas **`http://localhost:4601`** (instance produksi lokal). Setiap run membuat akun QA baru (`qa.e2e.*@gmail.com`) — **tidak menyentuh record customer nyata**.
+`npm run e2e` menyalakan **instance terisolasi** (auth DB sintetis + store tmp + mock
+upstream; port **4690/4691**), menjalankan Playwright, lalu membersihkan proses + data tmp.
+**Produksi (localhost:4600/4601) TIDAK disentuh** dan nol akun/order QA dibuat di prod.
+Guard fail-closed (`e2e/isolated/guard.mjs`) menolak target produksi. Untuk cek produksi
+tanpa mutasi, pakai `npm run smoke:live` (health + katalog + admin 401).
 
-Hasil yang diharapkan: `22 passed` (±1 menit; 11 spec × 2 project desktop+mobile, `--list` terverifikasi 2026-10-13). Artefak kegagalan ada di `test-results/`.
+Hasil yang diharapkan: `22 passed` (11 spec × 2 project desktop+mobile). Artefak kegagalan
+ada di `test-results/`.
 
 ---
 
@@ -134,21 +142,23 @@ pm2 restart copilot-backend --update-env
 
 ---
 
-## 7. Hasil Test Aktual (2026-10-13)
+## 7. Hasil Test Aktual (2026-10-13, post P0 E2E-isolation)
 
 | Gate | Hasil |
 |---|---|
-| Server tests (`cd server && npm test`) | **103/103 pass** (NODE_ENV=test) |
-| Root tests (`npm test`) | **95/95 pass** (`NODE_ENV=test node --test "test/**/*.test.js"`) |
+| Server tests (`cd server && npm test`) | **113/113 pass** (NODE_ENV=test) |
+| Root tests (`npm test`) | **105/105 pass** (`NODE_ENV=test node --test "test/**/*.test.js"`) |
+| Isolated E2E (`npm run e2e`) | **22/22 pass** — instance terisolasi (port 4690/4691, mock upstream) |
 | Frontend typecheck + build | pass (`tsc -b` bersih, exit 0; `npm run build` sukses) |
-| Browser E2E `npm run e2e` | **22 test** (11 spec × 2 project: desktop + mobile; `--list` terverifikasi) |
+| Live read-only smoke (`npm run smoke:live`) | PASS (health BE/FE/publik 200; admin 401 tanpa token) |
 | Protected landing checksum | OK (landing/intro/success tidak berubah) |
 | Secret scan | bersih |
 
-> Catatan: angka pada tabel ini adalah baseline terukur 2026-10-13 (dirujuk `docs/handoff-2026-10-13.md`).
-> Nilai lama (server 88/88, root 153/153, E2E "22/22 pass") berasal dari snapshot 2026-10-10/11 dan
-> **tidak lagi berlaku**. Repo ini tidak punya CI workflow (`.github/workflows` tidak ada) — semua gate
-> dijalankan manual di host. E2E 22 = jumlah test (bukan dibuktikan "passed" di run ini).
+> Catatan: angka pada tabel ini adalah baseline terukur 2026-10-13. Nilai lama (server 88/88,
+> root 95/105 lama, E2E "22 test" belum dibuktikan lulus) berasal dari snapshot sebelumnya dan
+> **tidak lagi berlaku**. Repo ini tidak punya CI workflow (`.github/workflows` tidak ada) — semua
+> gate dijalankan manual di host. E2E 22/22 = **benar-benar dijalankan** lulus terhadap instance
+> terisolasi (produksi byte-identik sesudahnya).
 
 Yang dicakup E2E: register→dashboard, checkout sandbox→PENDING terverifikasi server (tanpa klaim palsu), polling berhenti saat dialog ditutup, empty states jujur (licenses/install/usage), session guard 401, logout mematikan sesi server, mobile 390px (drawer + tanpa overflow), admin gate 401, semua halaman admin render, issue lisensi + token sekali-lihat + tidak bocor di list + revoke, orders/ledger/usage/settings tanpa bocor kredensial (apiKey ter-mask), isolasi antar-akun (order A → 404 untuk B), cost integrity (body amount ditolak 400), customer tidak bisa buka admin.
 

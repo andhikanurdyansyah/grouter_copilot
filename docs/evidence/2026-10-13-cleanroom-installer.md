@@ -87,9 +87,14 @@ belum di-set). Bukan defect baru — kebutuhan konfigurasi per-deployment.
 
 ---
 
-## Patch usulan (BELUM di-apply — butuh keputusan PO)
+## Patch D2–D5 — STATUS (diperbarui 2026-10-13)
 
-Line-ref diverifikasi ulang oleh supervisor terhadap `bin/grouter-copilot.js` (578 baris):
+> **SUDAH di-apply.** Patch D2/D3/D4/D5 diterapkan ke `bin/grouter-copilot.js`
+> (lihat `docs/25-pending-implementations.md` §"Patch D2/D3/D4/D5"), dengan regression
+> `test/scaffold-host-compat.test.js` (6/6 hijau: varian CJS + ESM). Bagian "Patch usulan"
+> di bawah adalah snapshot saat temuan (line-ref), disimpan sebagai jejak historis.
+
+Line-ref diverifikasi ulang terhadap `bin/grouter-copilot.js`:
 
 - **D3** — `runInit`, baris **292**: `writeIfMissing('copilot.config.js', CONFIG_TEMPLATE)` →
   pilih ekstensi per `type` `package.json` (`.mjs` untuk `module`, `.cjs` untuk `commonjs`, dst.)

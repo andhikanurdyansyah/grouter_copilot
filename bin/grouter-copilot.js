@@ -119,7 +119,13 @@ const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.
 export async function POST(request) {
   const body = await request.json();
   const { runtime } = await getCopilot();
-  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...body });
+  let result;
+  try {
+    result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...body });
+  } catch (err) {
+    // Never let an unreachable/failed gateway crash the host process.
+    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+  }
   const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   return NextResponse.json(result, { status });
 }
@@ -141,7 +147,13 @@ const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const { runtime } = await getCopilot();
-  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  let result;
+  try {
+    result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  } catch (err) {
+    // Never let an unreachable/failed gateway crash the host process.
+    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+  }
   const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   return res.status(status).json(result);
 }
@@ -156,7 +168,8 @@ export default function CopilotWidget() {
 }
 `;
 
-const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route (Express) — D-021 gateway mode.
+const ROUTE_EXPRESS_TEMPLATE = `// gRouter Copilot chat route — D-021 gateway mode.
+// Works on Express AND on plain node:http (res.status/res.json are shimmed below).
 import { createCopilot, gatewayChat } from "@grouter/copilot";
 import path from "node:path";
 
@@ -173,9 +186,32 @@ async function getCopilot() {
 // The Copilot backend that owns the gRouter service credential (server-side).
 const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.id/api/copilot/chat";
 
+// Express sets res.status()/res.json(); plain node:http does not. Shim them so this
+// handler runs on both (mount it from http.createServer or app.post).
+function ensureExpressLike(res) {
+  if (typeof res.status !== "function") {
+    res.status = (code) => { res.statusCode = code; return res; };
+  }
+  if (typeof res.json !== "function") {
+    res.json = (obj) => {
+      if (!res.getHeader("content-type")) res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(obj));
+      return res;
+    };
+  }
+  return res;
+}
+
 export async function copilotHandler(req, res) {
+  ensureExpressLike(res);
   const { runtime } = await getCopilot();
-  const result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  let result;
+  try {
+    result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  } catch (err) {
+    // Never let an unreachable/failed gateway crash the host process.
+    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+  }
   const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
   res.status(status).json(result);
 }
@@ -217,10 +253,29 @@ export default async function handler(req, res) {
 `;
 
 const HEALTH_NODE_TEMPLATE = `// Host-local Copilot health. Mount this GET handler at /api/copilot/health.
+// Works on plain node:http (call it from http.createServer) AND on Express.
 import { createCopilot, getCopilotHealth } from "@grouter/copilot";
 import path from "node:path";
 
+// Express sets res.status()/res.json(); plain node:http does not. Shim them so the
+// same handler runs on both — without this, plain node:http throws
+// "TypeError: res.status is not a function".
+function ensureExpressLike(res) {
+  if (typeof res.status !== "function") {
+    res.status = (code) => { res.statusCode = code; return res; };
+  }
+  if (typeof res.json !== "function") {
+    res.json = (obj) => {
+      if (!res.getHeader("content-type")) res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(obj));
+      return res;
+    };
+  }
+  return res;
+}
+
 export async function copilotHealthHandler(req, res) {
+  ensureExpressLike(res);
   res.setHeader("cache-control", "no-store");
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
   try {
@@ -251,7 +306,12 @@ function frameworkNote(framework) {
 function printNextSteps(framework, { installed }) {
   const steps = [];
   if (installed) {
-    steps.push('Restart your app so the new .env values are loaded.');
+    steps.push(
+      'Load the new .env before starting your app — Node does NOT read .env automatically.\n' +
+      '  Node >= 20.6:  node --env-file=.env <your-server.js>\n' +
+      '  Node <  20.6:  load the env yourself (e.g. dotenv) BEFORE importing Copilot.\n' +
+      '  Skipping this shows as health 503 {"license":false,"provider":false}.'
+    );
   } else {
     steps.push(
       'Add your license to the server-side environment (.env) — never in browser code or git:\n' +
@@ -265,6 +325,7 @@ function printNextSteps(framework, { installed }) {
   } else {
     steps.push(
       `Wire the chat route: mount copilotHandler from ${routeTarget(framework)} at POST /api/copilot/chat in your server.\n` +
+      'These handlers run on plain node:http (no Express required) and on Express.\n' +
       'If your UI is React, render CopilotChat from "@grouter/copilot/widget" in your own wrapper component.'
     );
   }

@@ -109,6 +109,24 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 
 ---
 
+## Patch D2/D4/D5 — SUDAH DITERAPKAN (2026-10-13)
+
+`bin/grouter-copilot.js` diperbaiki oleh supervisor sesi 2026-10-13; regression test
+`test/scaffold-host-compat.test.js` (RED di kode lama → GREEN di kode baru):
+
+- **D5** — ketiga template route (Express/vanilla, Next App Router, Next Pages Router) kini
+  membungkus `gatewayChat` dengan try/catch → mengembalikan envelope `UPSTREAM_UNAVAILABLE` (502),
+  bukan melempar sehingga host tidak crash.
+- **D4** — scaffold handler Node/vanilla menyertakan shim `ensureExpressLike(res)` (menyediakan
+  `res.status`/`res.json` di `node:http` polos); komentar + langkah installer menyatakan
+  "no Express required". Terverifikasi live: plain `node:http` → JSON 503 (bukan TypeError/reset).
+- **D2** — langkah berikutnya installer kini menjelaskan cara memuat `.env`
+  (`node --env-file=.env …`) + gejala bila dilewati.
+- **D3** — BELUM diterapkan: masih menulis `copilot.config.js` ESM tanpa cek `type` `package.json`.
+  Menunggu keputusan PO.
+
+Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.
+
 ## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI, belum ada tindak lanjut kode)
 
 > **Status worker: COMPLETED** (2026-10-13 05:26 UTC, `deleg_9b1c89a8`). Bukti lengkap + patch

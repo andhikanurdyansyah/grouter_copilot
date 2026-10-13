@@ -139,11 +139,15 @@ app.get('/api/copilot/health', (req, res) => copilotHealthHandler(req, res));
 app.listen(3000);
 ```
 
-> **Penting:** handler hasil scaffold memakai API Express (`res.status(...).json(...)`).
-> Menempelkannya ke `http.createServer` polos akan error nyata:
-> `TypeError: res.status is not a function`. Untuk scaffold "Node.js (vanilla)",
-> pakai Express (atau framework dengan API `res` yang sama). Next.js tidak terdampak
-> (rute hasil scaffold sudah bentuk `route.js`/`handler` Next).
+> **Penting:** handler hasil scaffold berjalan di **plain `node:http` maupun Express**
+> (handler menyertakan shim `res.status`/`res.json`, jadi tidak wajib Express). Terverifikasi live:
+> tanpa shim, memasangnya di `http.createServer` polos dulu error
+> `TypeError: res.status is not a function`; sekarang balas JSON normal.
+> Next.js tidak terdampak (rute hasil scaffold sudah bentuk `route.js`/`handler` Next).
+
+> **Kegagalan gateway tidak mematikan aplikasi Anda.** Jika gateway Copilot tak terjangkau,
+> rute chat balas `502` `{"code":"UPSTREAM_UNAVAILABLE","retryable":true}` — proses server Anda
+> tetap hidup. (Terverifikasi live; sebelumnya error tanpa try/catch bisa mematikan proses host.)
 
 ---
 
@@ -226,7 +230,7 @@ kode keluar `1`) dan selalu mencetak `Cause:` + `Fix:`. Token Anda tidak pernah 
 |---|---|---|
 | Health 503 `license:false` padahal `--env-file` sudah dipakai | `.env` terduplikasi / baris `GROUTER_LICENSE=` lama menang | Pastikan hanya SATU baris `GROUTER_LICENSE=` terbaru di `.env`, restart. |
 | Health 503 `provider:false` | `GROUTER_LICENSE_SERVER` tidak terbaca di proses | Muat `.env` sebelum start (bagian 6), restart. |
-| `TypeError: res.status is not a function` | Handler scaffold dipasang di `http.createServer` polos | Pakai Express / API `res` bergaya Express (bagian 5). |
+| `TypeError: res.status is not a function` | Handler scaffold dipasang di `http.createServer` polos **pada versi lama paket** | Perbarui ke tarball terbaru (handler sekarang ber-shim `res.status/json`; versi lama memerlukan Express). |
 | `Error: listen EADDRINUSE :::3000` | Port dipakai proses lain | Matikan proses lama (cari dengan `ss -ltnp | grep 3000`) atau ganti port. |
 
 ---

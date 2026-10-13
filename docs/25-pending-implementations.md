@@ -127,6 +127,28 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 
 Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.
 
+## Konvensi akun test & pembersihan prod (2026-10-13)
+
+**Aturan:** test E2E ber-session WAJIB memakai instance terisolasi
+(`DATA_FILE` + `AUTH_DB_FILE` menunjuk ke tmp), BUKAN `server/data/` produksi.
+Alasan: pada 2026-10-13 `auth.sqlite` prod ditemukan menumpuk **186 akun QA/test**
+(pola `qa*`/`ntf*`/`lictok*`) dari test yang jalan langsung ke prod.
+
+**Alat pembersih:** `server/scripts/purge-test-accounts.mjs`
+- **Dry-run default** — tidak menghapus apa pun tanpa `--apply`.
+- Hanya menghapus email yang cocok pola test eksplisit (lihat `TEST_PATTERNS` di skrip).
+- **Menolak** menghapus akun yang masih punya order/lisensi di `store.json`.
+- Backup otomatis `auth.sqlite` + `store.json` ke `/home/ubuntu/backups/qa-purge-<stamp>/` sebelum `--apply`.
+- Teruji di instance terisolasi: dry-run tidak mengubah apa pun; proteksi order bekerja;
+  akun non-test utuh.
+
+```bash
+cd server
+node scripts/purge-test-accounts.mjs                      # lihat dulu (aman)
+node scripts/purge-test-accounts.mjs --apply              # hapus
+node scripts/purge-test-accounts.mjs --apply --older-than 7   # hanya yang > 7 hari
+```
+
 ## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI, belum ada tindak lanjut kode)
 
 > **Status worker: COMPLETED** (2026-10-13 05:26 UTC, `deleg_9b1c89a8`). Bukti lengkap + patch

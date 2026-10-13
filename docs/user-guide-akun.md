@@ -149,6 +149,20 @@ Ringkasnya:
 > pembayaran (teks panjang hasil tanda tangan digital), bukan License ID di tabel lisensi.
 > Menukar keduanya membuat instalasi ditolak.
 
+### Kalau token lisensi Anda hilang
+
+Token ditampilkan satu kali setelah pembayaran. Kalau Anda tidak sempat menyalinnya,
+token tidak hilang selamanya:
+
+1. Masuk ke dashboard, buka menu **Install**.
+2. Klik **"Lihat token lisensi (pemulihan token hilang)"**.
+3. Semua lisensi milik akun Anda tampil beserta tombol salin. Tempelkan token itu ke
+   perintah instalasi.
+4. Lisensi yang sudah dicabut operator tidak menampilkan token (memang tidak bisa dipakai lagi) —
+   beli atau perpanjang paket untuk mendapat lisensi baru.
+
+Orang lain tidak bisa melihat token Anda: hanya akun pemilik lisensi yang bisa membukanya.
+
 ---
 
 *Dokumen ini bagian dari dokumentasi resmi gRouter Copilot (source of truth: `docs/35-auth-flow.md`). Dibuat 2026-10-12.*

@@ -109,7 +109,11 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 
 ---
 
-## Temuan verifikasi CLI installer (Worker B, 2026-10-13 — belum ada tindak lanjut kode)
+## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI, belum ada tindak lanjut kode)
+
+> **Status worker: COMPLETED** (2026-10-13 05:26 UTC, `deleg_9b1c89a8`). Bukti lengkap + patch
+> usulan ber-line-ref: **`docs/evidence/2026-10-13-cleanroom-installer.md`**.
+> Patch D2–D5 **BELUM di-apply** — butuh keputusan PO (mengubah kontrak scaffold = keputusan produk).
 
 Verifikasi CLI dari tarball (`npm pack` → fresh install → `install` sukses/gagal → health → chat)
 menemukan kesenjangan yang butuh keputusan/perbaikan kode (docs/install-guide.md ditulis
@@ -133,3 +137,7 @@ sesuai REALITA, bukan niat):
 4. Handler rute Node/Express scaffold memakai API `res.status(...).json(...)` Express —
    di host `http` polos gagal `TypeError: res.status is not a function` (terverifikasi).
    Output installer untuk "Node.js (vanilla)" tidak menyebut kebutuhan Express.
+5. **D5 (temuan baru, 2026-10-13)** — gateway tak terjangkau pada host yang di-scaffold →
+   **proses host CRASH** (unhandled `CopilotError UPSTREAM_UNAVAILABLE`); health tetap
+   melaporkan `provider:true` walau gateway mati (hanya cek keberadaan URL). Butuh try/catch
+   di scaffold route → envelope 502, bukan lempar. Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.

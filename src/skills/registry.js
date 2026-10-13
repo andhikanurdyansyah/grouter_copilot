@@ -46,7 +46,6 @@ export class SkillRegistry {
 
     const names = this.list().map((s) => s.name);
     if (names.length === 0) return null;
-    if (names.length === 1) return names[0];
 
     if (!message || typeof message !== 'string') return null;
 

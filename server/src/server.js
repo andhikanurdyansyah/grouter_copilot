@@ -643,17 +643,22 @@ export function createCopilotServer({
             bodyEn: `Order ${o.id.slice(0, 14)}… was confirmed server-side and the license was issued.`,
             createdAt: o.paidAt ?? o.createdAt ?? now,
           }));
-        } else if (String(o.status).toUpperCase() === 'PENDING' && (o.expiredAt == null || o.expiredAt > now)) {
-          emitted.push(store.addNotification({
-            accountId: account.id,
-            type: 'order.pending',
-            dedupeKey: o.id,
-            title: 'Menunggu pembayaran',
-            titleEn: 'Awaiting payment',
-            body: `Order ${o.id.slice(0, 14)}… menunggu pembayaran QRIS.`,
-            bodyEn: `Order ${o.id.slice(0, 14)}… is awaiting QRIS payment.`,
-            createdAt: o.createdAt ?? now,
-          }));
+        } else if (String(o.status).toUpperCase() === 'PENDING') {
+          // KlikQRIS expiredAt arrives as a STRING ("2026-10-13 12:12:40") —
+          // normalize before comparing (raw string > number is always false).
+          const expMs = o.expiredAt != null ? new Date(String(o.expiredAt).replace(' ', 'T') + (String(o.expiredAt).includes('Z') || String(o.expiredAt).includes('+') ? '' : 'Z')).getTime() : null;
+          if (expMs == null || Number.isNaN(expMs) || expMs > now) {
+            emitted.push(store.addNotification({
+              accountId: account.id,
+              type: 'order.pending',
+              dedupeKey: o.id,
+              title: 'Menunggu pembayaran',
+              titleEn: 'Awaiting payment',
+              body: `Order ${o.id.slice(0, 14)}… menunggu pembayaran QRIS.`,
+              bodyEn: `Order ${o.id.slice(0, 14)}… is awaiting QRIS payment.`,
+              createdAt: o.createdAt ?? now,
+            }));
+          }
         }
       }
       for (const l of myLicenses) {
@@ -783,6 +788,56 @@ export function createCopilotServer({
         return sendJson(res, 200, {
           order: sanitizeOrder(order, { includeQr: true }),
           license: license ? sanitizeLicense(license, { includeToken: true }) : null,
+        });
+      })();
+    }
+
+    // ── Workstream A: lost-token recovery ──
+    // The signed license token is persisted at issue time (record.token) and is
+    // customer-facing material (NOT a provider credential, D-021), so the
+    // safest coherent recovery is authenticated re-display to the OWNER only —
+    // exactly what the payment success page already does via /orders/latest,
+    // now generalized to every license the account owns.
+    // Security model (tested in license-token.test.js):
+    //   - session required (401 otherwise);
+    //   - cross-account access impossible (license must belong to the session's
+    //     account → 404, no existence leak);
+    //   - revoked licenses return metadata WITHOUT the token (a revoked token
+    //     is useless: gateway + installer both reject it);
+    //   - response carries `expiresAt` so the UI can show "expired" guidance
+    //     (an expired token still re-displays: renewal is the documented path).
+    if (req.method === 'GET' && url.pathname === '/api/me/licenses') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const items = store.licensesByAccount(account.id)
+          .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+          .map((l) => {
+            const revoked = l.revokedAt != null;
+            const out = sanitizeLicense(l, { includeToken: !revoked });
+            if (revoked) out.token = null;
+            return out;
+          });
+        return sendJson(res, 200, { licenses: items, total: items.length });
+      })();
+    }
+
+    if (req.method === 'GET' && url.pathname?.startsWith('/api/me/licenses/') && url.pathname.endsWith('/token')) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const id = url.pathname.slice('/api/me/licenses/'.length, -'/token'.length);
+        const license = store.licensesByAccount(account.id).find((l) => l.id === id);
+        // 404 (not 403) for foreign ids: no existence oracle for other tenants.
+        if (!license) return sendJson(res, 404, { error: 'not found' });
+        if (license.revokedAt != null) {
+          return sendJson(res, 409, { error: 'license revoked', license: sanitizeLicense(license) });
+        }
+        return sendJson(res, 200, {
+          license: sanitizeLicense(license, { includeToken: true }),
+          recoveredAt: Date.now(),
         });
       })();
     }

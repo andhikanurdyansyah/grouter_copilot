@@ -259,9 +259,9 @@ export function CustomerOverview() {
       )}
 
       {/* ── 4-KPI Bento Metric Cards (Moda page-48) ── */}
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         {/* KPI 1: Status lisensi */}
-        <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
+        <div className='rounded-xl border border-border/80 bg-card/80 p-3 sm:p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
             {isId ? 'Status lisensi' : 'License status'}
           </p>
@@ -271,7 +271,7 @@ export function CustomerOverview() {
               <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-[#39D6A0] opacity-75' />
               <span className='relative inline-flex rounded-full size-3 bg-[#39D6A0] shadow-[0_0_10px_#39D6A0]' />
             </span>
-            <span className='text-2xl sm:text-3xl font-extrabold text-foreground'>
+            <span className='text-xl sm:text-2xl font-extrabold text-foreground'>
               {myLicense ? (String(myLicense.status ?? 'active') === 'active' ? (isId ? 'Aktif' : 'Active') : String(myLicense.status)) : (isId ? 'Belum ada' : 'None')}
             </span>
           </div>
@@ -281,11 +281,11 @@ export function CustomerOverview() {
         </div>
 
         {/* KPI 2: Sisa kuota token */}
-        <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
+        <div className='rounded-xl border border-border/80 bg-card/80 p-3 sm:p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
             {isId ? 'Sisa kuota token' : 'Remaining tokens'}
           </p>
-          <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
+          <p className='mt-2 text-xl sm:text-2xl font-extrabold font-mono tracking-tight text-foreground'>
             {myUsage?.quotaLimit != null
               ? Math.max(0, myUsage.quotaLimit - (myUsage.usedTokens ?? 0)).toLocaleString('id-ID')
               : '—'}
@@ -298,11 +298,11 @@ export function CustomerOverview() {
         </div>
 
         {/* KPI 3: Permintaan 14h */}
-        <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
+        <div className='rounded-xl border border-border/80 bg-card/80 p-3 sm:p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
             {isId ? 'Permintaan · 14h' : 'Requests · 14d'}
           </p>
-          <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
+          <p className='mt-2 text-xl sm:text-2xl font-extrabold font-mono tracking-tight text-foreground'>
             {(myLedger.data?.total ?? 0).toLocaleString('id-ID')}
           </p>
           <p className='mt-2 text-[11px] text-[#39D6A0] font-medium flex items-center gap-1'>
@@ -311,11 +311,11 @@ export function CustomerOverview() {
         </div>
 
         {/* KPI 4: Berakhir */}
-        <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine'>
+        <div className='rounded-xl border border-border/80 bg-card/80 p-3 sm:p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
             {isId ? 'Berakhir' : 'Expires'}
           </p>
-          <p className='mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground'>
+          <p className='mt-2 text-xl sm:text-2xl font-extrabold font-mono tracking-tight text-foreground'>
             {myLicense?.expiresAt ? new Date(myLicense.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
           </p>
           <p className='mt-2 text-[11px] text-muted-foreground'>

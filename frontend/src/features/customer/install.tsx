@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { fetchMe, fetchMyLedger } from '@/lib/grouter-api'
+import { fetchMe, fetchMyLedger, api } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Copy, Check, Slash, Plus, Terminal, Shield, CircleAlert } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 /**
@@ -37,6 +38,29 @@ export function CustomerInstall() {
   const meQ = useQuery({ queryKey: ['me'], queryFn: fetchMe })
   const myLicense = meQ.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? meQ.data?.licenses?.[0]
   const licenseId = myLicense?.id ?? '—'
+
+  // Lost-token recovery (Workstream A): every owned license is retrievable
+  // with its signed token — server withholds tokens for revoked licenses.
+  const licensesQ = useQuery({
+    queryKey: ['my-licenses'],
+    queryFn: async () =>
+      (await api.get('/me/licenses')).data as {
+        licenses: Array<{
+          id: string; planKey?: string | null; status?: string | null
+          expiresAt?: string | null; revokedAt?: number | null; token?: string | null
+        }>
+        total: number
+      },
+  })
+  const [tokenFor, setTokenFor] = useState<string | null>(null)
+  const tokenQ = useQuery({
+    queryKey: ['license-token', tokenFor],
+    enabled: !!tokenFor,
+    queryFn: async () =>
+      (await api.get(`/me/licenses/${tokenFor}/token`)).data as {
+        license: { id: string; token?: string | null; revokedAt?: number | null; expiresAt?: string | null }
+      },
+  })
 
   const ledgerQ = useQuery({
     queryKey: ['my-ledger-live'],
@@ -66,7 +90,6 @@ export function CustomerInstall() {
   // lisensi (Ed25519, tampil SEKALI di halaman sukses pembayaran), BUKAN
   // License ID. Menempelkan License ID gagal nyata: "Malformed license".
   const installCmd = 'npx @grouter/copilot install --license <TOKEN-LISENSI>'
-  const successUrl = '/success'
 
   const handleCopyCmd = () => {
     navigator.clipboard.writeText(installCmd)
@@ -261,12 +284,13 @@ export function CustomerInstall() {
                       : 'Replace <TOKEN-LISENSI> with your license token (shown ONCE on the payment success page) — not the License ID. Lost it? Reopen the latest order success page.'}
                   </div>
                   <div className='pt-1'>
-                    <a
-                      href={successUrl}
+                    <button
+                      type='button'
+                      onClick={() => setTokenFor(myLicense?.id ?? null)}
                       className='inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7778FF] hover:underline'
                     >
-                      {isId ? 'Buka token lisensi (halaman sukses) →' : 'Open license token (success page) →'}
-                    </a>
+                      {isId ? 'Lihat token lisensi (pemulihan token hilang) →' : 'View license token (lost-token recovery) →'}
+                    </button>
                   </div>
                   <div className='text-emerald-400 flex items-center gap-2'>
                     <span>✓</span> <span>{isId ? 'Lisensi tervalidasi (Ed25519)' : 'License validated (Ed25519)'}</span>
@@ -634,6 +658,76 @@ export function CustomerInstall() {
               type='button'
               onClick={() => setExampleSkillOpen(false)}
               className='w-full sm:w-auto text-xs bg-[#7778FF] hover:bg-[#8F90FF] text-white font-semibold'
+            >
+              {isId ? 'Tutup' : 'Close'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ── Lost-token recovery modal (Workstream A) ── */}
+      <Dialog open={!!tokenFor} onOpenChange={(open) => !open && setTokenFor(null)}>
+        <DialogContent className='sm:max-w-lg border-border bg-card/95 backdrop-blur-xl shadow-2xl'>
+          <DialogHeader>
+            <DialogTitle className='text-base font-bold text-foreground'>
+              {isId ? 'Token lisensi' : 'License token'}
+            </DialogTitle>
+            <DialogDescription className='text-xs text-muted-foreground'>
+              {isId
+                ? 'Token bertanda tangan Ed25519 milik lisensi Anda — gunakan untuk perintah install/perpanjangan. Jangan dibagikan.'
+                : 'The Ed25519-signed token for your license — used by install/renewal commands. Do not share it.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {tokenQ.isPending && (
+            <p className='text-xs text-muted-foreground py-4 text-center'>{isId ? 'Memuat…' : 'Loading…'}</p>
+          )}
+          {tokenQ.isError && (
+            <div className='rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive font-medium'>
+              {isId ? 'Gagal memuat token — coba lagi.' : 'Failed to load the token — try again.'}
+            </div>
+          )}
+          {tokenQ.data?.license && (tokenQ.data.license.revokedAt != null || !tokenQ.data.license.token) && (
+            <div className='rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-500 font-medium'>
+              {isId
+                ? 'Lisensi ini sudah dicabut — token tidak ditampilkan. Beli/perpanjang paket untuk lisensi baru, lalu install dengan token baru.'
+                : 'This license has been revoked — the token is withheld. Purchase/renew a plan for a new license, then install with the new token.'}
+            </div>
+          )}
+          {tokenQ.data?.license?.token && (
+            <div className='space-y-3 py-1'>
+              <div className='relative rounded-xl border border-border/80 bg-muted/60 p-3.5 font-mono text-[11px] leading-relaxed break-all select-all max-h-40 overflow-y-auto'>
+                {tokenQ.data.license.token}
+              </div>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Button
+                  type='button'
+                  size='sm'
+                  className='h-8 text-xs bg-[#7778FF] hover:bg-[#8F90FF] text-white font-semibold'
+                  onClick={() => {
+                    navigator.clipboard.writeText(String(tokenQ.data.license.token))
+                      .then(() => toast.success(isId ? 'Token disalin' : 'Token copied'))
+                      .catch(() => toast.error(isId ? 'Gagal menyalin' : 'Copy failed'));
+                  }}
+                >
+                  <Copy className='size-3.5 mr-1' /> {t('btn_copy')}
+                </Button>
+                <span className='text-[11px] text-muted-foreground'>
+                  {isId ? 'Berlaku hingga: ' : 'Valid until: '}
+                  <span className='font-mono'>
+                    {tokenQ.data.license.expiresAt
+                      ? new Date(tokenQ.data.license.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : '—'}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className='pt-2'>
+            <Button
+              type='button'
+              onClick={() => setTokenFor(null)}
+              className='text-xs bg-muted text-foreground'
             >
               {isId ? 'Tutup' : 'Close'}
             </Button>

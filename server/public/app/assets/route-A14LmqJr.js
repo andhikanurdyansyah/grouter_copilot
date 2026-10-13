@@ -1,0 +1,1 @@
+import{p as e}from"./index-DaGMF2B-.js";var t=e;export{t as component};

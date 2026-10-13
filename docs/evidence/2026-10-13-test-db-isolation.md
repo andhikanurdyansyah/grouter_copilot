@@ -83,29 +83,53 @@ bash scripts/run-e2e.sh --reporter=list
 → 22 passed (3.5m)     # was 16 passed / 6 failed
 ```
 
-## Finding 3 — `store.json` (production) also carries QA residue
+## Finding 3 — `store.json` (production) also carried QA residue — CLEANED
 
 While cleaning up, the production `store.json` was found to hold QA/test accounts and
 their artifacts (from E2E runs that intentionally target production):
 
-- accounts: **44 → 41 match a test pattern** (3 real: `rrpiwpiw`, `gjproproject`, `gjproproject1`)
-- orders: 23 (17 owned by test accounts) · licenses: 26 (22 with `accountId: null`,
-  mostly `QA-E2E …` fixtures) · usage rows: 188 · notifications: 2 (1 test)
+- accounts: **44 → 41 matched a test pattern** (3 real: `rrpiwpiw`, `gjproproject`, `gjproproject1`)
+- licenses: 26 → 24 were test residue (22 with `accountId: null` named `QA-E2E …`, 2 owned by
+  test accounts); orders: 23 → 17 owned by test accounts; usage: 188 → 3 belonged to a revoked
+  test license; notifications: 2 → 1 test.
 
-`purge-test-accounts.mjs` cleans the **auth** DB only, so this store-side residue is
-**left untouched pending an explicit decision** (it is production data; the destructive
-store cleanup needs the PO's OK — backup-first, dry-run first).
+`purge-test-accounts.mjs` cleans the **auth** DB only, so a dedicated, equally conservative
+tool was added: **`server/scripts/purge-store-residue.mjs`** (dry-run by default, timestamped
+backup, atomic temp+rename write). It removes ONLY:
+test-pattern accounts (explicit regexes, mirroring the auth sweeper) and the licenses/orders/
+usage/notifications they own; plus `accountId:null` licenses whose `customer` matches `^QA-E2E`.
+
+**Preserved (verified in the dry-run output):** the one real package-less license
+`lic_mv4rqo7s_1` — **`Mini CRM Demo (Jie acceptance)`** — with its **185 usage rows**, and the
+real customer license `lic_mv61r2yb_1` (`3B · 3 months`, from the PAID order `ord_mv61l3p8_9ahk`).
+
+Result (`--apply`, then `pm2 restart copilot-backend` to reload the file):
+
+| collection    | before | after | removed |
+|---------------|-------:|------:|--------:|
+| accounts      | 44     | 3     | 41      |
+| licenses      | 26     | 2     | 24      |
+| orders        | 23     | 6     | 17      |
+| usage         | 188    | 185   | 3       |
+| notifications | 2      | 1     | 1       |
+
+Post-restart live verification: `/api/health` 200 `status:ok`; admin API
+`/api/admin/{licenses,orders,ledger,usage}` all 200; API reports **2 licenses / 6 orders**
+(matches disk); `store.json` sha256 stable across two reads (no stray in-memory rewrite).
+Backup: `/home/ubuntu/backups/store-residue-20261013T174314Z/` (store.json + auth.sqlite).
 
 ## Residual state after this session
 
 - `server/data/auth.sqlite`: **3 real accounts** (verified), 0 test accounts.
-- `server/data/store.json`: **unchanged** — 41 test-pattern accounts + their orders/licenses
-  remain, pending a decision (see Finding 3).
+- `server/data/store.json`: **cleaned** — 3 accounts (real), 2 licenses (real), 6 orders,
+  185 usage rows (all belonging to the real `Mini CRM Demo` license), 1 notification.
 - Backups taken: `/home/ubuntu/backups/qa-purge-20261013T165948Z/`,
-  `/home/ubuntu/backups/qa-purge-20261013T170927Z/`, `/home/ubuntu/backups/qa-purge-20261013T173153Z/`.
+  `/home/ubuntu/backups/qa-purge-20261013T170927Z/`, `/home/ubuntu/backups/qa-purge-20261013T173153Z/`,
+  `/home/ubuntu/backups/store-residue-20261013T174314Z/`.
 
 ## Files touched
 
 - **Modified:** `server/src/auth.js` (test-DB isolation), `e2e/helpers.mjs`,
   `e2e/specs/customer.spec.mjs`, `server/scripts/purge-test-accounts.mjs` (`iso-probe-*` pattern)
-- **Added:** `server/test/auth-db-isolation.test.js`, this file
+- **Added:** `server/test/auth-db-isolation.test.js`, `server/scripts/purge-store-residue.mjs`,
+  this file

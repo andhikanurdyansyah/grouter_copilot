@@ -32,8 +32,12 @@
      secara digital (Ed25519). **Hanya token yang diterima CLI.**
      Menempelkan License ID ke perintah install menghasilkan kegagalan nyata:
      `✗ License validation failed — License rejected by the server` / `Cause: Malformed license` (keluar dengan kode 1).
-5. Token ditampilkan **satu kali** di halaman sukses setelah pembayaran dan tidak dapat
-   diambil ulang dari dashboard saat ini. Jika hilang sebelum terpasang, hubungi tim gRouter.
+5. Token ditampilkan **satu kali** di halaman sukses setelah pembayaran. **Jika hilang:**
+   buka dashboard → **Install** → klik **"Lihat token lisensi (pemulihan token hilang)"** —
+   token semua lisensi milik akun Anda bisa dilihat ulang dan disalin dari sana
+   (`GET /api/me/licenses/:id/token`, hanya untuk pemilik akun). Lisensi yang dicabut
+   tidak menampilkan token (tidak berguna — install/chat dengan token itu otomatis ditolak);
+   beli/perpanjang paket untuk lisensi baru.
 
 ---
 

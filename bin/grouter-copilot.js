@@ -35,6 +35,18 @@ function hasAppRouter() {
   return existsSync(path.join(cwd, 'app')) || existsSync(path.join(cwd, 'src/app'));
 }
 
+/**
+ * Detect the host project's module system from package.json `type`.
+ * 'module' for ESM, 'commonjs' otherwise (Node's default when `type` is absent).
+ * D3: scaffolding ESM files into a CommonJS project makes the host fail at boot
+ * with "Cannot use import statement outside a module". We therefore pick both
+ * the file EXTENSION and the template variant to match the host.
+ */
+function detectModuleType() {
+  const pkg = readPkg();
+  return pkg?.type === 'module' ? 'module' : 'commonjs';
+}
+
 function ensureDir(rel) {
   mkdirSync(path.join(cwd, rel), { recursive: true });
 }
@@ -288,6 +300,141 @@ export async function copilotHealthHandler(req, res) {
 }
 `;
 
+// ---- CommonJS variants (D3) --------------------------------------------------
+// When the host project is CommonJS we must NOT scaffold ESM. These `.cjs`
+// templates use require()/dynamic import() so they load in a CJS host.
+
+const CONFIG_TEMPLATE_CJS = `// gRouter Copilot configuration (CommonJS).
+// @grouter/copilot ships as ESM, so load it with dynamic import() from CJS.
+module.exports = {
+  // TANPA override model: gateway memakai model default paket lisensi
+  // (server-side policy). Set model hanya jika ada di allowlist paket Anda,
+  // atau via env GROUTER_MODEL.
+  model: process.env.GROUTER_MODEL || undefined,
+  systemPrompt:
+    "You are a helpful assistant for this application. Answer only from the data provided. If data is insufficient, say so.",
+  skills: [require("./skills/example.cjs")],
+  limits: {
+    maxRows: 500,
+    maxContextBytes: 32000,
+    maxTokens: 2000
+  }
+};
+// NOTE (D-021): no adapter credentials here. The gRouter service credential
+// lives ONLY in the Copilot backend; your app calls the backend gateway.
+`;
+
+const SKILL_TEMPLATE_CJS = (name) => `// ${name} skill — example read-only skill (CommonJS).
+module.exports = {
+  name: "${name}",
+  description: "Describe what this skill does so the copilot can pick it.",
+  parameters: {
+    type: "object",
+    properties: {
+      // example: period: { type: "string", enum: ["7d", "30d"] }
+    },
+    required: []
+  },
+  readOnly: true,
+  async run(args, ctx) {
+    // Access your own DB/service here. ctx.user holds the current user.
+    // Return ONLY the data needed to answer; never secrets or PII.
+    return { note: "replace this with real data", user: ctx.user?.id ?? null };
+  }
+};
+`;
+
+const ROUTE_NODE_CJS_TEMPLATE = `// gRouter Copilot chat route — D-021 gateway mode (CommonJS).
+// Works on Express AND on plain node:http (res.status/res.json are shimmed below).
+const path = require("node:path");
+
+let copilot;
+async function getCopilot() {
+  if (!copilot) {
+    const { createCopilot } = await import("@grouter/copilot");
+    copilot = await createCopilot({
+      configPath: path.join(process.cwd(), "copilot.config.cjs")
+    });
+  }
+  return copilot;
+}
+
+// The Copilot backend that owns the gRouter service credential (server-side).
+const GATEWAY_URL = process.env.GROUTER_GATEWAY_URL || "https://copilot.grouter.id/api/copilot/chat";
+
+// Express sets res.status()/res.json(); plain node:http does not. Shim them so this
+// handler runs on both (mount it from http.createServer or app.post).
+function ensureExpressLike(res) {
+  if (typeof res.status !== "function") {
+    res.status = (code) => { res.statusCode = code; return res; };
+  }
+  if (typeof res.json !== "function") {
+    res.json = (obj) => {
+      if (!res.getHeader("content-type")) res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(obj));
+      return res;
+    };
+  }
+  return res;
+}
+
+async function copilotHandler(req, res) {
+  ensureExpressLike(res);
+  const { runtime } = await getCopilot();
+  const { gatewayChat } = await import("@grouter/copilot");
+  let result;
+  try {
+    result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
+  } catch (err) {
+    // Never let an unreachable/failed gateway crash the host process.
+    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+  }
+  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
+  res.status(status).json(result);
+}
+
+module.exports = { copilotHandler };
+`;
+
+const HEALTH_NODE_CJS_TEMPLATE = `// Host-local Copilot health — CommonJS.
+// Mount this GET handler at /api/copilot/health.
+// Works on plain node:http (call it from http.createServer) AND on Express.
+const path = require("node:path");
+
+// Express sets res.status()/res.json(); plain node:http does not. Shim them so the
+// same handler runs on both — without this, plain node:http throws
+// "TypeError: res.status is not a function".
+function ensureExpressLike(res) {
+  if (typeof res.status !== "function") {
+    res.status = (code) => { res.statusCode = code; return res; };
+  }
+  if (typeof res.json !== "function") {
+    res.json = (obj) => {
+      if (!res.getHeader("content-type")) res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(obj));
+      return res;
+    };
+  }
+  return res;
+}
+
+async function copilotHealthHandler(req, res) {
+  ensureExpressLike(res);
+  res.setHeader("cache-control", "no-store");
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const { createCopilot, getCopilotHealth } = await import("@grouter/copilot");
+    const copilot = await createCopilot({ configPath: path.join(process.cwd(), "copilot.config.cjs") });
+    const health = getCopilotHealth(copilot, process.env.GROUTER_LICENSE);
+    return res.status(health.status === "ok" ? 200 : 503).json(health);
+  } catch {
+    return res.status(503).json({ status: "unavailable" });
+  }
+}
+
+module.exports = { copilotHealthHandler };
+`;
+
 /**
  * Mask a credential-shaped value for display. The full value must NEVER be
  * printed by the CLI — logs, CI output, and terminal scrollback are shared.
@@ -350,23 +497,35 @@ function runInit(opts = {}, { silent = false } = {}) {
     console.log(`✔ Framework detected: ${framework.label}${frameworkNote(framework)}`);
   }
 
-  results.push(writeIfMissing('copilot.config.js', CONFIG_TEMPLATE));
-  ensureDir('skills');
-  results.push(writeIfMissing('skills/example.js', SKILL_TEMPLATE('example')));
+  // D3: match the host project's module system. Next.js is ESM-only, so its
+  // templates never change; for Node/Express we pick ESM (.js) vs CJS (.cjs).
+  const modType = detectModuleType();
+  const isCjs = framework.name !== 'next' && modType === 'commonjs';
 
-  const target = routeTarget(framework);
+  results.push(writeIfMissing(isCjs ? 'copilot.config.cjs' : 'copilot.config.js',
+    isCjs ? CONFIG_TEMPLATE_CJS : CONFIG_TEMPLATE));
+  ensureDir('skills');
+  results.push(writeIfMissing(isCjs ? 'skills/example.cjs' : 'skills/example.js',
+    isCjs ? SKILL_TEMPLATE_CJS('example') : SKILL_TEMPLATE('example')));
+
+  const target = isCjs
+    ? routeTarget(framework).replace(/\.js$/, '.cjs')
+    : routeTarget(framework);
   const template = framework.name === 'next' && !framework.appRouter
     ? ROUTE_PAGES_TEMPLATE
-    : framework.name === 'next' ? ROUTE_APP_TEMPLATE : ROUTE_EXPRESS_TEMPLATE;
+    : framework.name === 'next' ? ROUTE_APP_TEMPLATE
+    : isCjs ? ROUTE_NODE_CJS_TEMPLATE : ROUTE_EXPRESS_TEMPLATE;
   ensureDir(path.dirname(target));
   results.push(writeIfMissing(target, template));
 
   const healthTarget = framework.name === 'next'
     ? (framework.appRouter ? 'app/api/copilot/health/route.js' : path.join(path.dirname(target), 'health.js'))
-    : framework.name === 'express' ? 'routes/copilot-health.js' : 'src/copilot-health.js';
+    : framework.name === 'express' ? (isCjs ? 'routes/copilot-health.cjs' : 'routes/copilot-health.js')
+    : (isCjs ? 'src/copilot-health.cjs' : 'src/copilot-health.js');
   ensureDir(path.dirname(healthTarget));
   results.push(writeIfMissing(healthTarget, framework.name === 'next'
-    ? (framework.appRouter ? HEALTH_APP_TEMPLATE : HEALTH_PAGES_TEMPLATE) : HEALTH_NODE_TEMPLATE));
+    ? (framework.appRouter ? HEALTH_APP_TEMPLATE : HEALTH_PAGES_TEMPLATE)
+    : isCjs ? HEALTH_NODE_CJS_TEMPLATE : HEALTH_NODE_TEMPLATE));
 
   if (framework.name === 'next') {
     ensureDir('components');

@@ -129,15 +129,22 @@ test('scaffolded chat routes call the backend gateway, never a local provider ad
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-for (const { name, dependencies, setup, target } of [
-  { name: 'Next App Router', dependencies: { next: '14.0.0' }, setup: 'app', target: 'app/api/copilot/health/route.js' },
-  { name: 'Next Pages Router', dependencies: { next: '14.0.0' }, setup: 'pages', target: 'pages/api/copilot/health.js' },
-  { name: 'Express', dependencies: { express: '4.0.0' }, target: 'routes/copilot-health.js' },
+// D3: the scaffold matches the host module system. A package WITHOUT "type"
+// is CommonJS -> .cjs files; WITH "type":"module" -> .js files. Both must work.
+for (const { name, dependencies, setup, target, type } of [
+  { name: 'Next App Router (ESM)', dependencies: { next: '14.0.0' }, setup: 'app', target: 'app/api/copilot/health/route.js' },
+  { name: 'Next Pages Router (ESM)', dependencies: { next: '14.0.0' }, setup: 'pages', target: 'pages/api/copilot/health.js' },
+  { name: 'Express (CommonJS default)', dependencies: { express: '4.0.0' }, target: 'routes/copilot-health.cjs', type: 'commonjs' },
+  { name: 'Express (ESM)', dependencies: { express: '4.0.0' }, target: 'routes/copilot-health.js', type: 'module' },
+  { name: 'Node vanilla (CommonJS default)', dependencies: {}, target: 'src/copilot-health.cjs', type: 'commonjs' },
+  { name: 'Node vanilla (ESM)', dependencies: {}, target: 'src/copilot-health.js', type: 'module' },
 ]) {
   test(`init creates host-local health route for ${name} without replacing existing files`, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'copilot-cli-health-'));
     try {
-      writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies }));
+      const pkg = { dependencies };
+      if (type) pkg.type = type;
+      writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
       if (setup) mkdirSync(path.join(dir, setup));
       const run = () => spawnSync(process.execPath, [path.join(root, 'bin/grouter-copilot.js'), 'init'], { cwd: dir, encoding: 'utf8' });
       assert.equal(run().status, 0);

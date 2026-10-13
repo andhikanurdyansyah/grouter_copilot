@@ -12,7 +12,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -48,6 +48,50 @@ ${gatewayUrl ? `process.env.GROUTER_GATEWAY_URL = ${JSON.stringify(gatewayUrl)};
 let crash = null;
 process.on("uncaughtException", (e) => { crash = e.code || e.message; });
 const mod = await import(${JSON.stringify('file://' + path.join(cwd, handlerFile))});
+const fn = mod[${JSON.stringify(exportName)}];
+const server = http.createServer(async (req, res) => {
+  let b = "";
+  req.on("data", (c) => (b += c));
+  req.on("end", async () => {
+    req.body = b ? JSON.parse(b) : {};
+    try { await fn(req, res); }
+    catch (e) { res.statusCode = 599; res.end(JSON.stringify({ threw: e.code || String(e) })); }
+  });
+});
+await new Promise((r) => server.listen(${port}, r));
+const call = () => fetch("http://127.0.0.1:${port}${urlPath}", {
+  method: ${JSON.stringify(method)},
+  headers: { "content-type": "application/json" },
+  body: ${body ? `JSON.stringify(${JSON.stringify(body)})` : 'undefined'},
+});
+let status = 0, text = "", alive = false;
+try { const r = await call(); status = r.status; text = await r.text(); } catch (e) { text = "FETCH_FAILED:" + e.message; }
+try { const r2 = await call(); alive = r2.status > 0; } catch { alive = false; }
+console.log("RESULT " + JSON.stringify({ status, body: text, alive, crash }));
+process.exit(0);
+`;
+  const workerPath = path.join(cwd, '__worker.mjs');
+  writeFileSync(workerPath, worker, 'utf8');
+  const run = spawnSync(process.execPath, [workerPath], { cwd, encoding: 'utf8', timeout: 30_000 });
+  const line = (run.stdout || '').split('\n').find((l) => l.startsWith('RESULT '));
+  assert.ok(line, `worker produced no RESULT (stdout=${run.stdout} stderr=${run.stderr})`);
+  return JSON.parse(line.slice('RESULT '.length));
+}
+
+/**
+ * Same as runWorker but for a CommonJS handler (.cjs) — the worker itself stays
+ * ESM and loads the CJS module via createRequire semantics (dynamic import of a
+ * .cjs file returns its module.exports as `default`).
+ */
+function runWorkerCjs(cwd, handlerFile, exportName, { port, gatewayUrl, method, urlPath, body }) {
+  const worker = `
+import http from "node:http";
+import { createRequire } from "node:module";
+${gatewayUrl ? `process.env.GROUTER_GATEWAY_URL = ${JSON.stringify(gatewayUrl)};` : ''}
+let crash = null;
+process.on("uncaughtException", (e) => { crash = e.code || e.message; });
+const require = createRequire(${JSON.stringify(path.join(cwd, '__worker.mjs'))});
+const mod = require(${JSON.stringify(path.join(cwd, handlerFile))});
 const fn = mod[${JSON.stringify(exportName)}];
 const server = http.createServer(async (req, res) => {
   let b = "";
@@ -128,4 +172,49 @@ test('D2: installer next-steps explain how to load .env (not just "restart")', (
 test('D4 (docs): installer no longer implies Express is required for vanilla Node', () => {
   const bin = readFileSync(path.join(root, 'bin/grouter-copilot.js'), 'utf8');
   assert.match(bin, /no Express required/, 'next-steps must state handlers run on plain node:http');
+});
+
+test('D3: a CommonJS host gets .cjs scaffolds that boot (no ESM in a CJS package)', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-d3-cjs-'));
+  try {
+    // No "type" field -> Node treats the project as CommonJS.
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'd3-cjs', version: '1.0.0' }), 'utf8');
+    const nm = path.join(dir, 'node_modules', '@grouter');
+    mkdirSync(nm, { recursive: true });
+    symlinkSync(root, path.join(nm, 'copilot'), 'dir');
+    const init = spawnSync(process.execPath, [path.join(root, 'bin/grouter-copilot.js'), 'init'], {
+      cwd: dir, encoding: 'utf8', timeout: 15_000,
+    });
+    assert.equal(init.status, 0, init.stderr || init.stdout);
+
+    // Must scaffold CJS files, NOT ESM.
+    assert.ok(existsSync(path.join(dir, 'copilot.config.cjs')), 'expected copilot.config.cjs');
+    assert.ok(!existsSync(path.join(dir, 'copilot.config.js')), 'must not write ESM copilot.config.js');
+    assert.ok(existsSync(path.join(dir, 'src/copilot-health.cjs')), 'expected src/copilot-health.cjs');
+    const health = readFileSync(path.join(dir, 'src/copilot-health.cjs'), 'utf8');
+    assert.match(health, /module\.exports/, 'CJS health must export via module.exports');
+    assert.doesNotMatch(health, /^import /m, 'CJS health must not use ESM import');
+
+    // The CJS health handler must actually load and answer on plain node:http.
+    const out = runWorkerCjs(dir, 'src/copilot-health.cjs', 'copilotHealthHandler', {
+      port: 14703, method: 'GET', urlPath: '/api/copilot/health',
+    });
+    assert.notEqual(out.status, 599, `CJS handler threw: ${out.body}`);
+    assert.equal(out.status, 503, `expected 503, got ${out.status} (body=${out.body})`);
+    assert.equal(JSON.parse(out.body).status, 'unavailable');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('D3: an ESM host still gets .js ESM scaffolds (unchanged)', () => {
+  const dir = scaffold(); // scaffold() writes type:module
+  try {
+    assert.ok(existsSync(path.join(dir, 'copilot.config.js')), 'ESM host keeps copilot.config.js');
+    assert.ok(!existsSync(path.join(dir, 'copilot.config.cjs')), 'ESM host must not get .cjs');
+    const cfg = readFileSync(path.join(dir, 'copilot.config.js'), 'utf8');
+    assert.match(cfg, /^import /m, 'ESM host config uses import');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

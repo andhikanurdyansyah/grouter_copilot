@@ -96,3 +96,11 @@ untuk MVP — Copilot memakai SATU service credential (D-021). Auto-provisioning
 2. Install lock: runtime gate (public package, refuses to run without license).
 3. Api key delivery: Option A (handoff), not Option B (proxy).
 4. Auto-provisioning: deferred.
+
+> **Verifikasi CLI 2026-10-13 (Worker B):** seluruh alur install di atas telah diuji nyata
+> dari tarball `grouter-copilot-0.1.0.tgz` (bukan registry — npm BELUM dipublish): install
+> sukses menulis 4 kunci `GROUTER_*` + scaffold, semua jalur gagal fail-closed (exit 1,
+> tanpa file), token selalu disamarkan `****…last4`. Kontrak `/api/resolve` D-021 terbukti:
+> respons hanya `baseUrl` + `gatewayUrl` + `licensePublicKey`, tanpa `apiKey`.
+> Panduan pelanggan hasil verifikasi: `docs/install-guide.md`; temuan lengkap:
+> `docs/25-pending-implementations.md` (§ verifikasi CLI installer).

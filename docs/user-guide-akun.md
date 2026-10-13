@@ -129,4 +129,26 @@ Di luar tiga alamat itu, jangan pernah memasukkan password akun gRouter Anda.
 
 ---
 
+## 9. Memasang Copilot ke Aplikasi Anda (Langkah Berikutnya)
+
+Setelah punya lisensi aktif, pemasangan Copilot di aplikasi Anda dilakukan dengan satu
+perintah di server aplikasi. Panduan lengkap langkah demi langkah (termasuk contoh output
+nyata, cara memasang rute chat, cek kesehatan, dan tabel masalah-masalah saat instalasi)
+ada di dokumen terpisah: **`docs/install-guide.md`**.
+
+Ringkasnya:
+
+1. Pasang paket Copilot di aplikasi Anda mengikuti panduan instalasi (distribusi saat ini
+   berupa file paket dari tim gRouter — bukan dari npm publik).
+2. Jalankan perintah instalasi yang ditampilkan di halaman sukses setelah pembayaran
+   (perintah itu sudah berisi token lisensi Anda — salin utuh).
+3. Restart aplikasi Anda agar pengaturan baru terbaca, lalu ikuti panduan instalasi
+   untuk menghubungkan Copilot ke data aplikasi Anda dan mencoba pertanyaan pertama.
+
+> Penting: yang dipakai perintah instalasi adalah **token lisensi** dari halaman sukses
+> pembayaran (teks panjang hasil tanda tangan digital), bukan License ID di tabel lisensi.
+> Menukar keduanya membuat instalasi ditolak.
+
+---
+
 *Dokumen ini bagian dari dokumentasi resmi gRouter Copilot (source of truth: `docs/35-auth-flow.md`). Dibuat 2026-10-12.*

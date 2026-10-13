@@ -106,3 +106,30 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
    'none'); disuntik ke semua response frontend; terverifikasi live.
 4. Halaman `/app/sign-up` (SPA) masih mode showcase/simulasi — pertahankan sebagai demo komponen;
    jalur sign-up resmi = `/login/sign-up`.
+
+---
+
+## Temuan verifikasi CLI installer (Worker B, 2026-10-13 — belum ada tindak lanjut kode)
+
+Verifikasi CLI dari tarball (`npm pack` → fresh install → `install` sukses/gagal → health → chat)
+menemukan kesenjangan yang butuh keputusan/perbaikan kode (docs/install-guide.md ditulis
+sesuai REALITA, bukan niat):
+
+1. **Dashboard customer menampilkan perintah install dengan LICENSE ID, bukan token lisensi.**
+   `frontend/src/features/customer/install.tsx` membangun
+   `npx @grouter/copilot install --license ${licenseId}` — padahal CLI menuntut token
+   Ed25519 (terverifikasi: License ID → 403 `Malformed license`). Halaman `/success`
+   (`server/public/success.html`) sudah benar (menyertakan `license.token` dari
+   `GET /api/orders/latest`). Token hanya tampil SEKALI setelah pembayaran; dashboard
+   belum punya jalur "lihat ulang token" → pemilik lisensi lama bisa kehilangan akses install.
+2. **Node tidak memuat `.env` otomatis** — scaffold + langkah "Restart your app" membuat
+   runtime gagal (`health` 503 license:false, chat 500 `License verifier is not configured`)
+   jika customer tidak memakai `node --env-file=.env` (≥20.6) atau memuat env sendiri.
+   Pertimbangkan: cetak peringatan eksplisit di output installer atau scaffold loader env.
+3. **`copilot.config.js` hasil scaffold adalah ESM** (`import …`) tanpa guard `package.json`
+   `"type":"module"` — di proyek CommonJS tanpa `type`, `createCopilot` gagal
+   `Cannot use import statement outside a module` (terverifikasi live). Pertimbangkan
+   scaffold `.mjs` atau deteksi type proyek.
+4. Handler rute Node/Express scaffold memakai API `res.status(...).json(...)` Express —
+   di host `http` polos gagal `TypeError: res.status is not a function` (terverifikasi).
+   Output installer untuk "Node.js (vanilla)" tidak menyebut kebutuhan Express.

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchMe } from '@/lib/grouter-api'
+import { Link } from '@tanstack/react-router'
+import { fetchMe, fetchMyLedger } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,10 +13,23 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Copy, Check, Slash, Plus, Terminal, Shield } from 'lucide-react'
+import { Copy, Check, Slash, Plus, Terminal, Shield, CircleAlert } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
 
+/**
+ * Installation wizard — REAL state machine, no fake completion.
+ *
+ * States are derived from server data only:
+ *   1. License   → /api/me has an active license?
+ *   2. CLI       → NEVER auto-completed: installation runs on the CUSTOMER'S
+ *                  server, which the Copilot backend cannot observe. The
+ *                  customer proves it in step 3 via the first real request.
+ *   3. Gateway   → the Copilot backend CAN observe the ledger: any successful
+ *                  request proves the customer's host reached the gateway.
+ *   4. First run → ≥1 'ok' record in the account ledger.
+ *   5. Active    → an 'ok' record within the last 7 days.
+ */
 export function CustomerInstall() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
@@ -24,31 +38,38 @@ export function CustomerInstall() {
   const myLicense = meQ.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? meQ.data?.licenses?.[0]
   const licenseId = myLicense?.id ?? '—'
 
+  const ledgerQ = useQuery({
+    queryKey: ['my-ledger-live'],
+    queryFn: () => fetchMyLedger(50),
+    refetchInterval: 30_000,
+  })
+  const records = (ledgerQ.data?.records ?? []) as Array<{
+    status: string; createdAt: number | null
+  }>
+  const okRecords = records.filter((r) => r.status === 'ok')
+  const hasEverRun = okRecords.length > 0
+  const lastOkAt = okRecords.reduce<number | null>(
+    (acc, r) => (r.createdAt && (acc == null || r.createdAt > acc) ? r.createdAt : acc),
+    null,
+  )
+  const activeLast7d = lastOkAt != null && Date.now() - lastOkAt <= 7 * 86_400_000
+
   const [copiedId, setCopiedId] = useState(false)
   const [copiedCmd, setCopiedCmd] = useState(false)
-  const [activeStep, setActiveStep] = useState(3)
   const [addSkillOpen, setAddSkillOpen] = useState(false)
   const [exampleSkillOpen, setExampleSkillOpen] = useState(false)
   const [copiedSkillExample, setCopiedSkillExample] = useState(false)
   const [newSkillName, setNewSkillName] = useState('')
   const [newSkillAllowed, setNewSkillAllowed] = useState(true)
 
-  const commandText = isId
-    ? `$ npx @grouter/copilot install --license ${licenseId}
-✓ Lisensi tervalidasi (Ed25519)
-✓ .env server diperbarui (nilai tidak dicetak)
-✓ Route gateway: /api/copilot/chat
-
-Siap. Mount <CopilotChat /> di UI Anda`
-    : `$ npx @grouter/copilot install --license ${licenseId}
-✓ License validated (Ed25519)
-✓ Server .env updated (values never printed)
-✓ Gateway route: /api/copilot/chat
-
-Ready. Mount <CopilotChat /> in your UI`
+  // Per kontrak CLI (verifikasi live 2026-10-13): --license menerima TOKEN
+  // lisensi (Ed25519, tampil SEKALI di halaman sukses pembayaran), BUKAN
+  // License ID. Menempelkan License ID gagal nyata: "Malformed license".
+  const installCmd = 'npx @grouter/copilot install --license <TOKEN-LISENSI>'
+  const successUrl = '/success'
 
   const handleCopyCmd = () => {
-    navigator.clipboard.writeText(commandText)
+    navigator.clipboard.writeText(installCmd)
     setCopiedCmd(true)
     setTimeout(() => setCopiedCmd(false), 2000)
   }
@@ -59,15 +80,15 @@ Ready. Mount <CopilotChat /> in your UI`
     setTimeout(() => setCopiedId(false), 2000)
   }
 
+  // NOTE: the skill list below is an EXAMPLE scaffold for the customer's own
+  // app (skills live in the customer's codebase, not in the Copilot backend).
+  // Toggles here are a local preview of how the allow/deny flag works; the
+  // authoritative registry is the customer's copilot.config.js.
   const [skills, setSkills] = useState([
-    { name: 'orders.list', allowed: true, usage: '58% ' + (isId ? 'permintaan' : 'requests') },
-    { name: 'tickets.list', allowed: true, usage: '31% ' + (isId ? 'permintaan' : 'requests') },
-    { name: 'customers.find', allowed: true, usage: '11% ' + (isId ? 'permintaan' : 'requests') },
-    {
-      name: 'billing.write',
-      allowed: false,
-      usage: isId ? 'Ditolak · tulis tidak diizinkan' : 'Denied · write not permitted',
-    },
+    { name: 'orders.list', allowed: true },
+    { name: 'tickets.list', allowed: true },
+    { name: 'customers.find', allowed: true },
+    { name: 'billing.write', allowed: false },
   ])
 
   const toggleSkill = (idx: number) => {
@@ -80,23 +101,66 @@ Ready. Mount <CopilotChat /> in your UI`
     e.preventDefault()
     if (!newSkillName.trim()) return
     const formatted = newSkillName.trim().toLowerCase()
-    setSkills((prev) => [
-      ...prev,
-      {
-        name: formatted,
-        allowed: newSkillAllowed,
-        usage: newSkillAllowed ? `0% ${isId ? 'permintaan (baru)' : 'requests (new)'}` : (isId ? 'Ditolak · tidak diizinkan' : 'Denied · not permitted'),
-      },
-    ])
+    setSkills((prev) => [...prev, { name: formatted, allowed: newSkillAllowed }])
     setNewSkillName('')
     setAddSkillOpen(false)
   }
 
+  type StepState = 'done' | 'active' | 'waiting' | 'blocked'
+  const step1: StepState = myLicense ? 'done' : 'blocked'
+  const step2: StepState = step1 === 'done' ? 'active' : 'waiting'
+  const step3: StepState = hasEverRun ? 'done' : step2 === 'active' ? 'active' : 'waiting'
+  const step4: StepState = hasEverRun ? 'done' : 'waiting'
+  const step5: StepState = activeLast7d ? 'done' : hasEverRun ? 'active' : 'waiting'
+  const currentStep = [step1, step2, step3, step4, step5].findIndex((s) => s === 'active') + 1
+    || (step1 === 'blocked' ? 1 : 5)
+
+  const stepIcon = (state: StepState, n: number) => {
+    if (state === 'done') {
+      return (
+        <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-bold shadow-xs'>
+          ✓
+        </div>
+      )
+    }
+    if (state === 'active') {
+      return (
+        <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-[#7778FF] text-white text-xs font-bold shadow-[0_0_8px_#7778FF]'>
+          {n}
+        </div>
+      )
+    }
+    if (state === 'blocked') {
+      return (
+        <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-500 text-xs font-bold'>
+          !
+        </div>
+      )
+    }
+    return (
+      <div className='flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground text-xs font-bold'>
+        {n}
+      </div>
+    )
+  }
+
+  const stepStateCls = (state: StepState) =>
+    state === 'active'
+      ? 'bg-[#7778FF]/15 border border-[#7778FF]/50 card-3d shadow-sm'
+      : state === 'blocked'
+        ? 'bg-amber-500/10 border border-amber-500/40'
+        : state === 'done'
+          ? 'hover:bg-muted/40 cursor-default'
+          : 'opacity-70 hover:opacity-100 cursor-default'
+
+  const stateLabel = (state: StepState, doneText: string, waitingText: string) =>
+    state === 'done' ? doneText : state === 'blocked' ? (isId ? 'Diperlukan dulu' : 'Required first') : waitingText
+
   return (
-    <div className='space-y-6 animate-fade-in'>
+    <div className='space-y-5 sm:space-y-6 animate-fade-in'>
       {/* ── Top Header Row ── */}
       <div>
-        <h1 className='text-2xl font-bold tracking-tight text-foreground'>
+        <h1 className='text-xl sm:text-2xl font-bold tracking-tight text-foreground'>
           {isId ? 'Lisensi & instalasi' : 'Licenses & setup'}
         </h1>
         <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
@@ -114,12 +178,10 @@ Ready. Mount <CopilotChat /> in your UI`
         </div>
       )}
 
-            {/* ── Grid: Left Steps & 3D Terminal (8 cols) + Right Stepper (4 cols) ── */}
-
-      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6'>
         {/* Left Column (8 cols) */}
-        <div className='lg:col-span-8 space-y-5'>
-          {/* 3D Metadata Strip */}
+        <div className='lg:col-span-8 space-y-4 sm:space-y-5'>
+          {/* Metadata Strip */}
           <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-border/80 bg-card/80 p-4 card-3d hover-lift-3d bevel-shine text-xs'>
             <div className='flex items-center justify-between sm:justify-start gap-2'>
               <span className='text-muted-foreground'>{isId ? 'ID lisensi' : 'License ID'}</span>
@@ -136,14 +198,18 @@ Ready. Mount <CopilotChat /> in your UI`
 
             <div className='flex items-center gap-2'>
               <span className='text-muted-foreground'>{isId ? 'Status' : 'Status'}: </span>
-              <span className='font-semibold text-[#39D6A0] inline-flex items-center gap-1.5'>
-                <span className='relative flex size-2'>
-                  <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-[#39D6A0] opacity-75' />
-                  <span className='relative inline-flex rounded-full size-2 bg-[#39D6A0]' />
-                </span>
-                {myLicense
-                  ? (isId ? 'Aktif · Ed25519' : 'Active · Ed25519')
-                  : (isId ? 'Belum ada lisensi aktif' : 'No active license')}
+              <span className={cn('font-semibold inline-flex items-center gap-1.5', myLicense ? 'text-[#39D6A0]' : 'text-muted-foreground')}>
+                {myLicense ? (
+                  <>
+                    <span className='relative flex size-2'>
+                      <span className='animate-radar-ping absolute inline-flex h-full w-full rounded-full bg-[#39D6A0] opacity-75' />
+                      <span className='relative inline-flex rounded-full size-2 bg-[#39D6A0]' />
+                    </span>
+                    {isId ? 'Aktif · Ed25519' : 'Active · Ed25519'}
+                  </>
+                ) : (
+                  (isId ? 'Belum ada lisensi aktif' : 'No active license')
+                )}
               </span>
             </div>
 
@@ -157,12 +223,10 @@ Ready. Mount <CopilotChat /> in your UI`
             </div>
           </div>
 
-          {/* 3D Terminal Box (Mac styled traffic lights & glow) */}
+          {/* Terminal Box */}
           <div className='rounded-xl border border-border/80 bg-[#0B0F17] card-3d shadow-2xl overflow-hidden bevel-shine'>
-            {/* Terminal Header */}
             <div className='flex items-center justify-between px-4 py-3 border-b border-border/60 bg-[#10141D]'>
               <div className='flex items-center gap-2'>
-                {/* Traffic lights */}
                 <div className='size-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/50' />
                 <div className='size-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/50' />
                 <div className='size-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/50' />
@@ -175,6 +239,7 @@ Ready. Mount <CopilotChat /> in your UI`
                 size='sm'
                 variant='outline'
                 onClick={handleCopyCmd}
+                disabled={!myLicense}
                 className='h-7 gap-1.5 border-border bg-card/60 hover:bg-muted text-xs interactive-press'
               >
                 {copiedCmd ? <Check className='size-3 text-emerald-500' /> : <Copy className='size-3' />}
@@ -182,33 +247,62 @@ Ready. Mount <CopilotChat /> in your UI`
               </Button>
             </div>
 
-            {/* Terminal Body */}
-            <div className='p-5 font-mono text-xs text-slate-200 space-y-2.5 leading-relaxed selection:bg-[#7778FF]/30'>
-              <div className='flex items-center gap-2 text-indigo-300'>
-                <span className='text-emerald-400 font-bold'>$</span> npx @grouter/copilot install --license GRC-••••
-              </div>
-              <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>{isId ? 'Lisensi tervalidasi (Ed25519)' : 'License validated (Ed25519)'}</span>
-              </div>
-              <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>{isId ? '.env server diperbarui (nilai tidak dicetak)' : 'Server .env updated (values never printed)'}</span>
-              </div>
-              <div className='text-emerald-400 flex items-center gap-2'>
-                <span>✓</span> <span>{isId ? 'Route gateway: /api/copilot/chat' : 'Gateway route: /api/copilot/chat'}</span>
-              </div>
-              <div className='pt-2 text-slate-100 flex items-center gap-2'>
-                <span className='text-emerald-400 font-bold'>{isId ? 'Siap.' : 'Ready.'}</span>
-                <span>{isId ? 'Mount <CopilotChat /> di UI Anda' : 'Mount <CopilotChat /> in your UI'}</span>
-                <span className='inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse' />
-              </div>
-              <div className='pt-3 text-muted-foreground text-[11px] border-t border-slate-800/80'>
-                # {isId ? 'Paket npm publik belum tersertifikasi; gunakan tarball lokal untuk uji' : 'Public npm package not certified yet; use local tarball for testing'}
-              </div>
+            {/* Terminal Body — REAL command only when a license exists */}
+            <div className='p-5 font-mono text-xs text-slate-200 space-y-2.5 leading-relaxed selection:bg-[#7778FF]/30 overflow-x-auto'>
+              {myLicense ? (
+                <>
+                  <div className='flex items-center gap-2 text-indigo-300 whitespace-nowrap'>
+                    <span className='text-emerald-400 font-bold'>$</span>
+                    <span className='select-all'>npx @grouter/copilot install --license &lt;TOKEN-LISENSI&gt;</span>
+                  </div>
+                  <div className='text-amber-300/90 text-[11px] leading-relaxed border-l-2 border-amber-400/50 pl-2.5'>
+                    {isId
+                      ? 'Ganti <TOKEN-LISENSI> dengan token lisensi Anda (tampil SEKALI di halaman sukses pembayaran) — bukan License ID. Token hilang? Buka halaman sukses order terakhir.'
+                      : 'Replace <TOKEN-LISENSI> with your license token (shown ONCE on the payment success page) — not the License ID. Lost it? Reopen the latest order success page.'}
+                  </div>
+                  <div className='pt-1'>
+                    <a
+                      href={successUrl}
+                      className='inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7778FF] hover:underline'
+                    >
+                      {isId ? 'Buka token lisensi (halaman sukses) →' : 'Open license token (success page) →'}
+                    </a>
+                  </div>
+                  <div className='text-emerald-400 flex items-center gap-2'>
+                    <span>✓</span> <span>{isId ? 'Lisensi tervalidasi (Ed25519)' : 'License validated (Ed25519)'}</span>
+                  </div>
+                  <div className='text-emerald-400 flex items-center gap-2'>
+                    <span>✓</span> <span>{isId ? '.env server diperbarui (nilai tidak dicetak)' : 'Server .env updated (values never printed)'}</span>
+                  </div>
+                  <div className='text-emerald-400 flex items-center gap-2'>
+                    <span>✓</span> <span>{isId ? 'Route gateway: /api/copilot/chat' : 'Gateway route: /api/copilot/chat'}</span>
+                  </div>
+                  <div className='pt-2 text-slate-100 flex items-center gap-2'>
+                    <span className='text-emerald-400 font-bold'>{isId ? 'Siap.' : 'Ready.'}</span>
+                    <span>{isId ? 'Mount <CopilotChat /> di UI Anda' : 'Mount <CopilotChat /> in your UI'}</span>
+                    <span className='inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse' />
+                  </div>
+                  <div className='pt-3 text-muted-foreground text-[11px] border-t border-slate-800/80'>
+                    # {isId
+                      ? 'Paket npm publik belum tersedia; instal dari tarball (lihat panduan instalasi).'
+                      : 'Public npm package not available yet; install from the tarball (see the install guide).'}
+                  </div>
+                </>
+              ) : (
+                <div className='flex items-center gap-2 text-slate-400'>
+                  <CircleAlert className='size-4 text-amber-400 shrink-0' />
+                  <span>
+                    {isId
+                      ? 'Perintah instalasi muncul di sini setelah Anda memiliki lisensi.'
+                      : 'The install command appears here once you have a license.'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Skill Read-Only Card with interactive toggles */}
-          <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d hover-lift-3d bevel-shine space-y-4'>
+          {/* Skill Read-Only Card */}
+          <div className='rounded-xl border border-border/80 bg-card/80 p-4 sm:p-5 card-3d hover-lift-3d bevel-shine space-y-4'>
             <div className='flex items-start justify-between'>
               <div>
                 <h2 className='text-base font-bold text-foreground'>
@@ -216,8 +310,8 @@ Ready. Mount <CopilotChat /> in your UI`
                 </h2>
                 <p className='text-xs text-muted-foreground mt-0.5'>
                   {isId
-                    ? 'Copilot hanya membaca data yang Anda definisikan secara eksplisit. Klik untuk uji toggle status.'
-                    : 'Copilot only reads data that you explicitly configure. Click to test status toggle.'}
+                    ? 'Contoh registry di copilot.config.js aplikasi Anda — Copilot hanya membaca data yang Anda daftarkan.'
+                    : 'Example registry from your app’s copilot.config.js — Copilot only reads data you register.'}
                 </p>
               </div>
 
@@ -231,13 +325,14 @@ Ready. Mount <CopilotChat /> in your UI`
               </Button>
             </div>
 
-            <div className='space-y-2 font-mono text-xs'>
+            <div className='grid gap-2 sm:grid-cols-2 font-mono text-xs'>
               {skills.map((skill, i) => (
-                <div
+                <button
                   key={i}
+                  type='button'
                   onClick={() => toggleSkill(i)}
                   className={cn(
-                    'flex items-center justify-between rounded-xl p-3 transition-all cursor-pointer interactive-press',
+                    'flex items-center justify-between rounded-xl p-3 transition-all text-left interactive-press',
                     skill.allowed
                       ? 'border border-border/80 bg-card/70 hover:border-emerald-500/40 text-foreground'
                       : 'border border-[#FF667A]/30 bg-[#FF667A]/10 text-[#FF667A]'
@@ -256,150 +351,123 @@ Ready. Mount <CopilotChat /> in your UI`
                     <span className='font-bold'>{skill.name}</span>
                   </div>
                   <span className='font-sans text-[11px] text-muted-foreground'>
-                    {skill.usage}
+                    {skill.allowed ? (isId ? 'diizinkan' : 'allowed') : (isId ? 'ditolak' : 'denied')}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: 3D Interactive Stepper (4 cols) */}
-        <div className='lg:col-span-4 space-y-5'>
-          <div className='rounded-xl border border-border/80 bg-card/80 p-5 card-3d bevel-shine space-y-4'>
+        {/* Right Column: REAL state stepper (4 cols) */}
+        <div className='lg:col-span-4 space-y-4 sm:space-y-5'>
+          <div className='rounded-xl border border-border/80 bg-card/80 p-4 sm:p-5 card-3d bevel-shine space-y-4'>
             <div className='flex items-center justify-between'>
               <h2 className='text-base font-bold text-foreground'>
-                {isId ? 'Langkah instalasi' : 'Installation steps'}
+                {isId ? 'Progres instalasi' : 'Setup progress'}
               </h2>
               <span className='text-xs font-mono font-bold text-[#7778FF] rounded-md bg-[#7778FF]/10 px-2 py-0.5 border border-[#7778FF]/20'>
-                {activeStep}/5
+                {currentStep}/5
               </span>
             </div>
 
-            {/* Glowing Stepper Progress Bar */}
             <div className='h-2 w-full rounded-full bg-muted/60 overflow-hidden'>
               <div
                 className='h-full rounded-full bg-gradient-to-r from-[#7778FF] to-[#4CC9F0] transition-all duration-500 shadow-[0_0_8px_#7778FF]'
-                style={{ width: `${(activeStep / 5) * 100}%` }}
+                style={{ width: `${(currentStep / 5) * 100}%` }}
               />
             </div>
 
-            {/* Steps List */}
-            <div className='space-y-3 pt-2 text-xs'>
-              {/* Step 1 */}
-              <div
-                onClick={() => setActiveStep(1)}
-                className={cn(
-                  'flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-all',
-                  activeStep === 1 ? 'bg-[#7778FF]/10 border border-[#7778FF]/40' : 'hover:bg-muted/40'
-                )}
-              >
-                <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-bold shadow-xs'>
-                  ✓
-                </div>
+            <div className='space-y-2.5 pt-1 text-xs'>
+              {/* Step 1 — License (server truth) */}
+              <div className={cn('flex items-start gap-3 p-2.5 rounded-xl', stepStateCls(step1))}>
+                {stepIcon(step1, 1)}
                 <div className='space-y-0.5'>
                   <div className='font-semibold text-foreground'>
                     {isId ? 'Beli & aktivasi lisensi' : 'Purchase & activate license'}
                   </div>
                   <div className='text-muted-foreground text-[11px]'>
-                    {isId ? 'Selesai 12 Okt 2026 · Pro' : 'Completed 12 Oct 2026 · Pro'}
+                    {stateLabel(
+                      step1,
+                      `${isId ? 'Aktif' : 'Active'} · ${String(myLicense?.planKey ?? '')}`,
+                      isId ? 'Belum ada lisensi' : 'No license yet',
+                    )}
                   </div>
+                  {step1 === 'blocked' && (
+                    <Link to='/user/orders' className='text-[11px] font-semibold text-[#7778FF] hover:underline'>
+                      {isId ? 'Beli paket →' : 'Buy a plan →'}
+                    </Link>
+                  )}
                 </div>
               </div>
 
-              {/* Step 2 */}
-              <div
-                onClick={() => setActiveStep(2)}
-                className={cn(
-                  'flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-all',
-                  activeStep === 2 ? 'bg-[#7778FF]/10 border border-[#7778FF]/40' : 'hover:bg-muted/40'
-                )}
-              >
-                <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-bold shadow-xs'>
-                  ✓
-                </div>
+              {/* Step 2 — CLI (cannot be observed remotely; honest waiting) */}
+              <div className={cn('flex items-start gap-3 p-2.5 rounded-xl', stepStateCls(step2))}>
+                {stepIcon(step2, 2)}
                 <div className='space-y-0.5'>
                   <div className='font-semibold text-foreground'>
                     {isId ? 'Jalankan CLI install' : 'Run install CLI'}
                   </div>
-                  <div className='text-muted-foreground text-[11px]'>
-                    {isId ? 'Di environment server aplikasi host.' : 'On the host application server environment.'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 3 (Active) */}
-              <div
-                onClick={() => setActiveStep(3)}
-                className={cn(
-                  'flex items-start gap-3 p-3 rounded-xl border border-[#7778FF]/50 bg-[#7778FF]/15 card-3d shadow-sm'
-                )}
-              >
-                <div className='flex size-6 shrink-0 items-center justify-center rounded-full bg-[#7778FF] text-white text-xs font-bold shadow-[0_0_8px_#7778FF]'>
-                  3
-                </div>
-                <div className='space-y-1'>
-                  <div className='font-bold text-foreground'>
-                    {isId ? 'Definisikan skill' : 'Define skills'}
-                  </div>
                   <div className='text-muted-foreground text-[11px] leading-relaxed'>
                     {isId
-                      ? 'Edit skills/example.js; ekspos hanya data read-only.'
-                      : 'Edit skills/example.js; expose read-only data only.'}
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => setExampleSkillOpen(true)}
-                    className='text-[11px] font-semibold text-[#7778FF] hover:underline flex items-center gap-1 pt-1 interactive-press'
-                  >
-                    {isId ? 'Buka contoh skill →' : 'Open example skill →'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div
-                onClick={() => setActiveStep(4)}
-                className={cn(
-                  'flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-all opacity-70 hover:opacity-100'
-                )}
-              >
-                <div className='flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground text-xs font-bold'>
-                  4
-                </div>
-                <div className='space-y-0.5'>
-                  <div className='font-semibold text-foreground'>
-                    Mount CopilotChat
-                  </div>
-                  <div className='text-muted-foreground text-[11px]'>
-                    {isId ? 'Tambahkan widget ke UI dan wire route.' : 'Add widget to UI and wire route.'}
+                      ? 'Di server aplikasi Anda — tidak dapat diverifikasi dari sini; langkah 3 membuktikannya.'
+                      : 'On your app server — cannot be verified from here; step 3 proves it.'}
                   </div>
                 </div>
               </div>
 
-              {/* Step 5 */}
-              <div
-                onClick={() => setActiveStep(5)}
-                className={cn(
-                  'flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-all opacity-70 hover:opacity-100'
-                )}
-              >
-                <div className='flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground text-xs font-bold'>
-                  5
+              {/* Step 3 — Gateway reachable (ledger truth) */}
+              <div className={cn('flex items-start gap-3 p-3 rounded-xl', stepStateCls(step3))}>
+                {stepIcon(step3, 3)}
+                <div className='space-y-1'>
+                  <div className='font-bold text-foreground'>
+                    {isId ? 'Gateway terhubung' : 'Gateway connected'}
+                  </div>
+                  <div className='text-muted-foreground text-[11px] leading-relaxed'>
+                    {hasEverRun
+                      ? (isId ? 'Terverifikasi: host Anda sudah sukses memanggil gateway.' : 'Verified: your host has successfully reached the gateway.')
+                      : (isId
+                        ? 'Menunggu permintaan pertama dari host Anda (dicek otomatis).'
+                        : 'Waiting for the first request from your host (auto-checked).')}
+                  </div>
                 </div>
+              </div>
+
+              {/* Step 4 — First conversation (ledger truth) */}
+              <div className={cn('flex items-start gap-3 p-2.5 rounded-xl', stepStateCls(step4))}>
+                {stepIcon(step4, 4)}
                 <div className='space-y-0.5'>
                   <div className='font-semibold text-foreground'>
-                    {isId ? 'Uji percakapan pertama' : 'Test first conversation'}
+                    {isId ? 'Percakapan pertama' : 'First conversation'}
                   </div>
                   <div className='text-muted-foreground text-[11px]'>
-                    {isId ? 'Permintaan akan muncul di Penggunaan AI.' : 'Requests will appear in AI Usage.'}
+                    {hasEverRun
+                      ? (isId ? 'Selesai — muncul di Penggunaan AI.' : 'Done — visible in AI Usage.')
+                      : (isId ? 'Uji tanya dari widget Copilot Anda.' : 'Ask something from your Copilot widget.')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 5 — Active usage (ledger truth, 7d) */}
+              <div className={cn('flex items-start gap-3 p-2.5 rounded-xl', stepStateCls(step5))}>
+                {stepIcon(step5, 5)}
+                <div className='space-y-0.5'>
+                  <div className='font-semibold text-foreground'>
+                    {isId ? 'Pemakaian aktif' : 'Active usage'}
+                  </div>
+                  <div className='text-muted-foreground text-[11px]'>
+                    {activeLast7d
+                      ? (isId ? 'Aktif 7 hari terakhir.' : 'Active in the last 7 days.')
+                      : lastOkAt
+                        ? (isId ? `Terakhir aktif ${new Date(lastOkAt).toLocaleDateString('id-ID')}.` : `Last active ${new Date(lastOkAt).toLocaleDateString('en-US')}.`)
+                        : (isId ? 'Belum ada permintaan.' : 'No requests yet.')}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Renewal Box with 3D Border */}
+          {/* Renewal Box */}
           <div className='rounded-xl border border-border/80 bg-card/80 p-4 card-3d bevel-shine text-xs space-y-1.5'>
             <div className='font-bold text-foreground flex items-center gap-2'>
               <Shield className='size-3.5 text-emerald-400' /> Renewal
@@ -479,7 +547,7 @@ Ready. Mount <CopilotChat /> in your UI`
         </DialogContent>
       </Dialog>
 
-      {/* ── Example Skill Definition Modal (Moda contextual modal pattern) ── */}
+      {/* Example Skill Definition Modal */}
       <Dialog open={exampleSkillOpen} onOpenChange={setExampleSkillOpen}>
         <DialogContent className='sm:max-w-lg border-border bg-card/95 backdrop-blur-xl shadow-2xl'>
           <DialogHeader>
@@ -500,7 +568,6 @@ Ready. Mount <CopilotChat /> in your UI`
           </DialogHeader>
 
           <div className='space-y-3 py-2'>
-            {/* Code container */}
             <div className='relative rounded-xl border border-border/80 bg-muted/70 dark:bg-muted/30 text-foreground dark:text-slate-200 p-4 font-mono text-xs overflow-x-auto shadow-inner leading-relaxed'>
               <div className='flex justify-between items-center pb-2 mb-2 border-b border-border/60 text-[11px] text-muted-foreground'>
                 <span>// Export default skill object</span>

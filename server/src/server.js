@@ -622,6 +622,116 @@ export function createCopilotServer({
       });
     }
 
+    // ── In-app notifications (durable, per-account, idempotent) ──
+    // Event sync runs lazily on read and derives ONLY from persisted state:
+    //   order PAID, license issued, license expiring ≤7d (daily dedupe),
+    //   license revoked. No fake events, no client-supplied content.
+    const syncAccountNotifications = (account) => {
+      const now = Date.now();
+      const myOrders = store.listOrders().filter((o) => o.accountId === account.id);
+      const myLicenses = store.licensesByAccount(account.id);
+      const emitted = [];
+      for (const o of myOrders) {
+        if (String(o.status).toUpperCase() === 'PAID') {
+          emitted.push(store.addNotification({
+            accountId: account.id,
+            type: 'order.paid',
+            dedupeKey: o.id,
+            title: 'Pembayaran diterima',
+            titleEn: 'Payment received',
+            body: `Order ${o.id.slice(0, 14)}… telah dikonfirmasi server dan lisensi diterbitkan.`,
+            bodyEn: `Order ${o.id.slice(0, 14)}… was confirmed server-side and the license was issued.`,
+            createdAt: o.paidAt ?? o.createdAt ?? now,
+          }));
+        } else if (String(o.status).toUpperCase() === 'PENDING' && (o.expiredAt == null || o.expiredAt > now)) {
+          emitted.push(store.addNotification({
+            accountId: account.id,
+            type: 'order.pending',
+            dedupeKey: o.id,
+            title: 'Menunggu pembayaran',
+            titleEn: 'Awaiting payment',
+            body: `Order ${o.id.slice(0, 14)}… menunggu pembayaran QRIS.`,
+            bodyEn: `Order ${o.id.slice(0, 14)}… is awaiting QRIS payment.`,
+            createdAt: o.createdAt ?? now,
+          }));
+        }
+      }
+      for (const l of myLicenses) {
+        const expiresMs = l.expiresAt ? new Date(l.expiresAt).getTime() : null;
+        if (l.revokedAt) {
+          emitted.push(store.addNotification({
+            accountId: account.id,
+            type: 'license.revoked',
+            dedupeKey: l.id,
+            title: 'Lisensi dicabut',
+            titleEn: 'License revoked',
+            body: `Lisensi ${l.id.slice(0, 14)}… dicabut. Perpanjang untuk mengaktifkan kembali.`,
+            bodyEn: `License ${l.id.slice(0, 14)}… was revoked. Renew to reactivate.`,
+            createdAt: l.revokedAt,
+          }));
+        } else if (expiresMs != null && expiresMs - now <= 7 * 86_400_000 && expiresMs > now) {
+          // daily dedupe: re-notify at most once per day per license
+          emitted.push(store.addNotification({
+            accountId: account.id,
+            type: 'license.expiring',
+            dedupeKey: `${l.id}:${new Date(now).toISOString().slice(0, 10)}`,
+            title: 'Lisensi segera berakhir',
+            titleEn: 'License expiring soon',
+            body: `Lisensi ${l.id.slice(0, 14)}… berakhir ${new Date(expiresMs).toLocaleDateString('id-ID')}.`,
+            bodyEn: `License ${l.id.slice(0, 14)}… expires ${new Date(expiresMs).toISOString().slice(0, 10)}.`,
+            createdAt: now,
+          }));
+        }
+      }
+      return emitted.filter(Boolean);
+    };
+
+    if (req.method === 'GET' && url.pathname === '/api/me/notifications') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        syncAccountNotifications(account);
+        let limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+        if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+        limit = Math.min(limit, 200);
+        const items = store.listNotifications(account.id, { limit }).map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          titleEn: n.titleEn ?? n.title,
+          body: n.body,
+          bodyEn: n.bodyEn ?? n.body,
+          readAt: n.readAt ?? null,
+          createdAt: n.createdAt,
+        }));
+        const unread = items.filter((n) => n.readAt == null).length;
+        return sendJson(res, 200, { notifications: items, unread, total: items.length });
+      })();
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/me/notifications/read-all') {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const changed = store.markAllNotificationsRead(account.id);
+        return sendJson(res, 200, { ok: true, changed });
+      })();
+    }
+
+    if (req.method === 'POST' && url.pathname?.startsWith('/api/me/notifications/') && url.pathname.endsWith('/read')) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const id = url.pathname.slice('/api/me/notifications/'.length, -'/read'.length);
+        const updated = store.markNotificationRead(account.id, id);
+        if (!updated) return sendJson(res, 404, { error: 'not found' });
+        return sendJson(res, 200, { ok: true, notification: { id: updated.id, readAt: updated.readAt } });
+      })();
+    }
+
     // Customer: AI ledger milik akun (session-scoped, read-only). Mirip
     // /api/admin/ledger tapi hanya baris milik lisensi akun ini, tanpa
     // customer lain, tanpa secret. Dipakai halaman "Penggunaan AI" user.

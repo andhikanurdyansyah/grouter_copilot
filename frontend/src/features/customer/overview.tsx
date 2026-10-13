@@ -24,6 +24,7 @@ export function CustomerOverview() {
   void orders
   const myLedger = useQuery({ queryKey: ['my-ledger-live'], queryFn: () => fetchMyLedger(200), refetchInterval: 30_000 })
   const usageQ = useQuery({ queryKey: ['usage-history'], queryFn: fetchUsageHistory })
+
   const latestQ = useQuery({
     queryKey: ['orders-latest'],
     queryFn: async () => (await api.get('/orders/latest')).data as {
@@ -35,7 +36,7 @@ export function CustomerOverview() {
   const latestStatus = String(latestOrder?.status || '').toUpperCase()
   const isPaid = latestStatus === 'PAID'
 
-  const [selectedReq, setSelectedReq] = useState<{ skill: string; time: string; status: string; isOk: boolean; latency: string } | null>(null)
+  const [selectedReq, setSelectedReq] = useState<{ skill: string; time: string; status: string; isOk: boolean; latency: string; tokens: string } | null>(null)
 
   const myLicense = me.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? me.data?.licenses?.[0]
   const myUsage = me.data?.usage?.find((u) => u.licenseId === myLicense?.id)
@@ -65,15 +66,18 @@ export function CustomerOverview() {
   const recentRequests = ((myLedger.data?.records ?? []) as Array<{
     requestId: string; skill: string | null; model: string | null
     status: string; totalTokens: number | null
+    inputTokens: number | null; outputTokens: number | null
     createdAt: number | null; completedAt: number | null
   }>).slice(0, 4).map((r) => {
     const latencyMs = r.completedAt && r.createdAt ? Math.max(1, r.completedAt - r.createdAt) : null
+    const tokens = r.totalTokens ?? (r.inputTokens ?? 0) + (r.outputTokens ?? 0)
     return {
       skill: r.skill || r.model || (isId ? 'tanpa skill' : 'no skill'),
-      time: `${r.createdAt ? new Date(r.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'} · ${(r.totalTokens ?? 0).toLocaleString('id-ID')} token`,
+      time: `${r.createdAt ? new Date(r.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'} · ${tokens.toLocaleString('id-ID')} token`,
       status: r.status,
       isOk: r.status === 'ok',
       latency: latencyMs != null ? (latencyMs < 1000 ? `${latencyMs}ms` : `${(latencyMs / 1000).toFixed(2)}s`) : '—',
+      tokens: `${tokens.toLocaleString('id-ID')} token`,
     }
   })
 
@@ -120,7 +124,9 @@ export function CustomerOverview() {
         <div className='space-y-3.5 max-w-xl z-10'>
           <div className='inline-flex items-center gap-2 rounded-full border border-[#7778FF]/30 bg-[#7778FF]/10 px-3 py-1 text-xs font-semibold text-[#7778FF] uppercase tracking-wider font-mono shadow-xs'>
             <span className='size-1.5 rounded-full bg-[#7778FF] animate-pulse' />
-            {isId ? 'Langkah 3 dari 5 · Definisikan skill' : 'Step 3 of 5 · Define skills'}
+            {myLicense
+              ? (isId ? 'Lisensi aktif' : 'Active license')
+              : (isId ? 'Belum ada lisensi' : 'No license yet')}
           </div>
 
           <h1 className='text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground'>
@@ -448,9 +454,9 @@ export function CustomerOverview() {
                   <span className='font-bold text-[#7778FF]'>{activePoint.tokens.toLocaleString('id-ID')}</span>
                 </div>
                 <div className='text-[10px] text-muted-foreground pt-0.5 flex justify-between'>
-                  <span>{isId ? 'Porsi kuota:' : 'Quota share:'}</span>
-                  <span className='font-mono font-medium text-foreground'>
-                    {((activePoint.tokens / 2000000) * 100).toFixed(1)}%
+                  <span>{isId ? 'Token hari itu' : 'Day tokens'}:</span>
+                  <span className='font-mono font-medium text-foreground tabular-nums'>
+                    {histMax > 0 ? `${((activePoint.tokens / histMax) * 100).toFixed(0)}% ${isId ? 'dari puncak' : 'of peak'}` : '—'}
                   </span>
                 </div>
               </div>
@@ -561,16 +567,12 @@ export function CustomerOverview() {
                 </span>
               </div>
               <div className='flex items-center justify-between pt-2'>
-                <span className='text-muted-foreground'>{isId ? 'Latensi Gateway' : 'Gateway Latency'}</span>
+                <span className='text-muted-foreground'>{isId ? 'Latensi' : 'Latency'}</span>
                 <span className='font-mono font-semibold text-foreground'>{selectedReq.latency}</span>
               </div>
               <div className='flex items-center justify-between pt-2'>
-                <span className='text-muted-foreground'>{isId ? 'Model AI' : 'AI Model'}</span>
-                <span className='font-mono text-foreground'>grouter/balanced</span>
-              </div>
-              <div className='flex items-center justify-between pt-2'>
                 <span className='text-muted-foreground'>{isId ? 'Token Digunakan' : 'Tokens Billed'}</span>
-                <span className='font-mono font-bold text-[#7778FF]'>{selectedReq.isOk ? '1.284 token' : '0 (tidak ditagih)'}</span>
+                <span className='font-mono font-bold text-[#7778FF]'>{selectedReq.tokens}</span>
               </div>
             </div>
           )}

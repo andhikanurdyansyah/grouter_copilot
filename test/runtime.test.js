@@ -82,16 +82,39 @@ test('runtime.streamChat yields ordered events', async () => {
   assert.ok(types.includes('run.completed'));
 });
 
-test('runtime.streamChat fails cleanly when no skill resolves (multi-skill ambiguous)', async () => {
+test('runtime.streamChat answers general (no-skill) questions instead of failing', async () => {
   const runtime = makeRuntime([salesSkill, customersSkill]);
   const events = [];
-  // message matches neither skill's description tokens
+  // Free-form question that matches neither skill's description tokens:
+  // policy-compliant general mode — streamed answer, no SKILL_NOT_FOUND.
   for await (const e of runtime.streamChat({ message: 'xyzzy', userId: 'u1' })) {
     events.push(e);
   }
-  const failed = events.find((e) => e.type === 'run.failed');
-  assert.ok(failed);
-  assert.equal(failed.code, 'SKILL_NOT_FOUND');
+  const types = events.map((e) => e.type);
+  assert.ok(types.includes('answer.delta'), 'general mode must stream an answer');
+  assert.ok(types.includes('run.completed'), 'general mode must complete');
+  assert.ok(!types.includes('run.failed'), 'no-skill must not fail when skills exist');
+  const completed = events.find((e) => e.type === 'run.completed');
+  assert.equal(completed.mode, 'general');
+  assert.equal(completed.skill, null);
+});
+
+test('runtime.chat free-form question gets a general answer (template-only removal)', async () => {
+  const runtime = makeRuntime([salesSkill, customersSkill]);
+  const out = await runtime.chat({ message: 'What can you help me with?', userId: 'u1' });
+  assert.equal(out.status, 'complete');
+  assert.equal(out.mode, 'general');
+  assert.equal(out.skill, null);
+  assert.match(out.answer, /answered:/);
+  // Honest context: the general prompt must not pretend host data is attached.
+  assert.equal(out.sources.length, 0);
+});
+
+test('runtime.chat with zero skills still fails closed', async () => {
+  const runtime = makeRuntime([]);
+  const out = await runtime.chat({ message: 'anything', userId: 'u1' });
+  assert.equal(out.status, 'error');
+  assert.equal(out.code, 'SKILL_NOT_FOUND');
 });
 
 test('runtime.streamChat blocks mutating skill', async () => {

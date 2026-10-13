@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
-import { Sun, Moon, Bell, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { api } from '@/lib/grouter-api'
+import { Sun, Moon, Bell, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck, Inbox } from 'lucide-react'
 import { useTheme } from '@/context/theme-provider'
 import { useLanguage } from '@/context/language-provider'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -52,29 +54,40 @@ export function ModaHeader() {
     }
   }
 
-  // Notifikasi dari data sesi nyata (/api/me) — tanpa event mock.
-  const notifications = (() => {
-    const items: Array<{ title: string; desc: string; time: string; icon: typeof CheckCircle2; color: string }> = []
-    const licenses = (meData && 'licenses' in meData ? meData.licenses : []) as Array<{
-      id?: string; status?: string | null; planKey?: string | null; expiresAt?: string | number | null; createdAt?: number | null
-    }>
-    const active = licenses.find((l) => String(l.status ?? 'active') === 'active')
-    if (active) {
-      const fmt = (ts?: string | number | null) =>
-        ts ? new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
-      items.push({
-        title: language === 'id' ? 'Lisensi Aktif' : 'Active License',
-        desc: `${String(active.planKey ?? '—')} · ${active.id?.slice(0, 12) ?? '—'} · s/d ${fmt(active.expiresAt)}`,
-        time: language === 'id' ? 'sekarang' : 'now',
-        icon: ShieldCheck,
-        color: 'text-[#7778FF]',
-      })
-    }
-    return items
-  })()
-
-  const unreadNotifications = notifications
-  const hasUnread = notifications.length > 0
+  // Notifikasi dari event store NYATA (/api/me/notifications) — durable,
+  // per-account, idempotent. Event turunan dari state (order/lisensi).
+  const notifQ = useQuery({
+    queryKey: ['me-notifications'],
+    queryFn: async () =>
+      (await api.get('/me/notifications?limit=20')).data as {
+        notifications: Array<{
+          id: string; type: string; title: string; titleEn: string
+          body: string; bodyEn: string; readAt: string | null; createdAt: number
+        }>
+        unread: number
+      },
+    enabled: !isAdmin,
+    refetchInterval: 60_000,
+  })
+  const markAllRead = useMutation({
+    mutationFn: async () => (await api.post('/me/notifications/read-all')).data,
+    onSuccess: () => notifQ.refetch(),
+  })
+  const notifications = (notifQ.data?.notifications ?? []).map((n) => ({
+    id: n.id,
+    title: language === 'id' ? n.title : n.titleEn,
+    desc: language === 'id' ? n.body : n.bodyEn,
+    type: n.type,
+    readAt: n.readAt,
+    time: n.createdAt
+      ? new Date(n.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '—',
+    icon: n.type.startsWith('license') ? ShieldCheck : n.type === 'order.pending' ? AlertTriangle : CheckCircle2,
+    color: n.type === 'order.pending' ? 'text-amber-500' : n.type === 'license.revoked' ? 'text-[#FF667A]' : 'text-[#7778FF]',
+    isUnread: n.readAt == null,
+  }))
+  const unreadNotifications = notifications.filter((n) => n.isUnread)
+  const hasUnread = unreadNotifications.length > 0
 
   return (
     <header className='sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/80 bg-background/85 px-4 md:px-6 backdrop-blur-xl bevel-shine transition-colors'>
@@ -193,26 +206,46 @@ export function ModaHeader() {
               <span className='font-bold text-xs text-foreground'>
                 {language === 'id' ? 'Pemberitahuan' : 'Notifications'}
               </span>
-              <span className='text-[10px] text-muted-foreground font-mono'>
-                {hasUnread ? `${unreadNotifications.length} ${language === 'id' ? 'baru' : 'new'}` : (language === 'id' ? 'Semua dibaca' : 'All read')}
-              </span>
+              {hasUnread && (
+                <button
+                  type='button'
+                  onClick={() => markAllRead.mutate()}
+                  disabled={markAllRead.isPending}
+                  className='text-[10px] font-semibold text-[#7778FF] hover:underline'
+                >
+                  {language === 'id' ? 'Tandai semua dibaca' : 'Mark all read'}
+                </button>
+              )}
             </div>
             <div className='divide-y divide-border/50 max-h-72 overflow-y-auto text-xs'>
-              {unreadNotifications.map((n, i) => {
-                const Icon = n.icon
-                return (
-                  <div key={i} className='p-3 hover:bg-muted/40 transition-colors flex items-start gap-3 cursor-pointer'>
+              {notifications.length === 0 ? (
+                <div className='p-6 text-center space-y-1.5'>
+                  <Inbox className='size-5 text-muted-foreground/60 mx-auto' />
+                  <p className='text-muted-foreground text-[11px]'>
+                    {language === 'id' ? 'Belum ada pemberitahuan.' : 'No notifications yet.'}
+                  </p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      'p-3 hover:bg-muted/40 transition-colors flex items-start gap-3',
+                      n.isUnread && 'bg-[#7778FF]/[0.04]',
+                    )}
+                  >
                     <div className={cn('size-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0', n.color)}>
-                      <Icon className='size-3.5' />
+                      <n.icon className='size-3.5' />
                     </div>
                     <div className='space-y-0.5 flex-1 min-w-0'>
                       <div className='font-bold text-foreground text-xs truncate'>{n.title}</div>
-                      <div className='text-muted-foreground text-[11px] truncate'>{n.desc}</div>
+                      <div className='text-muted-foreground text-[11px] line-clamp-2'>{n.desc}</div>
                       <div className='text-[10px] text-muted-foreground/75 font-mono pt-0.5'>{n.time}</div>
                     </div>
+                    {n.isUnread && <span className='size-1.5 rounded-full bg-[#7778FF] shrink-0 mt-1.5' />}
                   </div>
-                )
-              })}
+                ))
+              )}
             </div>
             <div className='p-2.5 border-t border-border/70 text-center bg-muted/20'>
               <a

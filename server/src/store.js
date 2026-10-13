@@ -18,6 +18,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from '
 import path from 'node:path';
 import { deepMerge } from './settings.js';
 
+// Retention bound for per-account in-app notifications (newest kept).
+const NOTIFICATION_MAX = 100;
+
 export class JsonStore {
   constructor(filePath) {
     this.filePath = filePath;
@@ -26,7 +29,7 @@ export class JsonStore {
   }
 
   _load() {
-    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], usage: [], settings: {} };
+    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], usage: [], notifications: [], settings: {} };
     if (!existsSync(this.filePath)) {
       return empty;
     }
@@ -38,6 +41,9 @@ export class JsonStore {
         orders: parsed.orders ?? [],
         heartbeats: parsed.heartbeats ?? [],
         usage: parsed.usage ?? [],
+        // In-app notification events (per-account, persisted). Bounded list;
+        // retention is enforced on write (see addNotification).
+        notifications: parsed.notifications ?? [],
         // Runtime configuration (SSOT). Resolved against defaults + env seeds
         // by server/src/settings.js — this is only the persisted override layer.
         settings: parsed.settings ?? {},
@@ -45,6 +51,65 @@ export class JsonStore {
     } catch {
       return empty;
     }
+  }
+
+  // --- notifications (in-app product events; durable, per-account) ---
+
+  /**
+   * Append a notification event. Idempotent by (accountId, type, dedupeKey):
+   * replaying the same event never duplicates the row.
+   * Retention: keep at most NOTIFICATION_MAX newest per account.
+   */
+  addNotification({ accountId, type, title, titleEn, body, bodyEn, dedupeKey, createdAt = Date.now() }) {
+    if (!accountId || !type) return null;
+    const existing = this.data.notifications.find(
+      (n) => n.accountId === accountId && n.type === type && (dedupeKey == null || n.dedupeKey === dedupeKey),
+    );
+    if (existing) return existing;
+    const item = {
+      id: `ntf_${createdAt.toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`,
+      accountId, type, title, titleEn, body, bodyEn, dedupeKey: dedupeKey ?? null,
+      readAt: null, createdAt,
+    };
+    this.data.notifications.push(item);
+    const perAccount = this.data.notifications.filter((n) => n.accountId === accountId);
+    if (perAccount.length > NOTIFICATION_MAX) {
+      const overflowIds = new Set(
+        perAccount.sort((a, b) => a.createdAt - b.createdAt).slice(0, perAccount.length - NOTIFICATION_MAX).map((n) => n.id),
+      );
+      this.data.notifications = this.data.notifications.filter((n) => !overflowIds.has(n.id));
+    }
+    this._save();
+    return item;
+  }
+
+  listNotifications(accountId, { limit = 50 } = {}) {
+    return this.data.notifications
+      .filter((n) => n.accountId === accountId)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, Math.min(Math.max(1, limit), 200));
+  }
+
+  markNotificationRead(accountId, id) {
+    const n = this.data.notifications.find((x) => x.id === id && x.accountId === accountId);
+    if (!n) return null;
+    if (!n.readAt) {
+      n.readAt = Date.now();
+      this._save();
+    }
+    return n;
+  }
+
+  markAllNotificationsRead(accountId) {
+    let changed = 0;
+    for (const n of this.data.notifications) {
+      if (n.accountId === accountId && !n.readAt) {
+        n.readAt = Date.now();
+        changed++;
+      }
+    }
+    if (changed) this._save();
+    return changed;
   }
 
   // --- settings (runtime configuration SSOT) ---

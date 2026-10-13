@@ -89,11 +89,12 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → **71 pass**.
-- Backend test: `cd server && node --test` → **34 pass** (termasuk `cost-integrity.test.js`). (Windows: JANGAN `node --test test/`.)
-- Run backend: `cd server && node src/index.js` (port 4600). Tanpa npm install (zero dependency).
-- Instance terisolasi: `DATA_FILE=<tmp> PORT=4690 node src/index.js` (pakai path `$LOCALAPPDATA/Temp`, bukan `/tmp` MSYS).
-- Test ber-session: set env auth SEBELUM import `server.js` (dynamic import) + copy `server/data/auth.sqlite` ke tmp lalu clear semua row (`foreign_keys=OFF`) — pola di `server/test/cost-integrity.test.js`.
+- Plugin test: `node --test` (root) → **95 pass** (2026-10-13; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
+- Backend test: `cd server && NODE_ENV=test node --test` → **113 pass** (2026-10-13). (Windows: JANGAN `node --test test/`.)
+- E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). Menarget **prod :4601** → bikin akun QA di prod, sweep dgn `node server/scripts/purge-test-accounts.mjs --apply`.
+- Run backend: `cd server && node src/index.js` (port 4600). Zero dependency (no npm install).
+- Instance terisolasi: `DATA_FILE=<tmp> AUTH_DB_FILE=<tmp> PORT=4690 node src/index.js`.
+- **Isolasi test = DEFAULT (2026-10-13):** `NODE_ENV=test` tanpa `AUTH_DB_FILE` → `auth.js` otomatis membuat temp auth DB (seed skema prod, row dibersihkan). Test TIDAK lagi menulis ke `server/data/`. Override dengan `AUTH_DB_FILE` eksplisit bila perlu pola khusus. Regresi: `server/test/auth-db-isolation.test.js`.
 
 ## Docs stale (SUDAH DIREKONSILIASI I5, 2026-10-01)
 
@@ -123,7 +124,9 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - **KlikQRIS menandai lunas = `SUCCESS`** (bukan `PAID`) → pakai `isPaidStatus()`/`PAID_STATES`.
 - **Order prod PAID tapi KlikQRIS EXPIRED** (`ord_muoizb2w_al70`, `ord_muojvlen_5xe3`) = sisa admin-settle, bukan bayar nyata.
 - **Custom `assert()` menimpa module `node:assert`** di skrip probe → `assert.deepEqual is not a function`; pakai `JSON.stringify` compare.
-- **Fresh/empty auth.sqlite crash** (`SchemaMismatchError`) → selalu copy schema prod lalu DELETE semua row.
+- **Fresh/empty auth.sqlite crash** (`SchemaMismatchError`) → selalu copy schema prod lalu DELETE semua row. Sejak 2026-10-13 hal ini otomatis di `auth.js` saat `NODE_ENV=test`.
+- **`purge-test-accounts.mjs` hanya membersihkan auth DB**, bukan `store.json`. Residu QA di store (akun test-pattern + order/lisensi-nya) harus dibersihkan terpisah — destruktif, backup + dry-run dulu.
+- **Fail-closed entitlement:** lisensi dengan `planKey` non-kosong yang tak ada di katalog → `PLAN_NOT_FOUND` (bukan unlimited). `planKey` null = sah (issue tanpa paket).
 
 ## KlikQRIS
 

@@ -125,7 +125,7 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - **Order prod PAID tapi KlikQRIS EXPIRED** (`ord_muoizb2w_al70`, `ord_muojvlen_5xe3`) = sisa admin-settle, bukan bayar nyata.
 - **Custom `assert()` menimpa module `node:assert`** di skrip probe → `assert.deepEqual is not a function`; pakai `JSON.stringify` compare.
 - **Fresh/empty auth.sqlite crash** (`SchemaMismatchError`) → selalu copy schema prod lalu DELETE semua row. Sejak 2026-10-13 hal ini otomatis di `auth.js` saat `NODE_ENV=test`.
-- **`purge-test-accounts.mjs` hanya membersihkan auth DB**, bukan `store.json`. Residu QA di store (akun test-pattern + order/lisensi-nya) harus dibersihkan terpisah — destruktif, backup + dry-run dulu.
+- **`purge-test-accounts.mjs` hanya membersihkan auth DB**; `purge-store-residue.mjs` membersihkan `store.json` (akun test-pattern + lisensi/order/usage/notif miliknya). Keduanya dry-run default + backup. Jalankan `store` sweeper saat backend berhenti ATAU restart backend tepat setelahnya (store in-memory bisa menimpa file).
 - **Fail-closed entitlement:** lisensi dengan `planKey` non-kosong yang tak ada di katalog → `PLAN_NOT_FOUND` (bukan unlimited). `planKey` null = sah (issue tanpa paket).
 
 ## KlikQRIS

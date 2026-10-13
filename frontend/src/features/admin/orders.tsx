@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { fetchAdminOrders, settleOrder } from '@/lib/grouter-api'
+import { fetchAdminOrders, settleOrder, formatIDR } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import { Download, CheckCircle2, Clock, Hourglass, RefreshCw, X, Receipt } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
@@ -93,6 +93,14 @@ export function AdminOrders() {
     return true
   })
 
+  // ── Ringkasan REAL dari /api/admin/orders (bukan angka hardcode) ──
+  const paidCount = ordersList.filter((o) => o.status === 'paid').length
+  const pendingCount = ordersList.filter((o) => o.status === 'pending').length
+  const expiredCount = ordersList.filter((o) => o.status === 'expired' || o.status === 'cancelled').length
+  const settledValue = ((ordersQuery.data?.orders ?? []) as Array<{ status: string; amount: number | null }>)
+    .filter((o) => String(o.status || '').toLowerCase() === 'paid')
+    .reduce((sum, o) => sum + (o.amount ?? 0), 0)
+
   return (
     <div className='space-y-6 animate-fade-in relative'>
       {/* ── Top Header Row ── */}
@@ -129,10 +137,10 @@ export function AdminOrders() {
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 rounded-xl border border-border bg-card/70 shadow-2xs divide-y sm:divide-y-0 sm:divide-x divide-border'>
         <div className='p-5'>
           <p className='text-xs font-medium text-muted-foreground'>
-            LUNAS · 30H
+            {isId ? 'Lunas' : 'Paid'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            214
+            {paidCount}
           </p>
         </div>
 
@@ -142,7 +150,7 @@ export function AdminOrders() {
             {isId ? 'Menunggu verifikasi' : 'Awaiting verification'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            4
+            {pendingCount}
           </p>
         </div>
 
@@ -151,7 +159,7 @@ export function AdminOrders() {
             {isId ? 'Kedaluwarsa / gagal' : 'Expired / failed'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            17
+            {expiredCount}
           </p>
         </div>
 
@@ -160,7 +168,7 @@ export function AdminOrders() {
             {isId ? 'Nilai settle' : 'Settlement value'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            Rp 48,6 jt
+            {formatIDR(settledValue)}
           </p>
         </div>
       </div>

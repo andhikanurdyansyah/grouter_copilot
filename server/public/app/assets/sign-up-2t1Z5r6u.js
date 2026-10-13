@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-C_urxT9I.js";import{t}from"./sign-up-BgJWvt56.js";var n=e();function r(){return(0,n.jsx)(t,{brandName:`gRouter Copilot`})}export{r as component};

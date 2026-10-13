@@ -177,6 +177,19 @@ export function AdminOverview() {
     },
   })
 
+  // ── Ringkasan tugas REAL dari server (bukan angka hardcode) ──
+  const orderList = ((orders.data as unknown as { orders?: Array<{ id: string; status?: string }> })?.orders ?? [])
+  const pendingOrdersCount = orderList.filter((o) => String(o.status || '').toUpperCase() === 'PENDING').length
+  const licList = (lic.data?.licenses ?? []) as Array<{ status?: string | null; expiresAt?: string | number | null; revokedAt?: number | null }>
+  const nowForAction = nowMs
+  const expiringSoonCount = licList.filter((l) => {
+    if (l.revokedAt) return false
+    const e = l.expiresAt ? new Date(l.expiresAt).getTime() : null
+    return e != null && !Number.isNaN(e) && e > nowForAction && e - nowForAction <= 14 * 86_400_000
+  }).length
+  const quotaExceededCount = licList.filter((l) => String(l.status ?? '') === 'quota').length
+  const actionCount = [pendingOrdersCount, quotaExceededCount, expiringSoonCount].filter((n) => n > 0).length
+
   // Ringkasan numerik chart untuk aria-label (fallback aksesibilitas titik data fokusable)
   const chartSummary = currentData
     .map((d) => `${d.date}: ${d.ok.toLocaleString('id-ID')} ok, ${d.ditolak.toLocaleString('id-ID')} ditolak`)
@@ -230,36 +243,35 @@ export function AdminOverview() {
         </div>
       </div>
 
-      {/* ── Degraded Sandbox Alert Banner with 3D Amber Glow ── */}
-      <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 shadow-sm hover-lift-3d bevel-shine'>
-        <div className='flex items-center gap-3 text-xs sm:text-sm text-foreground'>
-          <div className='size-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-500'>
-            <AlertTriangle className='size-4' />
+      {/* ── Alert banner: hanya tampil bila ada tugas nyata di server ── */}
+      {pendingOrdersCount > 0 && (
+        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 shadow-sm hover-lift-3d bevel-shine'>
+          <div className='flex items-center gap-3 text-xs sm:text-sm text-foreground'>
+            <div className='size-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-500'>
+              <AlertTriangle className='size-4' />
+            </div>
+            <div>
+              <span className='font-semibold'>
+                {isId
+                  ? `QRIS (sandbox) · ${pendingOrdersCount} order menunggu verify-and-settle`
+                  : `QRIS (sandbox) · ${pendingOrdersCount} orders awaiting verify-and-settle`}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className='font-semibold'>
-              {isId
-                ? 'QRIS (sandbox) mengalami degradasi · 4 order menunggu verify-and-settle'
-                : 'QRIS (sandbox) is experiencing degradation · 4 orders awaiting verify-and-settle'}
-            </span>
-            <span className='text-muted-foreground text-xs block sm:inline sm:ml-2'>
-              · {isId ? '5 layanan lain berjalan normal' : '5 other services normal'}
-            </span>
+          <div className='flex items-center gap-3 w-full sm:w-auto justify-end'>
+            <Button
+              asChild
+              variant='outline'
+              size='sm'
+              className='h-8 border-amber-500/40 bg-card/70 hover:bg-amber-500/20 text-xs text-foreground font-semibold interactive-press'
+            >
+              <Link to='/admin/orders'>
+                {t('btn_review_orders')} →
+              </Link>
+            </Button>
           </div>
         </div>
-        <div className='flex items-center gap-3 w-full sm:w-auto justify-end'>
-          <Button
-            asChild
-            variant='outline'
-            size='sm'
-            className='h-8 border-amber-500/40 bg-card/70 hover:bg-amber-500/20 text-xs text-foreground font-semibold interactive-press'
-          >
-            <Link to='/admin/orders'>
-              {t('btn_review_orders')} →
-            </Link>
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* ── 4 KPI Bento Cards with 3D Elevation ── */}
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
@@ -555,47 +567,65 @@ export function AdminOverview() {
               {isId ? 'Perlu tindakan' : 'Needs action'}
             </h2>
             <span className='flex size-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-500 border border-amber-500/30'>
-              3
+              {actionCount}
             </span>
           </div>
 
           <div className='space-y-2.5'>
             {/* Action Item 1 */}
-            <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
-              <div className='flex items-center gap-2.5 text-xs text-foreground'>
-                <Receipt className='size-4 text-amber-500 shrink-0' />
-                <span className='font-semibold'>4 order PENDING</span>
+            {pendingOrdersCount > 0 && (
+              <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
+                <div className='flex items-center gap-2.5 text-xs text-foreground'>
+                  <Receipt className='size-4 text-amber-500 shrink-0' />
+                  <span className='font-semibold'>
+                    {isId ? `${pendingOrdersCount} order PENDING` : `${pendingOrdersCount} PENDING orders`}
+                  </span>
+                </div>
+                <button
+                  type='button'
+                  onClick={() => setPendingOrdersDrawerOpen(true)}
+                  className='text-xs font-bold text-[#7778FF] hover:underline cursor-pointer'
+                >
+                  {isId ? 'Verifikasi →' : 'Verify →'}
+                </button>
               </div>
-              <button
-                type='button'
-                onClick={() => setPendingOrdersDrawerOpen(true)}
-                className='text-xs font-bold text-[#7778FF] hover:underline cursor-pointer'
-              >
-                {isId ? 'Verifikasi →' : 'Verify →'}
-              </button>
-            </div>
+            )}
 
             {/* Action Item 2 */}
-            <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
-              <div className='flex items-center gap-2.5 text-xs text-foreground'>
-                <KeyRound className='size-4 text-[#FF667A] shrink-0' />
-                <span className='font-semibold'>{isId ? '1 lisensi kuota habis' : '1 license quota exceeded'}</span>
+            {quotaExceededCount > 0 && (
+              <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
+                <div className='flex items-center gap-2.5 text-xs text-foreground'>
+                  <KeyRound className='size-4 text-[#FF667A] shrink-0' />
+                  <span className='font-semibold'>
+                    {isId ? `${quotaExceededCount} lisensi kuota habis` : `${quotaExceededCount} license quota exceeded`}
+                  </span>
+                </div>
+                <Link to='/admin/licenses' className='text-xs font-bold text-[#7778FF] hover:underline'>
+                  {isId ? 'Buka →' : 'Open →'}
+                </Link>
               </div>
-              <Link to='/admin/licenses' className='text-xs font-bold text-[#7778FF] hover:underline'>
-                {isId ? 'Buka →' : 'Open →'}
-              </Link>
-            </div>
+            )}
 
             {/* Action Item 3 */}
-            <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
-              <div className='flex items-center gap-2.5 text-xs text-foreground'>
-                <Clock className='size-4 text-indigo-400 shrink-0' />
-                <span className='font-semibold'>{isId ? '9 lisensi berakhir ≤ 14 hari' : '9 licenses expire in ≤ 14 days'}</span>
+            {expiringSoonCount > 0 && (
+              <div className='flex items-center justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 hover-lift-3d transition-all'>
+                <div className='flex items-center gap-2.5 text-xs text-foreground'>
+                  <Clock className='size-4 text-indigo-400 shrink-0' />
+                  <span className='font-semibold'>
+                    {isId ? `${expiringSoonCount} lisensi berakhir ≤ 14 hari` : `${expiringSoonCount} licenses expire in ≤ 14 days`}
+                  </span>
+                </div>
+                <Link to='/admin/licenses' className='text-xs font-bold text-[#7778FF] hover:underline'>
+                  {isId ? 'Lihat →' : 'View →'}
+                </Link>
               </div>
-              <Link to='/admin/licenses' className='text-xs font-bold text-[#7778FF] hover:underline'>
-                {isId ? 'Lihat →' : 'View →'}
-              </Link>
-            </div>
+            )}
+
+            {actionCount === 0 && (
+              <div className='rounded-xl border border-dashed border-border/70 p-6 text-center text-xs text-muted-foreground'>
+                {isId ? 'Tidak ada tindakan yang menunggu.' : 'Nothing needs action right now.'}
+              </div>
+            )}
           </div>
         </div>
 
@@ -810,8 +840,8 @@ export function AdminOverview() {
                       // Payload audit dari data ledger nyata — tanpa field fabrikasi.
                       const sample = JSON.stringify({
                         event: selectedEvent.event,
-                        license: selectedEvent.license,
-                        tokens: selectedEvent.tokens,
+                        licenseKey: selectedEvent.license,
+                        tokens: selectedEvent.tokens === '—' ? 0 : Number(selectedEvent.tokens.replace(/\./g, '')),
                         status: selectedEvent.status,
                         timestamp: selectedEvent.createdAt ?? null,
                       }, null, 2)
@@ -826,16 +856,13 @@ export function AdminOverview() {
                   </button>
                 </div>
                 <pre className='text-[11px] font-mono text-muted-foreground overflow-x-auto pt-2 leading-relaxed'>
-{`{
-  "event": "${selectedEvent.event}",
-  "licenseKey": "${selectedEvent.license}",
-  "tokens": ${selectedEvent.tokens === '—' ? 0 : selectedEvent.tokens.replace('.', '')},
-  "status": "${selectedEvent.status}",
-  "provider": "supplier/copilot-ai",
-  "model": "claude-3-5-sonnet",
-  "latencyMs": 412,
-  "signatureVerified": true
-}`}
+{JSON.stringify({
+  event: selectedEvent.event,
+  licenseKey: selectedEvent.license,
+  tokens: selectedEvent.tokens === '—' ? 0 : Number(selectedEvent.tokens.replace(/\./g, '')),
+  status: selectedEvent.status,
+  timestamp: selectedEvent.createdAt ?? null,
+}, null, 2)}
                 </pre>
               </div>
             </div>

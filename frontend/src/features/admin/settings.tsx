@@ -4,10 +4,23 @@ import { Button } from '@/components/ui/button'
 import { FlaskConical } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
+import { fetchAdminSettings } from '@/lib/grouter-api'
 
 export function AdminSettings() {
   const { language, t } = useLanguage()
   const isId = language === 'id'
+
+  // Konfigurasi REAL dari /api/admin/settings (nilai rahasia sudah ter-mask server-side).
+  // Nilai yang ditampilkan di kartu-kartu bawah TIDAK boleh hardcode.
+  const settingsQ = useQuery({ queryKey: ['admin-settings'], queryFn: fetchAdminSettings })
+  const cfg = (settingsQ.data as { settings?: Record<string, unknown> } | undefined)?.settings ?? {}
+  const paymentCfg = (cfg.payment ?? {}) as {
+    mode?: string
+    merchantId?: string
+    provider?: string
+  }
+  const apiKeyMasked = (paymentCfg as { apiKey?: string }).apiKey ?? null
+  const merchantMasked = paymentCfg.merchantId || null
 
   // Kesehatan layanan REAL: /api/health + latensi round-trip terukur (bukan angka fabrikasi).
   const healthQ = useQuery({
@@ -100,7 +113,9 @@ export function AdminSettings() {
                       <div className='text-muted-foreground text-[11px] font-mono'>Default CLI --license-server</div>
                     </div>
                     <div className='font-mono text-foreground font-medium'>
-                      https://copilot.grouter.id
+                      {settingsQ.isLoading
+                        ? '…'
+                        : `https://${(cfg.branding as { publicDomain?: string } | undefined)?.publicDomain ?? '—'}`}
                     </div>
                   </div>
 
@@ -117,10 +132,10 @@ export function AdminSettings() {
                   <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-3'>
                     <div>
                       <div className='font-medium text-foreground'>{isId ? 'Kunci verifikasi publik' : 'Public verification key'}</div>
-                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Non-rahasia' : 'Non-secret'}</div>
+                      <div className='text-muted-foreground text-[11px]'>{isId ? 'Non-rahasia · diterbitkan saat runtime' : 'Non-secret · issued at runtime'}</div>
                     </div>
                     <div className='font-mono text-foreground font-medium'>
-                      ed25519:MCow...Q9s=
+                      {isId ? 'lihat .env LICENSE_PUBLIC_KEY_PEM' : 'see .env LICENSE_PUBLIC_KEY_PEM'}
                     </div>
                   </div>
 
@@ -219,7 +234,7 @@ export function AdminSettings() {
                       <div className='text-muted-foreground text-[11px]'>ID Penyedia Pembayaran</div>
                     </div>
                     <div className='font-mono text-foreground font-medium'>
-                      M-GRX-SANDBOX-091
+                      {settingsQ.isLoading ? '…' : (merchantMasked || '—')}
                     </div>
                   </div>
 
@@ -229,7 +244,7 @@ export function AdminSettings() {
                       <div className='text-muted-foreground text-[11px]'>Endpoint verifikasi pembayaran untrusted</div>
                     </div>
                     <div className='font-mono text-foreground font-medium'>
-                      https://copilot.grouter.id/api/webhook/klikqris
+                      {`https://${(cfg.branding as { publicDomain?: string } | undefined)?.publicDomain ?? 'copilot.grouter.id'}/api/payment/klikqris/webhook`}
                     </div>
                   </div>
 

@@ -46,16 +46,13 @@ test('customer: paket → checkout sandbox → order PENDING terverifikasi serve
     await page.goto('/user/orders')
     await page.waitForLoadState('networkidle')
 
-    // Minimal satu paket tersedia (katalog produksi: 3B/15B berharga).
-    const payButton = page.getByRole('button', { name: /bayar dengan qris/i })
-    await expect(payButton).toBeVisible({ timeout: 20_000 })
-
-    // Desain Moda: kartu paket = pilihan (klik untuk memilih), tombol "Bayar
-    // dengan QRIS" aktif setelah paket terpilih.
-    await page.getByText(/^3B · 3 months$/).first().click()
-    await expect(payButton).toBeEnabled({ timeout: 10_000 })
-    await payButton.click()
-    // Desain Moda: QR tampil INLINE di panel checkout (bukan dialog) dengan status polling.
+    // Katalog produksi: kartu paket dengan tombol "Beli paket"/"Perpanjang paket".
+    // Klik tombol itu langsung membuat order sandbox + membuka panel checkout QR.
+    const buyButton = page.getByRole('button', { name: /beli paket|perpanjang paket/i }).first()
+    await expect(buyButton).toBeVisible({ timeout: 20_000 })
+    await buyButton.click()
+    // Panel checkout INLINE (Dialog) dengan judul "Bayar dengan QRIS" + QR.
+    await expect(page.getByText(/bayar dengan qris/i).first()).toBeVisible({ timeout: 20_000 })
     const qrImage = page.locator('img[alt^=QRIS]')
     await expect(qrImage).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText(/menunggu pembayaran|memeriksa status/i).first()).toBeVisible({ timeout: 20_000 })

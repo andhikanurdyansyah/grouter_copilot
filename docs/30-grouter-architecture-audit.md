@@ -105,7 +105,8 @@ dengan real request terkecil.
 
 1. **Di mana `GROUTER_API_KEY` hidup?** Local: `server/.env` (gitignored). Staging/production:
    env/secret store server backend (pm2 env / secret manager). CI/CD: tidak dibutuhkan
-   (test memakai FakeSupplier + dummy key).
+   (test memakai FakeSupplier + dummy key). **Catatan: repo ini tidak punya CI workflow
+   (`.github/workflows` tidak ada) — semua test dijalankan manual di host.**
 2. **Komponen yang memanggil gRouter?** Saat ini: `GrouterAdapter`
    (`src/adapter/grouter.js`) — ter-instantiasi di host app (`src/index.js`). Target:
    hanya Copilot backend. `/check-usage` dipanggil `server/src/usageResolver.js`.
@@ -126,5 +127,5 @@ dengan real request terkecil.
 ## 9. Verification
 
 - Sweep kontradiksi: sisa klaim per-customer-key hanya berlabel legacy/D-021.
-- `npm test` root **133/133** + server **70/70** (NODE_ENV=test) — lulus setelah perubahan doc.
+- `npm test` root **133/133** + server **70/70** (NODE_ENV=test) — lulus setelah perubahan doc (snapshot audit 2026-10-08; **historis, bukan angka saat ini**). Baseline terukur 2026-10-13: root `NODE_ENV=test node --test "test/**/*.test.js"` → **95/95**, server `cd server && NODE_ENV=test node --test` → **103/103** (`docs/handoff-2026-10-13.md`).
 - Tidak ada real key diminta, dicetak, atau dikonsumsi; `.env` tidak disentuh.

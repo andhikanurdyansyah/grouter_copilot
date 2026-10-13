@@ -132,6 +132,19 @@ export class CopilotGateway {
     const eff = this.resolveSettings();
     const plan = (eff.plans || []).find((p) => p.key === lic.planKey);
 
+    // 6a. Unknown plan → FAIL CLOSED (cost-integrity). A license that carries a
+    //     non-empty planKey which no longer resolves in the catalogue (plan
+    //     removed or renamed after issuance) must NOT silently fall through to
+    //     the legacy policy — that branch enables AI with no allowlist and, with
+    //     no legacy quotaTokens, UNLIMITED quota. Granting unmetered AI to a
+    //     license whose package is gone is a billing hole. A null/empty planKey
+    //     stays the legitimate "issued without a package" path (unchanged).
+    const planKey = lic.planKey == null ? '' : String(lic.planKey).trim();
+    if (planKey && !plan) {
+      this.store.addUsageRecord(this._ledgerEntry({ requestId, lic, status: 'rejected', errorClassification: 'plan_not_found' }));
+      return { requestId, status: 'error', code: 'PLAN_NOT_FOUND', message: 'This license references a package that no longer exists. Contact the issuer.', retryable: false, licenseId: lic.id };
+    }
+
     // 6b. Package AI policy (entitlement, resolved server-side from the plan
     //     catalogue — never from request input). The Package decides whether
     //     this customer may call AI at all, with which models, and how many

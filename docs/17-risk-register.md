@@ -16,7 +16,7 @@
 | R-09 | Overpromise "baca seluruh data" | High | High | ⚠️ positioning skill layer terkontrol (PRD §5) | objection keamanan |
 | R-10 | Backend Copilot ditambah prematur | Low | Medium | SUPERSEDED arsitektur: Copilot backend (license server + dashboard) sudah ada & disetujui (Phase 0c DONE; D-021 service credential) | complexity creep |
 | R-11 | Webhook payment dipalsukan | Medium | Critical | ✅ never-trust-body: re-verify upstream sebelum settle + idempotency + amount/order mismatch tests (payment-webhook.test.js 9 tests); ⚠️ signature verification butuh algoritma dari KlikQRIS (runbook docs/33) | settle tanpa verifikasi |
-| R-12 | Dependency vulnerability (supply chain) | Medium | High | ✅ server npm audit 0 vuln + frontend pnpm audit 0 vuln (2026-10-12, lockfiles tracked); ⚠️ pnpm audit belum di CI otomatis | audit > high |
+| R-12 | Dependency vulnerability (supply chain) | Medium | High | ✅ server npm audit 0 vuln + frontend pnpm audit 0 vuln (2026-10-12, lockfiles tracked); ⚠️ audit belum diotomasi — **repo tidak punya CI workflow** (`.github/workflows` tidak ada), jalankan manual | audit > high |
 
 *R-10 ditandai SUPERSEDED karena keputusan arsitektur berubah: backend Copilot
 adalah bagian inti produk (license server + dashboard), bukan prematur.*

@@ -40,6 +40,7 @@ const TEST_PATTERNS = [
   /^lictok[-_a-z0-9.]*@/i,    // license-token test accounts
   /^qaclean[a-z0-9]*@/i,
   /^d45-app[-_a-z0-9.]*@/i,
+  /^iso-probe[-_a-z0-9.]*@/i, // auth-db-isolation regression probe
 ];
 
 const args = process.argv.slice(2);

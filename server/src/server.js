@@ -44,6 +44,8 @@ const GATEWAY_HTTP = {
   // Package entitlement (D-021): denied by the customer's own package policy.
   AI_DISABLED: 403,
   MODEL_NOT_ALLOWED: 403,
+  // License references a package absent from the catalogue → fail closed.
+  PLAN_NOT_FOUND: 403,
   TIMEOUT: 504,
   UPSTREAM_UNAVAILABLE: 502,
 };

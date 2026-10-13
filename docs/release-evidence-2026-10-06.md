@@ -3,10 +3,30 @@
 Date: 2026-10-06 (superseded snapshot refreshed 2026-10-07)
 Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/license security, docs reconciliation.
 
+## Docs reconciliation 2026-10-13
+
+**Every number in this file is a HISTORICAL SNAPSHOT from 2026-10-06/07 and is superseded.**
+The counts have drifted as the codebase grew; do not treat 112 / 55 below as current.
+
+Current verified baseline (measured on this host, 2026-10-13):
+
+| Suite | Command | Result (2026-10-13) |
+|---|---|---|
+| Root (plugin) | `NODE_ENV=test node --test "test/**/*.test.js"` | **95 pass / 0 fail** |
+| Backend (server) | `cd server && NODE_ENV=test node --test` | **103 pass / 0 fail** |
+| Frontend typecheck | `cd frontend && npx tsc -b --noEmit` | clean (exit 0) |
+| Browser E2E | `npm run e2e` (Playwright) | 22 tests (11 specs × desktop+mobile projects) |
+
+Notes:
+- This supersedes the snapshot numbers in this file: root `112 passed` (2026-10-07) → **95**; backend `55 passed` (2026-10-07) → **103**. The drop/increase is code drift, not a regression.
+- The old smoke-step command `NODE_ENV=test node --test` (no glob) is not equivalent to the current root run; use the explicit glob `"test/**/*.test.js"`.
+- There is **no CI workflow** in this repo (`.github/workflows` is absent). Any claim of tests "failing/passing in CI" is aspirational, not enforced.
+- Reference for the current baseline: `docs/handoff-2026-10-13.md`.
+
 ## Verified locally
 
-- Root suite: `NODE_ENV=test node --test` — 112 passed, 0 failed (2026-10-07; was 111).
-- Backend suite: `NODE_ENV=test node --test` — 55 passed, 0 failed (2026-10-07; was 54).
+- Root suite: `NODE_ENV=test node --test` — 112 passed, 0 failed (2026-10-07; was 111). **Historical snapshot — superseded, see "Docs reconciliation 2026-10-13" below.**
+- Backend suite: `NODE_ENV=test node --test` — 55 passed, 0 failed (2026-10-07; was 54). **Historical snapshot — superseded, see "Docs reconciliation 2026-10-13" below.**
 - Admin auth sweep: all 9 admin routes 401 without/wrong Bearer token; 200 with the correct token.
 - Order ownership: authenticated account receives 404 for another account's order; `/api/orders/latest` empty for a fresh account.
 - Context redaction: `gRouter-` provider keys (digit-bearing) scrubbed from skill data before the model sees them; product name `gRouter-copilot` unaffected.
@@ -41,10 +61,10 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 
 | Surface | Implemented | Tested | Isolated/runtime evidence | Production enabled |
 |---|---|---|---|---|
-| License gate + factory | yes | yes | root tests 112/112; chat+stream gate; fake signed licenses | no external package release |
+| License gate + factory | yes | yes | root tests 112/112 (2026-10-07 snapshot); chat+stream gate; fake signed licenses | no external package release |
 | Context budget/redaction | yes | yes | max rows/bytes + fail-closed envelope + `gRouter-` key redaction tests | no live supplier |
 | Resolve/key handoff | yes | yes | handoff + attacker baseUrl regression | no live customer install |
-| Heartbeat telemetry | yes | yes | HTTP(S) normalization regression; backend 55/55 | no production rollout |
+| Heartbeat telemetry | yes | yes | HTTP(S) normalization regression; backend 55/55 (2026-10-07 snapshot) | no production rollout |
 | Payment/order entitlement | yes | yes | fake KlikQRIS/order tests; ownership 404 regression | KlikQRIS production pending |
 | Admin/settings security | yes | yes | auth/masking/SSOT tests + 9-route auth sweep + missing-token fail-closed regression | production credentials pending |
 | Onboarding CLI | yes | yes | success/failure/reinstall env regression | public npm package unpublished |
@@ -62,8 +82,8 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 
 ## Isolated smoke steps (no production writes)
 
-1. `NODE_ENV=test node --test` from repo root → expect 112 pass / 0 fail.
-2. `NODE_ENV=test node --test` from `server/` → expect 55 pass / 0 fail.
+1. `NODE_ENV=test node --test "test/**/*.test.js"` from repo root → expect 112 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 95)**.
+2. `NODE_ENV=test node --test` from `server/` → expect 55 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 103)**.
 3. `NODE_ENV=test node --test test/customer-register-to-chat.e2e.test.js` from `server/` → expect 1 pass / 0 fail.
 4. `node --check` each changed JS file (JSX excluded) → no output = OK.
 5. Read-only runtime smoke: `curl -o /dev/null -w '%{http_code}' http://localhost:4601/` → 200; same for `/copilot` and `/api/plans`; `http://localhost:4600/api/plans` → 200; plan count 3.

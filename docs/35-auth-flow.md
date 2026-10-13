@@ -96,4 +96,6 @@ Audit live pertama: semua endpoint ✓ (lihat riwayat di handoff-2026-10-12). Ti
    (inline script diizinkan utk Aurora login + Tailwind CDN + fonts + Three.js CDN;
    `frame-ancestors 'none'`). Terverifikasi live di `/login`.
 
-Regresi setelah perubahan: backend 91/91, plugin 175/175, tsc 0 error.
+Regresi setelah perubahan: backend 91/91, plugin 175/175, tsc 0 error (snapshot 2026-10-12;
+**historis**). Baseline terukur 2026-10-13: backend 103/103, plugin 95/95 — lihat
+`docs/docs-reconciliation-2026-10-13.md`.

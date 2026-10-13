@@ -55,6 +55,9 @@ groundedness, refusal correctness, scope violation rate, error rate, p95 first-t
 
 ## 5. CI (local/optional)
 
+> **Catatan 2026-10-13:** repo ini **tidak punya workflow CI** (`.github/workflows` tidak ada).
+> Bagian ini adalah daftar gate yang dijalankan **manual** di host, bukan pipeline otomatis.
+
 - lint + typecheck;
 - unit + security test;
 - fake-supplier e2e;

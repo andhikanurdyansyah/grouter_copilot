@@ -24,12 +24,53 @@ import { betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
 import { dash, sentinel } from '@better-auth/infra';
 import Database from 'better-sqlite3';
+import { copyFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveSettings } from './settings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbFile = process.env.AUTH_DB_FILE || path.join(__dirname, '..', 'data', 'auth.sqlite');
+
+/**
+ * Resolve the Better Auth SQLite file.
+ *
+ * SAFETY — test isolation. Better Auth reads this ONCE at import time. An unset
+ * AUTH_DB_FILE used to default to the PRODUCTION `data/auth.sqlite`, so every
+ * `node --test` run that booted the server wrote QA accounts straight into the
+ * production database (the root cause of the historic account accumulation).
+ * Under NODE_ENV=test we now DERIVE an isolated per-process temp DB unless the
+ * caller explicitly set AUTH_DB_FILE. A bare empty sqlite file makes Better Auth
+ * throw SchemaMismatchError (there is no auto-migration), so the temp DB is
+ * seeded from the prod schema with all rows cleared.
+ */
+function resolveAuthDbFile() {
+  const explicit = (process.env.AUTH_DB_FILE || '').trim();
+  if (explicit) return explicit;
+  const prodFile = path.join(__dirname, '..', 'data', 'auth.sqlite');
+  if (process.env.NODE_ENV !== 'test') return prodFile;
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-auth-test-'));
+  const file = path.join(dir, 'auth.sqlite');
+  try {
+    copyFileSync(prodFile, file);
+    const db = new Database(file);
+    db.pragma('foreign_keys = OFF');
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      .all();
+    for (const { name } of tables) db.prepare(`DELETE FROM "${name}"`).run();
+    db.close();
+    console.log(`[auth] NODE_ENV=test tanpa AUTH_DB_FILE → auth DB terisolasi: ${file}`);
+  } catch (err) {
+    // Prod schema source missing (fresh checkout): still stay OFF production data.
+    console.log(
+      `[auth] WARN: gagal menyemai auth DB test dari ${prodFile} (${err.message}); memakai ${file}`,
+    );
+  }
+  return file;
+}
+
+const dbFile = resolveAuthDbFile();
 
 // Auth configuration comes from the settings SSOT (defaults <- env seeds).
 // The store layer is intentionally NOT read here: this module builds the Better

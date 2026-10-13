@@ -26,7 +26,7 @@ Halaman admin: `/admin` (operasional) · `/admin/licenses` · `/admin/licenses/<
 Semua perintah dijalankan di host (`/home/ubuntu/grouter_copilot`):
 
 ```bash
-# 1) Semua test backend + plugin (241 test)
+# 1) Semua test backend + plugin (server 103 + root 95 = 198 test; terukur 2026-10-13)
 cd server && npm test && cd .. && npm test
 
 # 2) Typecheck + build frontend
@@ -38,7 +38,7 @@ npm run e2e
 
 `npm run e2e` otomatis: membaca Admin Token dari `server/.env` (tidak pernah dicetak), memeriksa pm2 services hidup, lalu menjalankan Playwright di atas **`http://localhost:4601`** (instance produksi lokal). Setiap run membuat akun QA baru (`qa.e2e.*@gmail.com`) — **tidak menyentuh record customer nyata**.
 
-Hasil yang diharapkan: `22 passed` (±1 menit). Artefak kegagalan ada di `test-results/`.
+Hasil yang diharapkan: `22 passed` (±1 menit; 11 spec × 2 project desktop+mobile, `--list` terverifikasi 2026-10-13). Artefak kegagalan ada di `test-results/`.
 
 ---
 
@@ -103,46 +103,52 @@ Workflow yang bisa dites:
 
 ## 6. Reset / Cleanup Data QA (aman)
 
-Akun & lisensi QA bertanda jelas (`qa.e2e.*@gmail.com`, `QA-E2E …`, `QA <label> …`). Membersihkan:
+Akun & lisensi QA bertanda jelas (`qa.e2e.*@gmail.com`, `QA-E2E …`, `QA <label> …`).
+**Alat kanonik:** `server/scripts/purge-test-accounts.mjs` — **dry-run default** (tidak menghapus
+apa pun tanpa `--apply`), hanya mencocokkan pola test eksplisit (`TEST_PATTERNS`: `qa*`/`ntf*`/
+`lictok*`/`qaclean*`), menolak menghapus akun yang masih punya order/lisensi, dan otomatis
+membuat backup `auth.sqlite` + `store.json` ke `/home/ubuntu/backups/` sebelum menghapus.
 
 ```bash
-# Hapus HANYA user QA (email LIKE 'qa.%') + datanya — TIDAK menyentuh customer nyata.
-python3 - <<'EOF'
-import sqlite3, json
-db = sqlite3.connect('server/data/auth.sqlite')
-ids = [r[0] for r in db.execute("SELECT id FROM user WHERE email LIKE 'qa.%'")]
-print('QA users:', len(ids))
-for i in ids:
-    db.execute('DELETE FROM session WHERE user_id=?', (i,))
-    db.execute('DELETE FROM account WHERE user_id=?', (i,))
-    db.execute('DELETE FROM user WHERE id=?', (i,))
-db.commit(); db.close()
-d = json.load(open('server/data/store.json'))
-before = (len(d['accounts']), len(d['orders']), len(d['licenses']))
-qa_acc = {a['id'] for a in d['accounts'] if str(a.get('email','')).startswith('qa.')}
-d['accounts'] = [a for a in d['accounts'] if a['id'] not in qa_acc]
-d['orders'] = [o for o in d['orders'] if o.get('accountId') not in qa_acc]
-d['licenses'] = [l for l in d['licenses'] if l.get('accountId') not in qa_acc]
-json.dump(d, open('server/data/store.json','w'), indent=1)
-print('store cleaned:', before, '→', (len(d['accounts']), len(d['orders']), len(d['licenses'])))
-EOF
+# Lihat dulu siapa yang akan dihapus (TIDAK menghapus apa pun):
+node server/scripts/purge-test-accounts.mjs
+
+# Hapus (backup otomatis dibuat lebih dulu):
+node server/scripts/purge-test-accounts.mjs --apply
+
+# Opsional: hanya akun lebih tua dari N hari:
+node server/scripts/purge-test-accounts.mjs --apply --older-than 7
+```
+
+Skrip ini menggantikan snippet manual lama (`email LIKE 'qa.%'` + edit `store.json` langsung),
+yang rentan menghapus data nyata dan tidak mengambil backup. Setelah `--apply`:
+
+```bash
 pm2 restart copilot-backend --update-env
 ```
 
-**Cadangkan dulu** jika ragu: `bash scripts/backup-data.sh`.
+**Cadangkan dulu** jika ragu: `bash scripts/backup-data.sh`. Perhatikan: konvensi baru
+(2026-10-13) mewajibkan test E2E ber-session memakai instance terisolasi
+(`DATA_FILE`/`AUTH_DB_FILE` → tmp), bukan `server/data/` produksi — lihat
+`docs/25-pending-implementations.md` & `docs/handoff-2026-10-13.md`.
 
 ---
 
-## 7. Hasil Test Aktual (2026-10-10)
+## 7. Hasil Test Aktual (2026-10-13)
 
 | Gate | Hasil |
 |---|---|
-| Server tests (`cd server && npm test`) | **88/88 pass** |
-| Root tests (`npm test`) | **153/153 pass** |
-| Frontend typecheck + build | pass (`tsc -b` bersih, build <1s) |
-| Browser E2E `npm run e2e` | **22/22 pass** (11 desktop + 11 mobile) |
+| Server tests (`cd server && npm test`) | **103/103 pass** (NODE_ENV=test) |
+| Root tests (`npm test`) | **95/95 pass** (`NODE_ENV=test node --test "test/**/*.test.js"`) |
+| Frontend typecheck + build | pass (`tsc -b` bersih, exit 0; `npm run build` sukses) |
+| Browser E2E `npm run e2e` | **22 test** (11 spec × 2 project: desktop + mobile; `--list` terverifikasi) |
 | Protected landing checksum | OK (landing/intro/success tidak berubah) |
 | Secret scan | bersih |
+
+> Catatan: angka pada tabel ini adalah baseline terukur 2026-10-13 (dirujuk `docs/handoff-2026-10-13.md`).
+> Nilai lama (server 88/88, root 153/153, E2E "22/22 pass") berasal dari snapshot 2026-10-10/11 dan
+> **tidak lagi berlaku**. Repo ini tidak punya CI workflow (`.github/workflows` tidak ada) — semua gate
+> dijalankan manual di host. E2E 22 = jumlah test (bukan dibuktikan "passed" di run ini).
 
 Yang dicakup E2E: register→dashboard, checkout sandbox→PENDING terverifikasi server (tanpa klaim palsu), polling berhenti saat dialog ditutup, empty states jujur (licenses/install/usage), session guard 401, logout mematikan sesi server, mobile 390px (drawer + tanpa overflow), admin gate 401, semua halaman admin render, issue lisensi + token sekali-lihat + tidak bocor di list + revoke, orders/ledger/usage/settings tanpa bocor kredensial (apiKey ter-mask), isolasi antar-akun (order A → 404 untuk B), cost integrity (body amount ditolak 400), customer tidak bisa buka admin.
 

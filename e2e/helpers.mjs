@@ -26,27 +26,42 @@ export function adminToken() {
 }
 
 /**
- * Registrasi akun QA via UI register (/login memuat register.html dua-form).
- * Return { page, account } dengan sesi login sudah aktif.
+ * Registrasi akun QA via UI.
+ *
+ * UI sign-up saat ini adalah SPA 3-langkah di /login/sign-up
+ * (frontend/src/components/ui/sign-up.tsx) — TANPA id #signupForm/#suEmail/
+ * #toSignup (helper lama sudah usang; /login kini sign-in-only). Alur:
+ *   1. /login/sign-up, isi email → Enter (maju ke langkah password);
+ *   2. isi password → Enter (maju ke langkah konfirmasi);
+ *   3. isi konfirmasi → klik tombol submit (aria-label "Finish sign-up");
+ *   4. sukses → window.location = '/user' (delay ~1.6s untuk confetti).
+ * Return { ctx, page, account } dengan sesi login sudah aktif.
  */
 export async function registerViaUi(browser, account, { viewport } = {}) {
   const ctx = await browser.newContext(viewport ? { viewport } : undefined)
   const page = await ctx.newPage()
   const errors = []
   page.on('pageerror', (e) => errors.push(String(e)))
-  await page.goto('/login')
+  await page.goto('/login/sign-up')
   await page.waitForLoadState('networkidle')
-  // register.html: dua form — default signup; kalau sedang signin, klik toggle.
-  const signupForm = page.locator('#signupForm, form:has(#suEmail)').first()
-  if (!(await signupForm.isVisible().catch(() => false))) {
-    await page.locator('#toSignup, a:has-text("Daftar")').first().click()
-  }
-  await page.locator('#suName').fill(account.name)
-  await page.locator('#suEmail').fill(account.email)
-  await page.locator('#suPassword').fill(account.password)
-  await page.locator('#registerBtn').click()
-  // Sukses → redirect /user (SPA dashboard).
-  await page.waitForURL('**/user', { timeout: 20_000 })
+
+  const email = page.locator('input[type=email], input[placeholder="Email"]').first()
+  await email.waitFor({ state: 'visible', timeout: 20_000 })
+  await email.fill(account.email)
+  await email.press('Enter')
+
+  const password = page.locator('input[placeholder="Password"]').first()
+  await password.waitFor({ state: 'visible', timeout: 20_000 })
+  await password.fill(account.password)
+  await password.press('Enter')
+
+  const confirm = page.locator('input[placeholder="Confirm Password"]').first()
+  await confirm.waitFor({ state: 'visible', timeout: 20_000 })
+  await confirm.fill(account.password)
+
+  await page.locator('button[aria-label="Finish sign-up"], button[type=submit]').first().click()
+  // Sukses → redirect /user (SPA dashboard), delay ~1.6s.
+  await page.waitForURL('**/user', { timeout: 25_000 })
   await page.waitForLoadState('networkidle')
   return { ctx, page, errors }
 }

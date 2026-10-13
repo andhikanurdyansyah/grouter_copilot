@@ -15,20 +15,24 @@
 | R-009 | Jawaban grounded (source/freshness) | `test/runtime.test.js`, `test/protocol-version.test.js`: sources propagate to response/SSE | Missing/ambiguous skill yields safe blocked/error response |
 | R-010 | Error jelas & aman | `test/context.test.js` (redaction incl. `gRouter-` keys), `test/runtime.test.js` (INTERNAL_ERROR/SKILL_FAILED envelopes leak no internals) | Unknown errors become `INTERNAL_ERROR` without internals |
 | R-011 | Cost terkontrol | `test/context.test.js`: maxRows and maxContextBytes are enforced, not merely reported | Context is truncated before adapter invocation |
-| R-012 | Semver & protokol stabil | `test/protocol-version.test.js`: public v1 constants, response shape, SSE ordering | Contract drift fails CI tests |
+| R-012 | Semver & protokol stabil | `test/protocol-version.test.js`: public v1 constants, response shape, SSE ordering | Contract drift fails the contract test (no CI workflow configured — run `npm test` manually) |
 
 ## Exit criteria (development start)
 
 - [x] Setiap P0 punya acceptance test.
 - [x] Setiap P0 punya failure response.
-- [x] Adapter contract stabil untuk di-fake di CI.
+- [x] Adapter contract stabil untuk di-fake (dummy supplier; tidak ada CI workflow — dijalankan lokal via `npm test`).
 - [x] Skill contract + chat protocol disetujui.
 - [x] Tidak ada P0 yang bergantung keputusan belum terkunci.
 
 ## Verification snapshot (isolated)
 
-- Root: `NODE_ENV=test node --test` → 112/112 pass (2026-10-07).
-- Backend: `NODE_ENV=test node --test` from `server/` → 55/55 pass (2026-10-07).
+> **Historical snapshot (2026-10-07)** — superseded. Current verified baseline 2026-10-13:
+> root `NODE_ENV=test node --test "test/**/*.test.js"` → **95/95 pass**; backend
+> `cd server && NODE_ENV=test node --test` → **103/103 pass**. See `docs/handoff-2026-10-13.md`.
+
+- Root: `NODE_ENV=test node --test` → 112/112 pass (2026-10-07, historical — **not current**).
+- Backend: `NODE_ENV=test node --test` from `server/` → 55/55 pass (2026-10-07, historical — **not current**).
 - Isolated customer E2E: `NODE_ENV=test node --test test/customer-register-to-chat.e2e.test.js` from `server/` → 1/1 pass.
 - Admin auth sweep: all 9 admin routes return 401 without/wrong token; 200 with the correct token (`server/test/server.test.js`).
 - Order ownership: an authenticated account gets 404 on another account's order; `/api/orders/latest` empty (server/test/orders-ownership.test.js).

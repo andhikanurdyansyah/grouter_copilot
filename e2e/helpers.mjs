@@ -7,6 +7,26 @@ import { chromium } from 'playwright'
 
 export const BASE = process.env.E2E_BASE_URL || 'http://localhost:4601'
 
+// ── ISOLATION ASSURANCE ──────────────────────────────────────────────────────
+// This suite MUTATES state (creates accounts/orders/licenses). It must ONLY run
+// against the disposable isolated instance started by `npm run e2e`. The runner
+// exports E2E_ISOLATED=1; if it is absent, the suite is being pointed at
+// production by mistake — refuse loudly before any request leaves the browser.
+if (process.env.E2E_ISOLATED !== '1') {
+  throw new Error(
+    'E2E refused: E2E_ISOLATED!=1. This mutating suite must run against the isolated '
+    + 'instance via `npm run e2e` (scripts/run-e2e.sh) — never against production. '
+    + 'For read-only production checks use scripts/e2e-smoke-live.sh.',
+  )
+}
+{
+  let host = null
+  try { host = new URL(BASE).hostname } catch { /* validated below */ }
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(host)) {
+    throw new Error(`E2E refused: base URL host "${host}" is not loopback (${BASE}).`)
+  }
+}
+
 /** Akun QA baru (unik per panggilan) — tak pernah memakai email customer nyata. */
 export function newQaAccount(label = 'e2e') {
   const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -21,7 +41,7 @@ export function newQaAccount(label = 'e2e') {
 /** Admin token dari env (WAJIB). Tidak pernah dicetak atau ditulis ke log. */
 export function adminToken() {
   const t = process.env.E2E_ADMIN_TOKEN
-  if (!t) throw new Error('E2E_ADMIN_TOKEN wajib di-set oleh runner (npm run e2e membacanya dari server/.env)')
+  if (!t) throw new Error('E2E_ADMIN_TOKEN wajib di-set oleh runner (npm run e2e menyediakan token instance terisolasi)')
   return t
 }
 

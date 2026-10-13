@@ -109,9 +109,9 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
 
 ---
 
-## Patch D2/D4/D5 — SUDAH DITERAPKAN (2026-10-13)
+## Patch D2/D3/D4/D5 — SUDAH DITERAPKAN (2026-10-13)
 
-`bin/grouter-copilot.js` diperbaiki oleh supervisor sesi 2026-10-13; regression test
+`bin/grouter-copilot.js` diperbaiki 2026-10-13; regression test
 `test/scaffold-host-compat.test.js` (RED di kode lama → GREEN di kode baru):
 
 - **D5** — ketiga template route (Express/vanilla, Next App Router, Next Pages Router) kini
@@ -122,25 +122,41 @@ dipakai untuk integrasi baru; arsitektur target memakai satu service credential 
   "no Express required". Terverifikasi live: plain `node:http` → JSON 503 (bukan TypeError/reset).
 - **D2** — langkah berikutnya installer kini menjelaskan cara memuat `.env`
   (`node --env-file=.env …`) + gejala bila dilewati.
-- **D3** — BELUM diterapkan: masih menulis `copilot.config.js` ESM tanpa cek `type` `package.json`.
-  Menunggu keputusan PO.
+- **D3** — SUDAH diterapkan: `detectModuleType()` membaca `type` `package.json` host; proyek
+  CommonJS mendapat scaffold `.cjs` (templates `CONFIG_TEMPLATE_CJS`/`SKILL_TEMPLATE_CJS`/
+  `ROUTE_NODE_CJS_TEMPLATE`/`HEALTH_NODE_CJS_TEMPLATE`, dimuat via `require()`/dynamic `import()`),
+  proyek ESM tetap `.js`. Terverifikasi: `test/scaffold-host-compat.test.js` — kedua varian
+  (CJS + ESM) hijau. (Catatan historis: entri "BELUM diterapkan" sebelumnya keliru; kode + test
+  sudah ada.)
 
 Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.
 
 ## Konvensi akun test & pembersihan prod (2026-10-13)
 
-**Aturan:** test E2E ber-session WAJIB memakai instance terisolasi
-(`DATA_FILE` + `AUTH_DB_FILE` menunjuk ke tmp), BUKAN `server/data/` produksi.
+**Aturan:** test E2E ber-session WAJIB memakai instance terisolasi.
 Alasan: pada 2026-10-13 `auth.sqlite` prod ditemukan menumpuk **186 akun QA/test**
-(pola `qa*`/`ntf*`/`lictok*`) dari test yang jalan langsung ke prod.
+(pola `qa*`/`ntf*`/`lictok*`) dari test yang jalan langsung ke prod — akar masalahnya
+adalah `auth.js` meng-default `AUTH_DB_FILE` ke `server/data/` meski `NODE_ENV=test`
+(diperbaiki 2026-10-13: isolasi auth DB kini DEFAULT saat `NODE_ENV=test`).
 
-**Alat pembersih:** `server/scripts/purge-test-accounts.mjs`
+**Isolasi E2E (2026-10-13, P0) — `npm run e2e` sekarang TERISOLASI penuh:**
+`scripts/run-e2e.sh` → `e2e/isolated/run.mjs` menyalakan instance sementara
+(auth DB sintetis dari migrasi Better Auth + store tmp + **mock upstream**, port
+4690/4691), menjalankan Playwright, lalu membersihkan proses + data tmp.
+Guard fail-closed (`e2e/isolated/guard.mjs`) menolak target produksi (port 4600/4601,
+host publik, `NODE_ENV≠test`, tanpa mock, path di `server/data/`, mode pembayaran
+`production`). Smoke test produksi READ-ONLY terpisah: `scripts/e2e-smoke-live.sh`.
+
+**Alat pembersih (housekeeping, jika ada residu):** `server/scripts/purge-test-accounts.mjs`
 - **Dry-run default** — tidak menghapus apa pun tanpa `--apply`.
 - Hanya menghapus email yang cocok pola test eksplisit (lihat `TEST_PATTERNS` di skrip).
 - **Menolak** menghapus akun yang masih punya order/lisensi di `store.json`.
 - Backup otomatis `auth.sqlite` + `store.json` ke `/home/ubuntu/backups/qa-purge-<stamp>/` sebelum `--apply`.
 - Teruji di instance terisolasi: dry-run tidak mengubah apa pun; proteksi order bekerja;
   akun non-test utuh.
+
+**Pembersih store (residu order/lisensi/usage QA):** `server/scripts/purge-store-residue.mjs`
+(dry-run default, backup, write atomik; mempertahankan lisensi/usage customer nyata).
 
 ```bash
 cd server
@@ -149,11 +165,12 @@ node scripts/purge-test-accounts.mjs --apply              # hapus
 node scripts/purge-test-accounts.mjs --apply --older-than 7   # hanya yang > 7 hari
 ```
 
-## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI, belum ada tindak lanjut kode)
+## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI)
 
 > **Status worker: COMPLETED** (2026-10-13 05:26 UTC, `deleg_9b1c89a8`). Bukti lengkap + patch
-> usulan ber-line-ref: **`docs/evidence/2026-10-13-cleanroom-installer.md`**.
-> Patch D2–D5 **BELUM di-apply** — butuh keputusan PO (mengubah kontrak scaffold = keputusan produk).
+> ber-line-ref: **`docs/evidence/2026-10-13-cleanroom-installer.md`**.
+> Patch D2–D5 **SUDAH di-apply** (lihat §"Patch D2/D3/D4/D5" di atas); status "BELUM di-apply"
+> di baris ini adalah snapshot saat temuan, bukan status terkini.
 
 Verifikasi CLI dari tarball (`npm pack` → fresh install → `install` sukses/gagal → health → chat)
 menemukan kesenjangan yang butuh keputusan/perbaikan kode (docs/install-guide.md ditulis

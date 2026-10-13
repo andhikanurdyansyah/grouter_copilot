@@ -1,24 +1,42 @@
 #!/usr/bin/env bash
-# Runner E2E — membaca ADMIN_TOKEN dari server/.env TANPA mencetaknya,
-# memastikan pm2 services hidup, lalu menjalankan Playwright.
+# ─────────────────────────────────────────────────────────────────────────────
+# gRouter Copilot — ISOLATED E2E runner (DEFAULT).
+#
+# Runs the Playwright suite against a DISPOSABLE instance (temp auth DB + temp
+# store + mock upstream, ports 4690/4691). It NEVER touches production
+# (localhost:4600/4601) and creates ZERO production accounts/orders/licenses.
+#
+# One command, locally and in CI:   npm run e2e
+#
+# Env knobs:
+#   E2E_PAY_SEAM=1      mock upstream reports a paid status (isolated only)
+#   E2E_BACKEND_PORT    default 4690
+#   E2E_FRONTEND_PORT   default 4691
+#   E2E_GREP=<pattern>  forwarded as `-g <pattern>` to Playwright
+#
+# For a READ-ONLY production smoke test (no mutation), use scripts/e2e-smoke-live.sh.
+#
+# Requirements: Node ≥20.6 (node:sqlite). Playwright is resolved from
+# frontend/node_modules (pnpm layout) — symlinked below.
+# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if ! grep -q '^ADMIN_TOKEN=' server/.env; then
-  echo "ERROR: ADMIN_TOKEN tidak ditemukan di server/.env" >&2
-  exit 1
-fi
-export E2E_ADMIN_TOKEN
-E2E_ADMIN_TOKEN="$(grep '^ADMIN_TOKEN=' server/.env | cut -d= -f2-)"
+# Resolve Playwright + playwright-core from the pnpm store once (the frontend
+# dependency tree is the source of truth). `playwright-core` is a transitive
+# dep, so it is only present under .pnpm — resolve it there, not under
+# frontend/node_modules directly.
+PW_MAIN="$(cd frontend/node_modules/playwright && pwd -P)"
+PW_CORE="$(cd "$(dirname "$PW_MAIN")/playwright-core" && pwd -P)"
 
-# Layanan harus hidup (produksi lokal). Tidak me-restart apa pun — read-only check.
-curl -sf -o /dev/null http://localhost:4600/api/health || { echo "ERROR: backend :4600 tidak hidup (pm2 start copilot-backend)" >&2; exit 1; }
-curl -sf -o /dev/null http://localhost:4601/app/ || { echo "ERROR: frontend :4601 tidak hidup (pm2 start copilot-frontend)" >&2; exit 1; }
+# Specs import bare 'playwright/test' → resolvable from the repo root and e2e/.
+mkdir -p e2e/node_modules node_modules
+ln -sfn "$PW_MAIN" e2e/node_modules/playwright
+ln -sfn "$PW_CORE" e2e/node_modules/playwright-core
+ln -sfn "$PW_MAIN" node_modules/playwright
+ln -sfn "$PW_CORE" node_modules/playwright-core
 
-# Pastikan symlink modul playwright untuk e2e (layout pnpm di frontend/)
-mkdir -p e2e/node_modules
-ln -sfn "$(cd frontend/node_modules/.pnpm/playwright@*/node_modules/playwright && pwd)" e2e/node_modules/playwright
-ln -sfn "$(cd frontend/node_modules/.pnpm/playwright@*/node_modules/playwright-core && pwd)" e2e/node_modules/playwright-core
+PW_ARGS=()
+if [ -n "${E2E_GREP:-}" ]; then PW_ARGS+=("-g" "${E2E_GREP}"); fi
 
-export E2E_BASE_URL="${E2E_BASE_URL:-http://localhost:4601}"
-exec node frontend/node_modules/playwright/cli.js test --config=playwright.config.mjs "$@"
+exec node e2e/isolated/run.mjs "${PW_ARGS[@]}" "$@"

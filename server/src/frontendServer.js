@@ -102,36 +102,47 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       }
     }
     if (url.pathname.startsWith('/assets/')) {
-      const file = path.join(PUBLIC_DIR, url.pathname);
-      if (existsSync(file)) {
-        const ext = path.extname(file).toLowerCase();
-        const type = MIME[ext] || 'application/octet-stream';
-        if (ext === '.mp4') {
-          const size = statSync(file).size;
-          const range = req.headers.range;
-          if (range) {
-            const match = /^bytes=(\d*)-(\d*)$/.exec(range);
-            if (match) {
-              const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]) - 1);
-              const end = match[2] ? Math.min(size - 1, Number(match[2])) : size - 1;
-              if (start <= end && start < size) {
-                res.writeHead(206, {
-                  'content-type': type, 'content-length': end - start + 1,
-                  'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes',
-                });
-                return createReadStream(file, { start, end }).pipe(res);
-              }
-            }
-            res.writeHead(416, { 'content-range': `bytes */${size}` });
-            return res.end();
-          }
-          res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
-          return createReadStream(file).pipe(res);
-        }
-        res.writeHead(200, { 'content-type': type });
-        return res.end(readFileSync(file));
+      const resolved = path.resolve(path.join(PUBLIC_DIR, url.pathname));
+      const assetsRoot = path.resolve(PUBLIC_DIR);
+      // Containment + must-be-a-FILE: a directory path (/assets/, /assets/sub/)
+      // previously hit readFileSync on a dir → EISDIR thrown inside the async
+      // handler → the request hung with no response. Now it 404s cleanly.
+      if (!(resolved === assetsRoot || resolved.startsWith(assetsRoot + path.sep))) {
+        res.writeHead(404); return res.end('not found');
       }
-      res.writeHead(404); return res.end('not found');
+      let st = null;
+      try { st = statSync(resolved); } catch { st = null; }
+      if (!st || !st.isFile()) { res.writeHead(404); return res.end('not found'); }
+      const ext = path.extname(resolved).toLowerCase();
+      const type = MIME[ext] || 'application/octet-stream';
+      if (ext === '.mp4') {
+        const size = st.size;
+        const range = req.headers.range;
+        if (range) {
+          const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+          if (match) {
+            const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]) - 1);
+            const end = match[2] ? Math.min(size - 1, Number(match[2])) : size - 1;
+            if (start <= end && start < size) {
+              res.writeHead(206, {
+                'content-type': type, 'content-length': end - start + 1,
+                'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes',
+              });
+              return createReadStream(resolved, { start, end }).pipe(res);
+            }
+          }
+          res.writeHead(416, { 'content-range': `bytes */${size}` });
+          return res.end();
+        }
+        res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+        return createReadStream(resolved).pipe(res);
+      }
+      try {
+        res.writeHead(200, { 'content-type': type });
+        return res.end(readFileSync(resolved));
+      } catch {
+        res.writeHead(404); return res.end('not found');
+      }
     }
 
     // SPA: /login/sign-up memakai design shadcn sign-up (route SPA /login/sign-up)
@@ -149,15 +160,19 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       const file = path.join(PUBLIC_DIR, 'app', rel);
       const resolved = path.resolve(file);
       const root = path.resolve(path.join(PUBLIC_DIR, 'app'));
-      if (!resolved.startsWith(root)) { res.writeHead(404); return res.end('not found'); }
-      if (existsSync(resolved)) {
+      if (!(resolved === root || resolved.startsWith(root + path.sep))) { res.writeHead(404); return res.end('not found'); }
+      let st = null;
+      try { st = statSync(resolved); } catch { st = null; }
+      // Only serve regular files — a directory path must fall through to the SPA
+      // fallback (or 404), never readFileSync on a dir (EISDIR → hung request).
+      if (st && st.isFile()) {
         const ext = path.extname(resolved).toLowerCase();
         const type = MIME[ext] || 'application/octet-stream';
         res.writeHead(200, { 'content-type': type, 'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable' });
-        return res.end(readFileSync(resolved));
+        try { return res.end(readFileSync(resolved)); } catch { res.writeHead(404); return res.end('not found'); }
       }
       // SPA fallback: /app/<route> tanpa ekstensi (mis. /app/sign-up) → app shell.
-      if (!path.extname(rel)) {
+      if (!path.extname(rel.replace(/\/$/, ''))) {
         const spaIndex = path.join(PUBLIC_DIR, 'app', 'index.html');
         if (existsSync(spaIndex)) {
           res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });

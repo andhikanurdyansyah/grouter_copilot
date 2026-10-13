@@ -1,200 +1,123 @@
-# Pending Implementations — gRouter Copilot
+# Pending Implementations — gRouter Copilot (SOURCE OF TRUTH)
 
-> Things explicitly deferred or pending. Each has a reason, a blocker, and what
-> to do when it becomes active. **Ditinjau ulang I5 (2026-10-01)** — status lama
-> (P-001/003/004/005 "NOT STARTED/PENDING/PARTIAL") sudah tidak akurat; daftar
-> di bawah mencerminkan realita kode.
+> **Rekonsiliasi final 2026-10-13** (HEAD `3d2bda8`). Dokumen ini adalah **satu-satunya daftar
+> pending yang berwenang**. Setiap entri berstatus **OPEN** (benar-benar belum selesai), **PO-owned**
+> (butuh keputusan/tindakan owner), atau **CLOSED** (riwayat — jangan dianggap terbuka lagi).
+> Sebelumnya status tersebar & saling bertentangan di `docs/25`, `docs/18`, `docs/30`, `docs/20`,
+> `docs/17`, dan handoff — semua sudah diselaraskan ke tabel di bawah. Angka test terukur tree ini:
+> **root 105/105 · server 118/118 · tsc bersih · E2E 22/22 (terisolasi)** —
+> lihat `docs/docs-reconciliation-2026-10-13.md`.
 
-## P-001 — Google OAuth provider
+## Ringkasan status (satu tampilan)
 
-**Status:** DONE (enabled purely by env).
+| # | Item | Status | Blocker | Cara lanjut / resume |
+|---|---|---|---|---|
+| GO-1 | KlikQRIS mode produksi (uang nyata) | **PO-owned** | butuh keputusan bisnis + kredensial produksi | set `KLIKQRIS_MODE=production` + API key/merchant ID di `server/.env`, lalu runbook `docs/33` §2 |
+| GO-2 | Persist license keypair produksi | **PO-owned** | ephemeral key di-regenerate tiap restart | set `LICENSE_PRIVATE_KEY_PEM`/`LICENSE_PUBLIC_KEY_PEM` atau `server/data/keys/license-{private,public}.pem` sebelum lisensi nyata |
+| GO-3 | `ADMIN_TOKEN` produksi | **PO-owned** | nilai ops | isi `ADMIN_TOKEN` di `server/.env` (fail-closed tanpa itu di `NODE_ENV=production`) |
+| GO-4 | npm publish `@grouter/copilot` | **PO-owned (DILARANG)** | keputusan owner | tetap unpublished; `npx` path belum terverifikasi sampai publish |
+| GO-5 | Aktivasi AI per paket | **PO-owned** | kebijakan paket saat ini `ai.enabled:false` | toggle di `/admin/packages` bila PO memutuskan |
+| GO-6 | Kredensial Resend (email reset/notif) | **PO-owned** | butuh API key | isi `RESEND_API_KEY` (+`MAIL_FROM`) di `server/.env`; kode sudah aktif, verifikasi email masuk |
+| OPEN-1 | Sample CRM/POS + skill authoring guide | **OPEN** | belum dikerjakan | EPIC-7 (`docs/18`): buat `examples/` + template skill |
+| OPEN-2 | Next.js first-class integration | **OPEN (partial)** | demo CRM/POS jadi gate | master-plan Phase 2; sebagian sudah ada di plugin |
+| OPEN-3 | Usage-ledger reconciliation job (upstream) | **OPEN** | belum ada job reconcile | usage per lisensi sudah tercatat; tambah job banding vs `/check-usage` |
+| OPEN-4 | Bukti callback KlikQRIS nyata → webhook | **OPEN (external)** | butuh sesi simulator upstream | buat order sandbox baru, amati path webhook di log app (`docs/handoff-2026-10-12-continuation.md`) |
+| OPEN-5 | Signature verifikasi webhook KlikQRIS | **OPEN (blocked)** | butuh algoritma dari KlikQRIS | implementasi setelah dokumen signature tersedia (`docs/33`, R-11) |
+| OPEN-6 | Automasi audit dependency | **OPEN** | repo tanpa CI workflow | jalankan manual (`npm audit`/`pnpm audit`); lockfiles tracked |
+| OPEN-7 | Auto-scan helper linter (R-04) | **OPEN** | design, butuh approval | belum ada linter otomatis |
+| OPEN-8 | Retry terbatas di runtime path (R-05) | **OPEN** | hanya taxonomy retryable | tambah retry/circuit-breaker di backend (target D-021 `docs/04` §11) |
+| OPEN-9 | Reconcile usage provider per-customer | **OPEN** | kontrak `/check-usage` = total per credential | tunggu dukungan metadata gRouter (`docs/30` open question #2) |
+| CLOSED | Google OAuth (P-001) | **CLOSED** | — | enabled via env; rotasi kredensial = ops (`docs/28`) |
+| CLOSED | Auto-provisioning gRouter key (P-002) | **CLOSED (REJECTED)** | D-021 | tidak dibutuhkan arsitektur service-credential |
+| CLOSED | KlikQRIS payment integration (P-003) | **CLOSED** | — | live (sandbox); go-live = GO-1 |
+| CLOSED | Customer dashboard wiring (P-004) | **CLOSED** | — | `/user`, `/api/me`, `/api/plans`, checkout, `/success` |
+| CLOSED | Account & license data model (P-005) | **CLOSED** | — | D-017 implemented (store + `accountService.js`) |
+| CLOSED | Auth backlog (change-password, headers) | **CLOSED** | — | `ChangePasswordDialog`, security headers live (2026-10-12) |
+| CLOSED | Patch D2/D3/D4/D5 scaffold | **CLOSED** | — | diterapkan + ter-commit (`c937fdb`, `97cd824`); bukti `docs/evidence/2026-10-13-cleanroom-installer.md` |
+| CLOSED | Usage ledger + quota enforcement (GAP-002/003) | **CLOSED** | — | `server/src/gateway.js` + `store.js`, `GET /api/admin/ledger` |
+| CLOSED | E2E isolasi dari produksi (P0) | **CLOSED** | — | `859259f`; bukti `docs/evidence/2026-10-13-e2e-isolation.md` |
+| CLOSED | Test-DB prod isolation + entitlement fail-closed (P1) | **CLOSED** | — | `5830fcf`; bukti `docs/evidence/2026-10-13-test-db-isolation.md` |
+| CLOSED | Restore drill (WS4) | **CLOSED** | — | `docs/evidence/2026-10-13-restore-drill.md` |
+| CLOSED | Gateway model/plan/quota matrix (WS2) | **CLOSED** | — | `docs/evidence/2026-10-13-gateway-entitlement-matrix.md` |
+| CLOSED | Mini-CRM dari tarball (WS3) | **CLOSED** | — | tercakup clean-room matrix ESM+CJS (`docs/evidence/2026-10-13-cleanroom-installer.md`) |
 
-**What exists:**
-- Better Auth email/password + `socialProviders.google` kondisional di `auth.js`
-  (aktif hanya saat `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` terisi).
-- Register/login menampilkan tombol Google dari `GET /api/config` (`providers.google`).
-- Single-origin callback: `https://copilot.grouter.id/api/auth/callback/google`.
+**Tidak ada item OPEN yang memblokir rilis saat ini** selain keputusan PO (GO-*). Item OPEN-1..9
+adalah pengembangan lanjutan, bukan blocker.
 
-**Remaining:** nothing in code. Rotasi kredensial/verifikasi consent screen
-Google adalah operasi ops (docs/28).
-
----
-
-## P-002 — Auto-provisioning gRouter api key
-
-**Status:** REJECTED for MVP (D-021, 2026-10-08) — supersedes DEFERRED (D-016 tetap dicatat
-sebagai keputusan historis).
-
-**Why:** Arsitektur target = Copilot memanggil gRouter dengan **SATU service credential**
-(`GROUTER_API_KEY` di Copilot backend). Tidak ada provisioning per-customer yang dibutuhkan
-untuk MVP; "purchase → create gRouter customer → create api key → attach" bukan bagian dari
-payment lifecycle.
-
-**If revisited:** hanya saat kebutuhan bisnis per-tenant identity muncul (future evolution,
-`docs/04-solution-architecture.md` §10) dan gRouter punya provisioning endpoint terdokumentasi.
-
----
-
-## P-003 — KlikQRIS payment integration
-
-**Status:** DONE (live, sandbox mode).
-
-**What exists (verified):**
-- `server/src/klikqris.js`: `createQris`, `checkStatus`, `isPaidStatus`
-  (`SUCCESS`/`PAID`/`SETTLEMENT`), `pollUntilSettled`, mode-aware base URL
-  (+ optional settings override `payment.klikqrisBaseUrl`).
-- Order flow A1-safe: `POST /api/orders {packageKey}` — harga resolve
-  server-side dari plan catalogue; body amount ditolak.
-- Webhook anti-forgery: klaim lunas di-re-verify ke `GET /qris/status/:id`
-  sebelum `settlePaid` → license (entitlement dari plan, A3).
-- Admin settle path: `POST /api/admin/orders/:id/settle`.
-- Sandbox payment SIMULATION hanya via dashboard KlikQRIS (manual, 1 klik
-  operator) — tidak ada simulate API publik.
-
-**Remaining (ops, bukan kode):** pindah `KLIKQRIS_MODE=production` +
-kredensial produksi saat go-live.
+Dua keputusan yang sengaja DITUNDA dan tidak boleh diimplementasi sekarang: future credential model
+(scoped/per-product credentials) — `docs/04` §10; dan unit quota final (sudah = token untuk MVP).
 
 ---
 
-## P-004 — Customer dashboard data wiring
+## Riwayat (HISTORIS — jangan dianggap status terkini)
 
-**Status:** DONE.
+> Bagian di bawah adalah catatan asli yang membuat dokumen ini sebelumnya. Semua entri **sudah
+> selesai** atau **sudah usang**; dipertahankan sebagai jejak, bukan daftar kerja.
 
-**What exists:**
-- `/user` dashboard live dari session: `GET /api/me` → account + licenses
-  (1 akun = N license, D-017), organization UI (create/list/members).
-- Katalog paket dari `GET /api/plans` (tanpa harga hardcode di browser, A2).
-- Checkout in-page: modal QR + poll `GET /api/orders/:id` → PAID → license.
-- `/success` post-payment landing (poll `GET /api/orders/latest`).
+### P-001..P-005 — hasil rekonsiliasi I5 (2026-10-01)
 
----
+- **P-001 Google OAuth — DONE** (aktif murni via env `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`;
+  callback single-origin `https://copilot.grouter.id/api/auth/callback/google`).
+- **P-002 Auto-provisioning gRouter api key — REJECTED for MVP (D-021, 2026-10-08)**; D-016 tetap
+  dicatat historis. Tidak ada provisioning per-customer untuk MVP.
+- **P-003 KlikQRIS payment integration — DONE** (live, sandbox). `server/src/klikqris.js`; flow
+  A1-safe; webhook re-verify upstream sebelum `settlePaid`. Sisa: go-live produksi (GO-1).
+- **P-004 Customer dashboard data wiring — DONE** (`/user`, `/api/me`, `/api/plans`, checkout modal,
+  `/success`).
+- **P-005 Account & license data model — DONE** (D-017: Account 1..N License; field legacy
+  `grouterApiKey` masih ada di store **pra-D-021** — jangan dipakai untuk integrasi baru).
 
-## P-005 — Account & license data model
+### Auth backlog (audit 2026-10-12) — semua CLOSED
 
-**Status:** DONE.
+1. **Ganti password dari UI — SELESAI 2026-10-12** (`ChangePasswordDialog` di dropdown sidebar; E2E verified).
+2. **Email reset password** — kode Resend **AKTIF** (`sendResetPassword` di `auth.js`, env-driven);
+   tersisa hanya kredensial (GO-6).
+3. **Security headers — SELESAI 2026-10-12** (`frontendServer.js`: nosniff, X-Frame-Options,
+   Referrer-Policy, Permissions-Policy, CSP `frame-ancestors 'none'`).
+4. Halaman `/app/sign-up` (SPA) = showcase/simulasi (demo komponen); jalur sign-up resmi
+   `/login/sign-up`.
 
-**Model (D-017) implemented in the store + `accountService.js`:**
-```text
-Account (customer, from Better Auth session — ensureAccount)
-  └── License 1..N
-        └── { id, features[], quota, expiresAt, installs }
-```
-*(Field `grouterApiKey` per-license masih ada di store sebagai legacy pra-D-021 — jangan
-dipakai untuk integrasi baru; arsitektur target memakai satu service credential di backend.)*
+### Patch D2/D3/D4/D5 (scaffold) — SUDAH DITERAPKAN (2026-10-13)
 
----
-
-## Payment provider note (KlikQRIS)
-
-- Sign up free at klikqris.com, grab API Key + Merchant ID from dashboard.
-- Start with `sandbox` mode; switch to `production` only when ready to accept real money.
-- Do NOT store API key in frontend; only server-side (admin API returns it masked).
-- Webhook dipakai + di-re-verify upstream; polling browser (QR modal) hanya untuk UI.
-
----
-
-## Auth backlog (hasil audit 2026-10-12 — lihat docs/35-auth-flow.md §7)
-
-1. ~~**Ganti password dari UI dashboard**~~ — **SELESAI 2026-10-12**: dialog
-   `ChangePasswordDialog` di dropdown akun sidebar (`app-sidebar.tsx`); E2E terverifikasi.
-2. **Kirim email reset password nyata** — kode mailer Resend (env-driven, zero-dep) sudah AKTIF
-   di `auth.js` (`sendResetPassword`): bila `RESEND_API_KEY` diset di `server/.env` → email nyata
-   terkirim; bila tidak → URL di-log server. **Tersisa: isi kredensial Resend (keputusan PO —
-   jangan commit kredensial) + verifikasi email masuk.**
-3. ~~**Security headers di frontendServer**~~ — **SELESAI 2026-10-12**: nosniff, X-Frame-Options
-   DENY, Referrer-Policy, Permissions-Policy, CSP (inline utk Aurora/Tailwind CDN, frame-ancestors
-   'none'); disuntik ke semua response frontend; terverifikasi live.
-4. Halaman `/app/sign-up` (SPA) masih mode showcase/simulasi — pertahankan sebagai demo komponen;
-   jalur sign-up resmi = `/login/sign-up`.
-
----
-
-## Patch D2/D3/D4/D5 — SUDAH DITERAPKAN (2026-10-13)
-
-`bin/grouter-copilot.js` diperbaiki 2026-10-13; regression test
-`test/scaffold-host-compat.test.js` (RED di kode lama → GREEN di kode baru):
-
-- **D5** — ketiga template route (Express/vanilla, Next App Router, Next Pages Router) kini
-  membungkus `gatewayChat` dengan try/catch → mengembalikan envelope `UPSTREAM_UNAVAILABLE` (502),
-  bukan melempar sehingga host tidak crash.
-- **D4** — scaffold handler Node/vanilla menyertakan shim `ensureExpressLike(res)` (menyediakan
-  `res.status`/`res.json` di `node:http` polos); komentar + langkah installer menyatakan
-  "no Express required". Terverifikasi live: plain `node:http` → JSON 503 (bukan TypeError/reset).
-- **D2** — langkah berikutnya installer kini menjelaskan cara memuat `.env`
-  (`node --env-file=.env …`) + gejala bila dilewati.
-- **D3** — SUDAH diterapkan: `detectModuleType()` membaca `type` `package.json` host; proyek
-  CommonJS mendapat scaffold `.cjs` (templates `CONFIG_TEMPLATE_CJS`/`SKILL_TEMPLATE_CJS`/
-  `ROUTE_NODE_CJS_TEMPLATE`/`HEALTH_NODE_CJS_TEMPLATE`, dimuat via `require()`/dynamic `import()`),
-  proyek ESM tetap `.js`. Terverifikasi: `test/scaffold-host-compat.test.js` — kedua varian
-  (CJS + ESM) hijau. (Catatan historis: entri "BELUM diterapkan" sebelumnya keliru; kode + test
-  sudah ada.)
-
+`bin/grouter-copilot.js` diperbaiki; regresi `test/scaffold-host-compat.test.js` (RED→GREEN).
+- **D5** — template route membungkus `gatewayChat` try/catch → envelope `UPSTREAM_UNAVAILABLE` (502).
+- **D4** — shim `ensureExpressLike(res)` untuk `node:http` polos.
+- **D2** — langkah installer menjelaskan `node --env-file=.env …`.
+- **D3** — `detectModuleType()`: proyek CommonJS dapat scaffold `.cjs`; ESM tetap `.js`.
 Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.
 
-## Konvensi akun test & pembersihan prod (2026-10-13)
+### Temuan verifikasi CLI installer (Worker B+C, 2026-10-13) — HISTORIS / terselesaikan
 
-**Aturan:** test E2E ber-session WAJIB memakai instance terisolasi.
-Alasan: pada 2026-10-13 `auth.sqlite` prod ditemukan menumpuk **186 akun QA/test**
-(pola `qa*`/`ntf*`/`lictok*`) dari test yang jalan langsung ke prod — akar masalahnya
-adalah `auth.js` meng-default `AUTH_DB_FILE` ke `server/data/` meski `NODE_ENV=test`
-(diperbaiki 2026-10-13: isolasi auth DB kini DEFAULT saat `NODE_ENV=test`).
+Worker `deleg_9b1c89a8` **COMPLETED** (2026-10-13 05:26 UTC). Lima temuan — semuanya sudah
+ditangani:
+1. Dashboard menampilkan install dengan **License ID bukan token** → **FIXED** (WS-A token recovery:
+   `GET /api/me/licenses`, `GET /api/me/licenses/:id/token`, modal "Token lisensi" di `/user/install`).
+2. Node tidak memuat `.env` otomatis → **FIXED (D2)**.
+3. Scaffold ESM di proyek CommonJS → **FIXED (D3)**.
+4. Handler Express API di `node:http` polos → **FIXED (D4)**.
+5. Gateway tak terjangkau → host crash → **FIXED (D5)**.
 
-**Isolasi E2E (2026-10-13, P0) — `npm run e2e` sekarang TERISOLASI penuh:**
-`scripts/run-e2e.sh` → `e2e/isolated/run.mjs` menyalakan instance sementara
-(auth DB sintetis dari migrasi Better Auth + store tmp + **mock upstream**, port
-4690/4691), menjalankan Playwright, lalu membersihkan proses + data tmp.
-Guard fail-closed (`e2e/isolated/guard.mjs`) menolak target produksi (port 4600/4601,
-host publik, `NODE_ENV≠test`, tanpa mock, path di `server/data/`, mode pembayaran
-`production`). Smoke test produksi READ-ONLY terpisah: `scripts/e2e-smoke-live.sh`.
+### Konvensi akun test & pembersihan prod (2026-10-13)
 
-**Alat pembersih (housekeeping, jika ada residu):** `server/scripts/purge-test-accounts.mjs`
-- **Dry-run default** — tidak menghapus apa pun tanpa `--apply`.
-- Hanya menghapus email yang cocok pola test eksplisit (lihat `TEST_PATTERNS` di skrip).
-- **Menolak** menghapus akun yang masih punya order/lisensi di `store.json`.
-- Backup otomatis `auth.sqlite` + `store.json` ke `/home/ubuntu/backups/qa-purge-<stamp>/` sebelum `--apply`.
-- Teruji di instance terisolasi: dry-run tidak mengubah apa pun; proteksi order bekerja;
-  akun non-test utuh.
+**Aturan (berlaku):** test E2E ber-session WAJIB memakai instance terisolasi. **Sejak `859259f`,
+`npm run e2e` sudah terisolasi penuh** (instance temporer port 4690/4691 + mock upstream + guard
+fail-closed) sehingga tidak lagi membuat residu di prod — sweep pasca-E2E tidak diperlukan lagi.
 
-**Pembersih store (residu order/lisensi/usage QA):** `server/scripts/purge-store-residue.mjs`
-(dry-run default, backup, write atomik; mempertahankan lisensi/usage customer nyata).
+**Alat housekeeping (residu lama saja):**
+- `server/scripts/purge-test-accounts.mjs` — dry-run default, `--apply`, `--older-than N`, proteksi
+  akun ber-order, backup otomatis. Hanya `auth.sqlite`.
+- `server/scripts/purge-store-residue.mjs` — bersihkan `store.json` (akun test-pattern + lisensi/
+  order/usage/notif miliknya); dry-run default, backup, write atomik.
 
 ```bash
 cd server
 node scripts/purge-test-accounts.mjs                      # lihat dulu (aman)
 node scripts/purge-test-accounts.mjs --apply              # hapus
-node scripts/purge-test-accounts.mjs --apply --older-than 7   # hanya yang > 7 hari
+node scripts/purge-test-accounts.mjs --apply --older-than 7
 ```
 
-## Temuan verifikasi CLI installer (Worker B+C, 2026-10-13 — SELESAI)
+### Payment provider note (KlikQRIS)
 
-> **Status worker: COMPLETED** (2026-10-13 05:26 UTC, `deleg_9b1c89a8`). Bukti lengkap + patch
-> ber-line-ref: **`docs/evidence/2026-10-13-cleanroom-installer.md`**.
-> Patch D2–D5 **SUDAH di-apply** (lihat §"Patch D2/D3/D4/D5" di atas); status "BELUM di-apply"
-> di baris ini adalah snapshot saat temuan, bukan status terkini.
-
-Verifikasi CLI dari tarball (`npm pack` → fresh install → `install` sukses/gagal → health → chat)
-menemukan kesenjangan yang butuh keputusan/perbaikan kode (docs/install-guide.md ditulis
-sesuai REALITA, bukan niat):
-
-1. **Dashboard customer menampilkan perintah install dengan LICENSE ID, bukan token lisensi.**
-   `frontend/src/features/customer/install.tsx` membangun
-   `npx @grouter/copilot install --license ${licenseId}` — padahal CLI menuntut token
-   Ed25519 (terverifikasi: License ID → 403 `Malformed license`). Halaman `/success`
-   (`server/public/success.html`) sudah benar (menyertakan `license.token` dari
-   `GET /api/orders/latest`). Token hanya tampil SEKALI setelah pembayaran; dashboard
-   belum punya jalur "lihat ulang token" → pemilik lisensi lama bisa kehilangan akses install.
-2. **Node tidak memuat `.env` otomatis** — scaffold + langkah "Restart your app" membuat
-   runtime gagal (`health` 503 license:false, chat 500 `License verifier is not configured`)
-   jika customer tidak memakai `node --env-file=.env` (≥20.6) atau memuat env sendiri.
-   Pertimbangkan: cetak peringatan eksplisit di output installer atau scaffold loader env.
-3. **`copilot.config.js` hasil scaffold adalah ESM** (`import …`) tanpa guard `package.json`
-   `"type":"module"` — di proyek CommonJS tanpa `type`, `createCopilot` gagal
-   `Cannot use import statement outside a module` (terverifikasi live). Pertimbangkan
-   scaffold `.mjs` atau deteksi type proyek.
-4. Handler rute Node/Express scaffold memakai API `res.status(...).json(...)` Express —
-   di host `http` polos gagal `TypeError: res.status is not a function` (terverifikasi).
-   Output installer untuk "Node.js (vanilla)" tidak menyebut kebutuhan Express.
-5. **D5 (temuan baru, 2026-10-13)** — gateway tak terjangkau pada host yang di-scaffold →
-   **proses host CRASH** (unhandled `CopilotError UPSTREAM_UNAVAILABLE`); health tetap
-   melaporkan `provider:true` walau gateway mati (hanya cek keberadaan URL). Butuh try/catch
-   di scaffold route → envelope 502, bukan lempar. Bukti: `docs/evidence/2026-10-13-cleanroom-installer.md`.
+- Sandbox: mode `sandbox` (aktif). Produksi: GO-1.
+- Webhook dipakai + di-re-verify upstream; polling browser (QR modal) hanya untuk UI.
+- Simulasi bayar sandbox hanya via dashboard KlikQRIS (manual, 1 klik operator).

@@ -26,7 +26,7 @@ Halaman admin: `/admin` (operasional) · `/admin/licenses` · `/admin/licenses/<
 Semua perintah dijalankan di host (`/home/ubuntu/grouter_copilot`):
 
 ```bash
-# 1) Semua test backend + plugin (server 113 + root 105 = 218 test; terukur 2026-10-13)
+# 1) Semua test backend + plugin (server 118 + root 105 = 223 test; terukur 2026-10-13, HEAD `3d2bda8`)
 cd server && npm test && cd .. && npm test
 
 # 2) Typecheck + build frontend
@@ -146,7 +146,7 @@ pm2 restart copilot-backend --update-env
 
 | Gate | Hasil |
 |---|---|
-| Server tests (`cd server && npm test`) | **113/113 pass** (NODE_ENV=test) |
+| Server tests (`cd server && npm test`) | **118/118 pass** (NODE_ENV=test; tracked-file baseline, HEAD `3d2bda8`) |
 | Root tests (`npm test`) | **105/105 pass** (`NODE_ENV=test node --test "test/**/*.test.js"`) |
 | Isolated E2E (`npm run e2e`) | **22/22 pass** — instance terisolasi (port 4690/4691, mock upstream) |
 | Frontend typecheck + build | pass (`tsc -b` bersih, exit 0; `npm run build` sukses) |

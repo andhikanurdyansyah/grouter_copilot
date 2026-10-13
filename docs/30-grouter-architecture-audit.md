@@ -33,6 +33,14 @@ Copilot; Copilot quota ≠ gRouter infra usage; payment tanpa provisioning gRout
 
 ## 3. Gaps
 
+> **Status 2026-10-13 (tree terkini HEAD `3d2bda8`):** GAP-001, GAP-002, GAP-003, GAP-004, GAP-006 sudah
+> **DIIMPLEMENTASI** (AI gateway terpusat — `server/src/gateway.js` + `POST /api/copilot/chat`;
+> ledger per lisensi + `GET /api/admin/ledger`; enforcement kuota `quotaTokens`; `/api/resolve`
+> tidak lagi mengembalikan key; `/api/admin/usage` berlabel infra). GAP-007 (unit quota) sudah
+> diputuskan: **token** (`plan.quotaTokens`). GAP-005 (field legacy `grouterApiKey`) masih
+> transisi (tidak pernah dikembalikan ke browser). Tabel di bawah adalah **snapshot audit
+> 2026-10-08** dan kolom "Jenis" mencerminkan kondisi SAAT ITU, bukan sekarang.
+
 | ID | Problem | File | Current | Desired | Severity | Jenis |
 |---|---|---|---|---|---|---|
 | GAP-001 | Chat path memanggil gRouter dari host app dengan kredensial provider | `src/index.js` (`createCopilot` → `GrouterAdapter`), `src/adapter/grouter.js` | adapter + key hidup di host app | pemanggilan gRouter terpusat di Copilot backend; host app memanggil backend dengan license token | HIGH | implementation-required |
@@ -87,6 +95,11 @@ Copilot; Copilot quota ≠ gRouter infra usage; payment tanpa provisioning gRout
 
 ## 7. Recommended Next Implementation Step (sebelum real key di-inject)
 
+> **STATUS 2026-10-13: SELESAI.** Keempat langkah di bawah sudah diimplementasi:
+> `POST /api/copilot/chat` (gateway, `f8d4d47`), `/api/resolve` tanpa key, ledger + quota
+> enforcement (`14efd2e`, `f8e4ad3`), dan test regresi penuh (`docs/evidence/2026-10-13-gateway-entitlement-matrix.md`).
+> Teks di bawah = rekomendasi asli audit 2026-10-08 (historis).
+
 Bangun **AI gateway di Copilot backend** (GAP-001/002/003/004) dalam urutan ini:
 
 1. `POST /api/copilot/chat` di Copilot backend: validasi license ONLINE (signature +
@@ -103,6 +116,8 @@ dengan real request terkecil.
 
 ## 8. Jawaban Pertanyaan Audit (berbasis bukti repo)
 
+> **Jawaban di bawah = snapshot 2026-10-08.** Koreksi 2026-10-13 ada di tiap butir (§9).
+
 1. **Di mana `GROUTER_API_KEY` hidup?** Local: `server/.env` (gitignored). Staging/production:
    env/secret store server backend (pm2 env / secret manager). CI/CD: tidak dibutuhkan
    (test memakai FakeSupplier + dummy key). **Catatan: repo ini tidak punya CI workflow
@@ -110,22 +125,29 @@ dengan real request terkecil.
 2. **Komponen yang memanggil gRouter?** Saat ini: `GrouterAdapter`
    (`src/adapter/grouter.js`) — ter-instantiasi di host app (`src/index.js`). Target:
    hanya Copilot backend. `/check-usage` dipanggil `server/src/usageResolver.js`.
+   *[2026-10-13: SUDAH dipusatkan — hanya `server/src/gateway.js` (backend) yang memanggil gRouter
+   dengan service credential.]*
 3. **Browser bisa akses kredensial?** Tidak ada jalur langsung (scan frontend bersih;
    `sanitizeLicense` membuang `grouterApiKey`). Pengecualian legacy: form bind admin
    (operator mengetik key di browser admin — transisi GAP-005).
 4. **Quota di-enforce di mana?** Belum ada (GAP-003). Gate hanya validasi lisensi.
+   *[2026-10-13: ADA — `server/src/gateway.js` (kuota `quotaTokens` → `QUOTA_EXHAUSTED`/429), sebelum panggil provider.]*
 5. **Usage dicatat di mana?** Belum ada persistensi (GAP-002); usage hanya di respons chat.
+   *[2026-10-13: ADA — ledger di `server/src/store.js`, dibaca `GET /api/admin/ledger`; juga per lisensi di `/user/usage`.]*
 6. **Unit quota saat ini?** Tidak terdefinisi — `plan.quota` teks deskriptif (GAP-007).
+   *[2026-10-13: TERDEFINISI = token (`plan.quotaTokens`: 3M/15M; `null` = unlimited).]*
 7. **Skema license cukup?** Identitas cukup (account/license/install); angka quota numerik +
    usage tracking belum ada (GAP-002/003).
+   *[2026-10-13: `quotaTokens` numerik + usage tracking sudah ADA.]*
 8. **gRouter perlu customer_id?** Tidak — kontrak tidak mendukung; identitas internal Copilot.
 9. **gRouter perlu license_id?** Tidak — tidak ada field metadata; opsional hanya jika gRouter
    kelak mendukung (open question #2).
 10. **Rekonsiliasi usage provider?** Belum bisa per customer — `/check-usage` hanya total per
     credential; gap dicatat (GAP-002), bukan diarikan solusinya.
+    *[2026-10-13: masih OPEN — item OPEN-9 di `docs/25`.]*
 
 ## 9. Verification
 
 - Sweep kontradiksi: sisa klaim per-customer-key hanya berlabel legacy/D-021.
-- `npm test` root **133/133** + server **70/70** (NODE_ENV=test) — lulus setelah perubahan doc (snapshot audit 2026-10-08; **historis, bukan angka saat ini**). Baseline terukur 2026-10-13: root `NODE_ENV=test node --test "test/**/*.test.js"` → **95/95**, server `cd server && NODE_ENV=test node --test` → **103/103** (`docs/handoff-2026-10-13.md`).
+- `npm test` root **133/133** + server **70/70** (NODE_ENV=test) — lulus setelah perubahan doc (snapshot audit 2026-10-08; **historis, bukan angka saat ini**). Baseline terukur 2026-10-13 (tree terkini HEAD `3d2bda8`): root `NODE_ENV=test node --test "test/**/*.test.js"` → **105/105**, server `cd server && NODE_ENV=test node --test` → **118/118** (`docs/docs-reconciliation-2026-10-13.md`; snapshot same-day 95/103/113 sudah disuperse).
 - Tidak ada real key diminta, dicetak, atau dikonsumsi; `.env` tidak disentuh.

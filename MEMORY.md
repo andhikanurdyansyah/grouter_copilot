@@ -89,9 +89,9 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → **95 pass** (2026-10-13; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
-- Backend test: `cd server && NODE_ENV=test node --test` → **113 pass** (2026-10-13). (Windows: JANGAN `node --test test/`.)
-- E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). Menarget **prod :4601** → bikin akun QA di prod, sweep dgn `node server/scripts/purge-test-accounts.mjs --apply`.
+- Plugin test: `node --test` (root) → **105 pass** (2026-10-13, HEAD `3d2bda8`; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
+- Backend test: `cd server && NODE_ENV=test node --test` → **118 pass** (2026-10-13, HEAD `3d2bda8`; tracked-file baseline). (Windows: JANGAN `node --test test/`.)
+- E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). **Terisolasi penuh (2026-10-13, `859259f`)**: instance temporer (auth DB sintetis + store tmp + mock upstream, port 4690/4691) + guard fail-closed — **TIDAK menyentuh prod**. Smoke prod read-only terpisah: `npm run smoke:live`. Sweeper residu lama tetap ada: `node server/scripts/purge-test-accounts.mjs --apply`.
 - Run backend: `cd server && node src/index.js` (port 4600). Zero dependency (no npm install).
 - Instance terisolasi: `DATA_FILE=<tmp> AUTH_DB_FILE=<tmp> PORT=4690 node src/index.js`.
 - **Isolasi test = DEFAULT (2026-10-13):** `NODE_ENV=test` tanpa `AUTH_DB_FILE` → `auth.js` otomatis membuat temp auth DB (seed skema prod, row dibersihkan). Test TIDAK lagi menulis ke `server/data/`. Override dengan `AUTH_DB_FILE` eksplisit bila perlu pola khusus. Regresi: `server/test/auth-db-isolation.test.js`.
@@ -102,13 +102,16 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
   direkonsiliasi ke realita kode. Kontrak resmi: **`docs/29-backend-api-contract.md`**.
 - Tetap ingat: `be.grouter.id` TIDAK dipakai (single origin `copilot.grouter.id`).
 
-## Pending / terbuka (ringkas — detail di handoff §4)
+## Pending / terbuka (ringkas — **daftar tunggal: `docs/25-pending-implementations.md`**)
 
 - ~~A1~~ ✅ closed (I2). ~~A2~~ ✅ closed. ~~A3~~ ✅ closed. ~~A4~~ ✅ closed (I3).
 - ~~I3 wiring config~~ ✅ (`92cf9fb`). ~~I4 panel Settings~~ ✅ (`61b8e67`). ~~I5 rekonsiliasi docs~~ ✅.
-- **Ops go-live (butuh keputusan/aksi Jie):** `KLIKQRIS_MODE=production` + kredensial produksi;
-  persist license keypair (LICENSE_PRIVATE_KEY_PEM/PUBLIC) sebelum license nyata; isi
-  `ADMIN_TOKEN` produksi; checklist lengkap di `docs/28` §Checklist.
+- D-021 AI gateway (GAP-001/002/003/004) ✅ closed: quota + ledger + `/api/resolve` tanpa key.
+- P1 hardening ✅ closed: isolasi test DB, entitlement fail-closed, E2E terisolasi (`859259f`).
+- **Ops go-live (butuh keputusan/aksi Jie — GO-1..GO-6 di `docs/25`):** `KLIKQRIS_MODE=production`
+  + kredensial produksi; persist license keypair (LICENSE_PRIVATE_KEY_PEM/PUBLIC) sebelum license
+  nyata; isi `ADMIN_TOKEN` produksi; npm publish DILARANG; aktivasi AI per paket via `/admin/packages`;
+  kredensial Resend. Checklist lengkap di `docs/28` §Checklist.
 
 ## Standing conventions
 

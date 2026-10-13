@@ -32,9 +32,10 @@ listed under "Executed and verified".
 4. **Restore drill (WS4).** No backup/restore script exists in the repo. Latest backup dirs exist in `/home/ubuntu/backups/` but were not restored into an isolated instance. Next: write `server/scripts/restore-drill.sh` (copy → isolated `DATA_FILE`, port 4691, restrictive perms), run it, record result.
 5. **Documentation reconciliation (WS5).** `docs/release-evidence-2026-10-06.md` still claims 112 root / 55 backend. Measured: 71 root, 99 server. Discrepancy not yet explained against git history; do not replace numbers without that.
    > **RESOLVED 2026-10-13 (supervisor):** do NOT trust either figure as current. Verified baseline
-   > on 2026-10-13: root `NODE_ENV=test node --test "test/**/*.test.js"` → **95/95**; server
-   > `cd server && NODE_ENV=test node --test` → **103/103**. The drift is code growth, not a
+   > on 2026-10-13 (tree terkini HEAD `3d2bda8`): root `NODE_ENV=test node --test "test/**/*.test.js"` → **105/105**; server
+   > `cd server && NODE_ENV=test node --test` → **118/118**. The drift is code growth, not a
    > regression. See `docs/docs-reconciliation-2026-10-13.md`. This "Not completed" item is closed.
+   > (Snapshot perantara 95/103 yang sempat dicatat sudah disuperse.)
 
 ## Scratch artifacts (not in repo)
 `/root/.hermes/profiles/copilot-grouter/cache/scratch/`: `pack/grouter-copilot-0.1.0.tgz`, `pack/fresh-existing/`, `pack/fresh-express/`, `iso-keys/` (mode 600, test keys only), `iso2/` (store, token file mode 600). Delete the scratch keys after the drill; they must never be used for production.
@@ -65,6 +66,9 @@ Open:
 - Real KlikQRIS callback to our webhook is NOT proven. Prod log and cloudflared logs record no webhook request path. Proof needs a fresh sandbox order whose upstream callback is observed in app logs.
 - The order settled before the fix has no licenseId link (pre-fix record). Not backfilled.
 - Restore drill, gateway model/plan/default matrix, mini-CRM from tarball, and docs reconciliation (71 vs 112, 99/100 vs 55) are still pending.
-  > **Update 2026-10-13:** docs reconciliation SELESAI (baseline terukur root 95, server 103 —
-  > `docs/docs-reconciliation-2026-10-13.md`). Restore drill selesai
-  > (`docs/evidence/2026-10-13-restore-drill.md`). Angka 71/99/100 di kalimat ini historis.
+  > **Update 2026-10-13 (supervisor):** **SEMUA item di baris ini SELESAI.** Docs reconciliation selesai
+  > (baseline terukur tree terkini HEAD `3d2bda8`: root **105**, server **118** —
+  > `docs/docs-reconciliation-2026-10-13.md`). Restore drill selesai (`docs/evidence/2026-10-13-restore-drill.md`).
+  > Gateway model/plan/default + quota matrix selesai (`docs/evidence/2026-10-13-gateway-entitlement-matrix.md`,
+  > 9 test + mutation proof). Mini-CRM dari tarball: tercakup oleh clean-room installer matrix
+  > (`docs/evidence/2026-10-13-cleanroom-installer.md`, ESM + CJS). Angka 71/99/100 (dan snapshot 95/103) historis.

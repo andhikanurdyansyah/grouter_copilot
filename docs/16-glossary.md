@@ -5,7 +5,7 @@
 - **Service credential (D-021):** SATU `GROUTER_API_KEY` milik Copilot backend untuk mengakses gRouter; akses infrastructure, BUKAN identitas customer; hanya server-side.
 - **Copilot quota:** batas pemakaian CUSTOMER per license/plan (dimensi Copilot). Tidak sama dengan infra usage gRouter.
 - **Infra usage:** pemakaian gRouter per service credential (token/request/biaya provider) — dibaca read-only via `/check-usage`; mencakup trafik seluruh customer.
-- **Usage ledger:** catatan pemakaian per license di Copilot (licenseId, requestId, model, usage, status) — dimensi customer (implementasi: GAP audit).
+- **Usage ledger:** catatan pemakaian per license di Copilot (licenseId, requestId, model, usage, status) — dimensi customer (implementasi: **SUDAH ADA** di AI gateway; lihat `GET /api/admin/ledger`).
 - **Skill:** developer-defined function yang mengekspos akses data.
 - **Skill registry:** koleksi skill terdaftar + validator.
 - **Runtime:** komponen server yang jalankan skill + panggil adapter (target D-021: runtime memanggil Copilot backend, bukan gRouter langsung dengan kredensial).

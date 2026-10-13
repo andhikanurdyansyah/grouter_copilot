@@ -71,7 +71,9 @@ Dashboard → menu user (sidebar) → **Sign out** → dialog konfirmasi → `PO
 - Sentinel password: cek HIBP breach + validasi email (`emailValidation: enabled`, compromised → block).
 - Anti user-enumeration di request-password-reset.
 - Token reset sekali pakai, 1 jam, revoke semua sesi setelah reset.
-- **Belum ada**: security headers (CSP/X-Frame-Options) di `frontendServer.js` — lihat `docs/25-pending-implementations.md`.
+- **Security headers: SUDAH ADA (2026-10-12).** `frontendServer.js` menyuntik CSP (`frame-ancestors 'none'`),
+  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`
+  ke SEMUA response frontend. §7 item 3 di bawah. (Teks lama "belum ada" sudah usang.)
 
 ## 7. Hasil Audit 2026-10-12 & Tindak Lanjut
 
@@ -97,5 +99,5 @@ Audit live pertama: semua endpoint ✓ (lihat riwayat di handoff-2026-10-12). Ti
    `frame-ancestors 'none'`). Terverifikasi live di `/login`.
 
 Regresi setelah perubahan: backend 91/91, plugin 175/175, tsc 0 error (snapshot 2026-10-12;
-**historis**). Baseline terukur 2026-10-13: backend 103/103, plugin 95/95 — lihat
+**historis**). Baseline terukur 2026-10-13 (HEAD `3d2bda8`): backend **118/118**, plugin **105/105** — lihat
 `docs/docs-reconciliation-2026-10-13.md`.

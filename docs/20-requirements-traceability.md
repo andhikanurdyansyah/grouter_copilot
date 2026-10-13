@@ -28,9 +28,9 @@
 ## Verification snapshot (isolated)
 
 > **Historical snapshot (2026-10-07)** — superseded. Current verified baseline 2026-10-13
-> (post P0 E2E-isolation commit): root `NODE_ENV=test node --test "test/**/*.test.js"` →
-> **105/105 pass**; backend `cd server && NODE_ENV=test node --test` → **113/113 pass**;
-> isolated E2E `npm run e2e` → **22/22 pass**. See `docs/handoff-2026-10-13.md` +
+> (tree terkini HEAD `3d2bda8`): root `NODE_ENV=test node --test "test/**/*.test.js"` →
+> **105/105 pass**; backend `cd server && NODE_ENV=test node --test` → **118/118 pass**;
+> isolated E2E `npm run e2e` → **22/22 pass**. See `docs/docs-reconciliation-2026-10-13.md` +
 > `docs/evidence/2026-10-13-e2e-isolation.md`.
 
 - Root: `NODE_ENV=test node --test` → 112/112 pass (2026-10-07, historical — **not current**).

@@ -1,8 +1,10 @@
 # MVP Backlog — gRouter Copilot
 
 > Status direkonsiliasi 2026-10-12 terhadap kode aktual (commit `fd75163`,
-> plugin tests 159/159). Bukti: test files + release evidence
-> `docs/release-evidence-2026-10-06.md`. Checklist EPIC-1..6 DONE saat master
+> plugin tests 159/159 — **snapshot historis 2026-10-12**; baseline terukur
+> 2026-10-13 = plugin 105/105 + server 118/118). Bukti: test files + release evidence
+> `docs/release-evidence-2026-10-06.md` + `docs/docs-reconciliation-2026-10-13.md`.
+> Checklist EPIC-1..6 DONE saat master
 > plan Phase 0 selesai; daftar di bawah mencerminkan realita kode.
 
 ## EPIC-1 Install & scaffold — DONE
@@ -53,11 +55,11 @@
 - [ ] Sample POS (sales summary).
 - [ ] Skill authoring guide + template.
 
-## Open items (direkonsiliasi 2026-10-12)
+## Open items (direkonsiliasi 2026-10-13 — daftar tunggal: `docs/25-pending-implementations.md`)
 
-1. Sample CRM/POS + skill authoring guide (EPIC-7).
-2. Next.js first-class integration (master plan Phase 2) — sebagian ada di plugin; demo CRM/POS jadi gate-nya.
-3. Usage ledger rekonsiliasi upstream (server side) — usage records per lisensi ada; reconcile job belum ada.
+1. Sample CRM/POS + skill authoring guide (EPIC-7) → **OPEN-1**.
+2. Next.js first-class integration (master plan Phase 2) — sebagian ada di plugin; demo CRM/POS jadi gate-nya → **OPEN-2**.
+3. Usage ledger rekonsiliasi upstream (server side) — usage records per lisensi **SUDAH ADA** (gateway ledger); job reconcile upstream belum ada → **OPEN-3**.
 
 ## Prioritization rule
 

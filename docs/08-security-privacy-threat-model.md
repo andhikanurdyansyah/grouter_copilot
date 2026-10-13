@@ -27,8 +27,10 @@ dicetak diagnostik, muncul di error, atau tampil di UI admin/customer.
 
 Verifikasi yang sudah ada: `/api/me` & `/api/admin/licenses` meng-sanitize license (tanpa
 token raw/grouterApiKey), admin settings menyamarkan secret, adapter fail-closed tanpa key,
-error upstream di-redact (`src/adapter/errors.js`). Celah implementasi terbuka dicatat di
-audit GAP (usage ledger backend belum ada; enforcement quota backend belum ada).
+error upstream di-redact (`src/adapter/errors.js`). **Usage ledger backend & enforcement quota
+backend SUDAH ADA** (`server/src/gateway.js` + `server/src/store.js`, ledger via
+`GET /api/admin/ledger`; kuota `quotaTokens` → `QUOTA_EXHAUSTED`/429). Catatan audit GAP-002/003
+di `docs/30` yang menyebut "belum ada" adalah snapshot 2026-10-08 — sudah usang.
 
 ## 2. Threats & controls
 

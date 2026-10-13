@@ -8,17 +8,18 @@ Scope: install-to-chat proof, P0 acceptance/security, onboarding DX, order/licen
 **Every number in this file is a HISTORICAL SNAPSHOT from 2026-10-06/07 and is superseded.**
 The counts have drifted as the codebase grew; do not treat 112 / 55 below as current.
 
-Current verified baseline (measured on this host, 2026-10-13):
+Current verified baseline (re-measured on this host, 2026-10-13, tree terkini HEAD `3d2bda8`):
 
-| Suite | Command | Result (2026-10-13) |
+| Suite | Command | Result (2026-10-13, HEAD `3d2bda8`) |
 |---|---|---|
-| Root (plugin) | `NODE_ENV=test node --test "test/**/*.test.js"` | **95 pass / 0 fail** |
-| Backend (server) | `cd server && NODE_ENV=test node --test` | **103 pass / 0 fail** |
+| Root (plugin) | `NODE_ENV=test node --test "test/**/*.test.js"` | **105 pass / 0 fail** |
+| Backend (server) | `cd server && NODE_ENV=test node --test` | **118 pass / 0 fail** |
 | Frontend typecheck | `cd frontend && npx tsc -b --noEmit` | clean (exit 0) |
-| Browser E2E | `npm run e2e` (Playwright) | 22 tests (11 specs × desktop+mobile projects) |
+| Browser E2E | `npm run e2e` (Playwright) | 22 tests (11 specs × desktop+mobile projects); isolated run `22 passed` |
 
 Notes:
-- This supersedes the snapshot numbers in this file: root `112 passed` (2026-10-07) → **95**; backend `55 passed` (2026-10-07) → **103**. The drop/increase is code drift, not a regression.
+- This supersedes the snapshot numbers in this file: root `112 passed` (2026-10-07) → **105**; backend `55 passed` (2026-10-07) → **118**. The change is code drift (added tests), not a regression.
+- An earlier **same-day** first-pass reconciliation recorded root 95 / server 103 (and a later same-day 113); those figures became stale within the day when `859259f` (E2E isolation), `5267959` (clean-room matrix) and `42fbe93`/`3d2bda8` added tests. Use the **105 / 118** above.
 - The old smoke-step command `NODE_ENV=test node --test` (no glob) is not equivalent to the current root run; use the explicit glob `"test/**/*.test.js"`.
 - There is **no CI workflow** in this repo (`.github/workflows` is absent). Any claim of tests "failing/passing in CI" is aspirational, not enforced.
 - Reference for the current baseline: `docs/handoff-2026-10-13.md`.
@@ -82,8 +83,8 @@ Notes:
 
 ## Isolated smoke steps (no production writes)
 
-1. `NODE_ENV=test node --test "test/**/*.test.js"` from repo root → expect 112 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 95)**.
-2. `NODE_ENV=test node --test` from `server/` → expect 55 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 103)**.
+1. `NODE_ENV=test node --test "test/**/*.test.js"` from repo root → expect 112 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 105)**.
+2. `NODE_ENV=test node --test` from `server/` → expect 55 pass / 0 fail **(2026-10-07 historical snapshot; current 2026-10-13 baseline = 118)**.
 3. `NODE_ENV=test node --test test/customer-register-to-chat.e2e.test.js` from `server/` → expect 1 pass / 0 fail.
 4. `node --check` each changed JS file (JSX excluded) → no output = OK.
 5. Read-only runtime smoke: `curl -o /dev/null -w '%{http_code}' http://localhost:4601/` → 200; same for `/copilot` and `/api/plans`; `http://localhost:4600/api/plans` → 200; plan count 3.

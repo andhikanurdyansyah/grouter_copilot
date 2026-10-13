@@ -106,14 +106,16 @@ Account (customer) 1..N License (D-017)
 - **Copilot quota = batas pemakaian CUSTOMER** (per license). "Unlimited" pada level
   infrastructure TIDAK berarti customer unlimited: service credential = akses
   infrastructure; license = entitlement; quota Copilot = limit pemakaian customer.
-- Status saat ini (jujur): `plan.quota` masih **label deskriptif** (mis. `"3B usage"`) dan
-  enforcement belum diimplementasi — lihat GAP-002 di audit & `docs/25`.
+- Status saat ini (2026-10-13): `plan.quota` masih ada sebagai **label deskriptif** (mis. `"3B usage"`),
+  tetapi enforcement kuota **SUDAH diimplementasi** — `plan.quotaTokens` (numerik, 3M/15M; `null` =
+  unlimited) di-enforce oleh AI gateway (`server/src/gateway.js` → `QUOTA_EXHAUSTED`/HTTP 429).
+  (Audit D-021 GAP-002/003 yang menyebut "belum ada" adalah snapshot 2026-10-08 — sudah usang.)
 
 ## 6. Usage model — dua dimensi akuntansi yang BERBEDA
 
 | Dimensi | Pemilik | Unit | Sumber data |
 |---|---|---|---|
-| **Copilot customer usage** | Copilot | per license: request/token/credit (unit ditetapkan implementasi) | usage ledger Copilot (belum ada — GAP-002/003) |
+| **Copilot customer usage** | Copilot | per license: token (unit = **token**; `quotaTokens`) | usage ledger Copilot — **ADA**: `server/src/store.js` (`listUsage`/`usageTotals`), `server/src/gateway.js`, `GET /api/admin/ledger` |
 | **gRouter infrastructure usage** | gRouter | token/request/biaya provider per service credential | `GET /api/check-usage?key=…` (read-only) |
 
 - Keduanya BUKAN dimensi yang sama dan TIDAK otomatis setara. `usage.requests` dari

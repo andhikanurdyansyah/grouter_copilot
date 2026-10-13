@@ -21,3 +21,7 @@
 *R-10 ditandai SUPERSEDED karena keputusan arsitektur berubah: backend Copilot
 adalah bagian inti produk (license server + dashboard), bukan prematur.*
 
+> Item ⚠️ di atas (R-05 retry runtime, R-11 signature webhook, R-12 automasi audit, R-06 sample app)
+> adalah item **OPEN** yang tercatat sebagai **OPEN-5/6/7/8/1** di `docs/25-pending-implementations.md`
+> (daftar pending tunggal).
+

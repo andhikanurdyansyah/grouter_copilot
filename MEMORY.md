@@ -89,12 +89,14 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → **105 pass** (2026-10-13, HEAD `3d2bda8`; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
-- Backend test: `cd server && NODE_ENV=test node --test` → **118 pass** (2026-10-13, HEAD `3d2bda8`; tracked-file baseline). (Windows: JANGAN `node --test test/`.)
+- Plugin test: `node --test` (root) → **105 pass** (2026-10-14, HEAD `139fbf5`; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
+- Backend test: `cd server && NODE_ENV=test node --test` → **118 pass** (2026-10-14, HEAD `139fbf5`; tracked-file baseline). (Windows: JANGAN `node --test test/`.)
+- QA SPA probe (read-only): `node scripts/qa-spa-probe.mjs [--all]` → console/page errors, CSP violations, unlabeled inputs. Terakhir: 19 rute, 0 error, 0 CSP, 0 unlabeled.
 - E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). **Terisolasi penuh (2026-10-13, `859259f`)**: instance temporer (auth DB sintetis + store tmp + mock upstream, port 4690/4691) + guard fail-closed — **TIDAK menyentuh prod**. Smoke prod read-only terpisah: `npm run smoke:live`. Sweeper residu lama tetap ada: `node server/scripts/purge-test-accounts.mjs --apply`.
 - Run backend: `cd server && node src/index.js` (port 4600). Zero dependency (no npm install).
 - Instance terisolasi: `DATA_FILE=<tmp> AUTH_DB_FILE=<tmp> PORT=4690 node src/index.js`.
-- **Isolasi test = DEFAULT (2026-10-13):** `NODE_ENV=test` tanpa `AUTH_DB_FILE` → `auth.js` otomatis membuat temp auth DB (seed skema prod, row dibersihkan). Test TIDAK lagi menulis ke `server/data/`. Override dengan `AUTH_DB_FILE` eksplisit bila perlu pola khusus. Regresi: `server/test/auth-db-isolation.test.js`.
+- **Isolasi test = DEFAULT (2026-10-13):** `NODE_ENV=test` tanpa `AUTH_DB_FILE`/`DATA_FILE` → `auth.js` + `server.js` otomatis membuat temp auth DB + temp store (seed skema prod, row dibersihkan). Test TIDAK lagi menulis ke `server/data/`. Override dengan env eksplisit bila perlu pola khusus. Regresi: `server/test/auth-db-isolation.test.js`, `server/test/store-db-isolation.test.js`.
+- **Deploy frontend (2026-10-13):** `bash scripts/deploy-frontend.sh` (build → validasi aset → backup → swap+prune → restart → health → auto-rollback). Bukan `cp` manual lagi.
 
 ## Docs stale (SUDAH DIREKONSILIASI I5, 2026-10-01)
 
@@ -107,7 +109,8 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - ~~A1~~ ✅ closed (I2). ~~A2~~ ✅ closed. ~~A3~~ ✅ closed. ~~A4~~ ✅ closed (I3).
 - ~~I3 wiring config~~ ✅ (`92cf9fb`). ~~I4 panel Settings~~ ✅ (`61b8e67`). ~~I5 rekonsiliasi docs~~ ✅.
 - D-021 AI gateway (GAP-001/002/003/004) ✅ closed: quota + ledger + `/api/resolve` tanpa key.
-- P1 hardening ✅ closed: isolasi test DB, entitlement fail-closed, E2E terisolasi (`859259f`).
+- P1 hardening ✅ closed: isolasi test DB + store, entitlement fail-closed, E2E terisolasi (`859259f`, `568cad3`).
+- P1 (audit 2026-10-13/14) ✅ closed: frontend static hang, deploy script+rollback, dashboard mock→real, CSP `worker-src`, filter/sort mati (`42fbe93`, `f06748d`, `a4e9647`, `05aa2ee`, `b8162cc`). Bukti: `docs/evidence/2026-10-13-production-integrity-fixes.md`.
 - **Ops go-live (butuh keputusan/aksi Jie — GO-1..GO-6 di `docs/25`):** `KLIKQRIS_MODE=production`
   + kredensial produksi; persist license keypair (LICENSE_PRIVATE_KEY_PEM/PUBLIC) sebelum license
   nyata; isi `ADMIN_TOKEN` produksi; npm publish DILARANG; aktivasi AI per paket via `/admin/packages`;

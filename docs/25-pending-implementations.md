@@ -1,12 +1,13 @@
 # Pending Implementations — gRouter Copilot (SOURCE OF TRUTH)
 
-> **Rekonsiliasi final 2026-10-13** (HEAD `3d2bda8`). Dokumen ini adalah **satu-satunya daftar
+> **Rekonsiliasi final 2026-10-14** (HEAD `139fbf5`). Dokumen ini adalah **satu-satunya daftar
 > pending yang berwenang**. Setiap entri berstatus **OPEN** (benar-benar belum selesai), **PO-owned**
 > (butuh keputusan/tindakan owner), atau **CLOSED** (riwayat — jangan dianggap terbuka lagi).
 > Sebelumnya status tersebar & saling bertentangan di `docs/25`, `docs/18`, `docs/30`, `docs/20`,
 > `docs/17`, dan handoff — semua sudah diselaraskan ke tabel di bawah. Angka test terukur tree ini:
-> **root 105/105 · server 118/118 · tsc bersih · E2E 22/22 (terisolasi)** —
-> lihat `docs/docs-reconciliation-2026-10-13.md`.
+> **root 105/105 · server 118/118 · tsc bersih · E2E 22/22 (terisolasi) ·
+> SPA probe 0 error/CSP** — lihat `docs/docs-reconciliation-2026-10-13.md` dan
+> `docs/evidence/2026-10-13-production-integrity-fixes.md`.
 
 ## Ringkasan status (satu tampilan)
 
@@ -36,6 +37,11 @@
 | CLOSED | Patch D2/D3/D4/D5 scaffold | **CLOSED** | — | diterapkan + ter-commit (`c937fdb`, `97cd824`); bukti `docs/evidence/2026-10-13-cleanroom-installer.md` |
 | CLOSED | Usage ledger + quota enforcement (GAP-002/003) | **CLOSED** | — | `server/src/gateway.js` + `store.js`, `GET /api/admin/ledger` |
 | CLOSED | E2E isolasi dari produksi (P0) | **CLOSED** | — | `859259f`; bukti `docs/evidence/2026-10-13-e2e-isolation.md` |
+| CLOSED | Store isolation NODE_ENV=test + planKey issuance fail-closed (P1) | **CLOSED** | — | `568cad3`; bukti `docs/evidence/2026-10-13-production-integrity-fixes.md` §2-3 |
+| CLOSED | Frontend static hang `/assets/` + atomic deploy script (P1) | **CLOSED** | — | `42fbe93`, `f06748d`; bukti §4-5 |
+| CLOSED | Admin dashboard mock numbers → real API data (P1) | **CLOSED** | — | `a4e9647`; bukti §6 |
+| CLOSED | CSP `worker-src blob:` (sign-up) (P1) | **CLOSED** | — | `05aa2ee`; bukti §7 |
+| CLOSED | Admin filter/sort dead-or-wrong + a11y labels (P1) | **CLOSED** | — | `b8162cc`; bukti §8; probe `scripts/qa-spa-probe.mjs` |
 | CLOSED | Test-DB prod isolation + entitlement fail-closed (P1) | **CLOSED** | — | `5830fcf`; bukti `docs/evidence/2026-10-13-test-db-isolation.md` |
 | CLOSED | Restore drill (WS4) | **CLOSED** | — | `docs/evidence/2026-10-13-restore-drill.md` |
 | CLOSED | Gateway model/plan/quota matrix (WS2) | **CLOSED** | — | `docs/evidence/2026-10-13-gateway-entitlement-matrix.md` |

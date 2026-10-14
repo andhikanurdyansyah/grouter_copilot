@@ -33,6 +33,18 @@ function get(port, p, { timeoutMs = 4000 } = {}) {
   });
 }
 
+/** HEAD-ish probe that returns status + headers without consuming the body. */
+function rawHead(port, p, { timeoutMs = 4000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port, path: p, timeout: timeoutMs }, (res) => {
+      res.resume();
+      resolve({ status: res.statusCode, headers: res.headers });
+    });
+    req.on('timeout', () => req.destroy(new Error('HUNG')));
+    req.on('error', reject);
+  });
+}
+
 test('frontend server: directory paths are answered, never hung (EISDIR regression)', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'fe-static-'));
   // The server resolves PUBLIC_DIR from its own location; we instead assert the
@@ -57,6 +69,14 @@ test('frontend server: directory paths are answered, never hung (EISDIR regressi
     // A real asset still serves.
     const d = await get(port, '/assets/grx-v3.css');
     assert.ok([200, 404].includes(d.status), `real asset answered ${d.status}`);
+
+    // Security headers present; CSP must allow the sign-up Web Worker blob: (no
+    // CSP violation on /app/sign-up render) — see the worker-src regression.
+    const e = await rawHead(port, '/app/');
+    const csp = e.headers['content-security-policy'] || '';
+    assert.ok(/nosniff/.test(e.headers['x-content-type-options'] || ''), 'x-content-type-options nosniff');
+    assert.ok(/frame-ancestors 'none'/.test(csp), 'CSP frame-ancestors none');
+    assert.ok(/worker-src[^;]*blob:/.test(csp), `CSP must allow blob: workers, got: ${csp}`);
   } finally {
     await new Promise((r) => srv.close(r));
     rmSync(dir, { recursive: true, force: true });

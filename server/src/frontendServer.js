@@ -58,6 +58,10 @@ const SEC_HEADERS = {
   'content-security-policy': [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com",
+    // Sign-up password tooling spawns a Web Worker from a blob: URL; without an
+    // explicit worker-src it falls back to script-src, which forbids blob: and
+    // throws a CSP violation on every /app/sign-up render.
+    "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",

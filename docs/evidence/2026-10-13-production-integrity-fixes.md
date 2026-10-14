@@ -79,6 +79,48 @@ exists → back up the current app dir → full swap (prunes orphans) → restar
 `copilot-frontend` → health check `/` and `/app/` → **auto-rollback** on any
 failure. Ran it: pruned 269 → 76 assets, health 200.
 
+## 6. Admin dashboard showed mock numbers as real data (P1) — `a4e9647`
+
+**Defect.** Admin overview + orders + settings rendered FIXED numbers as if they
+were live production figures: orders `LUNAS 214`, `menunggu 4`, `kedaluwarsa 17`,
+`Nilai settle Rp 48,6 jt`; a degraded-sandbox banner claiming `4 order menunggu`;
+`Perlu tindakan 3`; a hardcoded domain, a fake `ed25519:MCow…Q9s=` key and an
+`M-GRX-SANDBOX-091` token.
+
+**Fix.** All values now derive from the real endpoints (`/api/admin/orders`,
+`/api/admin/licenses`, `/api/admin/settings`); banners/action items render only
+when a real count > 0, so no fake alerts appear on a clean install.
+
+## 7. CSP blocked the sign-up Web Worker (P1) — `05aa2ee`
+
+**Defect.** Every `/app/sign-up` and `/app/login/sign-up` render threw
+"Creating a worker from 'blob:…' violates the following Content Security Policy
+directive: script-src …" — the CSP had no `worker-src`, so it fell back to
+`script-src`, which forbids `blob:`.
+
+**Fix.** Added `worker-src 'self' blob:`. Live: directive served, re-probe of all
+SPA routes shows 0 CSP/worker errors. Regression: `frontend-static-safety.test.js`
+asserts the served CSP allows `blob:` workers.
+
+## 8. Admin filters/dropdowns were dead or wrong (P1) — `b8162cc`
+
+**Defects.**
+- `licenses.tsx` plan filter hardcoded `starter`/`pro`/`enterprise` while the real
+  catalogue is `quota-3b-90d`/`quota-15b-365d`/`custom` → filtering matched nothing.
+- `licenses.tsx` sort dropdown had no `value`/`onChange` → clicking did nothing.
+- `ledger.tsx` model filter hardcoded `grouter/balanced|fast-mini|pro-large` while
+  real usage carries `DeepSeek-V4-Flash` → matched nothing.
+- Sign-up + admin search inputs had no accessible name (placeholder-only).
+
+**Fix.** Plan filter derives from `fetchPlans()`; sort wired to real keys
+(expires/created/usage); model filter derives from loaded records; `aria-label`
+added. Runtime-verified: plan filter lists the real keys, sort is live, model
+filter lists `DeepSeek-V4-Flash`, unlabeled inputs 13 → 0.
+
+**New QA tool.** `scripts/qa-spa-probe.mjs` — read-only (GET-only, never prints
+secrets) browser probe of every SPA route reporting console/page errors, CSP
+violations, failed requests and unlabeled inputs.
+
 ## Suites (measured, this host)
 
 | Suite | Command | Result |
@@ -88,6 +130,7 @@ failure. Ran it: pruned 269 → 76 assets, health 200.
 | Isolated E2E | `npm run e2e` | **22/22** |
 | Clean-room installer | `bash scripts/cleanroom-verify.sh` | **PASS** (ESM + CJS) |
 | Live read-only smoke | `npm run smoke:live` | **PASS** |
+| SPA render probe | `node scripts/qa-spa-probe.mjs --all` | **0 errors / 0 CSP / 0 unlabeled** |
 | Restore drill | `bash server/scripts/restore-drill.sh` | **PASS** |
 
 Production fingerprint unchanged across all runs:

@@ -60,11 +60,14 @@ const SEC_HEADERS = {
   //   - code.iconify.design → iconify-icon (55 ikon di landing)
   //   - api.iconify.design / api.simplesvg.com / api.unisvg.com → data ikon iconify
   //   - assets.unicorn.studio → scene unicorn.studio
+  //   - static.cloudflareinsights.com → beacon Web Analytics yang disuntik edge
+  //     Cloudflare ke SETIAP pageview (bukan kode kita); tanpa ini selalu ada
+  //     CSP violation di console produksi.
   // Tanpa origin ini, intro TIDAK menyelesaikan boot() (loader tak pernah hilang =
   // "stuck") dan ikon landing tidak render. Daftar ini presisi (bukan wildcard).
   'content-security-policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.iconify.design",
+    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.iconify.design https://static.cloudflareinsights.com",
     // Sign-up password tooling spawns a Web Worker from a blob: URL; without an
     // explicit worker-src it falls back to script-src, which forbids blob: and
     // throws a CSP violation on every /app/sign-up render.

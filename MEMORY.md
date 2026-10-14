@@ -89,10 +89,12 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 
 ## Test & run
 
-- Plugin test: `node --test` (root) → **105 pass** (2026-10-14, HEAD `139fbf5`; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`).
-- Backend test: `cd server && NODE_ENV=test node --test` → **118 pass** (2026-10-14, HEAD `139fbf5`; tracked-file baseline). (Windows: JANGAN `node --test test/`.)
+- Plugin test: `node --test` (root) → **117 pass** (2026-10-14; Windows: `NODE_ENV=test node --test "test/**/*.test.js"`). Termasuk 12 tes hardening isolasi E2E (port/identity/mock-upstream).
+- Backend test: `cd server && NODE_ENV=test node --test` → **118 pass** (2026-10-14). (Windows: JANGAN `node --test test/`.)
+- Frontend: `tsc -b --noEmit` bersih; `npx eslint .` **0 error**; `npm run build` sukses. Dep audit: 0 vuln (`npm audit --omit=dev` / `pnpm audit --prod`).
+- **CI**: `.github/workflows/ci.yml` (root+server+tsc+eslint+isolated E2E+clean-room; tanpa secret/prod DB).
 - QA SPA probe (read-only): `node scripts/qa-spa-probe.mjs [--all]` → console/page errors, CSP violations, unlabeled inputs. Terakhir: 19 rute, 0 error, 0 CSP, 0 unlabeled.
-- E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). **Terisolasi penuh (2026-10-13, `859259f`)**: instance temporer (auth DB sintetis + store tmp + mock upstream, port 4690/4691) + guard fail-closed — **TIDAK menyentuh prod**. Smoke prod read-only terpisah: `npm run smoke:live`. Sweeper residu lama tetap ada: `node server/scripts/purge-test-accounts.mjs --apply`.
+- E2E: `bash scripts/run-e2e.sh` → **22/22** (desktop+mobile). **Terisolasi penuh + identitas terverifikasi (2026-10-13/14, `859259f` + hardening)**: instance temporer (auth DB sintetis + store tmp + mock upstream, port 4690/4691); **port preflight fail-closed** (konflik = gagal keras, proses asing TIDAK dibunuh, tanpa fallback 4600/4601); **nonce per-run** (`E2E_INSTANCE_ID`) di-echo backend `/api/health` + frontend `/__e2e/id` (404 di prod) — runner menolak proses/instance lain. `playwright.config.mjs` menolak load tanpa `E2E_ISOLATED=1`. **TIDAK menyentuh prod**. Smoke prod read-only terpisah: `npm run smoke:live`. Sweeper residu lama tetap ada: `node server/scripts/purge-test-accounts.mjs --apply`.
 - Run backend: `cd server && node src/index.js` (port 4600). Zero dependency (no npm install).
 - Instance terisolasi: `DATA_FILE=<tmp> AUTH_DB_FILE=<tmp> PORT=4690 node src/index.js`.
 - **Isolasi test = DEFAULT (2026-10-13):** `NODE_ENV=test` tanpa `AUTH_DB_FILE`/`DATA_FILE` → `auth.js` + `server.js` otomatis membuat temp auth DB + temp store (seed skema prod, row dibersihkan). Test TIDAK lagi menulis ke `server/data/`. Override dengan env eksplisit bila perlu pola khusus. Regresi: `server/test/auth-db-isolation.test.js`, `server/test/store-db-isolation.test.js`.

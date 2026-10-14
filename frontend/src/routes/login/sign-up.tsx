@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { AuthComponent } from '@/components/ui/sign-up'
 
 /**
@@ -11,8 +11,6 @@ export const Route = createFileRoute('/login/sign-up')({
 })
 
 function LoginPageSignUp() {
-  const navigate = useNavigate()
-
   const handleSignUp = async (payload: { email: string; password: string }) => {
     // Better Auth wajib name — pakai local-part email bila tak diisi user.
     const name = payload.email.split('@')[0] || 'User'

@@ -599,10 +599,20 @@ export function createCopilotServer({
         paymentConfigured: Boolean(klikqris.configured),
       };
       const healthy = licenseServiceOk;
+      // E2E instance identity (test-only): the isolated runner passes a per-run
+      // nonce via E2E_INSTANCE_ID so its health probe can PROVE the response comes
+      // from the instance it just created — an impostor health server on the same
+      // port cannot guess it. Never emitted outside NODE_ENV=test, so no
+      // diagnostic identifier is exposed on production.
+      const testInstanceId =
+        process.env.NODE_ENV === 'test' && process.env.E2E_INSTANCE_ID
+          ? process.env.E2E_INSTANCE_ID
+          : null;
       return sendJson(res, healthy ? 200 : 503, {
         status: healthy ? 'ok' : 'degraded',
         contractVersion: 1,
         checks,
+        ...(testInstanceId ? { instanceId: testInstanceId } : {}),
       });
     }
 

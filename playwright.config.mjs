@@ -17,7 +17,29 @@
  */
 import { defineConfig, devices } from './frontend/node_modules/playwright/test.mjs'
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:4601'
+// ── FAIL-CLOSED: this config must NEVER drive production ─────────────────────
+// The mutating suite may only run against a disposable instance started by
+// `npm run e2e` (scripts/run-e2e.sh → e2e/isolated/run.mjs), which exports
+// E2E_ISOLATED=1 and E2E_BASE_URL. Without them, refuse to even load — a bare
+// `npx playwright test` must not point at localhost:4601 (production).
+if (process.env.E2E_ISOLATED !== '1') {
+  throw new Error(
+    'playwright.config.mjs refused: E2E_ISOLATED!=1. Run the mutating E2E only via '
+    + '`npm run e2e`. For a read-only production check use `npm run smoke:live`.',
+  )
+}
+
+const BASE = process.env.E2E_BASE_URL
+if (!BASE) {
+  throw new Error('playwright.config.mjs refused: E2E_BASE_URL is not set (the isolated runner sets it).')
+}
+{
+  let host = null
+  try { host = new URL(BASE).hostname } catch { /* validated below */ }
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(host)) {
+    throw new Error(`playwright.config.mjs refused: E2E_BASE_URL host "${host}" is not loopback (${BASE}).`)
+  }
+}
 
 export default defineConfig({
   testDir: './e2e/specs',

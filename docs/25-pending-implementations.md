@@ -37,6 +37,8 @@
 | CLOSED | Patch D2/D3/D4/D5 scaffold | **CLOSED** | — | diterapkan + ter-commit (`c937fdb`, `97cd824`); bukti `docs/evidence/2026-10-13-cleanroom-installer.md` |
 | CLOSED | Usage ledger + quota enforcement (GAP-002/003) | **CLOSED** | — | `server/src/gateway.js` + `store.js`, `GET /api/admin/ledger` |
 | CLOSED | E2E isolasi dari produksi (P0) | **CLOSED** | — | `859259f`; bukti `docs/evidence/2026-10-13-e2e-isolation.md` |
+| CLOSED | E2E port-ownership + instance-identity hardening (P0) | **CLOSED** | — | port preflight + nonce per-run + config fail-closed; 12 tes; bukti `docs/evidence/2026-10-14-e2e-identity-hardening.md` |
+| CLOSED | CI workflow (tanpa secret/prod DB) | **CLOSED** | — | `.github/workflows/ci.yml` (root+server+tsc+eslint+isolated E2E+clean-room) |
 | CLOSED | Store isolation NODE_ENV=test + planKey issuance fail-closed (P1) | **CLOSED** | — | `568cad3`; bukti `docs/evidence/2026-10-13-production-integrity-fixes.md` §2-3 |
 | CLOSED | Frontend static hang `/assets/` + atomic deploy script (P1) | **CLOSED** | — | `42fbe93`, `f06748d`; bukti §4-5 |
 | CLOSED | Admin dashboard mock numbers → real API data (P1) | **CLOSED** | — | `a4e9647`; bukti §6 |

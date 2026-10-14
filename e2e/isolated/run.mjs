@@ -6,6 +6,11 @@
  * against it, and ALWAYS tears the instance down — on success, failure, or a
  * signal (SIGINT/SIGTERM). Production (localhost:4600/4601) is never touched.
  *
+ * Hardening (P0): the instance proves its own identity (a per-run nonce echoed
+ * by the backend health endpoint and by the frontend's /__e2e/id probe, which
+ * also confirms the frontend proxies to OUR backend). Port conflicts are a hard
+ * failure. Cleanup runs on every exit path, including SIGINT/SIGTERM.
+ *
  * Env knobs:
  *   E2E_PAY_SEAM=1     mock upstream reports SUCCESS (isolated only)
  *   E2E_BACKEND_PORT   default 4690
@@ -26,6 +31,16 @@ const extraArgs = process.argv.slice(2);
 async function main() {
   const iso = startIsolatedInstance();
   let exitCode = 1;
+  let pw = null;
+
+  // Cleanup on operator interrupt — kill Playwright first, then the instance.
+  const onSignal = (sig) => {
+    try { if (pw) pw.kill(sig); } catch { /* ignore */ }
+    try { iso.stop(); } catch { /* ignore */ }
+    process.exit(130);
+  };
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => onSignal(sig));
+
   try {
     await iso.start();
     const { baseUrl, adminToken } = iso.handle;
@@ -36,7 +51,7 @@ async function main() {
     const args = ['test', '--config=playwright.config.mjs', '--reporter=list', ...extraArgs];
 
     exitCode = await new Promise((resolve) => {
-      const pw = spawn(process.execPath, [pwCli, ...args], {
+      pw = spawn(process.execPath, [pwCli, ...args], {
         cwd: repoRoot,
         env: {
           ...process.env,
@@ -46,9 +61,6 @@ async function main() {
         },
         stdio: 'inherit',
       });
-      for (const sig of ['SIGINT', 'SIGTERM']) {
-        process.on(sig, () => { try { pw.kill(sig); } catch { /* ignore */ } });
-      }
       pw.on('exit', (code) => resolve(code ?? 1));
     });
   } finally {

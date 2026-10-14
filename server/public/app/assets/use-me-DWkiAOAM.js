@@ -1,0 +1,1 @@
+import{t as e}from"./useQuery-D616PV6h.js";import{l as t}from"./index-B85XZz3F.js";function n(n=!0){return e({queryKey:[`me`],queryFn:async()=>{try{return await t()}catch(e){throw e?.response?.status===401&&(window.location.href=`/login`),e}},enabled:n,retry:!1,staleTime:1e4})}export{n as t};

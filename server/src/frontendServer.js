@@ -97,6 +97,26 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       return proxyToBackend(req, res, `${backendUrl}${url.pathname}${url.search}`);
     }
 
+    // E2E instance identity probe (TEST-ONLY). The isolated runner passes a
+    // per-run nonce via E2E_INSTANCE_ID; this route echoes it back so the runner
+    // can prove (a) THIS frontend process is the one it just spawned, and
+    // (b) this frontend proxies to the SAME isolated backend (via /instanceId).
+    // Absent in production: without NODE_ENV=test + the nonce it is a plain 404,
+    // so no diagnostic surface leaks in prod.
+    if (url.pathname === '/__e2e/id') {
+      if (process.env.NODE_ENV !== 'test' || !process.env.E2E_INSTANCE_ID) {
+        res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found');
+      }
+      let backendId = null;
+      try {
+        const r = await fetch(`${backendUrl}/api/health`, { signal: AbortSignal.timeout(3000) });
+        const j = await r.json();
+        backendId = j?.instanceId ?? null;
+      } catch { /* backendId stays null → runner treats as mismatch */ }
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      return res.end(JSON.stringify({ instanceId: process.env.E2E_INSTANCE_ID, backendInstanceId: backendId }));
+    }
+
     // Static assets
     if (req.method === 'GET' && url.pathname === '/favicon.ico') {
       const file = path.join(PUBLIC_DIR, 'favicon.ico');

@@ -45,11 +45,13 @@ export function CustomerAccount() {
   const licenses = me.data?.licenses ?? []
   const usageRows = me.data?.usage ?? []
 
+  // Snapshot 'now' once (calling Date.now() during render is impure).
+  const [nowMs] = useState(() => Date.now())
   // Lisensi aktif pertama = sumber kuota/kedaluwarsa (data server, bukan angka hardcode).
   const activeLicense = licenses.find((l: { status?: string | null }) => {
     const st = String(l.status ?? 'active')
     const expired = (l as { expiresAt?: string | number | null }).expiresAt
-      ? new Date((l as { expiresAt: string | number }).expiresAt).getTime() < Date.now()
+      ? new Date((l as { expiresAt: string | number }).expiresAt).getTime() < nowMs
       : false
     return st === 'active' && !expired
   })
@@ -547,9 +549,10 @@ export function CustomerAccount() {
               <Button
                 type='submit'
                 size='sm'
+                disabled={profileSaving}
                 className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-bold interactive-press'
               >
-                {language === 'id' ? 'Simpan' : 'Save'}
+                {profileSaving ? (language === 'id' ? 'Menyimpan…' : 'Saving…') : (language === 'id' ? 'Simpan' : 'Save')}
               </Button>
             </DialogFooter>
           </form>

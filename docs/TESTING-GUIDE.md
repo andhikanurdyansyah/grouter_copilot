@@ -42,8 +42,18 @@ npm run smoke:live
 `npm run e2e` menyalakan **instance terisolasi** (auth DB sintetis + store tmp + mock
 upstream; port **4690/4691**), menjalankan Playwright, lalu membersihkan proses + data tmp.
 **Produksi (localhost:4600/4601) TIDAK disentuh** dan nol akun/order QA dibuat di prod.
-Guard fail-closed (`e2e/isolated/guard.mjs`) menolak target produksi. Untuk cek produksi
-tanpa mutasi, pakai `npm run smoke:live` (health + katalog + admin 401).
+
+Isolasi kini **fail-closed berlapis** (2026-10-14):
+- **Port preflight** — kedua port dicek kosong sebelum spawn; konflik = gagal keras
+  (proses asing TIDAK dibunuh, TIDAK ada fallback ke 4600/4601).
+- **Identitas instance** — nonce acak per-run (`E2E_INSTANCE_ID`) di-echo backend
+  (`/api/health`) & frontend (`/__e2e/id`, 404 di prod); runner menolak bila respons
+  berasal dari proses/instance lain (termasuk backend yang salah).
+- **Config fail-closed** — `playwright.config.mjs` menolak load tanpa `E2E_ISOLATED=1`
+  + base URL loopback; `e2e/helpers.mjs` juga menolak.
+- Cleanup child + temp dir pada startup failure, test failure, exception, SIGINT/SIGTERM.
+
+Untuk cek produksi tanpa mutasi, pakai `npm run smoke:live` (health + katalog + admin 401).
 
 Hasil yang diharapkan: `22 passed` (11 spec × 2 project desktop+mobile). Artefak kegagalan
 ada di `test-results/`.
@@ -142,23 +152,29 @@ pm2 restart copilot-backend --update-env
 
 ---
 
-## 7. Hasil Test Aktual (2026-10-13, post P0 E2E-isolation)
+## 7. Hasil Test Aktual (2026-10-14, post E2E identity hardening)
 
 | Gate | Hasil |
 |---|---|
-| Server tests (`cd server && npm test`) | **118/118 pass** (NODE_ENV=test; tracked-file baseline, HEAD `3d2bda8`) |
-| Root tests (`npm test`) | **105/105 pass** (`NODE_ENV=test node --test "test/**/*.test.js"`) |
-| Isolated E2E (`npm run e2e`) | **22/22 pass** — instance terisolasi (port 4690/4691, mock upstream) |
-| Frontend typecheck + build | pass (`tsc -b` bersih, exit 0; `npm run build` sukses) |
+| Server tests (`cd server && npm test`) | **118/118 pass** (NODE_ENV=test; HEAD `d516791` + hardening) |
+| Root tests (`npm test`) | **117/117 pass** (+12: E2E isolation-guard/hardening/mock-upstream) |
+| Isolated E2E (`npm run e2e`) | **22/22 pass** — instance terisolasi (port 4690/4691, mock upstream, identitas nonce per-run) |
+| Frontend typecheck (`tsc -b --noEmit`) | bersih, exit 0 |
+| Frontend lint (`npx eslint .`) | **0 errors** (10 warnings non-blocking) |
+| Frontend build (`npm run build`) | sukses, exit 0 |
+| Clean-room installer (ESM + CJS) | **PASS** (`bash scripts/cleanroom-verify.sh`) |
+| Restore drill | **PASS** (data sintetis; produksi tidak disentuh) |
+| Backend dep audit | 0 vulnerabilities (`npm audit --omit=dev`) |
+| Frontend dep audit | No known vulnerabilities (`pnpm audit --prod`) |
+| SPA probe (`node scripts/qa-spa-probe.mjs --all`) | 19 rute — 0 error, 0 CSP, 0 unlabeled |
 | Live read-only smoke (`npm run smoke:live`) | PASS (health BE/FE/publik 200; admin 401 tanpa token) |
-| Protected landing checksum | OK (landing/intro/success tidak berubah) |
 | Secret scan | bersih |
 
-> Catatan: angka pada tabel ini adalah baseline terukur 2026-10-13. Nilai lama (server 88/88,
-> root 95/105 lama, E2E "22 test" belum dibuktikan lulus) berasal dari snapshot sebelumnya dan
-> **tidak lagi berlaku**. Repo ini tidak punya CI workflow (`.github/workflows` tidak ada) — semua
-> gate dijalankan manual di host. E2E 22/22 = **benar-benar dijalankan** lulus terhadap instance
-> terisolasi (produksi byte-identik sesudahnya).
+> Angka di atas = baseline terukur 2026-10-14. CI workflow kini ADA:
+> `.github/workflows/ci.yml` menjalankan root+server suite, tsc, eslint, isolated
+> E2E (Playwright), dan clean-room matrix — **tanpa secret, tanpa DB produksi,
+> tanpa request mutating**. Status hijau workflow harus dikonfirmasi oleh GitHub
+> (tidak dapat dieksekusi dari host ini).
 
 Yang dicakup E2E: register→dashboard, checkout sandbox→PENDING terverifikasi server (tanpa klaim palsu), polling berhenti saat dialog ditutup, empty states jujur (licenses/install/usage), session guard 401, logout mematikan sesi server, mobile 390px (drawer + tanpa overflow), admin gate 401, semua halaman admin render, issue lisensi + token sekali-lihat + tidak bocor di list + revoke, orders/ledger/usage/settings tanpa bocor kredensial (apiKey ter-mask), isolasi antar-akun (order A → 404 untuk B), cost integrity (body amount ditolak 400), customer tidak bisa buka admin.
 

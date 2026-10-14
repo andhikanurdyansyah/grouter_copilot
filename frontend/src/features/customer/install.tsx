@@ -39,19 +39,6 @@ export function CustomerInstall() {
   const myLicense = meQ.data?.licenses?.find((l) => String(l.status ?? 'active') === 'active') ?? meQ.data?.licenses?.[0]
   const licenseId = myLicense?.id ?? '—'
 
-  // Lost-token recovery (Workstream A): every owned license is retrievable
-  // with its signed token — server withholds tokens for revoked licenses.
-  const licensesQ = useQuery({
-    queryKey: ['my-licenses'],
-    queryFn: async () =>
-      (await api.get('/me/licenses')).data as {
-        licenses: Array<{
-          id: string; planKey?: string | null; status?: string | null
-          expiresAt?: string | null; revokedAt?: number | null; token?: string | null
-        }>
-        total: number
-      },
-  })
   const [tokenFor, setTokenFor] = useState<string | null>(null)
   const tokenQ = useQuery({
     queryKey: ['license-token', tokenFor],
@@ -76,7 +63,8 @@ export function CustomerInstall() {
     (acc, r) => (r.createdAt && (acc == null || r.createdAt > acc) ? r.createdAt : acc),
     null,
   )
-  const activeLast7d = lastOkAt != null && Date.now() - lastOkAt <= 7 * 86_400_000
+  const [nowMs] = useState(() => Date.now())
+  const activeLast7d = lastOkAt != null && nowMs - lastOkAt <= 7 * 86_400_000
 
   const [copiedId, setCopiedId] = useState(false)
   const [copiedCmd, setCopiedCmd] = useState(false)

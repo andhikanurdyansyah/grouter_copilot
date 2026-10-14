@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/grouter-api'
@@ -23,7 +22,7 @@ export function ModaHeader() {
   const isAdmin = pathname.startsWith('/admin')
   // Admin console tidak punya sesi customer (/api/me = 401) — JANGAN fetch /api/me
   // di area admin: useMe me-redirect ke /login pada 401 (memutus halaman admin).
-  const { data: meData } = useMe(!isAdmin)
+  useMe(!isAdmin)
 
   // Dynamic Breadcrumb resolver matching Moda 1:1
   const getBreadcrumb = () => {

@@ -19,7 +19,6 @@ export function AdminSettings() {
     merchantId?: string
     provider?: string
   }
-  const apiKeyMasked = (paymentCfg as { apiKey?: string }).apiKey ?? null
   const merchantMasked = paymentCfg.merchantId || null
 
   // Kesehatan layanan REAL: /api/health + latensi round-trip terukur (bukan angka fabrikasi).

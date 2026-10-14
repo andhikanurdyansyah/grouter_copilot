@@ -11,8 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Copy,
-  Check,
   ExternalLink,
 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'

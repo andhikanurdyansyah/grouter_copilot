@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ExternalLink, Loader2, Plus } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
@@ -30,6 +30,12 @@ type Plan = {
 }
 
 type Draft = { amount: string; quotaTokens: string }
+
+let fallbackSlugSeq = 0
+/** Non-render slug fallback (kept outside the component so render stays pure). */
+function nextFallbackSlug() {
+  return `plan-${Date.now()}-${++fallbackSlugSeq}`
+}
 
 export function AdminPackages() {
   const { language, t } = useLanguage()
@@ -87,7 +93,7 @@ export function AdminPackages() {
     mutationFn: async () => {
       const slug =
         newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') ||
-        `plan-${Date.now()}`
+        nextFallbackSlug()
       if (plans.some((p) => p.key === slug)) throw new Error(isId ? 'Slug sudah dipakai paket lain.' : 'Slug already used by another plan.')
       const plan: Plan = {
         key: slug,
@@ -115,9 +121,6 @@ export function AdminPackages() {
     onError: (e: unknown) => setNewError(e instanceof Error ? e.message : 'gagal'),
   })
 
-  const saving = saveMut.isPending || createMut.isPending
-  const licensesByPlan = useMemo(() => new Map<string, number>(), [])
-  void licensesByPlan
 
   return (
     <div className='space-y-6 animate-fade-in relative'>

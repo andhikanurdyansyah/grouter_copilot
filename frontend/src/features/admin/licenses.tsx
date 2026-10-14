@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchAdminLicenses, revokeLicense, fetchLedger } from '@/lib/grouter-api'
+import { fetchAdminLicenses, revokeLicense, fetchLedger, fetchPlans } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   Plus,
@@ -48,11 +48,16 @@ export function AdminLicenses() {
   const [q, setQ] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked'>('all')
   const [selectedPlan, setSelectedPlan] = useState<string>('all')
+  const [sort, setSort] = useState<'expires' | 'created' | 'usage'>('expires')
   const [issueModalOpen, setIssueModalOpen] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<null | (typeof realLicenses)[number]>(null)
   const [selectedLicense, setSelectedLicense] = useState<null | (typeof realLicenses)[number]>(null)
 
   const lic = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
+
+  // Plan catalogue (real keys) so the plan filter matches actual planKey values
+  // instead of hardcoded starter/pro/enterprise.
+  const plansQuery = useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
 
   // Data REAL: lisensi dari /api/admin/licenses + kuota dari ledger gateway.
   const ledgerTotals = useQuery({
@@ -91,6 +96,10 @@ export function AdminLicenses() {
         expiresAt: l.expiresAt ? new Date(l.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
         status,
         statusLabel,
+        // sort keys (raw)
+        expiresMs: l.expiresAt ? new Date(l.expiresAt).getTime() : Number.POSITIVE_INFINITY,
+        createdMs: l.createdAt ? new Date(l.createdAt).getTime() : 0,
+        usedRaw: used,
         skills: Array.isArray((l as unknown as { skills?: string[] }).skills) ? (l as unknown as { skills: string[] }).skills : [],
       }
     })
@@ -105,7 +114,7 @@ export function AdminLicenses() {
   })
 
   const filteredLicenses = useMemo(() => {
-    return realLicenses.filter((item) => {
+    const rows = realLicenses.filter((item) => {
       if (activeTab === 'active' && item.status !== 'active') return false
       if (activeTab === 'expired' && item.status !== 'expired') return false
       if (activeTab === 'revoked' && item.status !== 'revoked') return false
@@ -122,7 +131,12 @@ export function AdminLicenses() {
       }
       return true
     })
-  }, [realLicenses, activeTab, selectedPlan, q])
+    const sorted = [...rows]
+    if (sort === 'expires') sorted.sort((a, b) => a.expiresMs - b.expiresMs)
+    else if (sort === 'created') sorted.sort((a, b) => b.createdMs - a.createdMs)
+    else if (sort === 'usage') sorted.sort((a, b) => b.usedRaw - a.usedRaw)
+    return sorted
+  }, [realLicenses, activeTab, selectedPlan, q, sort])
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -173,6 +187,7 @@ export function AdminLicenses() {
             <Search className='size-4 absolute left-3 text-muted-foreground pointer-events-none' />
             <input
               type='text'
+              aria-label={isId ? 'Cari lisensi' : 'Search licenses'}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={isId ? 'Cari ID, domain, atau email...' : 'Search ID, domain, or email...'}
@@ -208,22 +223,28 @@ export function AdminLicenses() {
         {/* Dropdowns on Right */}
         <div className='flex items-center gap-2.5'>
           <select
+            aria-label={isId ? 'Filter paket' : 'Filter by plan'}
             value={selectedPlan}
             onChange={(e) => setSelectedPlan(e.target.value)}
             className='rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
           >
             <option value='all'>{isId ? 'Paket: Semua ▾' : 'Plan: All ▾'}</option>
-            <option value='starter'>Starter</option>
-            <option value='pro'>Pro</option>
-            <option value='enterprise'>Enterprise</option>
+            {(plansQuery.data?.plans ?? []).map((p) => (
+              <option key={p.key} value={p.key.toLowerCase()}>
+                {p.name}
+              </option>
+            ))}
           </select>
 
           <select
+            aria-label={isId ? 'Urutkan lisensi' : 'Sort licenses'}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'expires' | 'created' | 'usage')}
             className='rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary'
           >
-            <option>{isId ? 'Urut: Berakhir ↑' : 'Sort: Expires ↑'}</option>
-            <option>{isId ? 'Urut: Dibuat ↓' : 'Sort: Created ↓'}</option>
-            <option>{isId ? 'Urut: Pemakaian ↓' : 'Sort: Usage ↓'}</option>
+            <option value='expires'>{isId ? 'Urut: Berakhir ↑' : 'Sort: Expires ↑'}</option>
+            <option value='created'>{isId ? 'Urut: Dibuat ↓' : 'Sort: Created ↓'}</option>
+            <option value='usage'>{isId ? 'Urut: Pemakaian ↓' : 'Sort: Usage ↓'}</option>
           </select>
         </div>
       </div>

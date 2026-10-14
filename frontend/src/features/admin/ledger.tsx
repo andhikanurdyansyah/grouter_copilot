@@ -172,6 +172,7 @@ export function AdminLedger() {
             <Search className='size-4 absolute left-3 text-muted-foreground pointer-events-none' />
             <input
               type='text'
+              aria-label={isId ? 'Cari ledger' : 'Search ledger'}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={isId ? 'requestId atau lisensi...' : 'requestId or license...'}
@@ -205,16 +206,19 @@ export function AdminLedger() {
           </div>
         </div>
 
-        {/* Model Filter Dropdown */}
+        {/* Model Filter Dropdown — options derived from real ledger records (no mock) */}
         <select
+          aria-label={isId ? 'Filter model' : 'Filter by model'}
           value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
           className='max-w-full min-w-0 rounded-xl border border-border bg-card/80 px-3.5 py-2 text-xs text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-primary self-end sm:self-auto shadow-xs'
         >
           <option value='all'>{isId ? 'Model: Semua ▾' : 'Model: All ▾'}</option>
-          <option value='grouter/balanced'>grouter/balanced</option>
-          <option value='grouter/fast-mini'>grouter/fast-mini</option>
-          <option value='grouter/pro-large'>grouter/pro-large</option>
+          {[...new Set(rowsList.map((r) => r.model).filter((m) => m && m !== '—'))].sort().map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
         </select>
       </div>
 

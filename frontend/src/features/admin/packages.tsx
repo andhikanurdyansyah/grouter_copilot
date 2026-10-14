@@ -216,6 +216,7 @@ export function AdminPackages() {
                     <div className='flex items-center rounded-lg border border-border bg-muted/40 px-3 py-2 gap-2'>
                       <span className='text-muted-foreground font-bold'>Rp</span>
                       <input
+                        aria-label={isId ? `Harga paket ${p.name}` : `Plan price ${p.name}`}
                         value={d.amount}
                         onChange={(e) =>
                           setDrafts((prev) => ({ ...prev, [p.key]: { ...d, amount: e.target.value } }))
@@ -234,6 +235,7 @@ export function AdminPackages() {
                       {isId ? 'Kuota token per lisensi' : 'Token quota per license'}
                     </label>
                     <input
+                      aria-label={isId ? `Kuota token ${p.name}` : `Token quota ${p.name}`}
                       value={d.quotaTokens}
                       onChange={(e) =>
                         setDrafts((prev) => ({ ...prev, [p.key]: { ...d, quotaTokens: e.target.value } }))

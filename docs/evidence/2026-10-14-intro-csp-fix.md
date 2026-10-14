@@ -43,6 +43,7 @@ intro/landing dibuat — jadi ini regresi yang tidak tertangkap.
 | CSP violation di `/` | **1** (`cdn.jsdelivr.net`) | **0** |
 | Ikon landing render | 0 / 54 | **54 / 54** |
 | CSP violation di `/copilot` | **14** | **0** |
+| CSP violation di origin publik (`/` & `/copilot`) | ada | **0** |
 
 Diuji juga lewat intercept header: mengganti CSP saja (tanpa mengubah body halaman)
 sudah cukup membuat `__ready:true`, loader hilang, dan canvas ter-render — memastikan
@@ -59,6 +60,11 @@ CSP adalah satu-satunya penyebab.
   `https://api.unisvg.com` (data ikon) + `https://assets.unicorn.studio` (scene).
 
 Bukan wildcard `https:` — daftar origin eksplisit hasil observasi request nyata.
+
+Tambahan (P2): `script-src` += `https://static.cloudflareinsights.com` — edge
+Cloudflare menyuntik beacon Web Analytics ke setiap pageview (bukan kode kita).
+Tanpa origin ini, console produksi selalu menampilkan 1 CSP violation yang
+menutupi error asli.
 
 ## 4. Regression test
 

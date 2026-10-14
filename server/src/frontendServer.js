@@ -54,10 +54,17 @@ const SEC_HEADERS = {
   'x-frame-options': 'DENY',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'permissions-policy': 'camera=(), microphone=(), geolocation=()',
-  // CSP: halaman butuh inline script (Aurora login) + Tailwind CDN (register/login) + fonts + Three.js CDN.
+  // CSP: halaman butuh inline script (Aurora login) + Tailwind CDN (register/login)
+  // + fonts + aset statis berikut yang MEMANG dipakai intro/landing:
+  //   - cdn.jsdelivr.net  → three.module.js (intro 3D) + unicornStudio.umd.js (landing)
+  //   - code.iconify.design → iconify-icon (55 ikon di landing)
+  //   - api.iconify.design / api.simplesvg.com / api.unisvg.com → data ikon iconify
+  //   - assets.unicorn.studio → scene unicorn.studio
+  // Tanpa origin ini, intro TIDAK menyelesaikan boot() (loader tak pernah hilang =
+  // "stuck") dan ikon landing tidak render. Daftar ini presisi (bukan wildcard).
   'content-security-policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com",
+    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.iconify.design",
     // Sign-up password tooling spawns a Web Worker from a blob: URL; without an
     // explicit worker-src it falls back to script-src, which forbids blob: and
     // throws a CSP violation on every /app/sign-up render.
@@ -65,7 +72,7 @@ const SEC_HEADERS = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
-    "connect-src 'self'",
+    "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://assets.unicorn.studio",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -77,6 +77,25 @@ test('frontend server: directory paths are answered, never hung (EISDIR regressi
     assert.ok(/nosniff/.test(e.headers['x-content-type-options'] || ''), 'x-content-type-options nosniff');
     assert.ok(/frame-ancestors 'none'/.test(csp), 'CSP frame-ancestors none');
     assert.ok(/worker-src[^;]*blob:/.test(csp), `CSP must allow blob: workers, got: ${csp}`);
+
+    // Regression: the intro page (/) imports three.module.js from cdn.jsdelivr.net.
+    // If CSP blocks it, boot() never runs and the loading overlay never fades —
+    // the intro appears "stuck" and never reaches the landing. The landing page
+    // additionally needs code.iconify.design (iconify-icon) + the iconify/unicorn
+    // API origins on connect-src. Assert the whole allow-list so a future header
+    // edit can never silently re-break the intro/landing again.
+    const intro = await rawHead(port, '/');
+    const introCsp = intro.headers['content-security-policy'] || '';
+    const scriptSrc = /script-src([^;]*)/.exec(introCsp)?.[1] || '';
+    const connectSrc = /connect-src([^;]*)/.exec(introCsp)?.[1] || '';
+    assert.ok(/https:\/\/cdn\.jsdelivr\.net/.test(scriptSrc),
+      `CSP script-src must allow cdn.jsdelivr.net (three.module.js for intro), got: ${scriptSrc}`);
+    assert.ok(/https:\/\/code\.iconify\.design/.test(scriptSrc),
+      `CSP script-src must allow code.iconify.design (iconify-icon for landing), got: ${scriptSrc}`);
+    for (const origin of ['https://api.iconify.design', 'https://assets.unicorn.studio']) {
+      assert.ok(connectSrc.includes(origin),
+        `CSP connect-src must allow ${origin}, got: ${connectSrc}`);
+    }
   } finally {
     await new Promise((r) => srv.close(r));
     rmSync(dir, { recursive: true, force: true });

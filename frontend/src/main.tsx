@@ -17,6 +17,7 @@ import { LanguageProvider } from './context/language-provider'
 import { routeTree } from './routeTree.gen'
 // Styles
 import './styles/index.css'
+import './styles/dashboard.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

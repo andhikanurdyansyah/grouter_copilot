@@ -1,1 +1,0 @@
-import{I as e}from"./index-CPkk3Ksi.js";var t=e;export{t as component};

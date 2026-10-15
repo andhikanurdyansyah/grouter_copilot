@@ -3622,13 +3622,12 @@
           transitioning = true;
           gate.classList.add('gate-transitioning');
           try {
-            const response = await fetch(LANDING_URL, { headers: { accept: 'text/html' }, cache: 'no-store' });
-            if (!response.ok) throw new Error(`Landing unavailable: ${response.status}`);
-            const landingHtml = await response.text();
-            history.replaceState(null, '', '/');
-            document.open();
-            document.write(landingHtml);
-            document.close();
+            // Use a same-origin navigation instead of fetching HTML and calling
+            // document.write(). document.write() re-parses external CDN scripts
+            // and can leave Chromium waiting on parser-blocking resources; it
+            // also makes the transition dependent on a second CSP evaluation.
+            // A normal location.replace keeps the browser lifecycle reliable.
+            window.location.href = LANDING_URL;
           } catch (error) {
             transitioning = false;
             gate.classList.remove('gate-transitioning');

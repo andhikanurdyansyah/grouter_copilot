@@ -96,6 +96,16 @@ test('frontend server: directory paths are answered, never hung (EISDIR regressi
       assert.ok(connectSrc.includes(origin),
         `CSP connect-src must allow ${origin}, got: ${connectSrc}`);
     }
+
+    // The intro transition must use a normal same-origin navigation. Fetching
+    // landing HTML followed by document.write() re-parses parser-blocking CDN
+    // scripts and can leave the browser stuck during the transition.
+    const introBody = await get(port, '/');
+    assert.equal(introBody.status, 200, 'intro page serves');
+    assert.match(introBody.body, /window\.location\.href\s*=\s*LANDING_URL/,
+      'intro transitions with same-origin navigation');
+    assert.doesNotMatch(introBody.body, /document\.write\(landingHtml\)/,
+      'intro must not document.write landing HTML');
   } finally {
     await new Promise((r) => srv.close(r));
     rmSync(dir, { recursive: true, force: true });

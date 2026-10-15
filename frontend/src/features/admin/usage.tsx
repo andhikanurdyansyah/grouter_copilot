@@ -19,7 +19,8 @@ export function AdminUsage() {
   })
 
   const [nowMs] = useState(() => Date.now())
-  const { barData, topLicenses } = useMemo(() => {
+  const rangeDays = timeRange === '24j' ? 1 : timeRange === '30h' ? 30 : 14
+  const { barData, topLicenses, inboundTokens, outboundTokens, requestCount, maxDailyTokens } = useMemo(() => {
     const records = (ledger.data?.records ?? []) as Array<{
       licenseId: string; customer: string | null
       inputTokens: number | null; outputTokens: number | null
@@ -33,7 +34,7 @@ export function AdminUsage() {
 
     const dayKey = (ts: number) => new Date(ts).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })
     const days = new Map<string, { inTok: number; outTok: number }>()
-    for (let i = 13; i >= 0; i--) {
+    for (let i = rangeDays - 1; i >= 0; i--) {
       const d = new Date(nowMs - i * 86_400_000)
       days.set(dayKey(d.getTime()), { inTok: 0, outTok: 0 })
     }
@@ -68,8 +69,8 @@ export function AdminUsage() {
         percent: Math.round((v.tokens / maxTokens) * 100),
         isExceeded: false,
       }))
-    void sumIn; void sumOut; return { barData: bars, topLicenses: top }
-  }, [ledger.data, nowMs])
+    void sumIn; void sumOut; return { barData: bars, topLicenses: top, inboundTokens: sumIn, outboundTokens: sumOut, requestCount: records.length, maxDailyTokens: Math.max(0, ...bars.map((d) => d.in + d.out)) }
+  }, [ledger.data, nowMs, rangeDays])
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -113,7 +114,7 @@ export function AdminUsage() {
             {isId ? 'Token masuk' : 'Inbound tokens'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            15,1 jt
+            {inboundTokens.toLocaleString('id-ID')}
           </p>
         </div>
 
@@ -122,7 +123,7 @@ export function AdminUsage() {
             {isId ? 'Token keluar' : 'Outbound tokens'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            3,3 jt
+            {outboundTokens.toLocaleString('id-ID')}
           </p>
         </div>
 
@@ -131,7 +132,7 @@ export function AdminUsage() {
             {isId ? 'Permintaan' : 'Requests'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            48.920
+            {requestCount.toLocaleString('id-ID')}
           </p>
         </div>
 
@@ -140,7 +141,7 @@ export function AdminUsage() {
             {isId ? 'Biaya infra (estimasi)' : 'Infra cost (est.)'}
           </p>
           <p className='mt-1 text-3xl font-bold font-mono tracking-tight text-foreground'>
-            Rp 9,2 jt
+            {ledger.isLoading ? '…' : maxDailyTokens > 0 ? `${maxDailyTokens.toLocaleString('id-ID')} jt/hari` : '—'}
           </p>
         </div>
       </div>

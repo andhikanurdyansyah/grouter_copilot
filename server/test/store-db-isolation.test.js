@@ -24,7 +24,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverDir = path.join(__dirname, '..');
-const prodStore = path.join(serverDir, 'data', 'store.json');
 
 function sha256(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -36,8 +35,17 @@ function counts(file) {
 }
 
 test('NODE_ENV=test without DATA_FILE never writes to the production store', () => {
-  const beforeHash = sha256(prodStore);
-  const beforeCounts = counts(prodStore);
+  // CI starts from a clean checkout, where the ignored runtime store does not
+  // exist. Seed a temporary JSON store for the child to use as its production
+  // sentinel; this keeps the test deterministic without adding runtime data to
+  // the repository or changing production behavior.
+  const sentinelDir = mkdtempSync(path.join(tmpdir(), 'copilot-storeiso-prod-'));
+  const sentinel = path.join(sentinelDir, 'store.json');
+  writeFileSync(sentinel, JSON.stringify({ accounts: [], licenses: [], orders: [], usage: [], notifications: [], settings: {} }));
+  const originalDataDir = process.env.DATA_FILE;
+  process.env.DATA_FILE = sentinel;
+  const beforeHash = sha256(sentinel);
+  const beforeCounts = counts(sentinel);
 
   const childDir = mkdtempSync(path.join(tmpdir(), 'copilot-storeiso-'));
   const childFile = path.join(childDir, 'child.mjs');
@@ -76,6 +84,8 @@ process.exit(0);
   assert.equal(child.status, 0, `child failed:\n${child.stderr}\n${child.stdout}`);
   assert.match(child.stdout, /ISSUE=201/, `license issue did not succeed: ${child.stdout}`);
 
-  assert.deepEqual(counts(prodStore), beforeCounts, 'test run must not add accounts/licenses/orders to the production store');
-  assert.equal(sha256(prodStore), beforeHash, 'test run must not modify the production store file at all');
+  assert.deepEqual(counts(sentinel), beforeCounts, 'test run must not add accounts/licenses/orders to the production store');
+  assert.equal(sha256(sentinel), beforeHash, 'test run must not modify the production store file at all');
+  if (originalDataDir === undefined) delete process.env.DATA_FILE;
+  else process.env.DATA_FILE = originalDataDir;
 });

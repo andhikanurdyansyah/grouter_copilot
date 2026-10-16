@@ -193,6 +193,9 @@ export function startIsolatedInstance({
     }
 
     runDir = mkdtempSync(path.join(tmpdir(), RUN_DIR_PREFIX));
+    // Publish the owned directory immediately so callers/tests can verify that
+    // this exact instance was removed even when unrelated instances overlap.
+    handle.runDir = runDir;
     const dataDir = path.join(runDir, 'data');
     mkdirSync(dataDir, { recursive: true, mode: 0o700 });
     const dataFile = path.join(dataDir, 'store.json');

@@ -193,7 +193,6 @@ test('frontend pointing at a foreign backend → rejected', async () => {
 // ── 6. Startup failure after spawn → children + temp dir cleaned ────────────
 test('startup identity failure cleans up children and the temp run dir', async () => {
   const [be, fe] = await freePorts(2);
-  const before = leftoverRunDirs().length;
   const iso = startIsolatedInstance({
     backendPort: be,
     frontendPort: fe,
@@ -207,8 +206,9 @@ test('startup identity failure cleans up children and the temp run dir', async (
   } catch (e) { err = e; }
   assert.ok(err, 'startup must fail (identity mismatch)');
   await sleep(600);
-  // Temp dir removed.
-  assert.equal(leftoverRunDirs().length, before, 'no leftover isolated run dirs after a failed start');
+  const runDir = iso.handle.runDir;
+  assert.ok(runDir, 'startup must allocate an owned run dir before spawning');
+  assert.equal(existsSync(runDir), false, 'the failed instance run dir must be removed');
   // Children killed → ports released.
   assert.equal(await portInUse(be), false, 'backend port must be released after cleanup');
   assert.equal(await portInUse(fe), false, 'frontend port must be released after cleanup');
@@ -216,7 +216,7 @@ test('startup identity failure cleans up children and the temp run dir', async (
 
 // ── 7. Playwright failure → runner still tears the instance down ────────────
 test('runner tears down the instance even when Playwright finds no tests (exit!=0)', async () => {
-  const before = leftoverRunDirs().length;
+  const before = new Set(leftoverRunDirs());
   const code = await new Promise((resolve) => {
     const p = spawn(process.execPath, [path.join(repoRoot, 'e2e', 'isolated', 'run.mjs'), '-g', 'zzz-no-such-test-zzz'], {
       cwd: repoRoot,
@@ -227,7 +227,7 @@ test('runner tears down the instance even when Playwright finds no tests (exit!=
   });
   assert.notEqual(code, 0, 'a suite that matches no tests must exit non-zero');
   await sleep(700);
-  assert.equal(leftoverRunDirs().length, before, 'runner must clean up the run dir on a failing Playwright run');
+  assert.deepEqual(new Set(leftoverRunDirs()), before, 'runner must clean up its run dir on a failing Playwright run');
   assert.equal(await portInUse(4801), false, 'runner must release the backend port');
   assert.equal(await portInUse(4802), false, 'runner must release the frontend port');
 });

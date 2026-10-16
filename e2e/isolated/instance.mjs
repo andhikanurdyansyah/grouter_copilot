@@ -169,18 +169,74 @@ export function startIsolatedInstance({
   expectedInstanceId = instanceId,
 } = {}) {
   const children = [];
+  const childFailures = new Map();
   let stopped = false;
+  let stopPromise = null;
   let runDir = null;
 
   const handle = {};
 
+  async function waitForChildExit(child, timeoutMs = 10_000) {
+    if (child.exitCode !== null || child.signalCode !== null) return true;
+    return new Promise((resolve) => {
+      let timer;
+      const onExit = () => {
+        clearTimeout(timer);
+        child.removeListener('exit', onExit);
+        resolve(true);
+      };
+      timer = setTimeout(() => {
+        child.removeListener('exit', onExit);
+        resolve(false);
+      }, timeoutMs);
+      child.once('exit', onExit);
+      if (child.exitCode !== null || child.signalCode !== null) onExit();
+    });
+  }
+
   async function cleanupChildren() {
-    for (const c of children) { try { c.kill('SIGTERM'); } catch { /* gone */ } }
-    await new Promise((r) => setTimeout(r, 400));
-    for (const c of children) { try { if (c.exitCode === null) c.kill('SIGKILL'); } catch { /* ignore */ } }
-    if (runDir && existsSync(runDir)) {
-      try { rmSync(runDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    let cleanupError = null;
+    try {
+      for (const c of children) {
+        try { if (c.exitCode === null && c.signalCode === null) c.kill('SIGTERM'); } catch { /* gone */ }
+      }
+      const termResults = await Promise.all(children.map((c) => waitForChildExit(c)));
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i];
+        if (!termResults[i]) {
+          try { if (c.exitCode === null && c.signalCode === null) c.kill('SIGKILL'); } catch { /* gone */ }
+        }
+      }
+      const killResults = await Promise.all(children.map((c) => waitForChildExit(c)));
+      if (killResults.some((exited) => !exited)) {
+        cleanupError = new Error('E2E cleanup timed out waiting for owned child process exit');
+      }
+      // Do not poll ports here: after a child exits, a port can be reclaimed by
+      // an unrelated process between observation and polling (TOCTOU). The
+      // lifecycle manager only ever signals the exact ChildProcess objects it
+      // spawned, so a foreign listener cannot be killed by cleanup.
+    } catch (err) {
+      cleanupError = err;
+    } finally {
+      // Directory ownership is unambiguous; never let process cleanup prevent
+      // removal, and never let an rmSync failure mask the original startup/test error.
+      if (runDir && existsSync(runDir)) {
+        try { rmSync(runDir, { recursive: true, force: true }); }
+        catch (err) { cleanupError ||= err; }
+      }
     }
+    if (cleanupError) throw cleanupError;
+  }
+
+  function trackChild(label, child) {
+    child.once('error', (err) => childFailures.set(child, `${label} failed to start: ${err.message}`));
+    child.once('exit', (code, signal) => {
+      if (code !== 0 && signal !== 'SIGTERM' && signal !== 'SIGINT') {
+        childFailures.set(child, `${label} exited with code ${code}${signal ? ` (${signal})` : ''}`);
+      }
+    });
+    children.push(child);
+    return child;
   }
 
   async function start() {
@@ -202,22 +258,22 @@ export function startIsolatedInstance({
     const authDbFile = path.join(dataDir, 'auth.sqlite');
     const baseUrl = `http://localhost:${frontendPort}`;
 
-    // Fail-closed BEFORE any mutation or process spawn.
-    assertIsolatedConfig({
-      nodeEnv: 'test',
-      mockUpstream: true,
-      backendPort,
-      frontendPort,
-      dataDir,
-      dataFile,
-      authDbFile,
-      baseUrl,
-      klikqrisMode: 'sandbox',
-      prodDataDir: path.join(serverDir, 'data'),
-    });
-    log('isolation guard: PASS');
-
     try {
+      // Fail-closed BEFORE any mutation or process spawn.
+      assertIsolatedConfig({
+        nodeEnv: 'test',
+        mockUpstream: true,
+        backendPort,
+        frontendPort,
+        dataDir,
+        dataFile,
+        authDbFile,
+        baseUrl,
+        klikqrisMode: 'sandbox',
+        prodDataDir: path.join(serverDir, 'data'),
+      });
+      log('isolation guard: PASS');
+
       synthesiseAuthSchema(authDbFile);
       // Verify the schema landed (defence in depth).
       const { DatabaseSync } = await import('node:sqlite');
@@ -227,9 +283,10 @@ export function startIsolatedInstance({
       for (const t of AUTH_TABLES) {
         if (!tables.includes(t)) throw new Error(`auth schema missing table: ${t}`);
       }
+      if (stopped) throw new Error('isolated instance startup cancelled');
       log(`auth schema: synthesised (${dataDir}, 0 rows, no production copy)`);
 
-      const backend = spawn(process.execPath, [path.join(here, 'test-backend.mjs')], {
+      const backend = trackChild('backend', spawn(process.execPath, [path.join(here, 'test-backend.mjs')], {
         cwd: repoRoot,
         env: {
           ...process.env,
@@ -253,10 +310,9 @@ export function startIsolatedInstance({
           E2E_INSTANCE_ID: instanceId,
         },
         stdio: ['ignore', 'inherit', 'inherit'],
-      });
-      children.push(backend);
+      }));
 
-      const frontend = spawn(process.execPath, [path.join(here, 'test-frontend.mjs')], {
+      const frontend = trackChild('frontend', spawn(process.execPath, [path.join(here, 'test-frontend.mjs')], {
         cwd: repoRoot,
         env: {
           ...process.env,
@@ -266,13 +322,13 @@ export function startIsolatedInstance({
           E2E_INSTANCE_ID: instanceId,
         },
         stdio: ['ignore', 'inherit', 'inherit'],
-      });
-      children.push(frontend);
+      }));
 
       // ── Identity verification ────────────────────────────────────────────
       // If a child dies during the wait, fail immediately with its exit code.
       const deadReason = () => {
         for (const [label, c] of [['backend', children[0]], ['frontend', children[1]]]) {
+          if (c && childFailures.has(c)) return childFailures.get(c);
           if (c && c.exitCode !== null) return `${label} exited early with code ${c.exitCode}`;
         }
         return null;
@@ -298,16 +354,18 @@ export function startIsolatedInstance({
       return handle;
     } catch (err) {
       // Any startup failure MUST tear down whatever was spawned + the run dir.
-      await cleanupChildren();
+      // Cleanup is best-effort here: preserve the original startup error.
+      try { await cleanupChildren(); } catch { /* preserve original error */ }
       stopped = true;
       throw err;
     }
   }
 
   async function stop() {
-    if (stopped) return;
+    if (stopPromise) return stopPromise;
     stopped = true;
-    await cleanupChildren();
+    stopPromise = cleanupChildren();
+    return stopPromise;
   }
 
   return { start, stop, handle, instanceId };

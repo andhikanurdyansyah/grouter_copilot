@@ -131,7 +131,24 @@ test('frontend port occupied → startup refused safely', async () => {
   }
 });
 
-// ── 4. Health answers 200 but wrong instance id → rejected ──────────────────
+// ── 4. Equal ports → guard failure still removes allocated run dir ──────────
+test('equal backend/frontend ports → guard failure cleans up run dir', async () => {
+  const [port] = await freePorts(1);
+  const before = new Set(leftoverRunDirs());
+  const iso = startIsolatedInstance({ backendPort: port, frontendPort: port });
+  let err = null;
+  try {
+    await iso.start();
+  } catch (e) { err = e; }
+  assert.ok(err, 'equal ports must fail the isolation guard');
+  assert.match(err.message, /backendPort|frontendPort|same|different/i);
+  assert.ok(iso.handle.runDir, 'guard failure must have an owned run dir to clean');
+  assert.equal(existsSync(iso.handle.runDir), false, 'guard failure must remove the run dir');
+  assert.deepEqual(new Set(leftoverRunDirs()), before, 'guard failure must not leak an isolated run dir');
+  await iso.stop();
+});
+
+// ── 5. Health answers 200 but wrong instance id → rejected ──────────────────
 test('healthy-but-impostor instance id → identity probe rejects', async () => {
   const [be, fe] = await freePorts(2);
   // Nonce handed to children ≠ nonce the probe demands → identity can never match.

@@ -33,13 +33,24 @@ async function main() {
   let exitCode = 1;
   let pw = null;
 
-  // Cleanup on operator interrupt — kill Playwright first, then the instance.
+  let signalShutdown = null;
   const onSignal = (sig) => {
-    try { if (pw) pw.kill(sig); } catch { /* ignore */ }
-    try { iso.stop(); } catch { /* ignore */ }
-    process.exit(130);
+    if (signalShutdown) return;
+    signalShutdown = (async () => {
+      exitCode = 130;
+      try { if (pw) pw.kill(sig); } catch { /* ignore */ }
+      try {
+        await Promise.race([
+          iso.stop(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('cleanup timeout')), 15_000)),
+        ]);
+      } catch (cleanupError) {
+        process.stderr.write(`[e2e-runner] signal cleanup warning: ${cleanupError?.stack || cleanupError}\n`);
+      }
+      process.exit(130);
+    })();
   };
-  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => onSignal(sig));
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { void onSignal(sig); });
 
   try {
     await iso.start();
@@ -64,7 +75,13 @@ async function main() {
       pw.on('exit', (code) => resolve(code ?? 1));
     });
   } finally {
-    await iso.stop();
+    try {
+      await iso.stop();
+    } catch (cleanupError) {
+      // Preserve a failing Playwright result; cleanup diagnostics must not mask it.
+      if (exitCode === 0) throw cleanupError;
+      process.stderr.write(`[e2e-runner] cleanup warning: ${cleanupError?.stack || cleanupError}\n`);
+    }
   }
   process.exit(exitCode);
 }

@@ -281,18 +281,17 @@ export function CustomerInstall() {
                     </button>
                   </div>
                   <div className='text-emerald-400 flex items-center gap-2'>
-                    <span>✓</span> <span>{isId ? 'Lisensi tervalidasi (Ed25519)' : 'License validated (Ed25519)'}</span>
+                    <span>✓</span> <span>{isId ? 'Lisensi siap dipakai installer (Ed25519)' : 'License ready for the installer (Ed25519)'}</span>
                   </div>
-                  <div className='text-emerald-400 flex items-center gap-2'>
-                    <span>✓</span> <span>{isId ? '.env server diperbarui (nilai tidak dicetak)' : 'Server .env updated (values never printed)'}</span>
+                  <div className='text-amber-300 flex items-center gap-2'>
+                    <span>→</span> <span>{isId ? 'Belum ada perubahan pada server aplikasi — jalankan command di atas.' : 'Your app server has not changed yet — run the command above.'}</span>
                   </div>
-                  <div className='text-emerald-400 flex items-center gap-2'>
-                    <span>✓</span> <span>{isId ? 'Route gateway: /api/copilot/chat' : 'Gateway route: /api/copilot/chat'}</span>
+                  <div className='text-muted-foreground flex items-center gap-2'>
+                    <span>·</span> <span>{isId ? 'Gateway baru diverifikasi setelah host mengirim request pertama.' : 'Gateway is verified only after the host sends its first request.'}</span>
                   </div>
                   <div className='pt-2 text-slate-100 flex items-center gap-2'>
-                    <span className='text-emerald-400 font-bold'>{isId ? 'Siap.' : 'Ready.'}</span>
-                    <span>{isId ? 'Mount <CopilotChat /> di UI Anda' : 'Mount <CopilotChat /> in your UI'}</span>
-                    <span className='inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse' />
+                    <span className='text-amber-300 font-bold'>{isId ? 'Langkah Anda:' : 'Your next step:'}</span>
+                    <span>{isId ? 'jalankan install di server aplikasi' : 'run install on your app server'}</span>
                   </div>
                   <div className='pt-3 text-muted-foreground text-[11px] border-t border-slate-800/80'>
                     # {isId

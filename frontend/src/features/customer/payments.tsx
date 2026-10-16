@@ -363,8 +363,8 @@ export function CustomerPayments() {
       {/* Receipt Modal */}
       {selectedReceipt && (
         <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
-          <DialogContent className='sm:max-w-[440px] bg-card border-border'>
-            <DialogHeader>
+          <DialogContent className='receipt-print-dialog sm:max-w-[440px] bg-card border-border'>
+            <DialogHeader data-receipt-hide-on-print>
               <div className='size-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-2'>
                 <CheckCircle2 className='size-5' />
               </div>
@@ -378,7 +378,7 @@ export function CustomerPayments() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className='my-3 rounded-lg border border-border/50 bg-secondary/20 p-4 space-y-3 font-mono text-xs'>
+            <div className='receipt-print-content my-3 rounded-lg border border-border/50 bg-secondary/20 p-4 space-y-3 font-mono text-xs'>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>Order ID:</span>
                 <span className='font-semibold text-foreground'>{selectedReceipt.fullId}</span>
@@ -395,13 +395,21 @@ export function CustomerPayments() {
                 </span>
                 <span className='text-foreground'>{selectedReceipt.date}</span>
               </div>
+              <div className='flex justify-between border-b border-border/40 pb-2'>
+                <span className='text-muted-foreground font-sans'>Status:</span>
+                <span className='text-emerald-500 font-semibold'>PAID · server verified</span>
+              </div>
+              <div className='flex justify-between border-b border-border/40 pb-2'>
+                <span className='text-muted-foreground font-sans'>License reference:</span>
+                <span className='text-foreground'>—</span>
+              </div>
               <div className='flex justify-between pt-1 text-sm font-semibold text-foreground font-sans'>
                 <span>Total:</span>
                 <span className='tabular-nums text-emerald-500'>{formatIDR(selectedReceipt.amount)}</span>
               </div>
             </div>
 
-            <div className='flex items-center justify-end gap-2.5 pt-2'>
+            <div data-receipt-hide-on-print className='flex items-center justify-end gap-2.5 pt-2'>
               <Button
                 variant='outline'
                 size='sm'

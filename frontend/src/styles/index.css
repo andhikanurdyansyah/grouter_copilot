@@ -196,3 +196,50 @@ html.light ::selection { background: rgba(96, 97, 229, 0.25); color: #0f172a; }
     scroll-behavior: auto !important;
   }
 }
+/* Scoped customer receipt output: only the explicitly marked receipt survives print. */
+@media print {
+  body > *:not(.receipt-print-dialog),
+  [data-receipt-hide-on-print],
+  [data-slot='dialog-overlay'],
+  [data-slot='dialog-close'] {
+    visibility: hidden !important;
+  }
+
+  .receipt-print-dialog {
+    visibility: visible !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111827 !important;
+    overflow: visible !important;
+  }
+
+  .receipt-print-dialog * { visibility: visible !important; }
+
+  /* Keep Radix's close control out of the printed receipt after the broad reset above. */
+  .receipt-print-dialog [data-slot='dialog-close'] { visibility: hidden !important; }
+
+  .receipt-print-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 24px;
+    color: #111827 !important;
+    background: #fff !important;
+    font-family: Arial, sans-serif;
+  }
+
+  .receipt-print-dialog [data-receipt-hide-on-print],
+  .receipt-print-dialog [data-receipt-hide-on-print] * {
+    visibility: hidden !important;
+  }
+
+  .receipt-print-content [data-receipt-value] { overflow-wrap: anywhere; }
+}
+
+@page { size: auto; margin: 14mm; }

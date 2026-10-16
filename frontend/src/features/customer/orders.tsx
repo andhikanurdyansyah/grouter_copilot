@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, fetchPlans, fetchMe, formatIDR } from '@/lib/grouter-api'
+import { api, fetchPlans, fetchMe, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +48,7 @@ type ActiveOrder = {
   amount?: number | null
   expiredAt?: string | null
   status?: string
+  createdAt?: string | number | null
 }
 
 export function CustomerOrders() {
@@ -63,7 +64,7 @@ export function CustomerOrders() {
     queryFn: async () =>
       (await api.get('/orders/latest')).data as {
         order:
-          | (ActiveOrder & { packageKey?: string })
+          | (ActiveOrder & { packageKey?: string; createdAt?: string | number | null })
           | null
       },
   })
@@ -88,6 +89,7 @@ export function CustomerOrders() {
           amount: pendingFromLatest.amount,
           expiredAt: pendingFromLatest.expiredAt ? String(pendingFromLatest.expiredAt) : null,
           status: pendingFromLatest.status,
+          createdAt: (pendingFromLatest as { createdAt?: string | number | null }).createdAt ?? null,
         }
       : null)
 
@@ -114,6 +116,10 @@ export function CustomerOrders() {
   ).toUpperCase()
   const settledLicenseId =
     (pollQ.data as { order?: { licenseId?: string | null } } | undefined)?.order?.licenseId ?? null
+  const settledCreatedAt =
+    (pollQ.data as { order?: { createdAt?: string | number | null } } | undefined)?.order?.createdAt ??
+    polled?.createdAt ??
+    null
   const isPaid = pollStatus === 'PAID'
   const isTerminalStale =
     pollStatus === 'EXPIRED' || pollStatus === 'CANCELLED' || pollStatus === 'FAILED'
@@ -158,7 +164,7 @@ export function CustomerOrders() {
     mutationFn: async (packageKey: string) =>
       (
         await api.post<{
-          order: { id: string; amount?: number; packageKey?: string }
+          order: { id: string; amount?: number; packageKey?: string; createdAt?: string | number | null }
           qr: { qrUrl?: string; qrImage?: string; signature?: string | null; expiredAt?: string }
         }>('/orders', { packageKey })
       ).data,
@@ -170,6 +176,7 @@ export function CustomerOrders() {
         signature: data.qr?.signature ?? null,
         amount: data.order.amount,
         expiredAt: data.qr?.expiredAt ?? null,
+        createdAt: data.order.createdAt ?? null,
       })
       setCheckoutOpen(true)
       qc.invalidateQueries({ queryKey: ['orders-latest'] })
@@ -194,7 +201,7 @@ export function CustomerOrders() {
 
   // Sukses: derived dari polling (bukan setState-in-effect).
   const paidOrder: (ActiveOrder & { licenseId?: string | null }) | null =
-    polled && isPaid ? { ...polled, licenseId: settledLicenseId } : null
+    polled && isPaid ? { ...polled, createdAt: settledCreatedAt, licenseId: settledLicenseId } : null
 
   useEffect(() => {
     if (paidOrder) {
@@ -479,7 +486,7 @@ export function CustomerOrders() {
           }
         }}
       >
-        <DialogContent className='sm:max-w-[440px] p-0 overflow-hidden border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl rounded-2xl'>
+        <DialogContent className={cn('sm:max-w-[440px] p-0 overflow-hidden border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl rounded-2xl', paidOrder && 'receipt-print-dialog')}>
           {/* ambient glow */}
           <div
             className={cn(
@@ -490,8 +497,8 @@ export function CustomerOrders() {
 
           {paidOrder ? (
             /* ── SUCCESS state ── */
-            <div className='relative z-10 flex flex-col items-center pt-8 pb-7 px-6 text-center space-y-4'>
-              <div className='relative'>
+            <div className='receipt-print-content relative z-10 flex flex-col items-center pt-8 pb-7 px-6 text-center space-y-4'>
+              <div data-receipt-hide-on-print className='relative'>
                 <div className='absolute inset-0 bg-emerald-500/15 rounded-full blur-2xl' />
                 <img
                   src='/app/images/grouter-hub-standalone.png'
@@ -500,7 +507,7 @@ export function CustomerOrders() {
                 />
               </div>
 
-              <div className='space-y-1.5'>
+              <div data-receipt-hide-on-print className='space-y-1.5'>
                 <div className='inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-1 text-xs font-bold text-emerald-400 shadow-sm'>
                   <BadgeCheck className='size-3.5' /> PAID · {isId ? 'dikonfirmasi server' : 'server confirmed'}
                 </div>
@@ -517,7 +524,7 @@ export function CustomerOrders() {
               {/* receipt */}
               <div className='w-full rounded-xl border border-border/80 bg-muted/40 p-4 text-xs font-mono space-y-2.5 text-left shadow-inner'>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground font-sans'>{isId ? 'Order' : 'Order'}</span>
+                  <span className='text-muted-foreground font-sans'>Order</span>
                   <span className='font-bold text-foreground'>{paidOrder.id.slice(0, 16)}…</span>
                 </div>
                 <div className='flex justify-between'>
@@ -527,20 +534,20 @@ export function CustomerOrders() {
                   </span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground font-sans'>{isId ? 'Lisensi' : 'License'}</span>
-                  <span className='font-bold text-foreground'>
-                    {paidOrder.licenseId ? (
-                      paidOrder.licenseId.slice(0, 14) + '…'
-                    ) : (
-                      <Link to='/user/licenses' className='text-[#7778FF] hover:underline'>
-                        {isId ? 'lihat daftar lisensi' : 'view licenses'}
-                      </Link>
-                    )}
-                  </span>
+                  <span className='text-muted-foreground font-sans'>Status</span>
+                  <span className='font-bold text-emerald-400'>PAID · server confirmed</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>Date</span>
+                  <span className='font-bold text-foreground'>{fmtDate(paidOrder.createdAt ?? null)}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground font-sans'>License reference</span>
+                  <span className='font-bold text-foreground'>{paidOrder.licenseId || '—'}</span>
                 </div>
               </div>
 
-              <div className='flex items-center gap-3 w-full pt-2'>
+              <div data-receipt-hide-on-print className='flex items-center gap-3 w-full pt-2'>
                 <Button
                   variant='outline'
                   size='sm'
@@ -735,7 +742,7 @@ export function CustomerOrders() {
                 </Button>
               </div>
 
-              <p className='text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5'>
+              <p data-receipt-hide-on-print className='text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5'>
                 <ReceiptText className='size-3' />
                 {isId
                   ? 'Status diverifikasi server sebelum lisensi diterbitkan — bukan dari payload notifikasi.'

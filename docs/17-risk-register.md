@@ -8,7 +8,7 @@
 | R-01 | Key gRouter bocor ke browser | Medium | Critical | ✅ server-only + bundle scan test (test/widget.test.js, server/test/handoff.test.js, settings.test.js); adapter fail-closed tanpa fallback process.env (fd75163) | key di bundle |
 | R-02 | Prompt injection via data app | High | High | ✅ untrusted data channel + skill allowlist + read-only; eval fixture injection (test/eval-fixtures.test.js 2026-10-12) | eval failure |
 | R-03 | Skill baca data berlebih | High | High | ✅ maxRows + maxContextBytes fail-closed (test/context.test.js) | scope leak |
-| R-04 | Auto-scan disalahpahami "baca semua" | Medium | High | ⚠️ helper only, butuh approval (design; belum ada linter otomatis) | auto-expose tanpa izin |
+| R-04 | Auto-scan disalahpahami "baca semua" | Medium | High | ✅ helper scope is explicit + deterministic production-root scan (`scripts/source-scan.mjs`, `docs/source-scan.md`, CI); findings are file/line/rule only | auto-expose tanpa izin |
 | R-05 | gRouter down / limit | Medium | Medium | ✅ UPSTREAM_UNAVAILABLE/TIMEOUT retryable taxonomy (adapter + fixtures); ⚠️ retry terbatas belum di runtime path | upstream unavailable |
 | R-06 | Adopsi rendah (install sulit) | High | High | ✅ init command + README; ⚠️ sample app + registry publish pending | abandonment |
 | R-07 | Mutating skill terlalu dini | Medium | High | ✅ read-only default + SCOPE_DENIED (test/registry.test.js) | write tanpa izin |

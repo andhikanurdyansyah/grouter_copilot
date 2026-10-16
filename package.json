@@ -23,7 +23,9 @@
     "e2e": "bash scripts/run-e2e.sh",
     "smoke:live": "bash scripts/e2e-smoke-live.sh",
     "audit:dependencies": "node scripts/dependency-audit.mjs",
-    "audit:dependencies:check": "node scripts/dependency-audit.mjs --check"
+    "audit:dependencies:check": "node scripts/dependency-audit.mjs --check",
+    "audit:source": "node scripts/source-scan.mjs",
+    "audit:source:test": "node --test test/source-scan.test.js"
   },
   "keywords": [
     "grouter",

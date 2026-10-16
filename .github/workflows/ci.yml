@@ -47,6 +47,10 @@ jobs:
       - name: Dependency audit
         run: npm run audit:dependencies
 
+      # Deterministic, zero-dependency production source hygiene scan.
+      - name: Source scan
+        run: npm run audit:source
+
       # Backend deps (better-auth / better-sqlite3). server/ pins with npm.
       - name: Install server deps
         working-directory: server

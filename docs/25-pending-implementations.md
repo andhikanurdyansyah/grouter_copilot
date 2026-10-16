@@ -25,7 +25,7 @@
 | OPEN-4 | Bukti callback KlikQRIS nyata → webhook | **OPEN (external)** | butuh sesi simulator upstream | buat order sandbox baru, amati path webhook di log app (`docs/handoff-2026-10-12-continuation.md`) |
 | OPEN-5 | Signature verifikasi webhook KlikQRIS | **OPEN (blocked)** | butuh algoritma dari KlikQRIS | implementasi setelah dokumen signature tersedia (`docs/33`, R-11) |
 | OPEN-6 | Automasi audit dependency | **CLOSED** | — | `npm run audit:dependencies` audits tracked server/frontend lockfiles at high severity in CI; offline contract: `npm run audit:dependencies:check` |
-| OPEN-7 | Auto-scan helper linter (R-04) | **OPEN** | design, butuh approval | belum ada linter otomatis |
+| OPEN-7 | Auto-scan helper linter (R-04) | **CLOSED** | — | `scripts/source-scan.mjs`, `test/source-scan.test.js`, `docs/source-scan.md`; deterministic production-root scan wired into CI |
 | OPEN-8 | Retry terbatas di runtime path (R-05) | **BLOCKED (contract)** | POST chat has no idempotency key/replay guarantee; retries could duplicate quota/ledger charging | adapter keeps retryable taxonomy but fails closed after one attempt; unblock only with explicit gateway idempotency + ledger semantics, then add bounded backend retry/circuit-breaker |
 | OPEN-9 | Reconcile usage provider per-customer | **OPEN** | kontrak `/check-usage` = total per credential | tunggu dukungan metadata gRouter (`docs/30` open question #2) |
 | CLOSED | Companion conversation + application-grounded routing | **CLOSED** | — | general conversation tanpa skill, data aplikasi tetap skill-gated, source metadata di-redact; `25be157`, `4c69fa4`; root 118/118 |

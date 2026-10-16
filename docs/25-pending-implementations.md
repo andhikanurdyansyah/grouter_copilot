@@ -19,7 +19,7 @@
 | GO-4 | npm publish `@grouter/copilot` | **PO-owned (DILARANG)** | keputusan owner | tetap unpublished; `npx` path belum terverifikasi sampai publish |
 | GO-5 | Aktivasi AI per paket | **PO-owned** | kebijakan paket saat ini `ai.enabled:false` | toggle di `/admin/packages` bila PO memutuskan |
 | GO-6 | Kredensial Resend (email reset/notif) | **PO-owned** | butuh API key | isi `RESEND_API_KEY` (+`MAIL_FROM`) di `server/.env`; kode sudah aktif, verifikasi email masuk |
-| OPEN-1 | Sample CRM/POS + skill authoring guide | **OPEN** | belum dikerjakan | EPIC-7 (`docs/18`): buat `examples/` + template skill |
+| OPEN-1 | Sample CRM/POS + skill authoring guide | **CLOSED** | — | `870c8e8`; `docs/skill-authoring.md` + synthetic read-only fixture + 2 contract tests |
 | OPEN-2 | Next.js first-class integration | **OPEN (partial)** | demo CRM/POS jadi gate | master-plan Phase 2; sebagian sudah ada di plugin |
 | OPEN-3 | Usage-ledger reconciliation job (upstream) | **OPEN** | belum ada job reconcile | usage per lisensi sudah tercatat; tambah job banding vs `/check-usage` |
 | OPEN-4 | Bukti callback KlikQRIS nyata → webhook | **OPEN (external)** | butuh sesi simulator upstream | buat order sandbox baru, amati path webhook di log app (`docs/handoff-2026-10-12-continuation.md`) |

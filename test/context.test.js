@@ -83,7 +83,7 @@ test('buildContext redacts untrusted source metadata before model context', () =
   const { messages } = buildContext({
     systemPrompt: 's',
     data: [{ ok: true }],
-    sources: [{ name: 'orders.list', token: 'source-secret', authorization: 'Bearer source-secret' }],
+    sources: [{ name: 'orders.list', token: 'fixture-value', authorization: 'Bearer fixture-value' }],
     question: 'q',
     limits: { maxContextBytes: 2000 },
   });

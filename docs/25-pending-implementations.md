@@ -21,7 +21,7 @@
 | GO-6 | Kredensial Resend (email reset/notif) | **PO-owned** | butuh API key | isi `RESEND_API_KEY` (+`MAIL_FROM`) di `server/.env`; kode sudah aktif, verifikasi email masuk |
 | OPEN-1 | Sample CRM/POS + skill authoring guide | **CLOSED** | — | `870c8e8`; `docs/skill-authoring.md` + synthetic read-only fixture + 2 contract tests |
 | OPEN-2 | Next.js first-class integration | **OPEN (partial)** | demo CRM/POS jadi gate | master-plan Phase 2; sebagian sudah ada di plugin |
-| OPEN-3 | Usage-ledger reconciliation job (upstream) | **OPEN** | belum ada job reconcile | usage per lisensi sudah tercatat; tambah job banding vs `/check-usage` |
+| OPEN-3 | Usage-ledger reconciliation job (upstream) | **BLOCKED (contract)** | `/check-usage` is aggregate for the single service credential; no customer/request attribution | `server/src/usageReconciliation.js` is a non-mutating blocked assessment with a contract test; unblock only after documented gRouter per-customer or per-request correlation |
 | OPEN-4 | Bukti callback KlikQRIS nyata → webhook | **OPEN (external)** | butuh sesi simulator upstream | buat order sandbox baru, amati path webhook di log app (`docs/handoff-2026-10-12-continuation.md`) |
 | OPEN-5 | Signature verifikasi webhook KlikQRIS | **OPEN (blocked)** | butuh algoritma dari KlikQRIS | implementasi setelah dokumen signature tersedia (`docs/33`, R-11) |
 | OPEN-6 | Automasi audit dependency | **CLOSED** | — | `npm run audit:dependencies` audits tracked server/frontend lockfiles at high severity in CI; offline contract: `npm run audit:dependencies:check` |

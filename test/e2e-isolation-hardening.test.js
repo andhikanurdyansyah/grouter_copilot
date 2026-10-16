@@ -191,7 +191,7 @@ test('frontend pointing at a foreign backend → rejected', async () => {
 });
 
 // ── 6. Startup failure after spawn → children + temp dir cleaned ────────────
-test('startup identity failure cleans up children and the temp run dir', async () => {
+test('startup identity failure cleans up children and the temp run dir', { concurrency: false }, async () => {
   const [be, fe] = await freePorts(2);
   const iso = startIsolatedInstance({
     backendPort: be,
@@ -215,7 +215,7 @@ test('startup identity failure cleans up children and the temp run dir', async (
 });
 
 // ── 7. Playwright failure → runner still tears the instance down ────────────
-test('runner tears down the instance even when Playwright finds no tests (exit!=0)', async () => {
+test('runner tears down the instance even when Playwright finds no tests (exit!=0)', { concurrency: false }, async () => {
   const before = new Set(leftoverRunDirs());
   const code = await new Promise((resolve) => {
     const p = spawn(process.execPath, [path.join(repoRoot, 'e2e', 'isolated', 'run.mjs'), '-g', 'zzz-no-such-test-zzz'], {
@@ -227,6 +227,10 @@ test('runner tears down the instance even when Playwright finds no tests (exit!=
   });
   assert.notEqual(code, 0, 'a suite that matches no tests must exit non-zero');
   await sleep(700);
+  const deadline = Date.now() + 6_000;
+  while (Date.now() < deadline && ![...leftoverRunDirs()].every((name) => before.has(name))) {
+    await sleep(200);
+  }
   assert.deepEqual(new Set(leftoverRunDirs()), before, 'runner must clean up its run dir on a failing Playwright run');
   assert.equal(await portInUse(4801), false, 'runner must release the backend port');
   assert.equal(await portInUse(4802), false, 'runner must release the frontend port');

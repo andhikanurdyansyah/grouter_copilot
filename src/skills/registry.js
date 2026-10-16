@@ -8,6 +8,7 @@ import { CopilotError, ErrorCode } from '../adapter/errors.js';
 export class SkillRegistry {
   constructor({ skills = [] } = {}) {
     this.skills = new Map();
+    this.intentMatchers = new Map();
     this.invalid = [];
     for (const skill of skills) {
       this.register(skill);
@@ -21,6 +22,7 @@ export class SkillRegistry {
       return false;
     }
     this.skills.set(skill.name, skill);
+    this.intentMatchers.set(skill.name, compileIntentMatcher(skill));
     return true;
   }
 
@@ -49,21 +51,28 @@ export class SkillRegistry {
 
     if (!message || typeof message !== 'string') return null;
 
-    const text = message.toLowerCase();
-    const textWords = text.split(/[^a-z0-9]+/).filter(Boolean);
+    const text = normalizeText(message);
+    const textWords = tokenize(text);
 
     const scored = this.list().map((s) => {
-      const desc = (s.description || '').toLowerCase();
-      const name = s.name.toLowerCase();
+      const desc = normalizeText(s.description || '');
+      const name = normalizeText(s.name);
       let score = 0;
+
+      const matcher = this.intentMatchers.get(s.name);
+      if (matcher) {
+        if (matcher.phrases.some((pattern) => pattern.test(text))) score += 6;
+        if (matcher.synonyms.some((pattern) => pattern.test(text))) score += 4;
+      }
+
       // name token match is a strong signal
-      for (const token of name.split(/[^a-z0-9]+/).filter(Boolean)) {
-        if (token.length >= 3 && text.includes(token)) score += 3;
+      for (const token of uniqueTokens(name)) {
+        if (token.length >= 3 && containsToken(text, token)) score += 3;
       }
       // description token match, with light plural/stem tolerance
-      for (const token of desc.split(/[^a-z0-9]+/).filter(Boolean)) {
+      for (const token of uniqueTokens(desc)) {
         if (token.length < 4) continue;
-        if (text.includes(token)) {
+        if (containsToken(text, token)) {
           score += 1;
           continue;
         }
@@ -119,6 +128,58 @@ export class SkillRegistry {
       });
     }
   }
+}
+
+function normalizeText(value) {
+  return value.normalize('NFKC').toLowerCase().replace(/[’']/g, '').replace(/\s+/gu, ' ').trim();
+}
+
+function tokenize(value) {
+  return normalizeText(value).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
+function uniqueTokens(value) {
+  return [...new Set(tokenize(value))];
+}
+
+
+const MAX_INTENT_ENTRIES = 32;
+const MAX_INTENT_LENGTH = 128;
+
+function compileIntentMatcher(skill) {
+  // Only the documented top-level intent object or metadata.intent is trusted.
+  const intent = skill.intent ?? skill.metadata?.intent ?? {};
+  const seen = new Set();
+  let entryCount = 0;
+  const collect = (value) => {
+    const values = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+    const patterns = [];
+    for (const item of values) {
+      if (entryCount >= MAX_INTENT_ENTRIES || typeof item !== 'string') break;
+      const normalized = normalizeText(item);
+      if (!normalized || normalized.length > MAX_INTENT_LENGTH || seen.has(normalized)) continue;
+      seen.add(normalized);
+      entryCount += 1;
+      patterns.push(phrasePattern(normalized));
+    }
+    return patterns;
+  };
+  const phrases = collect(intent?.phrases);
+  const synonyms = collect(intent?.synonyms);
+  return { phrases, synonyms };
+}
+
+function phrasePattern(phrase) {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:$|[^\\p{L}\\p{N}])`, 'u');
+}
+
+function containsPhrase(text, phrase) {
+  return phrasePattern(normalizeText(phrase)).test(text);
+}
+
+function containsToken(text, token) {
+  return containsPhrase(text, token);
 }
 
 /**

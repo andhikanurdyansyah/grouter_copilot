@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Download, CheckCircle2, Clock, Hourglass, RefreshCw, X, Receipt } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
+import { buildCsv, downloadCsv } from '@/lib/csv-export'
 import {
 
 
@@ -65,10 +66,11 @@ export function AdminOrders() {
     ts ? new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
   const shortId = (id: string) => (id.length > 14 ? id.slice(0, 8) + '...' + id.slice(-2) : id)
 
-  const ordersList = ((ordersQuery.data?.orders ?? []) as Array<{
+  const rawOrders = (ordersQuery.data?.orders ?? []) as Array<{
     id: string; packageKey: string | null; planName: string | null
     amount: number | null; status: string; createdAt: number | null; customerName: string | null
-  }>).map((o) => {
+  }>
+  const ordersList = rawOrders.map((o) => {
     const st = String(o.status || 'pending').toLowerCase()
     return {
       id: shortId(o.id),
@@ -119,14 +121,17 @@ export function AdminOrders() {
         <Button
           variant='outline'
           size='sm'
+          title={isId ? 'Ekspor pesanan yang dimuat (100 terbaru)' : 'Export loaded orders (latest 100)'}
           className='h-9 gap-1.5 border-border bg-card/60 hover:bg-muted text-xs sm:text-sm font-medium self-start sm:self-auto'
           onClick={() => {
-            const csv = 'id,customer,amount,status\n' + ordersList.map((o) => `${o.id},${o.customer},${o.amount},${o.status}`).join('\n')
-            const blob = new Blob([csv], { type: 'text/csv' })
-            const a = document.createElement('a')
-            a.href = URL.createObjectURL(blob)
-            a.download = 'orders.csv'
-            a.click()
+            const csv = buildCsv(
+              ['order_id', 'customer', 'plan', 'amount_idr', 'created_at_ms', 'status'],
+              ordersList.map((o) => {
+                const raw = rawOrders.find((item) => item.id === o.fullId)
+                return [o.fullId, o.customer, o.plan, raw?.amount ?? null, raw?.createdAt ?? null, o.status]
+              }),
+            )
+            downloadCsv('orders-loaded-latest-100.csv', csv)
           }}
         >
           <Download className='size-3.5' /> {t('btn_export_csv')}

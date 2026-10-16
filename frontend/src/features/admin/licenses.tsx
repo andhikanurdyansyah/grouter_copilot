@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { buildCsv, downloadCsv } from '@/lib/csv-export'
 
 export function AdminLicenses() {
   const { language, t } = useLanguage()
@@ -98,6 +99,8 @@ export function AdminLicenses() {
         expiresMs: l.expiresAt ? new Date(l.expiresAt).getTime() : Number.POSITIVE_INFINITY,
         createdMs: l.createdAt ? new Date(l.createdAt).getTime() : 0,
         usedRaw: used,
+        limitRaw: limit,
+        expiresRaw: l.expiresAt ?? null,
         skills: Array.isArray((l as unknown as { skills?: string[] }).skills) ? (l as unknown as { skills: string[] }).skills : [],
       }
     })
@@ -155,14 +158,14 @@ export function AdminLicenses() {
           <Button
             variant='outline'
             size='sm'
+            title={isId ? 'Ekspor lisensi yang dimuat dan difilter' : 'Export loaded, filtered licenses'}
             className='h-9 gap-1.5 border-border bg-card/60 hover:bg-muted text-xs sm:text-sm font-medium'
             onClick={() => {
-              const csv = 'id,customer,plan,status\n' + filteredLicenses.map(l => `${l.id},${l.customer},${l.plan},${l.status}`).join('\n')
-              const blob = new Blob([csv], { type: 'text/csv' })
-              const a = document.createElement('a')
-              a.href = URL.createObjectURL(blob)
-              a.download = 'licenses.csv'
-              a.click()
+              const csv = buildCsv(
+                ['license_id', 'customer', 'plan', 'used_tokens', 'quota_limit', 'expires_at', 'status'],
+                filteredLicenses.map((l) => [l.fullId, l.customer, l.plan, l.usedRaw, l.limitRaw, l.expiresRaw, l.status]),
+              )
+              downloadCsv('licenses-filtered-loaded.csv', csv)
             }}
           >
             <Download className='size-3.5' /> {t('btn_export_csv')}

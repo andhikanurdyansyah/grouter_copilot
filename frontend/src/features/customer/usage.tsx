@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
+import { buildCsv, downloadCsv } from '@/lib/csv-export'
 
 /**
  * AI Usage — REAL server data only (D-021 ledger).
@@ -210,15 +211,18 @@ export function CustomerUsage() {
             <Button
               variant='outline'
               size='sm'
+              title={isId ? 'Ekspor penggunaan yang dimuat (50 terbaru) dan difilter' : 'Export loaded, filtered usage (latest 50)'}
               className='h-8 gap-1.5 border-border bg-card text-xs font-medium'
               disabled={filteredRequests.length === 0}
               onClick={() => {
-                const csv = 'time,request_id,skill,model,tokens,status\n' + filteredRequests.map(r => `${r.time},"${r.requestId}","${r.skill}","${r.model ?? ''}","${r.tokens}","${r.status}"`).join('\n')
-                const blob = new Blob([csv], { type: 'text/csv' })
-                const a = document.createElement('a')
-                a.href = URL.createObjectURL(blob)
-                a.download = 'requests.csv'
-                a.click()
+                const csv = buildCsv(
+                  ['created_at_ms', 'request_id', 'skill', 'model', 'total_tokens', 'status'],
+                  filteredRequests.map((r) => {
+                    const raw = ledgerRecords.find((record) => record.requestId === r.requestId)
+                    return [raw?.createdAt ?? null, r.requestId, raw?.skill ?? null, raw?.model ?? null, raw?.totalTokens ?? ((raw?.inputTokens ?? 0) + (raw?.outputTokens ?? 0)), raw?.status ?? null]
+                  }),
+                )
+                downloadCsv('usage-loaded-latest-50.csv', csv)
               }}
             >
               <Download className='size-3.5' /> {t('btn_export_csv')}

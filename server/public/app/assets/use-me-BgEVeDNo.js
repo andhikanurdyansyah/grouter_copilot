@@ -1,1 +1,0 @@
-import{t as e}from"./useQuery-Bm7_QshH.js";import{l as t}from"./index-CPkk3Ksi.js";function n(n=!0){return e({queryKey:[`me`],queryFn:async()=>{try{return await t()}catch(e){throw e?.response?.status===401&&(window.location.href=`/login`),e}},enabled:n,retry:!1,staleTime:1e4})}export{n as t};

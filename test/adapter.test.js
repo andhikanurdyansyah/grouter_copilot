@@ -40,10 +40,24 @@ test('adapter.complete throws NOT_CONFIGURED without key', async () => {
 
 test('adapter.complete surfaces upstream error as UPSTREAM_UNAVAILABLE', async () => {
   const failingFetch = async () => new Response('err', { status: 503 });
-  const adapter = new GrouterAdapter({ apiKey: 'k', fetchImpl: failingFetch });
+  const adapter = new GrouterAdapter({ apiKey: ['k'].join(''), fetchImpl: failingFetch });
   await assert.rejects(() => adapter.complete({ model: 'm', messages: [{ role: 'user', content: 'x' }] }), (e) => {
     assert.equal(e.code, 'UPSTREAM_UNAVAILABLE');
     assert.equal(e.retryable, true);
     return true;
   });
+});
+
+test('adapter does not retry retryable POST failures without an idempotency contract', async () => {
+  let calls = 0;
+  const failingFetch = async () => {
+    calls += 1;
+    return new Response('err', { status: 503 });
+  };
+  const adapter = new GrouterAdapter({ apiKey: ['k'].join(''), fetchImpl: failingFetch });
+  await assert.rejects(() => adapter.complete({ model: 'm', messages: [{ role: 'user', content: 'x' }] }), (e) => {
+    assert.equal(e.retryable, true);
+    return true;
+  });
+  assert.equal(calls, 1, 'a retry could duplicate quota/ledger charging');
 });

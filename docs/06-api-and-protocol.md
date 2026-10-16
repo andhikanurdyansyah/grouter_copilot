@@ -74,6 +74,9 @@ Adapter **tidak** expose: provider, connection, combo, fallback, raw upstream mo
 
 Error selalu: stable code + requestId + retryable + safe message. Tidak ada stack trace, key, raw supplier error, atau SQL.
 
+- `POST /v1/chat/completions` is not idempotent under the current contract. The adapter may classify 5xx/429/timeouts as `retryable`, but it performs exactly one attempt: automatic retry/circuit-breaker is blocked until gRouter documents an idempotency key/replay guarantee and quota/ledger charging semantics.
+- Mutation skills are fail-closed (`readOnly !== true` → `SCOPE_DENIED`) and are never eligible for retry. A future retry policy must preserve this boundary.
+
 ## 7. Contract tests
 
 Test parity: skill contract sama di semua bahasa (saat multi-bahasa). Test stream disconnect, cancel, timeout, gRouter down, duplicate event.

@@ -203,8 +203,8 @@ token/credit tanpa mengubah lisensi yang sudah terbit.
 
 - License offline → app tidak dependen pada license server (gate offline).
 - Heartbeat gagal → diabaikan (best-effort).
-- gRouter down → `upstream_unavailable`, retry terbatas; Copilot backend adalah titik
-  retry/circuit-breaker, bukan tiap host app customer.
+- gRouter down → `upstream_unavailable`, retry classification is surfaced but **no automatic retry is permitted yet**: chat is a POST that can consume quota/ledger even when the client sees an error, and the contract provides no idempotency key or replay guarantee. The Copilot backend remains the future retry/circuit-breaker point, not each host app customer.
+- Automatic retry may be enabled only after the gateway contract explicitly supplies an idempotency key/replay guarantee and preserves quota/ledger semantics; until then fail closed after one attempt.
 - Skill fail → error jelas.
 
 ## 12. Decisions

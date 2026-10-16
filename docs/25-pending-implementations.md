@@ -26,7 +26,7 @@
 | OPEN-5 | Signature verifikasi webhook KlikQRIS | **OPEN (blocked)** | butuh algoritma dari KlikQRIS | implementasi setelah dokumen signature tersedia (`docs/33`, R-11) |
 | OPEN-6 | Automasi audit dependency | **OPEN** | repo tanpa CI workflow | jalankan manual (`npm audit`/`pnpm audit`); lockfiles tracked |
 | OPEN-7 | Auto-scan helper linter (R-04) | **OPEN** | design, butuh approval | belum ada linter otomatis |
-| OPEN-8 | Retry terbatas di runtime path (R-05) | **OPEN** | hanya taxonomy retryable | tambah retry/circuit-breaker di backend (target D-021 `docs/04` §11) |
+| OPEN-8 | Retry terbatas di runtime path (R-05) | **BLOCKED (contract)** | POST chat has no idempotency key/replay guarantee; retries could duplicate quota/ledger charging | adapter keeps retryable taxonomy but fails closed after one attempt; unblock only with explicit gateway idempotency + ledger semantics, then add bounded backend retry/circuit-breaker |
 | OPEN-9 | Reconcile usage provider per-customer | **OPEN** | kontrak `/check-usage` = total per credential | tunggu dukungan metadata gRouter (`docs/30` open question #2) |
 | CLOSED | Companion conversation + application-grounded routing | **CLOSED** | — | general conversation tanpa skill, data aplikasi tetap skill-gated, source metadata di-redact; `25be157`, `4c69fa4`; root 118/118 |
 | CLOSED | Google OAuth (P-001) | **CLOSED** | — | enabled via env; rotasi kredensial = ops (`docs/28`) |

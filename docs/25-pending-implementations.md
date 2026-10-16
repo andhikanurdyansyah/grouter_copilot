@@ -28,6 +28,7 @@
 | OPEN-7 | Auto-scan helper linter (R-04) | **OPEN** | design, butuh approval | belum ada linter otomatis |
 | OPEN-8 | Retry terbatas di runtime path (R-05) | **OPEN** | hanya taxonomy retryable | tambah retry/circuit-breaker di backend (target D-021 `docs/04` §11) |
 | OPEN-9 | Reconcile usage provider per-customer | **OPEN** | kontrak `/check-usage` = total per credential | tunggu dukungan metadata gRouter (`docs/30` open question #2) |
+| CLOSED | Companion conversation + application-grounded routing | **CLOSED** | — | general conversation tanpa skill, data aplikasi tetap skill-gated, source metadata di-redact; `25be157`, `4c69fa4`; root 118/118 |
 | CLOSED | Google OAuth (P-001) | **CLOSED** | — | enabled via env; rotasi kredensial = ops (`docs/28`) |
 | CLOSED | Auto-provisioning gRouter key (P-002) | **CLOSED (REJECTED)** | D-021 | tidak dibutuhkan arsitektur service-credential |
 | CLOSED | KlikQRIS payment integration (P-003) | **CLOSED** | — | live (sandbox); go-live = GO-1 |

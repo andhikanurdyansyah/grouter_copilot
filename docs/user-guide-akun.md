@@ -161,6 +161,26 @@ token tidak hilang selamanya:
 4. Lisensi yang sudah dicabut operator tidak menampilkan token (memang tidak bisa dipakai lagi) —
    beli atau perpanjang paket untuk mendapat lisensi baru.
 
+---
+
+## 10. Copilot sebagai teman ngobrol
+
+Copilot tidak hanya menunggu pertanyaan yang persis sama dengan nama skill.
+Anda dapat menggunakannya untuk sapaan, brainstorming, penjelasan, dan diskusi umum.
+
+Jika pertanyaan membutuhkan data dari aplikasi, Copilot hanya memakai data yang sengaja
+didaftarkan oleh pengembang aplikasi melalui skill baca-saja. Copilot tidak boleh mengarang
+angka, nama, status, atau riwayat aplikasi ketika data tersebut tidak tersedia.
+
+Contoh:
+
+- "Bantu brainstorming nama produk" → percakapan umum.
+- "Berapa order yang masih pending?" → memakai skill order bila aplikasi menyediakannya.
+- "Hapus semua order lama" → ditolak bila skill aplikasi hanya baca-saja.
+
+Jadi Anda tidak perlu menghafal nama skill untuk mengobrol. Skill adalah batas keamanan
+data aplikasi, bukan batas untuk percakapan umum.
+
 Orang lain tidak bisa melihat token Anda: hanya akun pemilik lisensi yang bisa membukanya.
 
 ---

@@ -100,13 +100,14 @@ export function buildContext({ systemPrompt, data, sources = [], question, limit
   const maxContextBytes = limits.maxContextBytes ?? 32_000;
 
   const safeData = redact(data);
+  const safeSources = redact(sources);
   const rows = truncateRows(safeData, maxRows);
 
   const fitted = fitDataToContext({
     rows,
     systemPrompt,
     question,
-    sources,
+    sources: safeSources,
     maxContextBytes,
   });
   const userContent = fitted.userContent;

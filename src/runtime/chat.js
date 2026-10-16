@@ -7,6 +7,26 @@ import { CopilotError, ErrorCode, toErrorEnvelope } from '../adapter/errors.js';
 import { SkillRegistry } from '../skills/registry.js';
 import { buildContext } from './context.js';
 
+const DEFAULT_GENERAL_SYSTEM_PROMPT = 'You are a helpful assistant embedded in the customer application.';
+
+function buildGeneralMessages({ systemPrompt, question }) {
+  const basePrompt = (typeof systemPrompt === 'string' && systemPrompt.trim())
+    ? systemPrompt
+    : DEFAULT_GENERAL_SYSTEM_PROMPT;
+  const generalPolicy = [
+    basePrompt,
+    '',
+    'GENERAL ASSISTANCE MODE:',
+    '- No application data is attached to this message. Answer from general knowledge.',
+    '- If the question needs the user\'s application data, say plainly that you cannot access that data in this mode and suggest what to ask instead (e.g. data summaries supported by the app\'s skills).',
+    '- Never invent records, numbers, or tool results. Keep the answer concise and relevant to the question.',
+  ].join('\n');
+  return [
+    { role: 'system', content: generalPolicy },
+    { role: 'user', content: String(question ?? '') },
+  ];
+}
+
 let counter = 0;
 function nextRequestId() {
   counter = (counter + 1) % 0x7fffffff;
@@ -123,9 +143,9 @@ export class CopilotRuntime {
       // suggestion chips as shortcuts, not an allowlist, while data questions
       // still require a real skill.
       if (!skillName) {
-        if (this.registry.list().length === 0) {
-          throw new CopilotError(ErrorCode.SKILL_NOT_FOUND, 'No skills are configured.', { status: 404 });
-        }
+        // General conversation is valid even when the host exposes no skills.
+        // The absence of skills only means application data is unavailable;
+        // it must not disable ordinary assistance.
         return this._generalAnswer({ req, requestId });
       }
 
@@ -171,23 +191,10 @@ export class CopilotRuntime {
    * accounting upstream). Never fabricates host data; states the limitation.
    */
   async _generalAnswer({ req, requestId }) {
-    const systemPrompt =
-      (typeof this.config?.systemPrompt === 'string' && this.config.systemPrompt.trim())
-        ? this.config.systemPrompt
-        : 'You are a helpful assistant embedded in the customer application.';
-    const generalPolicy = [
-      systemPrompt,
-      '',
-      'GENERAL ASSISTANCE MODE:',
-      '- No application data is attached to this message. Answer from general knowledge.',
-      '- If the question needs the user\'s application data, say plainly that you cannot access that data in this mode and suggest what to ask instead (e.g. data summaries supported by the app\'s skills).',
-      '- Never invent records, numbers, or tool results. Keep the answer concise and relevant to the question.',
-    ].join('\n');
-    const question = String(req.message ?? '');
-    const messages = [
-      { role: 'system', content: generalPolicy },
-      { role: 'user', content: question },
-    ];
+    const messages = buildGeneralMessages({
+      systemPrompt: this.config?.systemPrompt,
+      question: req.message,
+    });
     const { answer, usage } = await this.adapter.complete({
       model: this.config?.model,
       messages,
@@ -222,28 +229,16 @@ export class CopilotRuntime {
     // payload carries the honest general-assistance system prompt (no host
     // data) instead of failing. The gateway still enforces license + quota.
     if (!skillName) {
-      if (this.registry.list().length === 0) {
-        throw new CopilotError(ErrorCode.SKILL_NOT_FOUND, 'No skills are configured.', { status: 404 });
-      }
-      const systemPrompt =
-        (typeof this.config?.systemPrompt === 'string' && this.config.systemPrompt.trim())
-          ? this.config.systemPrompt
-          : 'You are a helpful assistant embedded in the customer application.';
-      const generalPolicy = [
-        systemPrompt,
-        '',
-        'GENERAL ASSISTANCE MODE:',
-        '- No application data is attached to this message. Answer from general knowledge.',
-        '- If the question needs the user\'s application data, say plainly that you cannot access that data in this mode and suggest what to ask instead (e.g. data summaries supported by the app\'s skills).',
-        '- Never invent records, numbers, or tool results. Keep the answer concise and relevant to the question.',
-      ].join('\n');
+      // General conversation is valid even when no read-only skills are
+      // configured. The gateway can still answer non-application questions.
+      const messages = buildGeneralMessages({
+        systemPrompt: this.config?.systemPrompt,
+        question: req.message,
+      });
       return {
         requestId,
         token: process.env.GROUTER_LICENSE ?? '',
-        messages: [
-          { role: 'system', content: generalPolicy },
-          { role: 'user', content: String(req.message ?? '') },
-        ],
+        messages,
         model: this.config?.model,
         maxTokens: this.config?.limits?.maxTokens,
         meta: { skill: null, truncated: false, mode: 'general' },
@@ -290,28 +285,16 @@ export class CopilotRuntime {
       // General mode (streaming): no skill → stream the model answer with the
       // honest general-assistance system prompt, no host data attached.
       if (!skillName) {
-        if (this.registry.list().length === 0) {
-          throw new CopilotError(ErrorCode.SKILL_NOT_FOUND, 'No skills are configured.', { status: 404 });
-        }
-        const systemPrompt =
-          (typeof this.config?.systemPrompt === 'string' && this.config.systemPrompt.trim())
-            ? this.config.systemPrompt
-            : 'You are a helpful assistant embedded in the customer application.';
-        const generalPolicy = [
-          systemPrompt,
-          '',
-          'GENERAL ASSISTANCE MODE:',
-          '- No application data is attached to this message. Answer from general knowledge.',
-          '- If the question needs the user\'s application data, say plainly that you cannot access that data in this mode and suggest what to ask instead (e.g. data summaries supported by the app\'s skills).',
-          '- Never invent records, numbers, or tool results. Keep the answer concise and relevant to the question.',
-        ].join('\n');
+        // General conversation is valid even when no read-only skills are
+        // configured. The absence of skills only limits application data.
+        const messages = buildGeneralMessages({
+          systemPrompt: this.config?.systemPrompt,
+          question: req.message,
+        });
         yield { type: 'retrieval.status', requestId, skill: null, state: 'general' };
         for await (const evt of this.adapter.stream({
           model: this.config?.model,
-          messages: [
-            { role: 'system', content: generalPolicy },
-            { role: 'user', content: String(req.message ?? '') },
-          ],
+          messages,
           maxTokens: this.config?.limits?.maxTokens,
         })) {
           if (evt.type === 'delta') {
@@ -359,7 +342,7 @@ export class CopilotRuntime {
         }
       }
 
-      yield { type: 'run.completed', requestId, status: truncated ? 'partial' : 'complete', skill: skillName };
+      yield { type: 'run.completed', requestId, status: truncated ? 'partial' : 'complete', skill: skillName, mode: 'application' };
     } catch (err) {
       if (err?.name === 'AbortError') {
         yield { type: 'run.cancelled', requestId, code: ErrorCode.CLIENT_CANCELLED };

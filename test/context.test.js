@@ -78,3 +78,16 @@ test('buildContext never ships a gRouter provider key to the model', () => {
   });
   assert.doesNotMatch(JSON.stringify(messages), /gRouter-abc12345/);
 });
+
+test('buildContext redacts untrusted source metadata before model context', () => {
+  const { messages } = buildContext({
+    systemPrompt: 's',
+    data: [{ ok: true }],
+    sources: [{ name: 'orders.list', token: 'source-secret', authorization: 'Bearer source-secret' }],
+    question: 'q',
+    limits: { maxContextBytes: 2000 },
+  });
+  const text = JSON.stringify(messages);
+  assert.doesNotMatch(text, /source-secret/);
+  assert.match(text, /\[REDACTED\]/);
+});

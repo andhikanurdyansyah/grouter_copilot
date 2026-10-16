@@ -110,11 +110,13 @@ test('runtime.chat free-form question gets a general answer (template-only remov
   assert.equal(out.sources.length, 0);
 });
 
-test('runtime.chat with zero skills still fails closed', async () => {
+test('runtime.chat with zero skills still supports general conversation', async () => {
   const runtime = makeRuntime([]);
-  const out = await runtime.chat({ message: 'anything', userId: 'u1' });
-  assert.equal(out.status, 'error');
-  assert.equal(out.code, 'SKILL_NOT_FOUND');
+  const out = await runtime.chat({ message: 'brainstorm names for a coffee shop', userId: 'u1' });
+  assert.equal(out.status, 'complete');
+  assert.equal(out.mode, 'general');
+  assert.equal(out.skill, null);
+  assert.deepEqual(out.sources, []);
 });
 
 test('runtime.streamChat blocks mutating skill', async () => {

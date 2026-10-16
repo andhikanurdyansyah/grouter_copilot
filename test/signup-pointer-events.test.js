@@ -15,3 +15,10 @@ test('signup confetti canvas remains click-through for form controls', () => {
   assert.match(canvas, /(?:^|\s)pointer-events-none(?:\s|$)/u)
   assert.match(canvas, /(?:^|\s)z-\[999\](?:\s|$)/u)
 })
+test('signup gradient background remains click-through for form controls', () => {
+  const source = fs.readFileSync(sourcePath, 'utf8')
+  const gradient = source.match(/<svg\b[^>]*\bclassName=(['"])(.*?)\1[^>]*>/su)?.[2]
+
+  assert.ok(gradient, 'signup gradient background must render an explicit className')
+  assert.match(gradient, /(?:^|\s)pointer-events-none(?:\s|$)/u)
+})

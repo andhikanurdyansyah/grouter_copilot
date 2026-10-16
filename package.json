@@ -21,7 +21,9 @@
     "test": "NODE_ENV=test node --test \"test/**/*.test.js\"",
     "test:server": "cd server && NODE_ENV=test node --test",
     "e2e": "bash scripts/run-e2e.sh",
-    "smoke:live": "bash scripts/e2e-smoke-live.sh"
+    "smoke:live": "bash scripts/e2e-smoke-live.sh",
+    "audit:dependencies": "node scripts/dependency-audit.mjs",
+    "audit:dependencies:check": "node scripts/dependency-audit.mjs --check"
   },
   "keywords": [
     "grouter",

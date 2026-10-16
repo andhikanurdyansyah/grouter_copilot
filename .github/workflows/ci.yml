@@ -43,6 +43,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
+      # Dependency audits use tracked lockfiles only; no install/update and no secrets.
+      - name: Dependency audit
+        run: npm run audit:dependencies
+
       # Backend deps (better-auth / better-sqlite3). server/ pins with npm.
       - name: Install server deps
         working-directory: server

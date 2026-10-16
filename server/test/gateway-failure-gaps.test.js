@@ -53,6 +53,37 @@ test('gateway: successful call reconciles usage and releases the reservation exa
   } finally { env.restore(); }
 });
 
+test('gateway rejects multiple or non-leading system policy messages', async () => {
+  const env = makeServer(async () => new Response(JSON.stringify({ choices: [{ message: { content: 'should not run' } }] }), { status: 200 }));
+  try {
+    const { token } = env.service.issue({ customer: 'GWMSG', planKey: 'tiny' });
+    for (const messages of [
+      [{ role: 'system', content: 'a' }, { role: 'system', content: 'b' }, { role: 'user', content: 'q' }],
+      [{ role: 'user', content: 'q' }, { role: 'system', content: 'late' }],
+    ]) {
+      const out = await env.gateway.chat({ token, messages, requestId: `req_msg_${messages.length}_${messages[0].role}` });
+      assert.equal(out.status, 'error');
+      assert.equal(out.code, 'INVALID_REQUEST');
+    }
+  } finally { env.restore(); }
+});
+
+test('gateway propagates trusted runtime truncation as partial without changing ledger charging', async () => {
+  const env = makeServer(async () => new Response(
+    JSON.stringify({ choices: [{ message: { content: 'partial answer' } }], usage: { prompt_tokens: 2, completion_tokens: 3 } }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  ));
+  try {
+    const { token } = env.service.issue({ customer: 'GWPART', planKey: 'tiny' });
+    const out = await env.gateway.chat({ token, messages: MESSAGES, meta: { truncated: true }, requestId: 'req_partial' });
+    assert.equal(out.status, 'partial');
+    assert.equal(env.store.getUsageRecord('req_partial').status, 'ok');
+    assert.equal(env.store.getUsageRecord('req_partial').responseStatus, 'partial');
+    const replay = await env.gateway.chat({ token, messages: MESSAGES, requestId: 'req_partial' });
+    assert.equal(replay.status, 'partial');
+  } finally { env.restore(); }
+});
+
 test("gateway: license revoked mid-flight — in-flight call settles once, next call is LICENSE_REVOKED", async () => {
   let release;
   const gate = new Promise((r) => { release = r; });

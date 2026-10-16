@@ -8,7 +8,7 @@ export { loadCopilotConfig, normalizeConfig, DEFAULT_MODEL, DEFAULT_SYSTEM_PROMP
 export { SkillRegistry } from './skills/registry.js';
 export { validateSkill, validateArgs } from './skills/validator.js';
 export { CopilotRuntime } from './runtime/chat.js';
-export { buildContext, redact } from './runtime/context.js';
+export { buildContext, redact, sanitizeHistory } from './runtime/context.js';
 export { validateLicense, mintLicense, generateKeyPair, LicenseStatus } from './license/validate.js';
 export const CHAT_PROTOCOL_VERSION = '1.0.0';
 export const SKILL_CONTRACT_VERSION = '1.0.0';

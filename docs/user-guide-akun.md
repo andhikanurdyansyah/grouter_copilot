@@ -181,6 +181,10 @@ Contoh:
 Jadi Anda tidak perlu menghafal nama skill untuk mengobrol. Skill adalah batas keamanan
 data aplikasi, bukan batas untuk percakapan umum.
 
+Percakapan juga mempertahankan beberapa pesan terakhir agar pertanyaan lanjutan tetap
+memiliki konteks. Riwayat ini dibatasi ukurannya, hanya berisi pesan pengguna dan Copilot,
+dan dibersihkan dari instruksi sistem atau credential sebelum diproses.
+
 Orang lain tidak bisa melihat token Anda: hanya akun pemilik lisensi yang bisa membukanya.
 
 ---

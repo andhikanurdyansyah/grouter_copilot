@@ -38,10 +38,12 @@ function makeRuntime(skills) {
 // Adapter matching CopilotRuntime's expected `.complete()` and `.stream()`.
 class FakeSupplierAdapter {
   async complete({ messages }) {
+    this.lastCompleteMessages = messages;
     const last = messages[messages.length - 1].content;
     return { answer: `answered:${last.slice(0, 20)}`, usage: { inputTokens: 1, outputTokens: 2 } };
   }
-  async *stream() {
+  async *stream({ messages }) {
+    this.lastStreamMessages = messages;
     yield { type: 'delta', text: 'hi' };
     yield { type: 'done', usage: { inputTokens: 1, outputTokens: 1 } };
   }
@@ -99,6 +101,15 @@ test('runtime.streamChat answers general (no-skill) questions instead of failing
   assert.equal(completed.skill, null);
 });
 
+test('runtime.streamChat includes bounded history in general mode', async () => {
+  const runtime = makeRuntime([salesSkill]);
+  const history = [{ role: 'user', content: 'previous question' }];
+  const events = [];
+  for await (const e of runtime.streamChat({ message: 'xyzzy', history })) events.push(e);
+  const messages = runtime.adapter.lastStreamMessages;
+  assert.equal(messages[1].content, 'previous question');
+  assert.equal(events.at(-1).status, 'complete');
+});
 test('runtime.chat free-form question gets a general answer (template-only removal)', async () => {
   const runtime = makeRuntime([salesSkill, customersSkill]);
   const out = await runtime.chat({ message: 'What can you help me with?', userId: 'u1' });

@@ -5,11 +5,11 @@
 
 import { CopilotError, ErrorCode, toErrorEnvelope } from '../adapter/errors.js';
 import { SkillRegistry } from '../skills/registry.js';
-import { buildContext } from './context.js';
+import { buildContext, fitMessagesToContext, sanitizeHistory } from './context.js';
 
 const DEFAULT_GENERAL_SYSTEM_PROMPT = 'You are a helpful assistant embedded in the customer application.';
 
-function buildGeneralMessages({ systemPrompt, question }) {
+function buildGeneralMessages({ systemPrompt, question, history, limits }) {
   const basePrompt = (typeof systemPrompt === 'string' && systemPrompt.trim())
     ? systemPrompt
     : DEFAULT_GENERAL_SYSTEM_PROMPT;
@@ -21,10 +21,14 @@ function buildGeneralMessages({ systemPrompt, question }) {
     '- If the question needs the user\'s application data, say plainly that you cannot access that data in this mode and suggest what to ask instead (e.g. data summaries supported by the app\'s skills).',
     '- Never invent records, numbers, or tool results. Keep the answer concise and relevant to the question.',
   ].join('\n');
-  return [
+  const safeHistory = sanitizeHistory(history, limits);
+  const generalMessages = [
     { role: 'system', content: generalPolicy },
+    ...safeHistory.messages,
     { role: 'user', content: String(question ?? '') },
   ];
+  const fitted = fitMessagesToContext(generalMessages, limits?.maxContextBytes ?? 32_000);
+  return { messages: fitted.messages, truncated: safeHistory.truncated || fitted.truncated };
 }
 
 let counter = 0;
@@ -162,6 +166,7 @@ export class CopilotRuntime {
         data,
         sources,
         question: req.message,
+        history: req.history,
         limits: this.config?.limits,
       });
 
@@ -191,9 +196,11 @@ export class CopilotRuntime {
    * accounting upstream). Never fabricates host data; states the limitation.
    */
   async _generalAnswer({ req, requestId }) {
-    const messages = buildGeneralMessages({
+    const { messages, truncated } = buildGeneralMessages({
       systemPrompt: this.config?.systemPrompt,
       question: req.message,
+      history: req.history,
+      limits: this.config?.limits,
     });
     const { answer, usage } = await this.adapter.complete({
       model: this.config?.model,
@@ -202,7 +209,7 @@ export class CopilotRuntime {
     });
     return {
       requestId,
-      status: 'complete',
+      status: truncated ? 'partial' : 'complete',
       answer,
       sources: [],
       usage,
@@ -231,9 +238,11 @@ export class CopilotRuntime {
     if (!skillName) {
       // General conversation is valid even when no read-only skills are
       // configured. The gateway can still answer non-application questions.
-      const messages = buildGeneralMessages({
+      const { messages, truncated } = buildGeneralMessages({
         systemPrompt: this.config?.systemPrompt,
         question: req.message,
+        history: req.history,
+        limits: this.config?.limits,
       });
       return {
         requestId,
@@ -241,7 +250,7 @@ export class CopilotRuntime {
         messages,
         model: this.config?.model,
         maxTokens: this.config?.limits?.maxTokens,
-        meta: { skill: null, truncated: false, mode: 'general' },
+        meta: { skill: null, truncated, mode: 'general' },
       };
     }
 
@@ -258,6 +267,7 @@ export class CopilotRuntime {
       data,
       sources,
       question: req.message,
+      history: req.history,
       limits: this.config?.limits,
     });
 
@@ -287,9 +297,11 @@ export class CopilotRuntime {
       if (!skillName) {
         // General conversation is valid even when no read-only skills are
         // configured. The absence of skills only limits application data.
-        const messages = buildGeneralMessages({
+        const { messages, truncated } = buildGeneralMessages({
           systemPrompt: this.config?.systemPrompt,
           question: req.message,
+          history: req.history,
+          limits: this.config?.limits,
         });
         yield { type: 'retrieval.status', requestId, skill: null, state: 'general' };
         for await (const evt of this.adapter.stream({
@@ -303,7 +315,7 @@ export class CopilotRuntime {
             yield { type: 'usage.final', requestId, usage: evt.usage };
           }
         }
-        yield { type: 'run.completed', requestId, status: 'complete', skill: null, mode: 'general' };
+        yield { type: 'run.completed', requestId, status: truncated ? 'partial' : 'complete', skill: null, mode: 'general' };
         return;
       }
 
@@ -327,6 +339,7 @@ export class CopilotRuntime {
         data,
         sources,
         question: req.message,
+        history: req.history,
         limits: this.config?.limits,
       });
 

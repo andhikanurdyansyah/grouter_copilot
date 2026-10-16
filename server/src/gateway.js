@@ -112,7 +112,7 @@ export class CopilotGateway {
         const eff = this.resolveSettings();
         const plan = (eff.plans || []).find((p) => p.key === lic.planKey);
         return {
-          requestId, status: 'ok', answer: existing.answer ?? '',
+          requestId, status: existing.responseStatus ?? 'ok', answer: existing.answer ?? '',
           usage: { inputTokens: existing.inputTokens ?? 0, outputTokens: existing.outputTokens ?? 0 },
           licenseId: lic.id,
           quota: this._quotaView(plan?.quotaTokens ?? null, this.store.usageTotals(lic.id)),
@@ -216,8 +216,10 @@ export class CopilotGateway {
       });
       const inputTokens = Number.isSafeInteger(usage?.inputTokens) ? usage.inputTokens : 0;
       const outputTokens = Number.isSafeInteger(usage?.outputTokens) ? usage.outputTokens : 0;
+      const partial = input.meta?.truncated === true;
       this.store.updateUsageRecord(requestId, {
         status: 'ok',
+        responseStatus: partial ? 'partial' : 'ok',
         model: effModel,
         inputTokens,
         outputTokens,
@@ -227,7 +229,7 @@ export class CopilotGateway {
         errorClassification: null, errorStatus: null, errorCode: null,
       });
       return {
-        requestId, status: 'ok', answer,
+        requestId, status: partial ? 'partial' : 'ok', answer,
         usage: { inputTokens, outputTokens },
         licenseId: lic.id,
         quota: this._quotaView(quotaTokens, this.store.usageTotals(lic.id)),
@@ -255,14 +257,23 @@ export class CopilotGateway {
       return { error: { requestId, status: 'error', code: 'INVALID_REQUEST', message: `messages must be an array of 1..${MAX_MESSAGES}.`, retryable: false } };
     }
     let totalBytes = 0;
-    for (const m of messages) {
+    let systemCount = 0;
+    let firstSystem = false;
+    for (const [index, m] of messages.entries()) {
       if (!m || typeof m !== 'object' || !ROLE_PATTERN.test(String(m.role ?? '')) || typeof m.content !== 'string') {
         return { error: { requestId, status: 'error', code: 'INVALID_REQUEST', message: 'each message needs role (system|user|assistant) and string content.', retryable: false } };
+      }
+      if (m.role === 'system') {
+        systemCount += 1;
+        firstSystem = index === 0;
       }
       totalBytes += Buffer.byteLength(m.content, 'utf8');
       if (totalBytes > this.config.maxMessageBytes) {
         return { error: { requestId, status: 'error', code: 'INVALID_REQUEST', message: 'messages exceed the context size limit.', retryable: false } };
       }
+    }
+    if (systemCount > 1 || (systemCount === 1 && !firstSystem)) {
+      return { error: { requestId, status: 'error', code: 'INVALID_REQUEST', message: 'messages may contain at most one system policy message, and it must be first.', retryable: false } };
     }
     return { messages };
   }

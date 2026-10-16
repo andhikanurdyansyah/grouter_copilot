@@ -800,7 +800,15 @@ export function CopilotChat({
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, userId, token }),
+        body: JSON.stringify({
+          message: text,
+          userId,
+          token,
+          history: messages
+            .slice(-10)
+            .filter((m, i, all) => addUser || i !== all.length - 1 || m.role !== 'user' || m.content !== text)
+            .map(({ role, content }) => ({ role, content })),
+        }),
       });
       const data = await res.json();
       if (!res.ok || data.status === 'error') {
@@ -813,7 +821,7 @@ export function CopilotChat({
     } finally {
       setBusy(false);
     }
-  }, [busy, endpoint, userId, token, t.errorGeneric]);
+  }, [busy, endpoint, userId, token, messages, t.errorGeneric]);
 
   const send = () => runRequest(input.trim(), { addUser: true });
   const retry = () => runRequest(lastPromptRef.current, { addUser: false });

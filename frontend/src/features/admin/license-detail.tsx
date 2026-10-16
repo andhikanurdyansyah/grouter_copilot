@@ -49,8 +49,13 @@ export function AdminLicenseDetail() {
   const usedTokens = quotaInfo?.usedTokens ?? 0
   const totalQuotaN = quotaInfo?.limit ?? null
   const percent = totalQuotaN ? Math.min(100, Math.round((usedTokens / totalQuotaN) * 100)) : 0
-  const fmtDateID = (iso?: string | null) =>
-    iso ? new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+  const fmtDateID = (value?: string | number | null) => {
+    if (value == null || value === '') return '—'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime())
+      ? '—'
+      : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
 
   const licenseData = {
     customer: licRecord?.customer ?? '—',

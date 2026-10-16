@@ -12,11 +12,10 @@ import {
 import { Check, Copy } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { toast } from 'sonner'
+import { normalizeLicenseStatus } from '@/features/admin/license-status-counts'
 
-function statusOf(l: { status?: string; expiresAt?: string }): string {
-  if (l.status) return String(l.status)
-  if (l.expiresAt && new Date(l.expiresAt).getTime() < Date.now()) return 'expired'
-  return 'active'
+function statusOf(l: { status?: string | null; revokedAt?: string | number | null; expiresAt?: string | number | null }): string {
+  return normalizeLicenseStatus(l)
 }
 
 export function CustomerLicenses() {
@@ -100,8 +99,8 @@ export function CustomerLicenses() {
                     <TableRow key={l.id}>
                       <TableCell className='font-mono text-xs'>{l.id}</TableCell>
                       <TableCell>
-                        <StatusBadge tone={st === 'active' ? 'success' : st === 'expired' ? 'warning' : 'danger'}>
-                          {st === 'active' ? (isId ? 'aktif' : 'active') : st === 'expired' ? (isId ? 'kedaluwarsa' : 'expired') : (isId ? 'dicabut' : 'revoked')}
+                        <StatusBadge tone={st === 'active' ? 'success' : st === 'expired' ? 'warning' : st === 'revoked' ? 'danger' : 'neutral'}>
+                          {st === 'active' ? (isId ? 'aktif' : 'active') : st === 'expired' ? (isId ? 'kedaluwarsa' : 'expired') : st === 'revoked' ? (isId ? 'dicabut' : 'revoked') : (isId ? 'tidak diketahui' : 'unknown')}
                         </StatusBadge>
                       </TableCell>
                       <TableCell className='hidden md:table-cell text-sm whitespace-nowrap'>{fmtDate(l.expiresAt)}</TableCell>

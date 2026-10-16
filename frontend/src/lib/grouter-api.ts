@@ -29,8 +29,9 @@ export interface License {
   planKey?: string | null
   customer?: string | null
   status?: string
-  expiresAt?: string
-  createdAt?: string
+  revokedAt?: string | number | null
+  expiresAt?: string | number | null
+  createdAt?: string | number | null
   grouterApiKey?: string
   token?: string
   [k: string]: unknown
@@ -175,11 +176,9 @@ export function formatIDR(n: number | null | undefined): string {
 
 export function fmtDate(iso: string | number | null | undefined): string {
   if (iso === null || iso === undefined || iso === '') return '—'
-  try {
-    return new Date(iso).toLocaleString('id-ID', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    })
-  } catch {
-    return String(iso)
-  }
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
 }

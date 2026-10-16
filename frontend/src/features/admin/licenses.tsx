@@ -8,8 +8,6 @@ import {
   Search,
   Download,
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
   AlertTriangle,
   ExternalLink,
 } from 'lucide-react'
@@ -38,6 +36,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { buildCsv, downloadCsv } from '@/lib/csv-export'
+import { countLicenseStatuses, normalizeLicenseStatus } from './license-status-counts'
+
+function formatExpiry(value: string | number | null | undefined): string {
+  if (value == null || value === '') return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
 export function AdminLicenses() {
   const { language, t } = useLanguage()
@@ -45,7 +52,7 @@ export function AdminLicenses() {
   const qc = useQueryClient()
 
   const [q, setQ] = useState('')
-  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'expired' | 'revoked' | 'unknown'>('all')
   const [selectedPlan, setSelectedPlan] = useState<string>('all')
   const [sort, setSort] = useState<'expires' | 'created' | 'usage'>('expires')
   const [issueModalOpen, setIssueModalOpen] = useState(false)
@@ -78,11 +85,10 @@ export function AdminLicenses() {
       const limit = quota?.limit ?? null
       const used = usedByLicense.get(l.id) ?? quota?.usedTokens ?? 0
       const percent = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
-      const expired = l.expiresAt ? new Date(l.expiresAt).getTime() < nowMs : false
-      const status = String(l.status ?? (expired ? 'expired' : 'active'))
+      const status = normalizeLicenseStatus(l, nowMs)
       const statusLabel = isId
-        ? (status === 'active' ? 'Aktif' : status === 'expired' ? 'Kedaluwarsa' : 'Dicabut')
-        : (status === 'active' ? 'Active' : status === 'expired' ? 'Expired' : 'Revoked')
+        ? (status === 'active' ? 'Aktif' : status === 'expired' ? 'Kedaluwarsa' : status === 'revoked' ? 'Dicabut' : 'Tidak diketahui')
+        : (status === 'active' ? 'Active' : status === 'expired' ? 'Expired' : status === 'revoked' ? 'Revoked' : 'Unknown')
       return {
         id: shortId(l.id),
         fullId: l.id,
@@ -92,11 +98,11 @@ export function AdminLicenses() {
         usedQuota: used ? used.toLocaleString('id-ID') : '0',
         totalQuota: limit ? limit.toLocaleString('id-ID') : '—',
         percent,
-        expiresAt: l.expiresAt ? new Date(l.expiresAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        expiresAt: formatExpiry(l.expiresAt),
         status,
         statusLabel,
         // sort keys (raw)
-        expiresMs: l.expiresAt ? new Date(l.expiresAt).getTime() : Number.POSITIVE_INFINITY,
+        expiresMs: l.expiresAt == null || l.expiresAt === '' ? Number.POSITIVE_INFINITY : (Number.isFinite(new Date(l.expiresAt).getTime()) ? new Date(l.expiresAt).getTime() : Number.POSITIVE_INFINITY),
         createdMs: l.createdAt ? new Date(l.createdAt).getTime() : 0,
         usedRaw: used,
         limitRaw: limit,
@@ -119,6 +125,7 @@ export function AdminLicenses() {
       if (activeTab === 'active' && item.status !== 'active') return false
       if (activeTab === 'expired' && item.status !== 'expired') return false
       if (activeTab === 'revoked' && item.status !== 'revoked') return false
+      if (activeTab === 'unknown' && item.status !== 'unknown') return false
 
       if (selectedPlan !== 'all' && item.plan.toLowerCase() !== selectedPlan) return false
 
@@ -138,6 +145,8 @@ export function AdminLicenses() {
     else if (sort === 'usage') sorted.sort((a, b) => b.usedRaw - a.usedRaw)
     return sorted
   }, [realLicenses, activeTab, selectedPlan, q, sort])
+
+  const statusCounts = useMemo(() => countLicenseStatuses(realLicenses.map((license) => license.status)), [realLicenses])
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -199,10 +208,11 @@ export function AdminLicenses() {
           {/* Status Tabs Pills */}
           <div className='flex items-center rounded-lg border border-border bg-card/70 p-0.5 shadow-2xs overflow-x-auto'>
             {[
-              { id: 'all', label: isId ? 'Semua · 128' : 'All · 128' },
-              { id: 'active', label: isId ? 'Aktif · 112' : 'Active · 112' },
-              { id: 'expired', label: isId ? 'Kedaluwarsa · 9' : 'Expired · 9' },
-              { id: 'revoked', label: isId ? 'Dicabut · 7' : 'Revoked · 7' },
+              { id: 'all', label: isId ? `Semua · ${statusCounts.all}` : `All · ${statusCounts.all}` },
+              { id: 'active', label: isId ? `Aktif · ${statusCounts.active}` : `Active · ${statusCounts.active}` },
+              { id: 'expired', label: isId ? `Kedaluwarsa · ${statusCounts.expired}` : `Expired · ${statusCounts.expired}` },
+              { id: 'revoked', label: isId ? `Dicabut · ${statusCounts.revoked}` : `Revoked · ${statusCounts.revoked}` },
+              { id: 'unknown', label: isId ? `Tidak diketahui · ${statusCounts.unknown}` : `Unknown · ${statusCounts.unknown}` },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -354,14 +364,14 @@ export function AdminLicenses() {
                         <span className='size-1.5 rounded-full bg-muted-foreground' /> {row.statusLabel}
                       </span>
                     )}
-                    {row.status === 'quota' && (
-                      <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
-                        <span className='size-1.5 rounded-xs bg-[#FF667A]' /> {row.statusLabel}
-                      </span>
-                    )}
                     {row.status === 'revoked' && (
                       <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-medium'>
                         <span className='size-1.5 rounded-full border border-[#FF667A]' /> {row.statusLabel}
+                      </span>
+                    )}
+                    {row.status === 'unknown' && (
+                      <span className='inline-flex items-center gap-1.5 text-amber-500 font-medium'>
+                        <span className='size-1.5 rounded-full border border-amber-500' /> {row.statusLabel}
                       </span>
                     )}
                   </td>
@@ -403,25 +413,9 @@ export function AdminLicenses() {
         {/* ── Pagination Bar ── */}
         <div className='flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground'>
           <div>
-            1–25 {isId ? 'dari 128 · 25 per halaman' : 'of 128 · 25 per page'}
-          </div>
-          <div className='flex items-center gap-1 font-mono'>
-            <Button variant='outline' size='sm' className='h-7 w-7 p-0' disabled>
-              <ChevronLeft className='size-3.5' />
-            </Button>
-            <Button variant='outline' size='sm' className='h-7 w-7 p-0 bg-muted font-bold text-foreground'>
-              1
-            </Button>
-            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
-              2
-            </Button>
-            <span className='px-1'>...</span>
-            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
-              6
-            </Button>
-            <Button variant='outline' size='sm' className='h-7 w-7 p-0'>
-              <ChevronRight className='size-3.5' />
-            </Button>
+            {filteredLicenses.length === 0
+              ? (isId ? 'Tidak ada lisensi yang cocok' : 'No matching licenses')
+              : (isId ? `${filteredLicenses.length} lisensi dimuat` : `${filteredLicenses.length} loaded licenses`)}
           </div>
         </div>
       </div>
@@ -499,14 +493,14 @@ export function AdminLicenses() {
                     <span className='size-2 rounded-full bg-muted-foreground' /> {selectedLicense.statusLabel}
                   </span>
                 )}
-                {selectedLicense.status === 'quota' && (
-                  <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
-                    <span className='size-2 rounded-xs bg-[#FF667A]' /> {selectedLicense.statusLabel}
-                  </span>
-                )}
                 {selectedLicense.status === 'revoked' && (
                   <span className='inline-flex items-center gap-1.5 text-[#FF667A] font-bold'>
                     <span className='size-2 rounded-full border border-[#FF667A]' /> {selectedLicense.statusLabel}
+                  </span>
+                )}
+                {selectedLicense.status === 'unknown' && (
+                  <span className='inline-flex items-center gap-1.5 text-amber-500 font-bold'>
+                    <span className='size-2 rounded-full border border-amber-500' /> {selectedLicense.statusLabel}
                   </span>
                 )}
               </div>

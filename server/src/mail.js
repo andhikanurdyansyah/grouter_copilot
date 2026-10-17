@@ -73,89 +73,117 @@ const EMAIL_BRAND = {
   mono: "ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace",
 };
 
+/**
+ * Light theme — applied ONLY via @media (prefers-color-scheme: light) class
+ * overrides in buildEmailShell, so dark stays the inline default and light
+ * is a true adaptation (not a recolor): warm paper stage, white card, deep
+ * cyan accent darkened for 4.5:1+ text contrast on white.
+ */
+const EMAIL_LIGHT = {
+  bg: '#f4f4f2',
+  panel: '#ffffff',
+  border: '#e3e3de',
+  ink: '#101418',
+  inkDim: '#4c5865',
+  inkFaint: '#71808e',
+  accentText: '#0b7d99',
+  ok: '#0a7d5c',
+  warn: '#9a6206',
+  signature: '#9aa3ab',
+};
+
 function emailDetailRow(label, valueHtml) {
   return `<tr>`
-    + `<td style="padding:9px 0;border-top:1px solid ${EMAIL_BRAND.border};font-family:${EMAIL_BRAND.mono};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${EMAIL_BRAND.inkFaint};vertical-align:middle;">${label}</td>`
-    + `<td align="right" style="padding:9px 0 9px 20px;border-top:1px solid ${EMAIL_BRAND.border};font-family:${EMAIL_BRAND.mono};font-size:13px;color:${EMAIL_BRAND.ink};vertical-align:middle;">${valueHtml}</td>`
+    + `<td class="em-det-label" style="padding:7px 0;border-top:1px solid ${EMAIL_BRAND.border};font-family:${EMAIL_BRAND.mono};font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:${EMAIL_BRAND.inkFaint};vertical-align:middle;">${label}</td>`
+    + `<td class="em-det-value" align="right" style="padding:7px 0 7px 20px;border-top:1px solid ${EMAIL_BRAND.border};font-family:${EMAIL_BRAND.mono};font-size:12.5px;color:${EMAIL_BRAND.ink};vertical-align:middle;word-break:break-word;">${valueHtml}</td>`
     + `</tr>`;
 }
 
 /** Status glyph (drawn, not emoji): filled dot + label in the tone color. */
 function emailStatusChip(tone, label) {
   const c = tone === 'warn' ? EMAIL_BRAND.warn : EMAIL_BRAND.ok;
-  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${c};vertical-align:middle;"></span>`
-    + `<span style="display:inline-block;padding-left:9px;font-family:${EMAIL_BRAND.mono};font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:${c};vertical-align:middle;">${label}</span>`;
+  const cls = tone === 'warn' ? 'em-status-warn' : 'em-status-ok';
+  return `<span class="${cls}" style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:${c};vertical-align:middle;"></span>`
+    + `<span class="${cls}-text" style="display:inline-block;padding-left:8px;font-family:${EMAIL_BRAND.mono};font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:${c};vertical-align:middle;">${label}</span>`;
 }
 
 /**
- * Shared enterprise shell v2 — fluid-hybrid responsive.
+ * Shared enterprise shell v3 — measured spacing, dual-theme, anti-clip.
  *
- * Layout: full-bleed gunmetal stage, centered 600px fluid container
- * (width:100%; max-width:600px), hairline-separated card, drawn status
- * chip, 30px display title, generous rhythm (more space above the title
- * than below), receipt-grade detail rows, ONE solid CTA (full-width on
- * mobile via the media block), quiet footnote, and a hairline footer.
- * A single <style> block carries ONLY the responsive layer + client
- * resets; all base styling stays inline so clients that strip <style>
- * still render the fluid layout correctly.
+ * Spacing thesis (4pt-based, tight groups / separated groups): stage
+ * 24px, header→card 14px, card padding 26px, chip→title 12px, title→lead
+ * 8px, lead→details 18px, details→CTA 20px, CTA→footnote 18px, card→footer
+ * 16px. No interval exceeds 28px; the card hugs its content.
+ * Anti-clip: fluid container (100%/max-600px), no fixed heights, long
+ * values wrap (word-break on detail values), CTA never overflows.
+ * Themes: dark is the inline default; @media (prefers-color-scheme:
+ * light) re-skins via classes (Apple Mail, iOS/Android Gmail dark-mode
+ * aware clients). Clients without scheme support keep the dark default.
  */
 function buildEmailShell({ preheader, eyebrow, tone = 'ok', title, lead, rows = '', cta = null, footnote = 'Email otomatis dari sistem gRouter Copilot — mohon tidak membalas ke alamat ini.' }) {
+  const L = EMAIL_LIGHT;
   const styleBlock = `<style>`
-    + `html,body{margin:0!important;padding:0!important;height:100%!important;width:100%!important;}`
-    + `*{box-sizing:border-box;}`
+    + `html,body{margin:0!important;padding:0!important;width:100%!important;}`
     + `table,td{mso-table-lspace:0pt!important;mso-table-rspace:0pt!important;border-collapse:collapse!important;}`
-    + `img{-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}`
     + `a{text-decoration:none;}`
-    + `.em-cta a{display:inline-block;}`
     + `@media only screen and (max-width:620px){`
-    + `.em-outer{padding:20px 12px 28px 12px!important;}`
-    + `.em-card{border-radius:12px!important;}`
-    + `.em-pad{padding-left:22px!important;padding-right:22px!important;}`
-    + `.em-title{font-size:25px!important;line-height:1.18!important;}`
-    + `.em-lead{font-size:14.5px!important;}`
+    + `.em-outer{padding:16px 10px 24px 10px!important;}`
+    + `.em-pad{padding-left:20px!important;padding-right:20px!important;}`
+    + `.em-title{font-size:24px!important;line-height:1.2!important;}`
+    + `.em-lead{font-size:14.5px!important;line-height:1.6!important;}`
     + `.em-cta{width:100%!important;}`
-    + `.em-cta a{display:block!important;text-align:center!important;padding:15px 20px!important;}`
-    + `.em-foot{font-size:11.5px!important;}`
+    + `.em-cta a{display:block!important;text-align:center!important;padding:14px 18px!important;}`
+    + `}`
+    + `@media (prefers-color-scheme: light){`
+    + `.em-stage{background-color:${L.bg}!important;}`
+    + `.em-card{background-color:${L.panel}!important;border-color:${L.border}!important;}`
+    + `.em-ink{color:${L.ink}!important;}`
+    + `.em-dim{color:${L.inkDim}!important;}`
+    + `.em-faint{color:${L.inkFaint}!important;}`
+    + `.em-accent-t{color:${L.accentText}!important;}`
+    + `.em-det-label{color:${L.inkFaint}!important;border-top-color:${L.border}!important;}`
+    + `.em-det-value{color:${L.ink}!important;border-top-color:${L.border}!important;}`
+    + `.em-status-ok{background-color:${L.ok}!important;}.em-status-ok-text{color:${L.ok}!important;}`
+    + `.em-status-warn{background-color:${L.warn}!important;}.em-status-warn-text{color:${L.warn}!important;}`
+    + `.em-foot-rule{border-top-color:${L.border}!important;}`
+    + `.em-sig{color:${L.signature}!important;}`
     + `}`
     + `</style>`;
   const ctaRow = cta
-    ? `<tr><td class="em-pad" style="padding:28px 36px 4px 36px;">`
-      + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="em-cta" style="mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr>`
-      + `<td style="background-color:${EMAIL_BRAND.accent};border-radius:9px;">`
-      + `<a href="${cta.href}" style="display:inline-block;padding:14px 30px;font-family:${EMAIL_BRAND.sans};font-size:14.5px;font-weight:700;letter-spacing:.01em;color:${EMAIL_BRAND.accentInk};text-decoration:none;">${cta.label}&nbsp;&rarr;</a>`
+    ? `<tr><td class="em-pad" style="padding:20px 28px 0 28px;">`
+      + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="em-cta"><tr>`
+      + `<td style="background-color:${EMAIL_BRAND.accent};border-radius:8px;">`
+      + `<a href="${cta.href}" style="display:inline-block;padding:12px 26px;font-family:${EMAIL_BRAND.sans};font-size:14px;font-weight:700;letter-spacing:.01em;color:${EMAIL_BRAND.accentInk};text-decoration:none;">${cta.label}&nbsp;&rarr;</a>`
       + `</td></tr></table></td></tr>`
     : '';
   return `<!doctype html>`
     + `<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`
-    + `<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>gRouter Copilot</title>${styleBlock}</head>`
+    + `<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>gRouter Copilot</title>${styleBlock}</head>`
     + `<body style="margin:0;padding:0;word-spacing:normal;background-color:${EMAIL_BRAND.bg};">`
     + `<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</div>`
-    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:${EMAIL_BRAND.bg};">`
-    + `<tr><td class="em-outer" align="center" style="padding:36px 16px 44px 16px;">`
+    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="em-stage" style="width:100%;background-color:${EMAIL_BRAND.bg};">`
+    + `<tr><td class="em-outer" align="center" style="padding:24px 14px 32px 14px;">`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">`
-    // ── Header: wordmark + domain, one quiet line
-    + `<tr><td style="padding:0 2px 18px 2px;">`
+    + `<tr><td style="padding:0 2px 14px 2px;">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>`
-    + `<td style="font-family:${EMAIL_BRAND.sans};font-size:16.5px;font-weight:700;letter-spacing:-.01em;color:${EMAIL_BRAND.ink};">gRouter&nbsp;<span style="color:${EMAIL_BRAND.accent};">Copilot</span></td>`
-    + `<td align="right" style="font-family:${EMAIL_BRAND.mono};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${EMAIL_BRAND.inkFaint};">copilot.grouter.id</td>`
+    + `<td class="em-ink" style="font-family:${EMAIL_BRAND.sans};font-size:16px;font-weight:700;letter-spacing:-.01em;color:${EMAIL_BRAND.ink};">gRouter&nbsp;<span class="em-accent-t" style="color:${EMAIL_BRAND.accent};">Copilot</span></td>`
+    + `<td class="em-faint" align="right" style="font-family:${EMAIL_BRAND.mono};font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:${EMAIL_BRAND.inkFaint};">copilot.grouter.id</td>`
     + `</tr></table></td></tr>`
-    // ── Card
-    + `<tr><td class="em-card" style="background-color:${EMAIL_BRAND.panel};border:1px solid ${EMAIL_BRAND.border};border-radius:14px;">`
+    + `<tr><td class="em-card" style="background-color:${EMAIL_BRAND.panel};border:1px solid ${EMAIL_BRAND.border};border-radius:12px;">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`
-    + `<tr><td class="em-pad" style="padding:30px 36px 0 36px;">${emailStatusChip(tone, eyebrow)}</td></tr>`
-    + `<tr><td class="em-pad em-title" style="padding:16px 36px 0 36px;font-family:${EMAIL_BRAND.sans};font-size:30px;line-height:1.15;font-weight:700;letter-spacing:-.025em;color:${EMAIL_BRAND.ink};">${title}</td></tr>`
-    + `<tr><td class="em-pad em-lead" style="padding:12px 36px 0 36px;font-family:${EMAIL_BRAND.sans};font-size:15px;line-height:1.65;color:${EMAIL_BRAND.inkDim};">${lead}</td></tr>`
+    + `<tr><td class="em-pad" style="padding:24px 28px 0 28px;">${emailStatusChip(tone, eyebrow)}</td></tr>`
+    + `<tr><td class="em-pad em-title em-ink" style="padding:12px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:27px;line-height:1.18;font-weight:700;letter-spacing:-.022em;color:${EMAIL_BRAND.ink};">${title}</td></tr>`
+    + `<tr><td class="em-pad em-lead em-dim" style="padding:8px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:14.5px;line-height:1.6;color:${EMAIL_BRAND.inkDim};">${lead}</td></tr>`
     + (rows
-      ? `<tr><td class="em-pad" style="padding:24px 36px 4px 36px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table></td></tr>`
+      ? `<tr><td class="em-pad" style="padding:18px 28px 2px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">${rows}</table></td></tr>`
       : '')
     + ctaRow
-    + `<tr><td class="em-pad" style="padding:26px 36px 30px 36px;font-family:${EMAIL_BRAND.sans};font-size:12.5px;line-height:1.65;color:${EMAIL_BRAND.inkFaint};">${footnote}</td></tr>`
+    + `<tr><td class="em-pad em-faint" style="padding:18px 28px 24px 28px;font-family:${EMAIL_BRAND.sans};font-size:12px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};">${footnote}</td></tr>`
     + `</table></td></tr>`
-    // ── Footer
-    + `<tr><td style="padding:20px 2px 0 2px;">`
+    + `<tr><td style="padding:16px 2px 0 2px;">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`
-    + `<tr><td class="em-foot" style="border-top:1px solid ${EMAIL_BRAND.border};padding-top:16px;font-family:${EMAIL_BRAND.sans};font-size:12px;line-height:1.65;color:${EMAIL_BRAND.inkFaint};">Butuh bantuan? Balas email ini, atau buka <a href="https://copilot.grouter.id/app/" style="color:${EMAIL_BRAND.accent};text-decoration:none;">dashboard Copilot</a> — tim kami membaca setiap balasan.</td></tr>`
-    + `<tr><td style="padding-top:10px;font-family:${EMAIL_BRAND.mono};font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#4a5563;">gRouter Copilot &middot; Sistem lisensi &amp; AI untuk aplikasi Anda</td></tr>`
+    + `<tr><td class="em-faint em-foot-rule" style="border-top:1px solid ${EMAIL_BRAND.border};padding-top:14px;font-family:${EMAIL_BRAND.sans};font-size:11.5px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};">Butuh bantuan? Balas email ini, atau buka <a href="https://copilot.grouter.id/app/" class="em-accent-t" style="color:${EMAIL_BRAND.accent};text-decoration:none;">dashboard Copilot</a>.</td></tr>`
+    + `<tr><td class="em-sig" style="padding-top:8px;font-family:${EMAIL_BRAND.mono};font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#48525e;">gRouter Copilot &middot; Sistem lisensi &amp; AI untuk aplikasi Anda</td></tr>`
     + `</table></td></tr>`
     + `</table></td></tr></table></body></html>`;
 }
@@ -173,8 +201,8 @@ export function buildPaymentReceivedEmail({ orderId, licenseId, planName } = {})
     tone: 'ok',
     title: 'Pembayaran diterima.',
     lead: licenseId
-      ? `Pembayaran untuk order <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server, dan lisensi <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> telah diterbitkan untuk akun Anda.`
-      : `Pembayaran untuk order <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server. Terima kasih.`,
+      ? `Pembayaran untuk order <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server, dan lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> telah diterbitkan untuk akun Anda.`
+      : `Pembayaran untuk order <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server. Terima kasih.`,
     rows,
     cta: { href: 'https://copilot.grouter.id/app/', label: 'Buka Dashboard' },
   });
@@ -194,7 +222,7 @@ export function buildLicenseIssuedEmail({ licenseId, planName } = {}) {
     eyebrow: 'Lisensi aktif',
     tone: 'ok',
     title: 'Lisensi diterbitkan.',
-    lead: `Lisensi <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong>${escapeHtml(plan)} telah diterbitkan untuk akun Anda dan siap dipakai di aplikasi host Anda.`,
+    lead: `Lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong>${escapeHtml(plan)} telah diterbitkan untuk akun Anda dan siap dipakai di aplikasi host Anda.`,
     rows,
     cta: { href: 'https://copilot.grouter.id/app/', label: 'Buka Dashboard' },
   });
@@ -219,7 +247,7 @@ export function buildLicenseExpiringEmail({ licenseId, expiresAt, daysLeft } = {
     eyebrow: 'Perlu perhatian',
     tone: 'warn',
     title: days === 1 ? 'Lisensi berakhir besok.' : 'Lisensi segera berakhir.',
-    lead: `Lisensi <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> akan berakhir${dateStr ? ` pada <strong style="color:${EMAIL_BRAND.ink};">${escapeHtml(dateStr)}</strong>` : ''}${days != null ? ` (${days} hari lagi)` : ''}. Perpanjang sekarang agar layanan di aplikasi host Anda tidak terputus.`,
+    lead: `Lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> akan berakhir${dateStr ? ` pada <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(dateStr)}</strong>` : ''}${days != null ? ` (${days} hari lagi)` : ''}. Perpanjang sekarang agar layanan di aplikasi host Anda tidak terputus.`,
     rows,
     cta: { href: 'https://copilot.grouter.id/app/', label: 'Perpanjang Lisensi' },
   });

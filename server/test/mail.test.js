@@ -131,6 +131,12 @@ test('mail: templates carry the enterprise design shell (brand, detail rows, one
   // detail rows in mono + escaped values
   assert.ok(p.html.includes('ord_1234'));
   assert.ok(p.html.includes('lic_1234'));
+  // dual theme: dark inline default + light adaptation layer
+  assert.ok(p.html.includes('@media (prefers-color-scheme: light)'), 'light scheme layer present');
+  assert.ok(p.html.includes('content="light dark"'), 'color-scheme declares both');
+  assert.ok(p.html.includes('.em-card{background-color:#ffffff'), 'light card override');
+  assert.ok(p.html.includes('table-layout:fixed'), 'anti-clip detail table');
+  assert.ok(p.html.includes('word-break:break-word'), 'long values wrap, never clip');
   // text fallback still present and honest
   assert.ok(p.text.includes('konfirmasi server') || p.text.includes('dikonfirmasi server'));
   const evil = buildPaymentReceivedEmail({ orderId: 'ord_<script>alert(1)</script>', licenseId: null, planName: '<b>x</b>' });

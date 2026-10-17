@@ -152,3 +152,8 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - **UI/plugin:** bell admin badge angka (await mark-read sebelum navigasi), customer per-item read, tab Notifikasi admin settings, hint lisensi widget dismissible (`notificationHint` dari `src/health.js`, localStorage per status, auto-clear saat sehat).
 - **Email NYATA AKTIF via Brevo (GO-6 closed, 2026-10-17):** `BREVO_API_KEY` + `MAIL_FROM=gRouter Copilot <copilot@grouter.id>` di `server/.env`; provider diganti Resend→Brevo atas keputusan PO. Probe nyata: account 200, kirim SMTP API 201 + messageId. Tanpa kredensial status tetap jujur `log_only` — jangan klaim terkirim dari kodenya saja.
 - Test terakhir: root 154, server 161, frontend 23; hash data prod identik sebelum/sesudah.
+
+## Update 2026-10-17 (lanjutan) — Email design v3 (spacing / anti-rasa-terpotong / dark+light)
+
+- `buildEmailShell` di `server/src/mail.js` kini v3: spacing 4pt-based (maks 28px, card pembayaran 369px), anti-terpotong `table-layout:fixed` + `word-break:break-word`, dual-theme — dark inline default + blok `@media (prefers-color-scheme: light)` dari token `EMAIL_LIGHT` (stage `#f4f4f2`, card putih, aksen teks deep-cyan `#0b7d99`), meta `color-scheme: light dark`. D-022 addendum di `docs/15-decision-log.md`, kronologi di `docs/handoff-2026-10-17.md`.
+- Terbukti: 20 render combos 0 overflow/0 clipped; 4 email uji v3 terkirim ke inbox PO (Brevo `delivered`, 13/13 hari berjalan). Suite terakhir: server 162/162, root 154/154, frontend 23/23.

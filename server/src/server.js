@@ -35,6 +35,8 @@ import {
 } from './settings.js';
 import { resolveCapability, featureError } from './entitlement.js';
 import { generateKeyPair } from '../../src/license/validate.js';
+import { createNotificationService } from './notifications.js';
+import { createMailer } from './mail.js';
 
 /** HTTP status mapping for gateway error codes (safe, stable). */
 const GATEWAY_HTTP = {
@@ -210,6 +212,11 @@ export function createCopilotServer({
   fetch = globalThis.fetch,
   initialSettings = null,
   requirePersistedLicenseKeys = process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development',
+  // Notification scheduler: only started when explicitly true (production
+  // entry server/src/index.js). Default false so NODE_ENV=test and library
+  // use never start timers.
+  notificationScheduler = false,
+  notificationMailer = null,
 } = {}) {
   const devMode = allowUnauthenticatedAdmin || !requirePersistedLicenseKeys;
   // Generate a keypair if not provided (ephemeral for local dev; production must persist).
@@ -255,6 +262,26 @@ export function createCopilotServer({
   });
   const payment = new PaymentService({ klikqris, licenseService: service, store });
   const accounts = new AccountService({ store });
+
+  // Notification engine (Phases 1+2): the single derivation + email module.
+  // Settings are resolved at call time; the mailer shares the injected
+  // fetch (tests) — never a hidden global for Resend in tests that pass one.
+  const notificationMailerImpl = notificationMailer ?? createMailer({
+    fetchImpl: fetch,
+    env: process.env,
+    settingsGetter: () => resolveSettings(store.getSettings()),
+  });
+  const notificationService = createNotificationService({
+    store,
+    settingsGetter: () => resolveSettings(store.getSettings()),
+    mailer: notificationMailerImpl,
+  });
+  const stopNotifications = () => { try { notificationService.stop(); } catch { /* idempotent */ } };
+  if (notificationScheduler === true) {
+    try { notificationService.start(); } catch (err) {
+      console.error(`[notifications] scheduler start failed: ${String(err?.message ?? 'unknown').slice(0, 200)}`);
+    }
+  }
 
   // D-021: the backend gateway is the ONLY holder/caller of the single
   // gRouter service credential (server-side env). Tests inject a fake
@@ -742,80 +769,17 @@ export function createCopilotServer({
     }
 
     // ── In-app notifications (durable, per-account, idempotent) ──
-    // Event sync runs lazily on read and derives ONLY from persisted state:
-    //   order PAID, license issued, license expiring ≤7d (daily dedupe),
-    //   license revoked. No fake events, no client-supplied content.
-    const syncAccountNotifications = (account) => {
-      const now = Date.now();
-      const myOrders = store.listOrders().filter((o) => o.accountId === account.id);
-      const myLicenses = store.licensesByAccount(account.id);
-      const emitted = [];
-      for (const o of myOrders) {
-        if (String(o.status).toUpperCase() === 'PAID') {
-          emitted.push(store.addNotification({
-            accountId: account.id,
-            type: 'order.paid',
-            dedupeKey: o.id,
-            title: 'Pembayaran diterima',
-            titleEn: 'Payment received',
-            body: `Order ${o.id.slice(0, 14)}… telah dikonfirmasi server dan lisensi diterbitkan.`,
-            bodyEn: `Order ${o.id.slice(0, 14)}… was confirmed server-side and the license was issued.`,
-            createdAt: o.paidAt ?? o.createdAt ?? now,
-          }));
-        } else if (String(o.status).toUpperCase() === 'PENDING') {
-          // KlikQRIS expiredAt arrives as a STRING ("2026-10-13 12:12:40") —
-          // normalize before comparing (raw string > number is always false).
-          const expMs = o.expiredAt != null ? new Date(String(o.expiredAt).replace(' ', 'T') + (String(o.expiredAt).includes('Z') || String(o.expiredAt).includes('+') ? '' : 'Z')).getTime() : null;
-          if (expMs == null || Number.isNaN(expMs) || expMs > now) {
-            emitted.push(store.addNotification({
-              accountId: account.id,
-              type: 'order.pending',
-              dedupeKey: o.id,
-              title: 'Menunggu pembayaran',
-              titleEn: 'Awaiting payment',
-              body: `Order ${o.id.slice(0, 14)}… menunggu pembayaran QRIS.`,
-              bodyEn: `Order ${o.id.slice(0, 14)}… is awaiting QRIS payment.`,
-              createdAt: o.createdAt ?? now,
-            }));
-          }
-        }
-      }
-      for (const l of myLicenses) {
-        const expiresMs = l.expiresAt ? new Date(l.expiresAt).getTime() : null;
-        if (l.revokedAt) {
-          emitted.push(store.addNotification({
-            accountId: account.id,
-            type: 'license.revoked',
-            dedupeKey: l.id,
-            title: 'Lisensi dicabut',
-            titleEn: 'License revoked',
-            body: `Lisensi ${l.id.slice(0, 14)}… dicabut. Perpanjang untuk mengaktifkan kembali.`,
-            bodyEn: `License ${l.id.slice(0, 14)}… was revoked. Renew to reactivate.`,
-            createdAt: l.revokedAt,
-          }));
-        } else if (expiresMs != null && expiresMs - now <= 7 * 86_400_000 && expiresMs > now) {
-          // daily dedupe: re-notify at most once per day per license
-          emitted.push(store.addNotification({
-            accountId: account.id,
-            type: 'license.expiring',
-            dedupeKey: `${l.id}:${new Date(now).toISOString().slice(0, 10)}`,
-            title: 'Lisensi segera berakhir',
-            titleEn: 'License expiring soon',
-            body: `Lisensi ${l.id.slice(0, 14)}… berakhir ${new Date(expiresMs).toLocaleDateString('id-ID')}.`,
-            bodyEn: `License ${l.id.slice(0, 14)}… expires ${new Date(expiresMs).toISOString().slice(0, 10)}.`,
-            createdAt: now,
-          }));
-        }
-      }
-      return emitted.filter(Boolean);
-    };
+    // Event sync runs lazily on read via the notification service and
+    // derives ONLY from persisted state. No fake events, no client content.
+    // Wrapper kept for compatibility; derivation lives in notifications.js.
+    const syncAccountNotifications = (account, opts) => notificationService.syncAccount(account, opts);
 
     if (req.method === 'GET' && url.pathname === '/api/me/notifications') {
       return (async () => {
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        syncAccountNotifications(account);
+        await syncAccountNotifications(account);
         let limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
         if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
         limit = Math.min(limit, 200);
@@ -828,10 +792,54 @@ export function createCopilotServer({
           bodyEn: n.bodyEn ?? n.body,
           readAt: n.readAt ?? null,
           createdAt: n.createdAt,
+          emailStatus: n.emailStatus ?? null,
+          emailedAt: n.emailedAt ?? null,
+          emailAttempts: typeof n.emailAttempts === 'number' ? n.emailAttempts : 0,
         }));
         const unread = items.filter((n) => n.readAt == null).length;
         return sendJson(res, 200, { notifications: items, unread, total: items.length });
       })();
+    }
+
+    // ── Admin notifications (operator list; generic payloads only) ──
+    if (req.method === 'GET' && url.pathname === '/api/admin/notifications') {
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
+      return (async () => {
+        let limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+        if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+        limit = Math.min(limit, 200);
+        try { await notificationService.syncAll(); } catch { /* list still serves persisted rows */ }
+        const all = store.listAdminNotifications({ limit: 500 });
+        const items = all.slice(0, limit).map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          titleEn: n.titleEn ?? n.title,
+          body: n.body,
+          bodyEn: n.bodyEn ?? n.body,
+          linkKind: n.linkKind ?? null,
+          linkId: n.linkId ?? null,
+          readAt: n.readAt ?? null,
+          createdAt: n.createdAt,
+        }));
+        const unread = all.filter((n) => n.readAt == null).length;
+        return sendJson(res, 200, { notifications: items, unread, total: all.length });
+      })();
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/admin/notifications/read-all') {
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
+      const changed = store.markAllAdminNotificationsRead();
+      return sendJson(res, 200, { ok: true, changed });
+    }
+
+    if (req.method === 'POST' && url.pathname?.startsWith('/api/admin/notifications/') && url.pathname.endsWith('/read')) {
+      if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
+      const id = safeDecodePathSegment(url.pathname.slice('/api/admin/notifications/'.length, -'/read'.length));
+      if (id === null) return sendJson(res, 400, { error: 'invalid notification id' });
+      const updated = store.markAdminNotificationRead(id);
+      if (!updated) return sendJson(res, 404, { error: 'not found' });
+      return sendJson(res, 200, { ok: true, notification: { id: updated.id, readAt: updated.readAt } });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/me/notifications/read-all') {
@@ -1205,6 +1213,7 @@ export function createCopilotServer({
 
   return {
     server, store, service, usage, keys, payment, accounts, klikqris, gateway,
+    notificationService, notificationMailer: notificationMailerImpl, stopNotifications,
     settings: () => resolveSettings(store.getSettings()),
     listen: () => new Promise((r) => server.listen(port, r)),
   };

@@ -108,6 +108,17 @@ customer; (2) key menyebar ke N host app = permukaan bocor O(N) tanpa revocation
   customer dimension ada di ledger gateway (per license).
 - Rate limit `/api/copilot/chat` 60 req/menit/IP (sama dengan /api/resolve).
 
+## D-022 — Notification multi-kanal (2026-10-17)
+
+- **Lima kanal dinilai terpisah:** in-app customer, in-app admin, email transaksi, toast UI (BUKAN kanal), hint widget plugin. Klaim "notifikasi jalan" wajib menyebut kanalnya.
+- **Event diturunkan HANYA dari state ter-persist** (orders/licenses/usage ledger), tidak pernah dari konten client. Customer: `order.paid`/`order.pending`/`order.expired`/`order.cancelled`/`license.issued`/`license.expiring`/`license.revoked`/`quota.threshold`; admin mirror namespace `admin.*`.
+- **Admin notification = koleksi terpisah** (`adminNotifications`, cap 200) di belakang `requireAdmin`, payload operasional generik (tipe, ID terpotong, link kind/id, timestamp) — tidak pernah email/nama/`accountId` customer.
+- **Satu event penutup per order:** order kedaluwarsa menghasilkan tepat satu `order.expired`; `order.pending` tidak pernah terbit ulang setelahnya.
+- **Threshold & jadwal = settings SSOT** (`notifications.schedulerIntervalMs` 900000, `quotaThresholdPercent` 90, `expiringSoonDays` 7, toggle email per-jenis), divalidasi `validateSettings`. Tidak ada angka hardcoded di call site (D-020).
+- **Email transaksi via Resend** (env `RESEND_API_KEY` + `MAIL_FROM`): payment-received (+license-issued tergabung), license-issued, license-expiring (jendela hari dari setting, dedupe harian), password-reset. Tanpa kredensial statusnya jujur `log_only` — tidak pernah diklaim terkirim. Metadata per baris: `emailStatus` (`sent|log_only|failed|disabled`), `emailedAt`, `emailAttempts`; retry hanya `failed`; baca lazy tidak mengirim ulang. Log tidak pernah memuat URL reset/token/kredensial provider (hanya email + status).
+- **Scheduler proaktif hanya di entrypoint produksi** (`server/src/index.js`, `notificationScheduler: true`); lazy sync on-read tetap jalan. Test/library tidak pernah menyalakan timer.
+- **Widget plugin:** hint status lisensi non-blocking + dismissible dari health host (`notificationHint {kind:'license',status}`) — kasar secara sengaja (tanpa payload/token/alasan kedaluwarsa), tidak memblokir chat, dismiss tersimpan per status dan dibersihkan saat host sehat lagi.
+
 ## Customer flow
 
 ```text

@@ -52,6 +52,8 @@ yang dipakai frontend:
 | `GET /api/me/orders/:id/receipt` | receipt printable: session + order milik akun + status `PAID` + linked license milik akun + kapabilitas `print_receipt` (core+, live dari katalog plan; expired/revoked → 403). 200 `{receipt:{orderId,planName,packageKey,amount,status:'PAID',createdAt,paidAt,licenseReference}}`; 401 tanpa sesi; 404 akun lain (tanpa oracle); 409 unpaid/tanpa license tertaut. Response TIDAK memuat QR, signature, token, atau kredensial provider |
 | `POST /api/heartbeat` `{token,installId,baseUrl?}` | plugin; validasi offline signature + revocation; 403 invalid/revoked |
 | `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{baseUrl, gatewayUrl, licensePublicKey}` (D-021: **TANPA `apiKey`** — provider key tidak pernah keluar backend; installer menolak payload yang mengandung key); 403 invalid/revoked |
+| `GET /api/me/notifications?limit=` | notif akun sendiri (limit ≤200): `{notifications[{id,type,title,titleEn,body,bodyEn,linkKind,linkId,readAt,createdAt,emailStatus,emailedAt,emailAttempts}],unread,total}`; event diturunkan server-side dari state nyata (D-022); 401 tanpa sesi |
+| `POST /api/me/notifications/:id/read` · `/read-all` | tandai baca per-item / semua (404 bukan milik akun) |
 | `POST /api/copilot/chat` `{token, messages[≤40], requestId?, model?, maxTokens?}` | **AI gateway (D-021)** — satu-satunya konsumen service credential. Flow: validate license server-side → validasi messages (≤32KB) → kuota `plan.quotaTokens` per license (server-side plan catalogue, null=unlimited) → reservasi → call gRouter → rekonsiliasi usage → ledger. 200 `{status:'ok',answer,usage{inputTokens,outputTokens},licenseId,quota{unit,limit,usedTokens,requestCount}}`; 400 invalid request; 403 license invalid/revoked; 429 quota exhausted (atau rate-limit); 503 gateway not configured; 502/504 upstream error/timeout. `requestId` duplikat = idempotent replay (tidak dobel charge). Error upstream tidak ditagih. Body customer `{licenseId,plan,quota,…}` diabaikan (server resolve). Rate limit 60/menit/IP |
 
 ### Admin (`Authorization: Bearer`)
@@ -66,6 +68,8 @@ yang dipakai frontend:
 | `GET /api/admin/usage` | consume gRouter `/check-usage` (read-only) **dimensi infrastructure per service credential** — bukan kuota per customer (D-021) |
 | `GET /api/admin/settings` | settings efektif (secrets di-mask `••••<last4>`) |
 | `PATCH /api/admin/settings` | patch tervalidasi; section tak dikenal → 400; masked/empty secret = keep |
+| `GET /api/admin/notifications?limit=` | notif operator generik (D-022, tanpa identitas customer): `{notifications[{id,type,title,titleEn,body,bodyEn,linkKind,linkId,readAt,createdAt}],unread,total}`; 401 tanpa Bearer |
+| `POST /api/admin/notifications/:id/read` · `/read-all` | tandai baca per-item / semua; id tak dikenal → 404, id tidak ter-decode → 400 |
 | `POST /api/admin/orders/:id/settle` | settle manual (jalur sama dengan webhook setelah verifikasi upstream) |
 
 ### Payment webhook
@@ -82,7 +86,8 @@ admin, token gate) · `/success` · `/checkout/success` · `/assets/*`.
 ## Settings SSOT (yang bisa di-PATCH)
 
 Section: `plans` · `branding` · `payment` · `usage` · `provider` · `limits` ·
-`license` · `auth`. Resolusi: `DEFAULT_SETTINGS ← env seeds ← store.settings`
+`license` · `auth` · `notifications` (`schedulerIntervalMs`, `quotaThresholdPercent`
+1–100, `expiringSoonDays` 1–30, `email.*` boolean per-jenis; D-022). Resolusi: `DEFAULT_SETTINGS ← env seeds ← store.settings`
 (D-020). Plans/branding/usage/provider/limits HOT; `auth` + mode payment
 dibaca saat boot → butuh `pm2 restart copilot-backend --update-env`.
 

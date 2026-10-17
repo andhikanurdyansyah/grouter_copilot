@@ -46,6 +46,10 @@ function store(key, value) {
   try { window.localStorage.setItem(key, value); } catch { /* Storage may be disabled. */ }
 }
 
+function removeStored(key) {
+  try { window.localStorage.removeItem(key); } catch { /* Storage may be disabled. */ }
+}
+
 /* ------------------------------------------------------------------ */
 /* Health                                                              */
 /* ------------------------------------------------------------------ */
@@ -54,6 +58,21 @@ function isReadyHealth(data, responseOk) {
   const checks = data?.checks;
   return responseOk && data?.status === 'ok' &&
     checks?.license === true && checks?.skills === true && checks?.provider === true;
+}
+
+/** The host health endpoint may add a deliberately coarse operational hint.
+ * Only an explicit non-active license status is surfaced; missing or malformed
+ * hints fail closed to null so older hosts never show a false warning. */
+function licenseNotificationHint(data) {
+  const hint = data?.notificationHint;
+  return hint && hint.kind === 'license' && typeof hint.status === 'string' && hint.status !== 'active'
+    ? { kind: 'license', status: hint.status }
+    : null;
+}
+
+function healthWithLicenseHint(data) {
+  const hint = licenseNotificationHint(data);
+  return hint ? { status: data?.status, checks: data?.checks, notificationHint: hint } : data;
 }
 
 /* ------------------------------------------------------------------ */
@@ -342,6 +361,9 @@ const STR = {
     setupDoneText: 'Semua sistem siap. Mulai tanya apa saja tentang data Anda.',
     agree: 'Saya paham bahwa license dan kredensial provider tersimpan di server aplikasi, bukan di browser.',
     startAsking: 'Mulai bertanya',
+    licenseHintAttention: 'Lisensi Copilot perlu perhatian',
+    licenseHintText: 'Lisensi untuk aplikasi host ini belum aktif. Chat tetap tersedia; hubungi administrator aplikasi Anda untuk mengaktifkannya.',
+    dismissLicenseHint: 'Tutup pemberitahuan lisensi',
     healthLabel: 'Status server',
     themeLabel: 'Tema',
     dark: 'Gelap',
@@ -396,6 +418,9 @@ const STR = {
     setupDoneText: 'All systems ready. Start asking anything about your data.',
     agree: 'I understand the license and provider credentials stay on the app server, not in the browser.',
     startAsking: 'Start asking',
+    licenseHintAttention: 'Copilot license needs attention',
+    licenseHintText: 'The license for this host app is not active yet. Chat remains available; contact your app administrator to activate it.',
+    dismissLicenseHint: 'Dismiss license notice',
     healthLabel: 'Server status',
     themeLabel: 'Theme',
     dark: 'Dark',
@@ -457,6 +482,13 @@ const CSS = `
 .grc-seg button.on{background:var(--grc-accent-soft);color:var(--grc-accent-as-text)}
 .grc-seg button:focus-visible{outline:none;box-shadow:var(--grc-ring);position:relative;z-index:1}
 .grc-vers{font-size:11px;color:var(--grc-muted);border-top:1px solid var(--grc-border);padding-top:8px}
+/* ---- non-blocking license notification hint ---- */
+.grc-license-hint{margin:10px 12px 0;padding:9px 10px;border:1px solid var(--grc-warn);border-radius:10px;background:var(--grc-warn-soft);color:var(--grc-fg2);display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.45}
+.grc-license-hint-text{flex:1;min-width:0}
+.grc-license-hint-text strong{display:block;color:var(--grc-fg);font-size:12px;margin-bottom:1px}
+.grc-license-hint-close{flex:0 0 auto;width:24px;height:24px;border:0;border-radius:7px;background:transparent;color:var(--grc-fg2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.grc-license-hint-close:hover{background:var(--grc-sunken);color:var(--grc-fg)}
+.grc-license-hint-close:focus-visible{outline:none;box-shadow:var(--grc-ring)}
 /* ---- empty state + chips ---- */
 .grc-empty{padding:24px 18px 10px;display:flex;flex-direction:column;gap:8px}
 .grc-empty-ic{width:40px;height:40px;border-radius:12px;background:var(--grc-accent-soft);color:var(--grc-accent-as-text);display:flex;align-items:center;justify-content:center}
@@ -603,6 +635,7 @@ export function CopilotChat({
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupStep, setSetupStep] = useState(1);
   const [health, setHealth] = useState(null);
+  const [dismissedLicenseHint, setDismissedLicenseHint] = useState(() => readStored('grouter-copilot-license-hint-dismissed') || '');
   const [checkingHealth, setCheckingHealth] = useState(false);
   const healthCheckRef = useRef(false);
   const [bubblePos, setBubblePos] = useState(null);
@@ -645,8 +678,25 @@ export function CopilotChat({
     .map((s) => (typeof s === 'string' ? { label: s, prompt: s } : s));
 
   const healthReady = isReadyHealth(health, true);
+  const activeLicenseHint = licenseNotificationHint(health);
+  const licenseHintKey = activeLicenseHint ? `${activeLicenseHint.kind}:${activeLicenseHint.status}` : '';
+  const showLicenseHint = Boolean(activeLicenseHint && dismissedLicenseHint !== licenseHintKey);
   const dotClass = healthReady ? 'ok' : (health ? 'err' : (checkingHealth ? 'warn' : ''));
   const dotText = healthReady ? t.connected : (health ? t.unavailable : t.checking);
+
+  // When the host becomes healthy, clear any stale dismissal so a later
+  // license problem is surfaced again rather than staying hidden forever.
+  useEffect(() => {
+    if (!healthReady) return;
+    removeStored('grouter-copilot-license-hint-dismissed');
+    setDismissedLicenseHint('');
+  }, [healthReady]);
+
+  const dismissLicenseHint = useCallback(() => {
+    if (!licenseHintKey) return;
+    store('grouter-copilot-license-hint-dismissed', licenseHintKey);
+    setDismissedLicenseHint(licenseHintKey);
+  }, [licenseHintKey]);
 
   /* ---------------- effects ---------------- */
 
@@ -673,7 +723,7 @@ export function CopilotChat({
         const data = await res.json();
         if (cancelled) return;
         const ready = isReadyHealth(data, res.ok);
-        setHealth(ready ? data : { status: 'unavailable', checks: data?.checks });
+        setHealth(ready ? data : { status: 'unavailable', checks: data?.checks, notificationHint: licenseNotificationHint(data) ?? undefined });
         if (ready) {
           try { if (window.localStorage.getItem('grouter-copilot-setup-done') === 'true') setSetupDone(true); } catch { /* Storage may be disabled. */ }
         }
@@ -690,7 +740,10 @@ export function CopilotChat({
     try {
       const res = await fetch(healthEndpoint, { cache: 'no-store' });
       const data = await res.json();
-      if (!isReadyHealth(data, res.ok)) { setHealth({ status: 'unavailable', checks: data?.checks }); return; }
+      if (!isReadyHealth(data, res.ok)) {
+        setHealth({ status: 'unavailable', checks: data?.checks, notificationHint: licenseNotificationHint(data) ?? undefined });
+        return;
+      }
       setHealth(data);
     } catch { setHealth({ status: 'unavailable' }); }
     finally { healthCheckRef.current = false; setCheckingHealth(false); }
@@ -873,6 +926,7 @@ export function CopilotChat({
     '--grc-ok': tokens.color.success.base,
     '--grc-ok-soft': tokens.color.success.soft,
     '--grc-warn': tokens.color.warn.base,
+    '--grc-warn-soft': tokens.color.warn.soft,
     '--grc-err': tokens.color.danger.base,
     '--grc-err-soft': tokens.color.danger.soft,
     '--grc-err-as-text': tokens.color.danger.asText,
@@ -994,7 +1048,7 @@ export function CopilotChat({
               try {
                 const res = await fetch(healthEndpoint, { cache: 'no-store' });
                 const data = await res.json();
-                if (!isReadyHealth(data, res.ok)) { setHealth({ status: 'unavailable', checks: data?.checks }); setSetupStep(2); return; }
+                if (!isReadyHealth(data, res.ok)) { setHealth({ status: 'unavailable', checks: data?.checks, notificationHint: licenseNotificationHint(data) ?? undefined }); setSetupStep(2); return; }
                 setHealth(data);
               } catch { setHealth({ status: 'unavailable' }); setSetupStep(2); return; }
               finally { healthCheckRef.current = false; setCheckingHealth(false); }
@@ -1116,6 +1170,22 @@ export function CopilotChat({
             </button>
           </header>
           {settingsPopover}
+          {showLicenseHint ? (
+            <div className="grc-license-hint" role="status">
+              <span className="grc-license-hint-text">
+                <strong>{t.licenseHintAttention}</strong>
+                {t.licenseHintText}
+              </span>
+              <button
+                type="button"
+                className="grc-license-hint-close"
+                onClick={dismissLicenseHint}
+                aria-label={t.dismissLicenseHint}
+              >
+                <XIcon size={13} />
+              </button>
+            </div>
+          ) : null}
           {setupOpen && !setupDone ? setupWizard : chatBody}
         </section>
       ) : (

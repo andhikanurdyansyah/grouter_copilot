@@ -29,6 +29,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveSettings } from './settings.js';
+import { createMailer, buildPasswordResetEmail } from './mail.js';
+
+// Password-reset mailer: delegates to the shared mail module (Resend via
+// injected/global fetch, settings-gated). Created lazily without store
+// access — auth.js builds the Better Auth singleton once at boot, before
+// any store exists; settings resolve to defaults + env seeds here, which
+// keeps the notifications.email.passwordReset toggle effective for the
+// out-of-box configuration. The reset URL lives ONLY inside the email
+// payload; logs carry email + status metadata only, never the URL/token.
+const resetMailer = createMailer({
+  env: process.env,
+  settingsGetter: () => resolveSettings({}, process.env),
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -157,45 +170,17 @@ export const auth = betterAuth({
     // Fondasi forgot password: token reset dibuat & disimpan di DB (verification table),
     // endpoint /api/auth/request-password-reset + /reset-password aktif. Anti user-enumeration:
     // response selalu 200 generik, URL reset TIDAK pernah dikirim ke client.
-    // Pengiriman email: bila env RESEND_API_KEY diset → kirim email nyata via Resend HTTP API
-    // (fetch bawaan Node, TANPA dependency baru). Bila tidak → URL dicatat di log server saja.
+    // Pengiriman email: didelegasikan ke mail module (server/src/mail.js).
+    // Bila RESEND_API_KEY diset & email aktif → email nyata via Resend;
+    // bila tidak → status log_only. URL reset HANYA di dalam payload email,
+    // tidak pernah di-log (hanya email + status).
     sendResetPassword: async ({ user, url }) => {
-      const resendKey = process.env.RESEND_API_KEY;
-      const from = process.env.MAIL_FROM || 'gRouter Copilot <onboarding@resend.dev>';
-      if (!resendKey) {
-        console.log(`[auth] password reset untuk ${user.email} (log-only, RESEND_API_KEY belum diset): ${url}`);
-        return;
-      }
-      try {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { authorization: `Bearer ${resendKey}`, 'content-type': 'application/json' },
-          body: JSON.stringify({
-            from,
-            to: [user.email],
-            subject: 'Atur ulang password akun gRouter Copilot Anda',
-            html:
-              '<p>Halo,</p>' +
-              '<p>Kami menerima permintaan atur ulang password akun gRouter Copilot Anda.</p>' +
-              `<p><a href="${url}">Klik di sini untuk membuat password baru</a> (tautan berlaku 1 jam, hanya sekali pakai).</p>` +
-              '<p>Kalau Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah.</p>' +
-              '<p>Tim gRouter Copilot</p>',
-            text:
-              `Kami menerima permintaan atur ulang password akun gRouter Copilot Anda. ` +
-              `Buka tautan berikut untuk membuat password baru (berlaku 1 jam, sekali pakai): ${url} ` +
-              `Kalau Anda tidak meminta ini, abaikan email ini.`,
-          }),
-        });
-        if (res.ok) {
-          console.log(`[auth] email password reset terkirim ke ${user.email}`);
-        } else {
-          const body = await res.text().catch(() => '');
-          console.error(`[auth] GAGAL kirim email reset ke ${user.email} (HTTP ${res.status}) — URL tetap di-log: ${url}`);
-          console.error(`[auth] resend error: ${body.slice(0, 300)}`);
-        }
-      } catch (err) {
-        console.error(`[auth] GAGAL kirim email reset ke ${user.email} (${err.message}) — URL tetap di-log: ${url}`);
-      }
+      const tpl = buildPasswordResetEmail({ url });
+      const result = await resetMailer.send({
+        to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text, kind: 'passwordReset',
+      });
+      // Status metadata only — never the reset URL/token, key, or body.
+      console.log(`[auth] password reset email untuk ${user.email}: status=${result.status}`);
     },
     resetPasswordTokenExpiresIn: 3600, // 1 jam
     // Reset password = logout semua sesi user (keamanan standar).

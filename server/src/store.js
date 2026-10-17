@@ -20,6 +20,13 @@ import { deepMerge } from './settings.js';
 
 // Retention bound for per-account in-app notifications (newest kept).
 const NOTIFICATION_MAX = 100;
+// Retention bound for the (single, operator-wide) admin notification list.
+const ADMIN_NOTIFICATION_MAX = 200;
+
+function sanitizeEmailError(error) {
+  if (error == null) return null;
+  return String(error).replace(/https?:\/\/\S+/g, '[redacted-url]').slice(0, 200);
+}
 
 export class JsonStore {
   constructor(filePath) {
@@ -29,7 +36,7 @@ export class JsonStore {
   }
 
   _load() {
-    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], usage: [], notifications: [], settings: {} };
+    const empty = { accounts: [], licenses: [], orders: [], heartbeats: [], usage: [], notifications: [], adminNotifications: [], settings: {} };
     if (!existsSync(this.filePath)) {
       return empty;
     }
@@ -44,6 +51,9 @@ export class JsonStore {
         // In-app notification events (per-account, persisted). Bounded list;
         // retention is enforced on write (see addNotification).
         notifications: parsed.notifications ?? [],
+        // Operator notification events (single list, generic payloads — no
+        // customer identity). Migrated for old store files.
+        adminNotifications: parsed.adminNotifications ?? [],
         // Runtime configuration (SSOT). Resolved against defaults + env seeds
         // by server/src/settings.js — this is only the persisted override layer.
         settings: parsed.settings ?? {},
@@ -60,7 +70,7 @@ export class JsonStore {
    * replaying the same event never duplicates the row.
    * Retention: keep at most NOTIFICATION_MAX newest per account.
    */
-  addNotification({ accountId, type, title, titleEn, body, bodyEn, dedupeKey, createdAt = Date.now() }) {
+  addNotification({ accountId, type, title, titleEn, body, bodyEn, dedupeKey, createdAt = Date.now(), linkKind, linkId }) {
     if (!accountId || !type) return null;
     const existing = this.data.notifications.find(
       (n) => n.accountId === accountId && n.type === type && (dedupeKey == null || n.dedupeKey === dedupeKey),
@@ -69,6 +79,11 @@ export class JsonStore {
     const item = {
       id: `ntf_${createdAt.toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`,
       accountId, type, title, titleEn, body, bodyEn, dedupeKey: dedupeKey ?? null,
+      linkKind: linkKind ?? null, linkId: linkId ?? null,
+      // Email delivery metadata. Old rows persisted before this field set
+      // exist simply lack these keys; readers must default them safely
+      // (null / null / 0 / null) — see markNotificationEmail.
+      emailStatus: null, emailedAt: null, emailAttempts: 0, lastEmailError: null,
       readAt: null, createdAt,
     };
     this.data.notifications.push(item);
@@ -110,6 +125,100 @@ export class JsonStore {
     }
     if (changed) this._save();
     return changed;
+  }
+
+  /**
+   * Record an email attempt outcome on a customer notification.
+   * Increments emailAttempts on every call (one call = one attempt);
+   * emailedAt is set only for terminal success states (sent / log_only /
+   * disabled). Old rows without email fields are upgraded in place.
+   */
+  markNotificationEmail(accountId, id, { status, at = Date.now(), error = null } = {}) {
+    const n = this.data.notifications.find((x) => x.id === id && x.accountId === accountId);
+    if (!n) return null;
+    n.emailStatus = status ?? null;
+    n.emailAttempts = (typeof n.emailAttempts === 'number' ? n.emailAttempts : 0) + 1;
+    if (status === 'sent' || status === 'log_only' || status === 'disabled') n.emailedAt = at;
+    n.lastEmailError = status === 'failed' ? sanitizeEmailError(error) : (error != null ? sanitizeEmailError(error) : null);
+    this._save();
+    return n;
+  }
+
+  // --- admin notifications (operator events; generic, no customer identity) ---
+
+  /**
+   * Append an admin notification. Idempotent by (type, dedupeKey).
+   * Retention: keep at most ADMIN_NOTIFICATION_MAX newest overall.
+   * Payload contract: only generic operational fields (type, titles,
+   * linkKind/linkId, timestamps) — callers must never pass customer
+   * email/name/accountId (the service layer never does).
+   */
+  addAdminNotification({ type, title, titleEn, body, bodyEn, dedupeKey, linkKind, linkId, createdAt = Date.now() }) {
+    if (!type) return null;
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    const existing = this.data.adminNotifications.find(
+      (n) => n.type === type && (dedupeKey == null || n.dedupeKey === dedupeKey),
+    );
+    if (existing) return existing;
+    const item = {
+      id: `antf_${createdAt.toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`,
+      type, title, titleEn, body, bodyEn, dedupeKey: dedupeKey ?? null,
+      linkKind: linkKind ?? null, linkId: linkId ?? null,
+      emailStatus: null, emailedAt: null, emailAttempts: 0, lastEmailError: null,
+      readAt: null, createdAt,
+    };
+    this.data.adminNotifications.push(item);
+    if (this.data.adminNotifications.length > ADMIN_NOTIFICATION_MAX) {
+      const sorted = this.data.adminNotifications.slice().sort((a, b) => a.createdAt - b.createdAt);
+      const overflowIds = new Set(sorted.slice(0, this.data.adminNotifications.length - ADMIN_NOTIFICATION_MAX).map((n) => n.id));
+      this.data.adminNotifications = this.data.adminNotifications.filter((n) => !overflowIds.has(n.id));
+    }
+    this._save();
+    return item;
+  }
+
+  listAdminNotifications({ limit = 50 } = {}) {
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    return this.data.adminNotifications
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, Math.min(Math.max(1, limit), 500));
+  }
+
+  markAdminNotificationRead(id) {
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    const n = this.data.adminNotifications.find((x) => x.id === id);
+    if (!n) return null;
+    if (!n.readAt) {
+      n.readAt = Date.now();
+      this._save();
+    }
+    return n;
+  }
+
+  markAllAdminNotificationsRead() {
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    let changed = 0;
+    for (const n of this.data.adminNotifications) {
+      if (!n.readAt) {
+        n.readAt = Date.now();
+        changed++;
+      }
+    }
+    if (changed) this._save();
+    return changed;
+  }
+
+  markAdminNotificationEmail(id, { status, at = Date.now(), error = null } = {}) {
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    const n = this.data.adminNotifications.find((x) => x.id === id);
+    if (!n) return null;
+    n.emailStatus = status ?? null;
+    n.emailAttempts = (typeof n.emailAttempts === 'number' ? n.emailAttempts : 0) + 1;
+    if (status === 'sent' || status === 'log_only' || status === 'disabled') n.emailedAt = at;
+    n.lastEmailError = status === 'failed' ? sanitizeEmailError(error) : (error != null ? sanitizeEmailError(error) : null);
+    this._save();
+    return n;
   }
 
   // --- settings (runtime configuration SSOT) ---

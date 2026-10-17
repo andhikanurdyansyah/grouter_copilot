@@ -38,6 +38,7 @@ Setelah masuk, di halaman akun Anda Anda bisa melihat:
 - **Data akun** — nama dan email Anda.
 - **Lisensi** — lisensi yang Anda beli beserta masa berlakunya.
 - **Riwayat pemakaian** — pemakaian Copilot di aplikasi Anda.
+- **Pemberitahuan** — klik ikon lonceng (🔔) di kanan atas: riwayat kejadian akun Anda (pembayaran diterima, lisensi diterbitkan, lisensi segera berakhir, kuota hampir habis). Angka pada lonceng = jumlah pemberitahuan belum dibaca; klik satu pemberitahuan untuk membacanya dan membuka halaman terkait, atau "Tandai semua dibaca".
 
 Di menu akun (bagian bawah menu samping/sidebar, klik nama akun Anda) Anda bisa:
 

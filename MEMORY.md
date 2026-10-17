@@ -144,3 +144,11 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - Base mode-aware: sandbox `https://klikqris.com/api/sandbox`, production `.../api`. Header `x-api-key` + `id_merchant`.
 - Kredensial di `server/.env` (gitignored, JANGAN commit). **Mode sekarang: `sandbox`.**
 - Kontrak: `docs/26-klikqris-contract.md`.
+
+## Update 2026-10-17 — Notification multi-kanal (D-022)
+
+- **Engine:** `server/src/notifications.js` + `server/src/mail.js` (Resend/mailer). Event diturunkan dari state ter-persist saja; customer 8 jenis, admin mirror `admin.*` di koleksi terpisah `adminNotifications` (tanpa identitas customer). Settings section `notifications` (scheduler 900000ms / quota 90% / expiring 7 hari / toggle email), divalidasi `validateSettings`.
+- **Scheduler hanya dari `server/src/index.js`** (`notificationScheduler: true`); test/library tidak pernah menyalakan timer. Email: status per baris `sent|log_only|failed|disabled`, retry hanya `failed`, lazy-read tidak re-send, fetch timeout 10s. Log tidak memuat URL reset/token (hanya email+status).
+- **UI/plugin:** bell admin badge angka (await mark-read sebelum navigasi), customer per-item read, tab Notifikasi admin settings, hint lisensi widget dismissible (`notificationHint` dari `src/health.js`, localStorage per status, auto-clear saat sehat).
+- **Email NYATA masih GO-6:** tanpa `RESEND_API_KEY`/`MAIL_FROM` status = `log_only`. Jangan pernah klaim terkirim dari kodenya saja.
+- Test terakhir: root 154, server 161, frontend 23; hash data prod identik sebelum/sesudah.

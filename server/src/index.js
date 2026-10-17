@@ -19,6 +19,9 @@ const { server } = createCopilotServer({
   port,
   privateKeyPem: keys.privateKeyPem,
   publicKeyPem: keys.publicKeyPem,
+  // Production entry: run the notification scheduler (interval from
+  // settings.notifications.schedulerIntervalMs, timer unref'd).
+  notificationScheduler: true,
   ...(process.env.DATA_FILE ? { dataFile: process.env.DATA_FILE } : {}),
 });
 

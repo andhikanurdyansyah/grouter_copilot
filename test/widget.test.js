@@ -35,6 +35,18 @@ test('first-use setup requires a fresh complete host-health response before pers
   assert.match(widget, /useState\(!firstUseSetup\)/);
 });
 
+test('widget surfaces only an explicit non-active license hint and keeps it dismissible', () => {
+  assert.match(widget, /function licenseNotificationHint\(data\)/);
+  assert.match(widget, /hint\.kind === 'license' && typeof hint\.status === 'string' && hint\.status !== 'active'/);
+  assert.match(widget, /grouter-copilot-license-hint-dismissed/);
+  assert.match(widget, /className="grc-license-hint" role="status"/);
+  assert.match(widget, /aria-label=\{t\.dismissLicenseHint\}/);
+  assert.match(widget, /Lisensi Copilot perlu perhatian/);
+  assert.match(widget, /Copilot license needs attention/);
+  assert.match(widget, /Chat tetap tersedia/);
+  assert.match(widget, /Chat remains available/);
+});
+
 test('customer install guidance remains consistent with the current license-only runtime contract', () => {
   assert.match(success, /license/i);
   assert.match(landing, /Embed AI assistance/);

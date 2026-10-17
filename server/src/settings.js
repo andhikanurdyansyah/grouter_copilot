@@ -106,6 +106,21 @@ export const DEFAULT_SETTINGS = {
     },
     activityTrackingIntervalMs: 300000,
   },
+  // Notification engine (Phases 1+2): scheduler cadence, quota/expiry
+  // thresholds, and per-kind email toggles. All thresholds are read via
+  // resolveSettings(store.getSettings()) at call time — never hardcoded.
+  notifications: {
+    schedulerIntervalMs: 900000,
+    quotaThresholdPercent: 90,
+    expiringSoonDays: 7,
+    email: {
+      enabled: true,
+      paymentReceived: true,
+      licenseIssued: true,
+      licenseExpiring: true,
+      passwordReset: true,
+    },
+  },
 };
 
 /** Top-level sections the admin panel is allowed to write. */
@@ -333,9 +348,31 @@ export function validateSettings(patch) {
     }
   }
 
-  for (const section of ['usage', 'provider', 'limits', 'license', 'auth', 'branding']) {
+  for (const section of ['usage', 'provider', 'limits', 'license', 'auth', 'branding', 'notifications']) {
     if (p[section] !== undefined && !isPlainObject(p[section])) {
       throw fail(`${section} must be an object.`);
+    }
+  }
+  if (p.notifications !== undefined) {
+    const n = p.notifications;
+    if (n.schedulerIntervalMs !== undefined) assertInt(n.schedulerIntervalMs, 'notifications.schedulerIntervalMs', { min: 1 });
+    if (n.quotaThresholdPercent !== undefined) {
+      if (typeof n.quotaThresholdPercent !== 'number' || !Number.isInteger(n.quotaThresholdPercent) || n.quotaThresholdPercent < 1 || n.quotaThresholdPercent > 100) {
+        throw fail('notifications.quotaThresholdPercent must be an integer between 1 and 100.');
+      }
+    }
+    if (n.expiringSoonDays !== undefined) {
+      if (typeof n.expiringSoonDays !== 'number' || !Number.isInteger(n.expiringSoonDays) || n.expiringSoonDays < 1 || n.expiringSoonDays > 30) {
+        throw fail('notifications.expiringSoonDays must be an integer between 1 and 30.');
+      }
+    }
+    if (n.email !== undefined) {
+      if (!isPlainObject(n.email)) throw fail('notifications.email must be an object.');
+      for (const k of ['enabled', 'paymentReceived', 'licenseIssued', 'licenseExpiring', 'passwordReset']) {
+        if (n.email[k] !== undefined && typeof n.email[k] !== 'boolean') {
+          throw fail(`notifications.email.${k} must be a boolean.`);
+        }
+      }
     }
   }
   if (p.usage?.checkUsageUrl !== undefined) validStr(p.usage.checkUsageUrl, 'usage.checkUsageUrl');

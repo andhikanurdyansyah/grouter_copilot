@@ -13,12 +13,15 @@ test('host health checks the runtime license, registered skills and provider wit
   };
   assert.deepEqual(getCopilotHealth({ runtime }, token), {
     status: 'ok', checks: { license: true, skills: true, provider: true },
+    notificationHint: { kind: 'license', status: 'active' },
   });
   assert.deepEqual(getCopilotHealth({ runtime }, 'bad'), {
     status: 'unavailable', checks: { license: false, skills: true, provider: true },
+    notificationHint: { kind: 'license', status: 'unavailable' },
   });
   assert.deepEqual(getCopilotHealth({ runtime: { ...runtime, registry: { list: () => [] }, adapter: { configured: false } } }, token), {
     status: 'unavailable', checks: { license: true, skills: false, provider: false },
+    notificationHint: { kind: 'license', status: 'active' },
   });
   assert.equal(JSON.stringify(getCopilotHealth({ runtime }, token)).includes(token), false);
 });

@@ -83,17 +83,26 @@ export async function issueLicense(payload: {
   // pernah tersedia lagi setelahnya — /api/me dan list admin tidak
   // memuatnya). UI wajib menampilkannya sekali.
   const { data } = await api.post('/admin/licenses', payload)
-  return data as { license: { id: string; customer?: string | null }; token?: string }
+  return data as {
+    license: { id: string; customer?: string | null }
+    token?: string
+  }
 }
 
 export async function revokeLicense(licenseId: string) {
-  const { data } = await api.post(`/admin/licenses/${encodeURIComponent(licenseId)}/revoke`)
+  const { data } = await api.post(
+    `/admin/licenses/${encodeURIComponent(licenseId)}/revoke`
+  )
   return data
 }
 
 export async function fetchAdminOrders(limit = 100) {
   const { data } = await api.get(`/admin/orders?limit=${limit}`)
-  return data as { orders: Record<string, unknown>[]; total: number; limit: number }
+  return data as {
+    orders: Record<string, unknown>[]
+    total: number
+    limit: number
+  }
 }
 
 // Riwayat order milik akun yang sedang login (session-scoped, read-only).
@@ -105,11 +114,26 @@ export async function fetchMyOrders() {
 export const fetchCustomerStatus = fetchMe
 export const fetchCustomerOrders = fetchMyOrders
 export async function fetchCustomerReceipt(orderId: string) {
-  const { data } = await api.get(`/me/orders/${encodeURIComponent(orderId)}/receipt`)
-  return data as { receipt: { orderId: string; planName: string | null; packageKey: string | null; amount: number | null; status: 'PAID'; createdAt: number | string | null; paidAt: number | string | null; licenseReference: string } }
+  const { data } = await api.get(
+    `/me/orders/${encodeURIComponent(orderId)}/receipt`
+  )
+  return data as {
+    receipt: {
+      orderId: string
+      planName: string | null
+      packageKey: string | null
+      amount: number | null
+      status: 'PAID'
+      createdAt: number | string | null
+      paidAt: number | string | null
+      licenseReference: string
+    }
+  }
 }
 
-export async function downloadCustomerExport(kind: 'usage' | 'orders'): Promise<void> {
+export async function downloadCustomerExport(
+  kind: 'usage' | 'orders'
+): Promise<void> {
   const response = await api.get(`/me/${kind}/export`, { responseType: 'blob' })
   const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -123,7 +147,12 @@ export async function downloadCustomerExport(kind: 'usage' | 'orders'): Promise<
 // Ledger milik akun yang sedang login (session-scoped, read-only).
 export async function fetchMyLedger(limit = 50) {
   const { data } = await api.get(`/me/ledger?limit=${limit}`)
-  return data as { records: Record<string, unknown>[]; total: number; limit: number; offset: number }
+  return data as {
+    records: Record<string, unknown>[]
+    total: number
+    limit: number
+    offset: number
+  }
 }
 
 export const fetchUsageHistory = async () => {
@@ -134,15 +163,22 @@ export const fetchUsageHistory = async () => {
     const createdAt = Number(r.createdAt ?? 0)
     if (!createdAt) continue
     const d = new Date(createdAt)
-    const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-    const total = Number(r.totalTokens ?? (Number(r.inputTokens ?? 0) + Number(r.outputTokens ?? 0)))
+    const key = d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+    })
+    const total = Number(
+      r.totalTokens ?? Number(r.inputTokens ?? 0) + Number(r.outputTokens ?? 0)
+    )
     byDay.set(key, (byDay.get(key) ?? 0) + (Number.isFinite(total) ? total : 0))
   }
   return Array.from(byDay.entries()).map(([date, tokens]) => ({ date, tokens }))
 }
 
 export async function settleOrder(orderId: string) {
-  const { data } = await api.post(`/admin/orders/${encodeURIComponent(orderId)}/settle`)
+  const { data } = await api.post(
+    `/admin/orders/${encodeURIComponent(orderId)}/settle`
+  )
   return data as { ok: boolean; licenseId: string | null }
 }
 export const verifyAndSettleOrder = settleOrder
@@ -160,7 +196,12 @@ export async function fetchLedger(params: {
     if (v !== undefined && v !== null && v !== '') p.set(k, String(v))
   })
   const { data } = await api.get(`/admin/ledger?${p.toString()}`)
-  return data as { records: Record<string, unknown>[]; total: number; limit: number; offset: number }
+  return data as {
+    records: Record<string, unknown>[]
+    total: number
+    limit: number
+    offset: number
+  }
 }
 
 export async function fetchInfraUsage() {
@@ -175,6 +216,65 @@ export async function fetchAdminSettings() {
 
 export async function patchAdminSettings(payload: unknown) {
   const { data } = await api.patch('/admin/settings', payload)
+  return data
+}
+
+export interface AppNotification {
+  id: string
+  type: string
+  title: string
+  titleEn: string
+  body: string
+  bodyEn: string
+  readAt: string | null
+  createdAt: number | string
+  emailStatus?: string | null
+  emailedAt?: string | number | null
+  emailAttempts?: number
+  linkKind?: string | null
+  linkId?: string | null
+}
+
+export interface NotificationsResponse {
+  notifications: AppNotification[]
+  unread: number
+}
+
+export async function fetchMyNotifications(
+  limit = 20
+): Promise<NotificationsResponse> {
+  const { data } = await api.get(`/me/notifications?limit=${limit}`)
+  return data as NotificationsResponse
+}
+
+export async function markMyNotificationRead(id: string) {
+  const { data } = await api.post(
+    `/me/notifications/${encodeURIComponent(id)}/read`
+  )
+  return data
+}
+
+export async function markAllMyNotificationsRead() {
+  const { data } = await api.post('/me/notifications/read-all')
+  return data
+}
+
+export async function fetchAdminNotifications(
+  limit = 20
+): Promise<NotificationsResponse> {
+  const { data } = await api.get(`/admin/notifications?limit=${limit}`)
+  return data as NotificationsResponse
+}
+
+export async function markAdminNotificationRead(id: string) {
+  const { data } = await api.post(
+    `/admin/notifications/${encodeURIComponent(id)}/read`
+  )
+  return data
+}
+
+export async function markAllAdminNotificationsRead() {
+  const { data } = await api.post('/admin/notifications/read-all')
   return data
 }
 
@@ -197,6 +297,10 @@ export function fmtDate(iso: string | number | null | undefined): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleString('id-ID', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }

@@ -15,5 +15,12 @@ export function getCopilotHealth(copilot, token = process.env.GROUTER_LICENSE, {
     // gateway OR a directly configured adapter (legacy in-process mode) counts.
     provider: runtime.adapter.configured === true || Boolean(gatewayUrl ?? process.env.GROUTER_LICENSE_SERVER),
   };
-  return { status: Object.values(checks).every(Boolean) ? 'ok' : 'unavailable', checks };
+  const licenseStatus = license ? 'active' : 'unavailable';
+  return {
+    status: Object.values(checks).every(Boolean) ? 'ok' : 'unavailable',
+    checks,
+    // Non-blocking operational hint for the widget. Deliberately coarse:
+    // never a payload, token, expiry reason split, or credential signal.
+    notificationHint: { kind: 'license', status: licenseStatus },
+  };
 }

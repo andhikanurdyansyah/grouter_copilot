@@ -69,7 +69,58 @@ test('customer receipt materialization is authenticated, owned, paid, entitled, 
   } finally { server.close(); }
 });
 
-test('receipt denies unpaid, core-only, expired, and revoked licenses', async () => {
+test('malformed percent-encoding on receipt returns 400 instead of crashing', async () => {
+  const { server, base } = await start();
+  try {
+    const cookie = await signUp(base, 'malformed-receipt');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(`${base}/api/me/orders/%E0%A4%A/receipt`, { headers: { cookie }, signal: controller.signal });
+      assert.equal(res.status, 400);
+      assert.deepEqual(await res.json(), { error: 'invalid order id' });
+    } finally { clearTimeout(timer); }
+  } finally { server.close(); }
+});
+
+test('malformed percent-encoding on poll and cancel returns 400 instead of crashing', async () => {
+  const { server, base } = await start();
+  try {
+    const cookie = await signUp(base, 'malformed-poll');
+    const poll = await fetch(`${base}/api/orders/%E0%A4%A`, { headers: { cookie, 'x-timeout': '1' } });
+    assert.equal(poll.status, 400);
+    assert.deepEqual(await poll.json(), { error: 'invalid order id' });
+    const cancel = await fetch(`${base}/api/orders/%E0%A4%A/cancel`, { method: 'POST', headers: { cookie } });
+    assert.equal(cancel.status, 400);
+    assert.deepEqual(await cancel.json(), { error: 'invalid order id' });
+  } finally { server.close(); }
+});
+
+test('malformed percent-encoding on license token returns 400 instead of crashing', async () => {
+  const { server, base } = await start();
+  try {
+    const cookie = await signUp(base, 'malformed-lic');
+    const res = await fetch(`${base}/api/me/licenses/%E0%A4%A/token`, { headers: { cookie } });
+    assert.equal(res.status, 400);
+  } finally { server.close(); }
+});
+
+test('receipt denies paid orders without a license or with a foreign license (409)', async () => {
+  const { server, store, service, base } = await start();
+  try {
+    const cookieA = await signUp(base, 'b409-a');
+    const cookieB = await signUp(base, 'b409-b');
+    const accountA = await account(base, cookieA);
+    const accountB = await account(base, cookieB);
+    const foreign = service.issue({ customer: 'B', accountId: accountB, planKey: 'quota-15b-365d', features: ['core', 'pro'] }).record;
+    addPaid(store, accountA, 'paid-no-license', null);
+    addPaid(store, accountA, 'paid-foreign-license', foreign.id);
+    assert.equal((await getReceipt(base, 'paid-no-license', cookieA)).status, 409);
+    assert.equal((await getReceipt(base, 'paid-foreign-license', cookieA)).status, 409);
+  } finally { server.close(); }
+});
+
+test('receipt allows core-only licenses and denies unpaid, expired, and revoked licenses', async () => {
   const { server, store, service, base } = await start();
   try {
     const cookie = await signUp(base, 'gates');

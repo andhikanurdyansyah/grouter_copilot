@@ -211,12 +211,17 @@ export function CustomerOrders() {
   })
 
   // Sukses: derived dari polling (bukan setState-in-effect).
-  const paidOrder: (ActiveOrder & { licenseId?: string | null }) | null =
+  // In-session settlement is the only source that may auto-open the success
+  // dialog. A merely historical PAID latest order supplies receipt data but
+  // must never trap the customer in an undismissable dialog on page visit.
+  const inSessionPaidOrder: (ActiveOrder & { licenseId?: string | null }) | null =
     polled && isPaid
       ? { ...polled, createdAt: settledCreatedAt, licenseId: settledLicenseId }
-      : paidFromLatest
-        ? paidFromLatest
-        : null
+      : null
+  const [dismissedOrderId, setDismissedOrderId] = useState<string | null>(null)
+  const paidOrder: (ActiveOrder & { licenseId?: string | null }) | null =
+    inSessionPaidOrder ?? paidFromLatest ?? null
+  const successOpen = !!inSessionPaidOrder && paidOrder !== null && paidOrder.id !== dismissedOrderId
 
   useEffect(() => {
     if (paidOrder) {
@@ -512,10 +517,11 @@ export function CustomerOrders() {
 
       {/* ── Checkout modal (premium, single dialog; QR → success transition) ── */}
       <Dialog
-        open={checkoutOpen || !!paidOrder}
+        open={checkoutOpen || successOpen}
         onOpenChange={(open) => {
           if (!open && !buy.isPending) {
             setCheckoutOpen(false)
+            if (paidOrder) setDismissedOrderId(paidOrder.id)
           }
         }}
       >
@@ -576,9 +582,27 @@ export function CustomerOrders() {
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground font-sans'>License reference</span>
-                  <span className='font-bold text-foreground'>{receiptQ.data?.receipt.licenseReference ?? '—'}</span>
+                  <span className='font-bold text-foreground'>{receiptQ.data?.receipt.licenseReference ?? paidOrder.licenseId ?? '—'}</span>
                 </div>
               </div>
+
+              {receiptQ.isLoading && (
+                <div role='status' data-receipt-hide-on-print className='w-full text-center text-xs text-muted-foreground'>
+                  {isId ? 'Memuat bukti pembayaran…' : 'Loading receipt…'}
+                </div>
+              )}
+              {receiptQ.isError && (
+                <div role='alert' data-receipt-hide-on-print className='w-full rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center space-y-3'>
+                  <AlertTriangle className='size-5 text-destructive mx-auto' />
+                  <p className='text-xs font-semibold text-foreground'>
+                    {isId ? 'Bukti pembayaran tidak dapat dimuat.' : 'Receipt could not be loaded.'}
+                  </p>
+                  <Button type='button' size='sm' variant='outline' onClick={() => receiptQ.refetch()} className='h-8 text-xs gap-1.5'>
+                    <RefreshCw className='size-3.5' />
+                    {isId ? 'Coba lagi' : 'Retry'}
+                  </Button>
+                </div>
+              )}
 
               <div data-receipt-hide-on-print className='flex items-center gap-3 w-full pt-2'>
                 <Button

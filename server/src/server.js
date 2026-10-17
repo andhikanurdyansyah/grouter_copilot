@@ -53,6 +53,20 @@ const GATEWAY_HTTP = {
   UPSTREAM_UNAVAILABLE: 502,
 };
 
+/**
+ * Safely decode a URI path segment. Returns null on malformed
+ * percent-encoding (URIError) so handlers can respond 400 instead of
+ * throwing inside a fire-and-forget async IIFE (unhandled rejection).
+ */
+function safeDecodePathSegment(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
 function amountMatchesOrder(upstreamAmount, localAmount) {
   if (upstreamAmount === null || upstreamAmount === undefined || upstreamAmount === ''
     || localAmount === null || localAmount === undefined) return false;
@@ -956,7 +970,9 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        const id = url.pathname.slice('/api/me/licenses/'.length, -'/token'.length);
+        const rawId = url.pathname.slice('/api/me/licenses/'.length, -'/token'.length);
+        const id = safeDecodePathSegment(rawId);
+        if (id === null) return sendJson(res, 400, { error: 'invalid license id' });
         const license = store.licensesByAccount(account.id).find((l) => l.id === id);
         // 404 (not 403) for foreign ids: no existence oracle for other tenants.
         if (!license) return sendJson(res, 404, { error: 'not found' });
@@ -978,7 +994,8 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        const id = decodeURIComponent(url.pathname.split('/')[3]);
+        const id = safeDecodePathSegment(url.pathname.split('/')[3]);
+        if (id === null) return sendJson(res, 400, { error: 'invalid order id' });
         const order = store.getOrder(id);
         if (!order || order.accountId !== account.id) {
           return sendJson(res, 404, { error: 'not found' });
@@ -999,7 +1016,8 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        const id = decodeURIComponent(url.pathname.split('/')[4]);
+        const id = safeDecodePathSegment(url.pathname.split('/')[4]);
+        if (id === null) return sendJson(res, 400, { error: 'invalid order id' });
         const order = store.getOrder(id);
         if (!order || order.accountId !== account.id) return sendJson(res, 404, { error: 'not found' });
         if (String(order.status || '').toUpperCase() !== 'PAID') return sendJson(res, 409, { error: 'receipt requires a paid order' });
@@ -1029,7 +1047,8 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        const id = decodeURIComponent(url.pathname.split('/')[3]);
+        const id = safeDecodePathSegment(url.pathname.split('/')[3]);
+        if (id === null) return sendJson(res, 400, { error: 'invalid order id' });
         const order = store.getOrder(id);
         if (!order || order.accountId !== account.id) {
           return sendJson(res, 404, { error: 'not found' });

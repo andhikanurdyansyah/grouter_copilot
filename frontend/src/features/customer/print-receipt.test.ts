@@ -69,4 +69,28 @@ describe('scoped customer receipt printing contract', () => {
     expect(ordersSource).toContain('License reference')
     expect(ordersSource).not.toContain('paidOrder.signature')
   })
+
+  it('does not auto-open the success dialog for a merely historical PAID latest order', () => {
+    expect(ordersSource).toContain('dismissedOrderId')
+    expect(ordersSource).toContain('const successOpen')
+    expect(ordersSource).toContain('open={checkoutOpen || successOpen}')
+    expect(ordersSource).not.toContain('open={checkoutOpen || !!paidOrder}')
+    // Historical latest order alone must not open it; only in-session settled checkout does.
+    expect(ordersSource).toContain('inSessionPaidOrder')
+    expect(ordersSource).toContain('paidOrder.id !== dismissedOrderId')
+    expect(ordersSource).toContain('setDismissedOrderId(paidOrder.id)')
+  })
+
+  it('falls back to the known paidOrder licenseId for the license reference', () => {
+    expect(ordersSource).toContain(
+      "receiptQ.data?.receipt.licenseReference ?? paidOrder.licenseId ?? '—'",
+    )
+  })
+
+  it('shows a receipt error with retry and never prints an incomplete receipt', () => {
+    expect(ordersSource).toContain('receiptQ.isError')
+    expect(ordersSource).toContain('receiptQ.refetch()')
+    expect(ordersSource).toContain('receiptQ.isLoading')
+    expect(ordersSource).toContain('disabled={!receiptQ.data}')
+  })
 })

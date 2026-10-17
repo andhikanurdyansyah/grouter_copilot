@@ -211,10 +211,16 @@ test("QA-5 retry policy: failing mailer retried until the attempt cap, then stop
     createdAt: NOW - DAY,
     paidAt: NOW - DAY,
   });
-  // Default cap is 5 total attempts (1 initial + 4 retries); syncs past the
-  // cap must not call the mailer again, and the row stays honestly `failed`.
-  for (let i = 0; i < 8; i++)
-    await svc.syncAccount(acc, { now: NOW + i * 1000 });
+  // Default cap is 5 total attempts (1 initial + 4 retries). Retries are
+  // gated by the persisted backoff (emailNextRetryAt), so syncs 1s apart do
+  // NOT each burn an attempt; time-travel past the gate each round. Past
+  // the cap the row is terminally `exhausted` and never attempted again.
+  let t = NOW;
+  await svc.syncAccount(acc, { now: t });
+  for (let i = 0; i < 7; i++) {
+    t += 2 * 3_600_000; // 2h — beyond the largest backoff step (1h cap)
+    await svc.syncAccount(acc, { now: t });
+  }
   const row = store
     .listNotifications(acc.id)
     .find((n) => n.type === "order.paid");
@@ -224,7 +230,7 @@ test("QA-5 retry policy: failing mailer retried until the attempt cap, then stop
     `expected capped 5 attempts, got ${row.emailAttempts}`,
   );
   assert.equal(attempts, 5);
-  assert.equal(row.emailStatus, "failed");
+  assert.equal(row.emailStatus, "exhausted");
   assert.equal(row.emailedAt, null);
 });
 
@@ -316,7 +322,7 @@ test("QA-6 failure isolation: sync-throw / reject / HTTP500 mailers never break 
   assert.equal(
     a.store.listNotifications(accA.id).find((n) => n.type === "order.paid")
       .emailStatus,
-    "failed",
+    "ambiguous",
   );
 
   // (b) mailer rejects + fails only for one account; syncAll still covers the other
@@ -349,7 +355,7 @@ test("QA-6 failure isolation: sync-throw / reject / HTTP500 mailers never break 
   assert.equal(
     b.store.listNotifications("acc_bad").find((n) => n.type === "order.paid")
       .emailStatus,
-    "failed",
+    "ambiguous",
   );
   assert.equal(
     b.store.listNotifications("acc_good").find((n) => n.type === "order.paid")

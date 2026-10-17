@@ -54,13 +54,35 @@ const EMAIL_DASHBOARD_URL = 'https://copilot.grouter.id/app/';
  * unparseable, protocol-relative) falls back to the public dashboard so a
  * template can never emit an unsafe href.
  */
-function safeHttpUrl(raw) {
+export function safeHttpUrl(raw) {
   try {
     const parsed = new URL(String(raw ?? '').trim());
     return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? parsed.href : EMAIL_DASHBOARD_URL;
   } catch {
     return EMAIL_DASHBOARD_URL;
   }
+}
+export { EMAIL_DASHBOARD_URL };
+
+/**
+ * Trusted origins for password-reset links. A reset URL carries a live
+ * credential, so protocol alone is not enough: an absolute http(s) URL is
+ * accepted only when its origin matches the configured public base
+ * (BETTER_AUTH_URL) or is loopback (dev/test). Anything else falls back to
+ * the public dashboard — the token is never forwarded to an untrusted host.
+ */
+export function safeResetUrl(raw, { baseUrl } = {}) {
+  let parsed;
+  try { parsed = new URL(String(raw ?? '').trim()); } catch { return EMAIL_DASHBOARD_URL; }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return EMAIL_DASHBOARD_URL;
+  try {
+    const base = new URL(String(baseUrl ?? '').trim());
+    if (parsed.origin === base.origin) return parsed.href;
+  } catch { /* no configured base — loopback check below still applies */ }
+  if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]') {
+    return parsed.href;
+  }
+  return EMAIL_DASHBOARD_URL;
 }
 
 /** Plain-text closing: same help pointer + no-reply meaning as the HTML shell. */
@@ -301,8 +323,8 @@ export function buildLicenseExpiringEmail({ licenseId, expiresAt, daysLeft } = {
 }
 
 /** Password reset — the reset URL lives ONLY inside this payload. */
-export function buildPasswordResetEmail({ url } = {}) {
-  const safeUrl = safeHttpUrl(url);
+export function buildPasswordResetEmail({ url, resetBaseUrl } = {}) {
+  const safeUrl = safeResetUrl(url, { baseUrl: resetBaseUrl ?? process.env.BETTER_AUTH_URL ?? EMAIL_DASHBOARD_URL });
   const subject = 'Atur ulang password akun gRouter Copilot Anda';
   const html = buildEmailShell({
     preheader: 'Tautan atur ulang password Anda (berlaku 1 jam, sekali pakai).',
@@ -388,9 +410,21 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
       const status = res ? res.status : 'unknown';
       let detail = '';
       try { detail = (await res.text()).slice(0, 120); } catch { /* ignore */ }
-      return { status: 'failed', error: sanitizeError(`Brevo HTTP ${status}${detail ? `: ${detail}` : ''}`, apiKey) };
+      const error = sanitizeError(`Brevo HTTP ${status}${detail ? `: ${detail}` : ''}`, apiKey);
+      // Retry policy inputs: transient (5xx / 429) retries; a 4xx provider
+      // rejection is permanent for this payload (e.g. invalid recipient).
+      const retryable = status === 'unknown' || status === 429 || (typeof status === 'number' && status >= 500);
+      return {
+        status: 'failed',
+        error,
+        category: retryable ? 'provider_error' : 'provider_rejected',
+        retryable,
+      };
     } catch (err) {
-      return { status: 'failed', error: sanitizeError(err, apiKey) };
+      // Network/timeout failure: the provider may already have accepted the
+      // message. Flag it ambiguous so the delivery machine never records
+      // 'sent' and only retries after backoff (Brevo has no idempotency key).
+      return { status: 'failed', error: sanitizeError(err, apiKey), category: 'ambiguous_timeout', retryable: true, ambiguous: true };
     }
   }
 

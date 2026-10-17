@@ -140,6 +140,21 @@ export class JsonStore {
   }
 
   /**
+   * Delivery state machine (reliability hardening). The single write path
+   * for the email lifecycle on a notification row — every mutator is
+   * SYNCHRONOUS, so inside the single-threaded store two concurrent calls
+   * can never both win the same claim (the claim commits before any await).
+   *
+   *   null/undefined   no attempt yet (legacy rows read safely)
+   *   sending          claimed; emailAttempts already counts the in-flight try
+   *   sent             provider accepted (emailedAt, emailProviderId set)
+   *   log_only         no provider key configured (terminal)
+   *   disabled         email toggle off / no recipient (terminal)
+   *   ambiguous        mailer THREW (timeout etc.) — provider may have
+   *                    accepted; NEVER 'sent', retryable after backoff
+   *   failed           provider returned a definite, retryable failure
+   *   exhausted        attempt cap reached or a non-retryable failure (terminal)
+   *
    * Record an email attempt outcome on a customer notification.
    * Increments emailAttempts on every call (one call = one attempt);
    * emailedAt is set only for terminal success states (sent / log_only /
@@ -151,7 +166,69 @@ export class JsonStore {
     n.emailStatus = status ?? null;
     n.emailAttempts = (typeof n.emailAttempts === 'number' ? n.emailAttempts : 0) + 1;
     if (status === 'sent' || status === 'log_only' || status === 'disabled') n.emailedAt = at;
+    if (status === 'sending') n.emailClaimedAt = at;
+    if (status === 'sending' || status === 'failed' || status === 'ambiguous') n.emailLastAttemptAt = at;
     n.lastEmailError = status === 'failed' ? sanitizeEmailError(error) : (error != null ? sanitizeEmailError(error) : null);
+    this._save();
+    return n;
+  }
+
+  /**
+   * Claim one email attempt BEFORE the provider call: attempts++ +
+   * status 'sending' + emailClaimedAt = at, atomically (synchronously).
+   * A caller that gets null must NOT touch the provider. Claim rules:
+   *  - fresh row (attempts 0, status null): always claimable;
+   *  - failed/ambiguous past emailNextRetryAt: claimable while attempts < cap;
+   *  - 'sending' with a claim older than leaseMs (crashed attempt):
+   *    reclaimable while attempts < cap;
+   *  - everything else (terminal, fresh claim, backoff gate, cap): null.
+   */
+  claimNotificationEmail(accountId, id, { at = Date.now(), maxAttempts = 5, leaseMs = 120_000 } = {}) {
+    const n = this.data.notifications.find((x) => x.id === id && x.accountId === accountId);
+    if (!n) return null;
+    const attempts = typeof n.emailAttempts === 'number' ? n.emailAttempts : 0;
+    const status = n.emailStatus;
+    let eligible = false;
+    if (attempts === 0 && (status == null || status === undefined)) eligible = true;
+    else if ((status === 'failed' || status === 'ambiguous')
+      && attempts < maxAttempts
+      && (n.emailNextRetryAt == null || n.emailNextRetryAt <= at)) eligible = true;
+    else if (status === 'sending' && attempts < maxAttempts
+      && (n.emailClaimedAt == null || n.emailClaimedAt <= at - leaseMs)) eligible = true;
+    if (!eligible) return null;
+    n.emailAttempts = attempts + 1;
+    n.emailStatus = 'sending';
+    n.emailClaimedAt = at;
+    n.emailLastAttemptAt = at;
+    n.emailNextRetryAt = null;
+    n.emailAmbiguous = false;
+    this._save();
+    return n;
+  }
+
+  /**
+   * Record the outcome of the currently claimed attempt. Does NOT increment
+   * emailAttempts (the claim already counted it). Clears the claim lease and
+   * persists diagnostics (category/provider id) — internal only, never
+   * serialized to customer APIs.
+   */
+  settleNotificationEmail(accountId, id, {
+    status, at = Date.now(), error = null, errorCategory = null,
+    providerId = null, ambiguous = false, nextRetryAt = null,
+  } = {}) {
+    const n = this.data.notifications.find((x) => x.id === id && x.accountId === accountId);
+    if (!n) return null;
+    n.emailStatus = status ?? null;
+    n.emailClaimedAt = null;
+    n.emailLastAttemptAt = at;
+    if (status === 'sent' || status === 'log_only' || status === 'disabled') n.emailedAt = at;
+    n.lastEmailError = status === 'failed' || status === 'ambiguous' || status === 'exhausted'
+      ? sanitizeEmailError(error)
+      : (error != null ? sanitizeEmailError(error) : null);
+    if (errorCategory != null) n.emailErrorCategory = String(errorCategory).slice(0, 60);
+    if (providerId != null) n.emailProviderId = String(providerId).slice(0, 120);
+    n.emailAmbiguous = ambiguous === true;
+    n.emailNextRetryAt = nextRetryAt ?? null;
     this._save();
     return n;
   }

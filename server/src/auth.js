@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveSettings } from './settings.js';
-import { createMailer, buildPasswordResetEmail } from './mail.js';
+import { createMailer, buildPasswordResetEmail, EMAIL_DASHBOARD_URL } from './mail.js';
 
 // Password-reset mailer: delegates to the shared mail module (Brevo via
 // injected/global fetch, settings-gated). Created lazily without store
@@ -175,7 +175,14 @@ export const auth = betterAuth({
     // bila tidak → status log_only. URL reset HANYA di dalam payload email,
     // tidak pernah di-log (hanya email + status).
     sendResetPassword: async ({ user, url }) => {
-      const tpl = buildPasswordResetEmail({ url });
+      // Trust boundary: the reset URL must stay on the configured public
+      // origin (BETTER_AUTH_URL) or loopback. Never forward a reset token
+      // to an arbitrary host — Better Auth derives the origin from the
+      // request context when no baseURL is configured.
+      const tpl = buildPasswordResetEmail({
+        url,
+        resetBaseUrl: process.env.BETTER_AUTH_URL || EMAIL_DASHBOARD_URL,
+      });
       const result = await resetMailer.send({
         to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text, kind: 'passwordReset',
       });

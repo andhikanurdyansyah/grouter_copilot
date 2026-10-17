@@ -87,7 +87,7 @@ admin, token gate) · `/success` · `/checkout/success` · `/assets/*`.
 
 Section: `plans` · `branding` · `payment` · `usage` · `provider` · `limits` ·
 `license` · `auth` · `notifications` (`schedulerIntervalMs`, `quotaThresholdPercent`
-1–100, `expiringSoonDays` 1–30, `email.*` boolean per-jenis; D-022). Resolusi: `DEFAULT_SETTINGS ← env seeds ← store.settings`
+1–100, `expiringSoonDays` 1–30, `maxEmailAttempts` (default 5), `email.*` boolean per-jenis; D-022). Delivery email per baris mengikuti state machine persisted (claim/lease/backoff/klasifikasi `failed`/`ambiguous`/`exhausted`); GET halaman tidak pernah memicu retry — retry hanya dari scheduler. Metadata delivery tetap internal (tidak diserialisasi ke customer). Resolusi: `DEFAULT_SETTINGS ← env seeds ← store.settings`
 (D-020). Plans/branding/usage/provider/limits HOT; `auth` + mode payment
 dibaca saat boot → butuh `pm2 restart copilot-backend --update-env`.
 

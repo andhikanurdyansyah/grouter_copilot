@@ -14,9 +14,16 @@
  * store.getSettings()) at call time. Defaults live only in
  * DEFAULT_SETTINGS (settings.js).
  *
- * Email is attempted at sync time ONLY for a newly created notification
- * (or a retry of a `failed` one). Repeat syncs / lazy GETs never resend
- * a `sent` / `log_only` / `disabled` notification.
+ * Email delivery runs through a persisted state machine on the row
+ * (store.claimNotificationEmail / settleNotificationEmail):
+ * claim -> 'sending' (attempt counted + lease stamped) -> provider call ->
+ * 'sent'/'log_only'/'disabled' (terminal) or 'failed'/'ambiguous' with a
+ * persisted, bounded backoff (emailNextRetryAt). A threw mailer is
+ * 'ambiguous' (provider may have accepted — Brevo offers no idempotency
+ * key, so exactly-once is NOT guaranteed; the backoff window is the
+ * duplicate-risk mitigation). Reads use delivery:'new' (first attempts
+ * only, NEVER retries); the scheduler (delivery:'all') owns retries.
+ * Repeat syncs never resend a terminal row.
  */
 import { resolveSettings, resolvePlanAiPolicy } from './settings.js';
 import {
@@ -27,11 +34,14 @@ import {
 } from './mail.js';
 
 const DAY_MS = 86_400_000;
-// Bounded email retry (Phase 6): a `failed` row is retried only while
-// emailAttempts < cap. settings.js does not expose this key yet, so the
-// default lives here; if `notifications.maxEmailAttempts` ever appears in
-// the effective notifications config it overrides the default.
+// Bounded email retry: a failed/ambiguous row is retried only while
+// emailAttempts < cap, and only after its persisted backoff has elapsed.
+// The cap is an SSOT setting (notifications.maxEmailAttempts, default 5);
+// the constants below are the engine defaults the settings layer seeds from.
 const DEFAULT_MAX_EMAIL_ATTEMPTS = 5;
+const EMAIL_CLAIM_LEASE_MS = 120_000; // 2 min — far above the 10s provider timeout
+const EMAIL_RETRY_BASE_MS = 60_000; // 1 min, doubling
+const EMAIL_RETRY_MAX_MS = 3_600_000; // 1 h cap
 
 function shortId(id) {
   const s = String(id ?? '');
@@ -97,11 +107,13 @@ export function createNotificationService({
   resolveSettings: resolveSettingsFn,
   mailer,
   now,
+  random,
   fetchImpl,
   env,
 } = {}) {
   if (!store) throw new Error('createNotificationService requires a store');
   const nowFn = typeof now === 'function' ? now : () => Date.now();
+  const randomFn = typeof random === 'function' ? random : Math.random;
 
   function effectiveSettings() {
     if (typeof settingsGetter === 'function') {
@@ -140,10 +152,27 @@ export function createNotificationService({
   function needsFirstAttempt(n) {
     return n && (n.emailAttempts ?? 0) === 0 && (n.emailStatus == null || n.emailStatus === undefined);
   }
-  function needsRetry(n, cfg = notificationsConfig(effectiveSettings())) {
-    if (!n || n.emailStatus !== 'failed') return false;
+  // A claim whose lease expired without an outcome (process crash, or a
+  // sync that died mid-delivery) is reclaimable by any later sync.
+  function staleClaim(n, atMs = nowFn()) {
+    return !!n && n.emailStatus === 'sending'
+      && (n.emailClaimedAt == null || n.emailClaimedAt <= atMs - EMAIL_CLAIM_LEASE_MS);
+  }
+  // Retry-eligible (scheduler only): failed/ambiguous, under the attempt cap,
+  // and past the persisted backoff gate. A legacy failed row without
+  // emailNextRetryAt is eligible immediately (its next failure stamps one).
+  function needsRetry(n, cfg = notificationsConfig(effectiveSettings()), atMs = nowFn()) {
+    if (!n || (n.emailStatus !== 'failed' && n.emailStatus !== 'ambiguous')) return false;
     const attempts = typeof n.emailAttempts === 'number' ? n.emailAttempts : 0;
-    return attempts < cfg.maxEmailAttempts;
+    if (attempts >= cfg.maxEmailAttempts) return false;
+    if (n.emailNextRetryAt != null && n.emailNextRetryAt > atMs) return false;
+    return true;
+  }
+  // Deterministic bounded backoff: base doubling per attempt, capped,
+  // jitter +-20% from the injectable random source.
+  function backoffMs(attempts) {
+    const base = Math.min(EMAIL_RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), EMAIL_RETRY_MAX_MS);
+    return Math.round(base * (0.8 + 0.4 * randomFn()));
   }
 
   /**
@@ -151,26 +180,59 @@ export function createNotificationService({
    * kind: mail kind ('paymentReceived' | 'licenseIssued' | 'licenseExpiring')
    * or null to skip email entirely (in-app only events).
    */
-  async function deliver(account, notification, { kind, template } = {}, atMs) {
+  async function deliver(account, notification, { kind, template } = {}, atMs, cfg) {
     if (!notification || !kind || !template) return notification;
-    if (!needsFirstAttempt(notification) && !needsRetry(notification)) return notification;
+    // CLAIM FIRST (synchronous, before any await): exactly one concurrent
+    // sync wins the attempt; losers get null and never touch the provider.
+    const claimed = store.claimNotificationEmail(account.id, notification.id, {
+      at: atMs, maxAttempts: cfg.maxEmailAttempts, leaseMs: EMAIL_CLAIM_LEASE_MS,
+    });
+    if (!claimed) return notification;
+    const settle = (fields) => store.settleNotificationEmail(account.id, notification.id, { at: atMs, ...fields }) ?? claimed;
     const to = account?.email;
+    if (!to) return settle({ status: 'disabled' });
     let result;
-    if (!to) {
-      result = { status: 'disabled' };
-    } else {
-      try {
-        result = await mailerImpl.send({ to, subject: template.subject, html: template.html, text: template.text, kind });
-      } catch (err) {
-        result = { status: 'failed', error: String(err?.message ?? 'mail failed').slice(0, 200) };
-      }
+    let thrown = false;
+    try {
+      result = await mailerImpl.send({ to, subject: template.subject, html: template.html, text: template.text, kind });
+    } catch (err) {
+      thrown = true;
+      result = { status: 'failed', error: String(err?.message ?? 'mail failed').slice(0, 200) };
+    }
+    const attempts = claimed.emailAttempts; // the attempt just consumed
+    if (thrown) {
+      // Ambiguous: the provider may have accepted before the failure
+      // surfaced (e.g. timeout). Never record 'sent'; retry after backoff —
+      // Brevo has no idempotency key, so a duplicate remains possible and
+      // the wide backoff window is the mitigation.
+      return settle({
+        status: attempts >= cfg.maxEmailAttempts ? 'exhausted' : 'ambiguous',
+        error: result.error ?? 'mail failed',
+        errorCategory: 'ambiguous_timeout',
+        ambiguous: true,
+        nextRetryAt: attempts >= cfg.maxEmailAttempts ? null : atMs + backoffMs(attempts),
+      });
     }
     const status = result?.status ?? 'failed';
-    return store.markNotificationEmail(account.id, notification.id, {
-      status,
-      at: atMs,
-      error: status === 'failed' ? (result?.error ?? 'mail failed') : null,
-    }) ?? notification;
+    if (status === 'sent' || status === 'log_only' || status === 'disabled') {
+      return settle({ status, providerId: result?.providerId ?? null });
+    }
+    // Definite provider failure. Non-retryable (e.g. invalid recipient) or
+    // cap reached -> exhausted, never attempted again.
+    const retryable = result?.retryable !== false;
+    if (!retryable || attempts >= cfg.maxEmailAttempts) {
+      return settle({
+        status: 'exhausted',
+        error: result?.error ?? 'mail failed',
+        errorCategory: result?.category ?? (retryable ? 'attempt_cap' : 'non_retryable'),
+      });
+    }
+    return settle({
+      status: 'failed',
+      error: result?.error ?? 'mail failed',
+      errorCategory: result?.category ?? null,
+      nextRetryAt: atMs + backoffMs(attempts),
+    });
   }
 
   /**
@@ -178,7 +240,12 @@ export function createNotificationService({
    * touched (new + existing, post-email-metadata). Async because email
    * delivery is async; store writes themselves stay synchronous.
    */
-  async function syncAccount(account, { now: nowOverride } = {}) {
+  /**
+   * delivery mode: 'all' (default; first attempts + eligible retries — the
+   * scheduler + explicit workers), 'new' (first attempts only, NEVER
+   * retries — page reads), 'none' (derive rows only, no provider calls).
+   */
+  async function syncAccount(account, { now: nowOverride, delivery = 'all' } = {}) {
     if (!account?.id) return [];
     const nowMs = nowOverride ?? nowFn();
     const eff = effectiveSettings();
@@ -206,9 +273,18 @@ export function createNotificationService({
       if (!item) return null;
       emitted.push(item);
       const isNew = !before;
-      if (email && (isNew || needsRetry(item, cfg))) {
+      if (!email || delivery === 'none') return item;
+      if (delivery === 'new') {
+        // Page reads may send a brand-new notification but must never become
+        // a retry engine for failed/ambiguous rows. A crashed claim (stale
+        // 'sending' lease) is NOT a retry — its attempt never reached the
+        // provider — so reads may also reclaim it.
+        if (isNew || needsFirstAttempt(item) || staleClaim(item, nowMs)) {
+          emailJobs.push({ notification: item, kind: email.kind, template: email.template });
+        }
+      } else if (isNew || needsRetry(item, cfg, nowMs) || staleClaim(item, nowMs)) {
         emailJobs.push({ notification: item, kind: email.kind, template: email.template });
-      } else if (email && needsFirstAttempt(item) && !isNew) {
+      } else if (needsFirstAttempt(item) && !isNew) {
         // Row predates email metadata (migration): attempt once.
         emailJobs.push({ notification: item, kind: email.kind, template: email.template });
       }
@@ -411,7 +487,7 @@ export function createNotificationService({
 
     // Email delivery: sequential, failures isolated to their own row.
     for (const job of emailJobs) {
-      try { await deliver(account, job.notification, job, nowMs); } catch { /* row keeps state; next sync retries failed */ }
+      try { await deliver(account, job.notification, job, nowMs, cfg); } catch { /* claimed row keeps its state; scheduler retries per policy */ }
     }
     return emitted;
   }
@@ -434,6 +510,7 @@ export function createNotificationService({
   }
 
   let timer = null;
+  let tickRunning = false; // scheduler overlap guard: never stack syncAll runs
   function start(intervalMs) {
     if (timer) return timer;
     const eff = effectiveSettings();
@@ -441,10 +518,14 @@ export function createNotificationService({
     const ms = intervalMs ?? cfg.schedulerIntervalMs;
     if (!ms || ms <= 0) return null;
     timer = setInterval(() => {
-      syncAll().catch((err) => {
-        // Never log secrets / customer identity — message only, sanitized.
-        console.error(`[notifications] scheduler tick failed: ${String(err?.message ?? 'unknown').slice(0, 200)}`);
-      });
+      if (tickRunning) return; // previous tick still working — skip, do not queue
+      tickRunning = true;
+      syncAll()
+        .catch((err) => {
+          // Never log secrets / customer identity — message only, sanitized.
+          console.error(`[notifications] scheduler tick failed: ${String(err?.message ?? 'unknown').slice(0, 200)}`);
+        })
+        .finally(() => { tickRunning = false; });
     }, ms);
     if (typeof timer.unref === 'function') timer.unref();
     return timer;

@@ -337,7 +337,9 @@ test("QA-6 HTTP: broken mailer -> GET /api/me/notifications still 200 with rows;
   const row = store
     .listNotifications(A.accountId)
     .find((n) => n.type === "order.paid");
-  assert.equal(row.emailStatus, "failed");
+  // Thrown mailer = ambiguous outcome (provider may have accepted); the row
+  // must never claim a definite failure or a send — and the list still 200s.
+  assert.equal(row.emailStatus, "ambiguous");
   // admin list also survives (syncAll isolates per-account failures)
   const adm = await fetch(`${base}/api/admin/notifications`);
   assert.equal(adm.status, 200);
@@ -419,4 +421,77 @@ test("QA-LEAK-CLOSED: customer payload attempts no delivery metadata", async (t)
       "customer payload must NOT expose delivery errors",
     );
   }
+});
+
+test("QA-6b read storm: repeated customer GETs never retry a failed email; scheduler-mode sync does", async (t) => {
+  const mailer = {
+    calls: 0,
+    async send() {
+      this.calls++;
+      return {
+        status: "failed",
+        error: "provider down",
+        category: "provider_error",
+        retryable: true,
+      };
+    },
+  };
+  const { base, store, app } = await startApp(t, { mailer });
+  const A = await signup(base, "StormQa");
+  const now = Date.now();
+  store.addOrder({
+    id: "ord_qa_storm_1",
+    accountId: A.accountId,
+    packageKey: "p",
+    status: "PAID",
+    createdAt: now - 1000,
+    paidAt: now - 1000,
+  });
+  // First read derives the row and makes the first (and only) attempt.
+  const r1 = await fetch(`${base}/api/me/notifications`, {
+    headers: { cookie: A.cookie },
+  });
+  assert.equal(r1.status, 200);
+  assert.equal(
+    mailer.calls,
+    1,
+    "first read performs the first attempt exactly once",
+  );
+  // Ten more reads — even an hour later, page reads must not become a
+  // retry engine (delivery:'new' never retries failed/ambiguous rows).
+  const row = () =>
+    store.listNotifications(A.accountId).find((n) => n.type === "order.paid");
+  const claimedAt = row().emailLastAttemptAt ?? now;
+  for (let i = 0; i < 10; i++) {
+    const r = await fetch(`${base}/api/me/notifications`, {
+      headers: { cookie: A.cookie },
+    });
+    assert.equal(r.status, 200);
+  }
+  assert.equal(
+    mailer.calls,
+    1,
+    "10 extra customer GETs made zero additional mailer calls",
+  );
+  assert.equal(row().emailAttempts, 1);
+  // The scheduler path (service default delivery:'all') owns the retry, and
+  // only after the persisted backoff has elapsed.
+  const acct = {
+    id: A.accountId,
+    email: A.email ?? "storm@example.com",
+    name: "StormQa",
+  };
+  await app.notificationService.syncAccount(acct, { now: claimedAt + 30_000 });
+  assert.equal(
+    mailer.calls,
+    1,
+    "scheduler sync inside the backoff window does not retry",
+  );
+  await app.notificationService.syncAccount(acct, { now: claimedAt + 130_000 });
+  assert.equal(
+    mailer.calls,
+    2,
+    "scheduler sync after backoff retries exactly once",
+  );
+  assert.equal(row().emailAttempts, 2);
 });

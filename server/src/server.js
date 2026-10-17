@@ -217,6 +217,8 @@ export function createCopilotServer({
   // use never start timers.
   notificationScheduler = false,
   notificationMailer = null,
+  // Injectable randomness for retry jitter (tests); production omits it.
+  notificationRandom = null,
 } = {}) {
   const devMode = allowUnauthenticatedAdmin || !requirePersistedLicenseKeys;
   // Generate a keypair if not provided (ephemeral for local dev; production must persist).
@@ -275,6 +277,7 @@ export function createCopilotServer({
     store,
     settingsGetter: () => resolveSettings(store.getSettings()),
     mailer: notificationMailerImpl,
+    ...(notificationRandom ? { random: notificationRandom } : {}),
   });
   const stopNotifications = () => { try { notificationService.stop(); } catch { /* idempotent */ } };
   if (notificationScheduler === true) {
@@ -779,7 +782,10 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        await syncAccountNotifications(account);
+        // Page read: derive rows + first-attempt sends only. Retries are
+        // the scheduler's job (delivery:'all') so a refresh can never
+        // become a retry storm against a failing provider.
+        await syncAccountNotifications(account, { delivery: 'new' });
         let limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
         if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
         limit = Math.min(limit, 200);

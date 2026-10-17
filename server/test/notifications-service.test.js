@@ -552,10 +552,25 @@ test("service: email sent only on NEW notification (log_only recorded once), fai
   // first attempt may be failed
   assert.ok(n2.emailAttempts >= 1);
   const firstStatus = n2.emailStatus;
+  // 1s later is still inside the first backoff window (~60s): no retry yet.
   await s2.svc.syncAccount(acc2, { now: NOW + 1000 });
   n2 = s2.store.listNotifications(acc2.id).find((n) => n.type === "order.paid");
   if (firstStatus === "failed") {
-    assert.equal(n2.emailStatus, "sent", "failed should retry on later sync");
+    assert.equal(
+      n2.emailStatus,
+      "failed",
+      "backoff gate: no retry 1s after failure",
+    );
+    assert.equal(n2.emailAttempts, 1);
+    await s2.svc.syncAccount(acc2, { now: NOW + 120_000 });
+    n2 = s2.store
+      .listNotifications(acc2.id)
+      .find((n) => n.type === "order.paid");
+    assert.equal(
+      n2.emailStatus,
+      "sent",
+      "failed retries once the backoff elapses",
+    );
     assert.equal(n2.emailAttempts, 2);
     // third sync: no more sends for this notification
     const c = flaky.calls.length;

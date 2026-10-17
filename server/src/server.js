@@ -5,7 +5,7 @@
  * Endpoints:
  *   GET  /api/admin/stats    → aggregate stats (admin only)
  *   GET  /api/admin/licenses → list licenses (no raw tokens)
- *   POST /api/admin/licenses → issue license { customer, features?, expiresInDays? }
+ *   POST /api/admin/licenses → issue license { customer, planKey? } (entitlement resolved server-side)
  *   POST /api/admin/licenses/:id/revoke → revoke
  *   POST /api/heartbeat      → { token, installId, baseUrl } (called by plugin)
  *   GET  /                  → admin dashboard HTML
@@ -29,6 +29,7 @@ import { auth } from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
 import { AccountService } from './accountService.js';
 import {
+  DEFAULT_SETTINGS,
   resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans, findPlan,
   resolvePlanAiPolicy,
 } from './settings.js';
@@ -67,6 +68,59 @@ function normalizeHeartbeatBaseUrl(value) {
   } catch {
     return null;
   }
+}
+
+/** A usable feature list is a non-empty array of non-empty strings; else "absent". */
+function saneFeatures(value) {
+  if (!Array.isArray(value)) return null;
+  const clean = value.filter((f) => typeof f === 'string' && f.trim() !== '').map((f) => f.trim());
+  return clean.length > 0 ? clean : null;
+}
+
+/**
+ * A usable duration is a finite number > 0 (numeric strings from stored
+ * settings are coerced). Anything else means "absent" — never NaN/negative
+ * issuance.
+ */
+function saneExpiresDays(value) {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Resolve license entitlement for ADMIN issuance (D-020 / cost-integrity).
+ *
+ * Entitlement is resolved SERVER-SIDE from the effective settings — exactly
+ * like payment settlement (paymentService.settlePaid): the resolved plan's
+ * features/expiresInDays, falling back to eff.license defaults only when the
+ * plan field is absent/unusable. A package-less issuance uses the defaults.
+ * Request-body features/expiresInDays are NEVER consulted: an admin client
+ * (operator typo, buggy UI, or worse) must not be able to widen a license
+ * beyond the catalogue. The final DEFAULT_SETTINGS fallback only guards
+ * against a corrupt persisted license section; normal resolution always
+ * finds the configurable values above.
+ *
+ * Unknown non-empty planKey → { error } (caller responds 400, preserved).
+ * Otherwise → { planKey, features, expiresInDays } with finite, sane values.
+ */
+function resolveAdminIssueEntitlement(eff, rawPlanKey) {
+  const hasPlanKey = rawPlanKey !== undefined && rawPlanKey !== null && String(rawPlanKey).trim() !== '';
+  const planKey = hasPlanKey ? String(rawPlanKey).trim() : null;
+  const plan = planKey ? findPlan(eff, planKey) : null;
+  if (planKey && !plan) {
+    return { error: 'unknown planKey', code: 'PLAN_NOT_FOUND', planKey };
+  }
+  const lic = eff?.license ?? {};
+  const defaults = DEFAULT_SETTINGS.license;
+  const features = saneFeatures(plan?.features)
+    ?? saneFeatures(lic.defaultFeatures)
+    ?? saneFeatures(defaults.defaultFeatures)
+    ?? ['core'];
+  const expiresInDays = saneExpiresDays(plan?.expiresInDays)
+    ?? saneExpiresDays(lic.defaultExpiresInDays)
+    ?? saneExpiresDays(defaults.defaultExpiresInDays)
+    ?? 365;
+  return { planKey, features, expiresInDays };
 }
 
 /**
@@ -385,23 +439,25 @@ export function createCopilotServer({
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
-        // Fail closed on an operator-supplied planKey that does not resolve in the
-        // catalogue: issuing it would create a license that is dead on arrival at
-        // the gateway (PLAN_NOT_FOUND). An empty/absent planKey stays valid (the
-        // "issued without a package" path). Cost/entitlement integrity (A3/D-020).
-        const rawPlanKey = body.planKey;
-        if (rawPlanKey !== undefined && rawPlanKey !== null && String(rawPlanKey).trim() !== '') {
-          const eff = resolveSettings(store.getSettings());
-          if (!findPlan(eff, String(rawPlanKey).trim())) {
-            return sendJson(res, 400, { error: 'unknown planKey', code: 'PLAN_NOT_FOUND', planKey: String(rawPlanKey).trim() });
-          }
+        // Entitlement is resolved SERVER-SIDE from the effective settings
+        // (D-020 / cost-integrity): plan catalogue first, license defaults
+        // second — body.features / body.expiresInDays are never trusted and
+        // cannot widen a license. Fail closed on an operator-supplied
+        // planKey that does not resolve in the catalogue: issuing it would
+        // create a license that is dead on arrival at the gateway
+        // (PLAN_NOT_FOUND). An empty/absent planKey stays valid (the
+        // "issued without a package" path, resolved to license defaults).
+        const eff = resolveSettings(store.getSettings());
+        const entitlement = resolveAdminIssueEntitlement(eff, body.planKey);
+        if (entitlement.error) {
+          return sendJson(res, 400, { error: entitlement.error, code: entitlement.code, planKey: entitlement.planKey });
         }
         const { record, token } = service.issue({
           customer: body.customer,
           accountId: body.accountId ?? null,
-          planKey: body.planKey ?? null, // entitlement (quotaTokens) resolves from the plan catalogue
-          features: body.features,
-          expiresInDays: body.expiresInDays,
+          planKey: entitlement.planKey, // entitlement (quotaTokens) resolves from the plan catalogue
+          features: entitlement.features,
+          expiresInDays: entitlement.expiresInDays,
           grouterApiKey: body.grouterApiKey ?? null,
         });
         return sendJson(res, 201, { license: sanitizeLicense(record), token });

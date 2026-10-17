@@ -48,6 +48,7 @@ yang dipakai frontend:
 | `POST /api/orders` `{packageKey}` | 201 `{order, qr}`; 401 tanpa sesi; **400 jika body membawa `amount`/`description`** (A1, harga resolve server-side); 400 unknown/inactive plan |
 | `GET /api/orders/latest` | order terakhir akun + license yang terbit bersamanya |
 | `GET /api/orders/:id` | order milik akun saja (404 untuk akun lain) |
+| `GET /api/me/orders/:id/receipt` | receipt printable: session + order milik akun + status `PAID` + linked license milik akun + kapabilitas `print_receipt` (core+, live dari katalog plan; expired/revoked → 403). 200 `{receipt:{orderId,planName,packageKey,amount,status:'PAID',createdAt,paidAt,licenseReference}}`; 401 tanpa sesi; 404 akun lain (tanpa oracle); 409 unpaid/tanpa license tertaut. Response TIDAK memuat QR, signature, token, atau kredensial provider |
 | `POST /api/heartbeat` `{token,installId,baseUrl?}` | plugin; validasi offline signature + revocation; 403 invalid/revoked |
 | `POST /api/resolve` `{token,baseUrl?}` | plugin/CLI; license valid → `{baseUrl, gatewayUrl, licensePublicKey}` (D-021: **TANPA `apiKey`** — provider key tidak pernah keluar backend; installer menolak payload yang mengandung key); 403 invalid/revoked |
 | `POST /api/copilot/chat` `{token, messages[≤40], requestId?, model?, maxTokens?}` | **AI gateway (D-021)** — satu-satunya konsumen service credential. Flow: validate license server-side → validasi messages (≤32KB) → kuota `plan.quotaTokens` per license (server-side plan catalogue, null=unlimited) → reservasi → call gRouter → rekonsiliasi usage → ledger. 200 `{status:'ok',answer,usage{inputTokens,outputTokens},licenseId,quota{unit,limit,usedTokens,requestCount}}`; 400 invalid request; 403 license invalid/revoked; 429 quota exhausted (atau rate-limit); 503 gateway not configured; 502/504 upstream error/timeout. `requestId` duplikat = idempotent replay (tidak dobel charge). Error upstream tidak ditagih. Body customer `{licenseId,plan,quota,…}` diabaikan (server resolve). Rate limit 60/menit/IP |
@@ -58,7 +59,7 @@ yang dipakai frontend:
 |---|---|
 | `GET /api/admin/stats` | agregat lisensi/install |
 | `GET /api/admin/licenses` | daftar lisensi (tanpa raw token) |
-| `POST /api/admin/licenses` | issue `{customer, accountId?, features?, expiresInDays?, quota?, grouterApiKey?}` → 201 `{license, token}` (token sekali tampil) |
+| `POST /api/admin/licenses` | issue `{customer, accountId?, planKey?, grouterApiKey?}` → 201 `{license, token}` (token sekali tampil). **Entitlement resolved SERVER-SIDE (D-020):** `features`/`expiresInDays` diambil dari plan katalog (`planKey` valid) atau `license` defaults (tanpa plan); body `features`/`expiresInDays` diabaikan — tidak bisa melebarkan lisensi. `planKey` tak dikenal → 400 `PLAN_NOT_FOUND` (tanpa lisensi dibuat) |
 | `POST /api/admin/licenses/:id/revoke` | revoke |
 | `POST /api/admin/licenses/:id/bind` | bind gRouter api key `{grouterApiKey}` |
 | `GET /api/admin/usage` | consume gRouter `/check-usage` (read-only) **dimensi infrastructure per service credential** — bukan kuota per customer (D-021) |

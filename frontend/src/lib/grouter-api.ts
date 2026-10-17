@@ -75,11 +75,13 @@ export async function fetchAdminLicenses(): Promise<{ licenses: License[] }> {
 export async function issueLicense(payload: {
   customer?: string
   planKey?: string | null
-  expiresInDays?: number | null
 }) {
-  // Kontrak: POST /api/admin/licenses → { license, token }. Token SINGKATANA
-  // dikembalikan server SAAT penerbitan (tidak pernah tersedia lagi setelahnya
-  // — /api/me dan list admin tidak memuatnya). UI wajib menampilkannya sekali.
+  // Kontrak: POST /api/admin/licenses { customer, planKey? } — entitlement
+  // (features/expiresInDays) resolved SERVER-SIDE dari katalog plan / license
+  // defaults; body tidak pernah membawa entitlement. Server mengembalikan
+  // { license, token }; token SINGKATANA dikembalikan SAAT penerbitan (tidak
+  // pernah tersedia lagi setelahnya — /api/me dan list admin tidak
+  // memuatnya). UI wajib menampilkannya sekali.
   const { data } = await api.post('/admin/licenses', payload)
   return data as { license: { id: string; customer?: string | null }; token?: string }
 }

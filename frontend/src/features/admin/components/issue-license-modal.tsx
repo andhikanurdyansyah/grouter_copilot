@@ -41,7 +41,6 @@ export function IssueLicenseModal({ open, onOpenChange, onSuccess }: IssueLicens
       issueLicense({
         customer: customer.trim() || undefined,
         planKey: selectedPlanObj?.key ?? null,
-        expiresInDays: selectedPlanObj?.expiresInDays ?? null,
       }),
     onSuccess: (data) => {
       const quota = (data as { license?: { quota?: { limit?: number | null } | null } }).license?.quota?.limit

@@ -121,7 +121,12 @@ test('mail: templates carry the enterprise design shell (brand, detail rows, one
   assert.ok(p.html.includes('Buka Dashboard'), 'CTA label');
   assert.ok(p.html.includes('https://copilot.grouter.id/app/'), 'CTA target');
   assert.ok(p.html.includes('role="presentation"'), 'table layout for email clients');
-  assert.ok(!p.html.includes('<style'), 'inline styles only (no external/style block)');
+  // one <style> block max, carrying ONLY the responsive layer (no external css)
+  assert.equal((p.html.match(/<style/g) || []).length, 1, 'exactly one responsive style block');
+  assert.ok(p.html.includes('@media only screen and (max-width:620px)'), 'mobile breakpoint present');
+  assert.ok(p.html.includes('max-width:600px'), 'fluid-hybrid container (not fixed 600px)');
+  assert.ok(p.html.includes('.em-cta a{display:block'), 'CTA goes full-width block on mobile');
+  assert.ok(!p.html.includes('width="600"'), 'no fixed-width table (responsive)');
   assert.ok(!p.html.includes('linear-gradient'), 'no gradient slop');
   // detail rows in mono + escaped values
   assert.ok(p.html.includes('ord_1234'));

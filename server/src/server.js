@@ -935,6 +935,38 @@ export function createCopilotServer({
       })();
     }
 
+    // Customer: materialize a printable receipt only after server-side checks.
+    // The response is deliberately a new, narrow contract: no QR, signature,
+    // token, provider credential, or other payment-session material.
+    if (req.method === 'GET' && /^\/api\/me\/orders\/([^/]+)\/receipt$/.test(url.pathname)) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const id = decodeURIComponent(url.pathname.split('/')[4]);
+        const order = store.getOrder(id);
+        if (!order || order.accountId !== account.id) return sendJson(res, 404, { error: 'not found' });
+        if (String(order.status || '').toUpperCase() !== 'PAID') return sendJson(res, 409, { error: 'receipt requires a paid order' });
+        if (!order.licenseId) return sendJson(res, 409, { error: 'receipt is not available yet' });
+        const license = store.getLicense(order.licenseId);
+        if (!license || license.accountId !== account.id) return sendJson(res, 409, { error: 'receipt is not available yet' });
+        const capability = resolveCapability({ license, settings: resolveSettings(store.getSettings()), capability: 'print_receipt' });
+        if (!capability.entitled) return sendJson(res, 403, featureError('print_receipt'));
+        return sendJson(res, 200, {
+          receipt: {
+            orderId: order.id,
+            planName: order.planName ?? order.packageKey ?? null,
+            packageKey: order.packageKey ?? null,
+            amount: order.amount ?? null,
+            status: 'PAID',
+            createdAt: order.createdAt ?? null,
+            paidAt: order.paidAt ?? null,
+            licenseReference: license.id,
+          },
+        });
+      })();
+    }
+
     // Customer: poll a single order (session-scoped — never exposes other accounts).
     if (req.method === 'GET' && /^\/api\/orders\/([^/]+)$/.test(url.pathname)) {
       return (async () => {

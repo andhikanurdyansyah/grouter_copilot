@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, fetchPlans, fetchMe, formatIDR, fmtDate, downloadCustomerExport } from '@/lib/grouter-api'
+import { api, fetchPlans, fetchMe, fetchCustomerReceipt, formatIDR, fmtDate, downloadCustomerExport } from '@/lib/grouter-api'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,13 +64,24 @@ export function CustomerOrders() {
     queryFn: async () =>
       (await api.get('/orders/latest')).data as {
         order:
-          | (ActiveOrder & { packageKey?: string; createdAt?: string | number | null })
+          | (ActiveOrder & { packageKey?: string; createdAt?: string | number | null; paidAt?: string | number | null; licenseId?: string | null })
           | null
+        license?: { id?: string | null } | null
       },
   })
 
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+
+  const paidFromLatest = (() => {
+    const o = latestQ.data?.order
+    if (!o || String(o.status || '').toUpperCase() !== 'PAID') return null
+    return {
+      ...o,
+      licenseId: o.licenseId ?? latestQ.data?.license?.id ?? null,
+      createdAt: o.paidAt ?? o.createdAt ?? null,
+    }
+  })()
 
   const pendingFromLatest = (() => {
     const o = latestQ.data?.order
@@ -201,7 +212,11 @@ export function CustomerOrders() {
 
   // Sukses: derived dari polling (bukan setState-in-effect).
   const paidOrder: (ActiveOrder & { licenseId?: string | null }) | null =
-    polled && isPaid ? { ...polled, createdAt: settledCreatedAt, licenseId: settledLicenseId } : null
+    polled && isPaid
+      ? { ...polled, createdAt: settledCreatedAt, licenseId: settledLicenseId }
+      : paidFromLatest
+        ? paidFromLatest
+        : null
 
   useEffect(() => {
     if (paidOrder) {
@@ -209,6 +224,12 @@ export function CustomerOrders() {
       qc.invalidateQueries({ queryKey: ['orders-latest'] })
     }
   }, [paidOrder?.id, qc])
+
+  const receiptQ = useQuery({
+    queryKey: ['customer-receipt', paidOrder?.id],
+    queryFn: () => fetchCustomerReceipt(paidOrder!.id),
+    enabled: !!paidOrder?.id,
+  })
 
   const handleDownloadQr = () => {
     const url = polled?.qrUrl || polled?.qrImage
@@ -542,7 +563,7 @@ export function CustomerOrders() {
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground font-sans'>{isId ? 'Dibayar' : 'Paid'}</span>
                   <span className='font-extrabold text-emerald-400 tabular-nums'>
-                    {paidOrder.amount != null ? formatIDR(paidOrder.amount) : '—'}
+                    {(receiptQ.data?.receipt.amount ?? paidOrder.amount) != null ? formatIDR(receiptQ.data?.receipt.amount ?? paidOrder.amount) : '—'}
                   </span>
                 </div>
                 <div className='flex justify-between'>
@@ -551,11 +572,11 @@ export function CustomerOrders() {
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground font-sans'>Date</span>
-                  <span className='font-bold text-foreground'>{fmtDate(paidOrder.createdAt ?? null)}</span>
+                  <span className='font-bold text-foreground'>{fmtDate(receiptQ.data?.receipt.paidAt ?? receiptQ.data?.receipt.createdAt ?? paidOrder.createdAt ?? null)}</span>
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground font-sans'>License reference</span>
-                  <span className='font-bold text-foreground'>{paidOrder.licenseId || '—'}</span>
+                  <span className='font-bold text-foreground'>{receiptQ.data?.receipt.licenseReference ?? '—'}</span>
                 </div>
               </div>
 
@@ -563,7 +584,8 @@ export function CustomerOrders() {
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => window.print()}
+                  disabled={!receiptQ.data}
+                  onClick={() => receiptQ.data && window.print()}
                   className='flex-1 h-9 text-xs border-border bg-card interactive-press gap-1.5'
                 >
                   <Printer className='size-3.5' />

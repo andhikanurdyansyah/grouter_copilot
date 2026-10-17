@@ -102,6 +102,10 @@ export async function fetchMyOrders() {
 
 export const fetchCustomerStatus = fetchMe
 export const fetchCustomerOrders = fetchMyOrders
+export async function fetchCustomerReceipt(orderId: string) {
+  const { data } = await api.get(`/me/orders/${encodeURIComponent(orderId)}/receipt`)
+  return data as { receipt: { orderId: string; planName: string | null; packageKey: string | null; amount: number | null; status: 'PAID'; createdAt: number | string | null; paidAt: number | string | null; licenseReference: string } }
+}
 
 export async function downloadCustomerExport(kind: 'usage' | 'orders'): Promise<void> {
   const response = await api.get(`/me/${kind}/export`, { responseType: 'blob' })

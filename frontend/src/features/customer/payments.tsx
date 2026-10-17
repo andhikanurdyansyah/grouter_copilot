@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api, fetchMyOrders, formatIDR, fmtDate } from '@/lib/grouter-api'
+import { api, fetchMyOrders, fetchCustomerReceipt, formatIDR, fmtDate } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
 import {} from '@tanstack/react-router'
 import {
@@ -10,7 +10,7 @@ import {
   Info,
   Clock,
   CheckCircle2,
-  Printer, Hourglass, ShieldCheck} from 'lucide-react'
+  AlertTriangle, Printer, Hourglass, ShieldCheck} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -28,7 +28,13 @@ export function CustomerPayments() {
   const ordersQuery = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [selectedReceipt, setSelectedReceipt] = useState<null | (typeof effectiveOrders)[number]>(null)
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null)
+  const receiptQuery = useQuery({
+    queryKey: ['customer-receipt', selectedReceiptId],
+    queryFn: () => fetchCustomerReceipt(selectedReceiptId as string),
+    enabled: !!selectedReceiptId,
+  })
+  const selectedReceipt = receiptQuery.data?.receipt ?? null
   const [activePaymentOrder, setActivePaymentOrder] = useState<null | (typeof effectiveOrders)[number]>(null)
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
   const [statusNote, setStatusNote] = useState<string | null>(null)
@@ -235,7 +241,7 @@ export function CustomerPayments() {
                     {row.status === 'paid' && (
                       <button
                         type='button'
-                        onClick={() => setSelectedReceipt(row)}
+                        onClick={() => setSelectedReceiptId(row.fullId)}
                         className='inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors'
                       >
                         {t('payments_action_receipt')}
@@ -334,9 +340,8 @@ export function CustomerPayments() {
                     const { data } = await api.get(`/orders/${encodeURIComponent(activePaymentOrder.fullId)}`)
                     const st = String((data as { order?: { status?: string } })?.order?.status || '').toUpperCase()
                     if (st === 'PAID') {
-                      const paidOrder = { ...activePaymentOrder, status: 'paid' }
                       setActivePaymentOrder(null)
-                      setSelectedReceipt(paidOrder)
+                      setSelectedReceiptId(activePaymentOrder.fullId)
                     } else if (st === 'PENDING') {
                       setStatusNote(language === 'id' ? 'Upstream belum mencatat pembayaran — coba lagi setelah membayar.' : 'Upstream has not recorded payment yet — retry after paying.')
                     } else {
@@ -361,10 +366,31 @@ export function CustomerPayments() {
       )}
 
       {/* Receipt Modal */}
-      {selectedReceipt && (
-        <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
+      {selectedReceiptId && (
+        <Dialog open onOpenChange={() => setSelectedReceiptId(null)}>
           <DialogContent className='receipt-print-dialog sm:max-w-[440px] bg-card border-border'>
-            <DialogHeader data-receipt-hide-on-print>
+            {receiptQuery.isLoading && (
+              <div role='status' className='py-10 text-center text-sm text-muted-foreground'>
+                {language === 'id' ? 'Memuat bukti pembayaran…' : 'Loading receipt…'}
+              </div>
+            )}
+            {receiptQuery.isError && (
+              <div role='alert' className='py-8 text-center space-y-3'>
+                <AlertTriangle className='size-6 text-destructive mx-auto' />
+                <p className='text-sm font-semibold text-foreground'>
+                  {language === 'id' ? 'Bukti pembayaran tidak dapat dimuat.' : 'Receipt could not be loaded.'}
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  {language === 'id' ? 'Coba lagi atau tutup dialog ini.' : 'Try again or close this dialog.'}
+                </p>
+                <Button type='button' size='sm' variant='outline' onClick={() => receiptQuery.refetch()}>
+                  {language === 'id' ? 'Coba lagi' : 'Retry'}
+                </Button>
+              </div>
+            )}
+            {selectedReceipt && (
+              <>
+                <DialogHeader data-receipt-hide-on-print>
               <div className='size-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mb-2'>
                 <CheckCircle2 className='size-5' />
               </div>
@@ -381,19 +407,19 @@ export function CustomerPayments() {
             <div className='receipt-print-content my-3 rounded-lg border border-border/50 bg-secondary/20 p-4 space-y-3 font-mono text-xs'>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>Order ID:</span>
-                <span className='font-semibold text-foreground'>{selectedReceipt.fullId}</span>
+                <span className='font-semibold text-foreground'>{selectedReceipt.orderId}</span>
               </div>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>
                   {language === 'id' ? 'Paket:' : 'Plan:'}
                 </span>
-                <span className='text-foreground'>{selectedReceipt.plan}</span>
+                <span className='text-foreground'>{selectedReceipt.planName ?? selectedReceipt.packageKey ?? '—'}</span>
               </div>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>
                   {language === 'id' ? 'Tanggal:' : 'Date:'}
                 </span>
-                <span className='text-foreground'>{selectedReceipt.date}</span>
+                <span className='text-foreground'>{fmtDate(selectedReceipt.paidAt ?? selectedReceipt.createdAt)}</span>
               </div>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>Status:</span>
@@ -401,7 +427,7 @@ export function CustomerPayments() {
               </div>
               <div className='flex justify-between border-b border-border/40 pb-2'>
                 <span className='text-muted-foreground font-sans'>License reference:</span>
-                <span className='text-foreground'>—</span>
+                <span className='text-foreground'>{selectedReceipt.licenseReference}</span>
               </div>
               <div className='flex justify-between pt-1 text-sm font-semibold text-foreground font-sans'>
                 <span>Total:</span>
@@ -413,7 +439,8 @@ export function CustomerPayments() {
               <Button
                 variant='outline'
                 size='sm'
-                onClick={() => window.print()}
+                disabled={receiptQuery.isLoading || !selectedReceipt}
+                onClick={() => selectedReceipt && window.print()}
                 className='text-xs gap-1.5'
               >
                 <Printer className='size-3.5' />
@@ -421,12 +448,14 @@ export function CustomerPayments() {
               </Button>
               <Button
                 size='sm'
-                onClick={() => setSelectedReceipt(null)}
+                onClick={() => setSelectedReceiptId(null)}
                 className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs'
               >
                 {t('btn_done')}
               </Button>
-            </div>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       )}

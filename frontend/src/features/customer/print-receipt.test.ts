@@ -47,7 +47,9 @@ describe('scoped customer receipt printing contract', () => {
     expect(ordersSource).toContain('createdAt: data.order.createdAt ?? null')
     expect(ordersSource).toContain('order?: { createdAt?: string | number | null }')
     expect(ordersSource).toContain('createdAt: settledCreatedAt')
-    expect(ordersSource).toContain('fmtDate(paidOrder.createdAt ?? null)')
+    expect(ordersSource).toContain("String(o.status || '').toUpperCase() !== 'PAID'")
+    expect(ordersSource).toContain('paidFromLatest')
+    expect(ordersSource).toContain('fmtDate(receiptQ.data?.receipt.paidAt ?? receiptQ.data?.receipt.createdAt ?? paidOrder.createdAt ?? null)')
     expect(ordersSource).not.toContain('createdAt: data.qr')
   })
   it('keeps payment receipts limited to non-secret settlement references', () => {

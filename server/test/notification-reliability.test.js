@@ -607,3 +607,56 @@ test("X-2 mailer classification: 5xx retryable, 4xx permanent, network throw amb
     "error must not leak the provider key shape",
   );
 });
+
+test('X-3 brevoIdempotencyKey: stable UUID per notification, distinct across notifications', async () => {
+  const { brevoIdempotencyKey } = await import('../src/mail.js');
+  const a1 = brevoIdempotencyKey('ntf_abc');
+  const a2 = brevoIdempotencyKey('ntf_abc');
+  const b = brevoIdempotencyKey('ntf_xyz');
+  assert.equal(a1, a2, 'same notification -> same key across attempts');
+  assert.notEqual(a1, b, 'different notification -> different key');
+  assert.ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(a1), 'key must be a UUID v4-shaped value Brevo accepts');
+});
+
+test('X-4 mailer sends idempotencyKey; Brevo duplicate_parameter (same key, TTL) is recorded as sent', async () => {
+  const { createMailer: mkMailer } = await import('../src/mail.js');
+  const settingsGetter = () => resolveSettings({}, {});
+  const env = { BREVO_API_KEY: 'brevo-test-x4' };
+
+  // payload carries the derived key
+  let payload = null;
+  const cap = mkMailer({
+    fetchImpl: async (url, init) => {
+      payload = JSON.parse(init.body);
+      return new Response(JSON.stringify({ messageId: 'm-1' }), { status: 201, headers: { 'content-type': 'application/json' } });
+    },
+    env, settingsGetter,
+  });
+  const ok = await cap.send({ to: 'x@example.com', subject: 's', html: 'h', text: 't', kind: 'paymentReceived', idempotencyKey: 'ntf_abc' });
+  assert.equal(ok.status, 'sent');
+  assert.ok(payload.headers?.idempotencyKey, 'payload must carry headers.idempotencyKey');
+  assert.ok(/^[0-9a-f-]{36}$/.test(payload.headers.idempotencyKey));
+
+  // duplicate within TTL -> sent (original landed), never a failure/retry
+  const dup = mkMailer({
+    fetchImpl: async () => new Response(JSON.stringify({ code: 'duplicate_parameter', message: 'Key already used' }), { status: 400, headers: { 'content-type': 'application/json' } }),
+    env, settingsGetter,
+  });
+  const d = await dup.send({ to: 'x@example.com', subject: 's', html: 'h', text: 't', kind: 'paymentReceived', idempotencyKey: 'ntf_abc' });
+  assert.equal(d.status, 'sent', 'duplicate_parameter means the original send landed');
+  assert.equal(d.duplicateSuppressed, true);
+
+  // service level: notification id flows into the mailer as the key seed
+  let seenKey = null;
+  const ctx = setup({
+    async send(args) {
+      seenKey = args.idempotencyKey;
+      return { status: 'sent', providerId: 'm-x4' };
+    },
+  });
+  const acc = seedPaid(ctx, { accountId: 'acc_x4', email: 'x4@example.com', orderId: 'ord_x4_1' });
+  await ctx.svc.syncAccount(acc);
+  const row = paidRow(ctx, acc.id);
+  assert.equal(seenKey, row.id, 'mailer receives the notification id as idempotency seed');
+  assert.equal(row.emailStatus, 'sent');
+});

@@ -19,9 +19,13 @@
  * claim -> 'sending' (attempt counted + lease stamped) -> provider call ->
  * 'sent'/'log_only'/'disabled' (terminal) or 'failed'/'ambiguous' with a
  * persisted, bounded backoff (emailNextRetryAt). A threw mailer is
- * 'ambiguous' (provider may have accepted — Brevo offers no idempotency
- * key, so exactly-once is NOT guaranteed; the backoff window is the
- * duplicate-risk mitigation). Reads use delivery:'new' (first attempts
+ * 'ambiguous' (provider may have accepted). Every attempt of one
+ * notification carries the same Brevo IdempotencyKey (derived from the
+ * notification id): a retry inside Brevo's 30-min TTL whose original
+ * landed is suppressed upstream (duplicate_parameter -> recorded sent),
+ * so the residual duplicate window is only a retry after the TTL or a
+ * provider that ignores the key — exactly-once is still not promised, but
+ * the common crash/timeout path is de-duplicated by the provider itself. Reads use delivery:'new' (first attempts
  * only, NEVER retries); the scheduler (delivery:'all') owns retries.
  * Repeat syncs never resend a terminal row.
  */
@@ -194,7 +198,7 @@ export function createNotificationService({
     let result;
     let thrown = false;
     try {
-      result = await mailerImpl.send({ to, subject: template.subject, html: template.html, text: template.text, kind });
+      result = await mailerImpl.send({ to, subject: template.subject, html: template.html, text: template.text, kind, idempotencyKey: notification.id });
     } catch (err) {
       thrown = true;
       result = { status: 'failed', error: String(err?.message ?? 'mail failed').slice(0, 200) };

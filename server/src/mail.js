@@ -9,9 +9,24 @@
  * key, reset URL/token, full body) is ever returned or logged here —
  * errors are sanitized to a short string.
  */
+import { createHash } from 'node:crypto';
 import { resolveSettings } from './settings.js';
 
 const BREVO_URL = 'https://api.brevo.com/v3/smtp/email';
+
+/**
+ * Brevo honours `headers.idempotencyKey` (UUID, 30-min TTL): a repeat send
+ * with the same key inside the TTL is rejected `duplicate_parameter` and NOT
+ * delivered again. Derive the key deterministically from the logical send
+ * (notification id) so every retry of the SAME notification carries the SAME
+ * key — an ambiguous attempt that actually landed is then de-duplicated by
+ * the provider instead of re-sent. Exported for tests.
+ */
+export function brevoIdempotencyKey(seed) {
+  const h = createHash('sha256').update(`brevo-idem:${String(seed ?? '')}`).digest('hex');
+  const variant = ((parseInt(h.slice(16, 17), 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
 const DEFAULT_FROM = 'gRouter Copilot <copilot@grouter.id>';
 const MAX_ERROR_LEN = 200;
 
@@ -373,7 +388,7 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
   const doFetch = fetchImpl ?? globalThis.fetch;
   const getEnv = () => env ?? process.env;
 
-  async function send({ to, subject, html, text, kind } = {}, { timeoutMs = 10_000 } = {}) {
+  async function send({ to, subject, html, text, kind, idempotencyKey } = {}, { timeoutMs = 10_000 } = {}) {
     const e = getEnv() || {};
     const apiKey = String(e.BREVO_API_KEY || '').trim();
     const notifications = resolveNotificationsSettings(settingsGetter);
@@ -396,6 +411,7 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
           subject: String(subject ?? ''),
           htmlContent: String(html ?? ''),
           textContent: String(text ?? ''),
+          ...(idempotencyKey ? { headers: { idempotencyKey: brevoIdempotencyKey(idempotencyKey) } } : {}),
         }),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -406,6 +422,17 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
           if (data && typeof data.messageId === 'string') providerId = data.messageId;
         } catch { /* provider id is best-effort */ }
         return providerId ? { status: 'sent', providerId } : { status: 'sent' };
+      }
+      // Same idempotency key re-sent within its 30-min TTL: Brevo refuses
+      // with duplicate_parameter because the ORIGINAL request was accepted.
+      // That is a delivered send, not a failure — classify it as sent so the
+      // row never retries a message the customer already received.
+      if (res && res.status === 400 && idempotencyKey) {
+        let code = '';
+        try { code = String((await res.clone().json())?.code ?? ''); } catch { /* fall through */ }
+        if (code === 'duplicate_parameter') {
+          return { status: 'sent', duplicateSuppressed: true };
+        }
       }
       const status = res ? res.status : 'unknown';
       let detail = '';
@@ -423,7 +450,8 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
     } catch (err) {
       // Network/timeout failure: the provider may already have accepted the
       // message. Flag it ambiguous so the delivery machine never records
-      // 'sent' and only retries after backoff (Brevo has no idempotency key).
+      // 'sent' and only retries after backoff; the retry carries the same
+      // Brevo IdempotencyKey, so a landed original is suppressed upstream.
       return { status: 'failed', error: sanitizeError(err, apiKey), category: 'ambiguous_timeout', retryable: true, ambiguous: true };
     }
   }

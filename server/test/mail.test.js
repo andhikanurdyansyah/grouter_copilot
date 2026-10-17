@@ -113,6 +113,28 @@ test('mail: password reset template contains URL only in payload, mailer return 
   assert.ok(!JSON.stringify(res).includes(url));
 });
 
+test('mail: templates carry the enterprise design shell (brand, detail rows, one CTA)', () => {
+  const p = buildPaymentReceivedEmail({ orderId: 'ord_1234567890abcdef', licenseId: 'lic_1234567890abcdef', planName: 'Pro' });
+  // single brand header + card shell
+  assert.ok(p.html.includes('gRouter'));
+  assert.ok(p.html.includes('#22d3ee'), 'single cyan accent present');
+  assert.ok(p.html.includes('Buka Dashboard'), 'CTA label');
+  assert.ok(p.html.includes('https://copilot.grouter.id/app/'), 'CTA target');
+  assert.ok(p.html.includes('role="presentation"'), 'table layout for email clients');
+  assert.ok(!p.html.includes('<style'), 'inline styles only (no external/style block)');
+  assert.ok(!p.html.includes('linear-gradient'), 'no gradient slop');
+  // detail rows in mono + escaped values
+  assert.ok(p.html.includes('ord_1234'));
+  assert.ok(p.html.includes('lic_1234'));
+  // text fallback still present and honest
+  assert.ok(p.text.includes('konfirmasi server') || p.text.includes('dikonfirmasi server'));
+  const evil = buildPaymentReceivedEmail({ orderId: 'ord_<script>alert(1)</script>', licenseId: null, planName: '<b>x</b>' });
+  assert.ok(!evil.html.includes('<script>alert'), 'dynamic values escaped');
+  const rst = buildPasswordResetEmail({ url: 'https://copilot.grouter.id/reset-password?token=abc' });
+  assert.ok(rst.html.includes('Buat Password Baru'));
+  assert.ok(rst.html.includes('1 jam'));
+});
+
 test('mail: templates payment+license and expiring H-7/H-1', () => {
   const p = buildPaymentReceivedEmail({ orderId: 'ord_1234567890abcdef', licenseId: 'lic_1234567890abcdef', planName: 'Pro' });
   assert.ok(p.subject.length > 0 && p.html.includes('ord_1234') || p.text.includes('ord_1234'));

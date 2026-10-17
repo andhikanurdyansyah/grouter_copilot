@@ -110,6 +110,8 @@ customer; (2) key menyebar ke N host app = permukaan bocor O(N) tanpa revocation
 
 ## D-022 — Notification multi-kanal (2026-10-17)
 
+- **Addendum design email (2026-10-17):** keempat template memakai satu enterprise shell di `mail.js` (`buildEmailShell`/`EMAIL_BRAND`): tabel email-safe + inline style, chassis gunmetal + satu aksen cyan, status-line mono, tabel detail mono, satu CTA per email, footer bantuan. Subjek/teks & escaping secret tidak berubah; design dikunci test di `mail.test.js` dan terbukti terkirim nyata via Brevo (event `delivered`).
+
 - **Lima kanal dinilai terpisah:** in-app customer, in-app admin, email transaksi, toast UI (BUKAN kanal), hint widget plugin. Klaim "notifikasi jalan" wajib menyebut kanalnya.
 - **Event diturunkan HANYA dari state ter-persist** (orders/licenses/usage ledger), tidak pernah dari konten client. Customer: `order.paid`/`order.pending`/`order.expired`/`order.cancelled`/`license.issued`/`license.expiring`/`license.revoked`/`quota.threshold`; admin mirror namespace `admin.*`.
 - **Admin notification = koleksi terpisah** (`adminNotifications`, cap 200) di belakang `requireAdmin`, payload operasional generik (tipe, ID terpotong, link kind/id, timestamp) — tidak pernah email/nama/`accountId` customer.

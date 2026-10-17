@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouterState } from '@tanstack/react-router'
 import {
@@ -7,6 +8,7 @@ import {
   HelpCircle,
   CheckCircle2,
   AlertTriangle,
+  RefreshCw,
   ShieldCheck,
   Inbox,
 } from 'lucide-react'
@@ -35,6 +37,8 @@ export function ModaHeader() {
   const pathname = routerState.location.pathname
   const { resolvedTheme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
+  const [notifOpen, setNotifOpen] = useState(false)
+  const bellRef = useRef<HTMLButtonElement>(null)
 
   const isAdmin = pathname.startsWith('/admin')
   // Admin console tidak punya sesi customer (/api/me = 401) — JANGAN fetch /api/me
@@ -132,20 +136,41 @@ export function ModaHeader() {
     }
     if (n.href) window.location.assign(n.href)
   }
+  const relativeTime = (
+    value: number | string | null | undefined,
+    nowMs: number
+  ): string => {
+    if (value === null || value === undefined || value === '') return '—'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '—'
+    const rtf = new Intl.RelativeTimeFormat(
+      language === 'id' ? 'id-ID' : 'en-US',
+      { numeric: 'auto' }
+    )
+    const diffMs = date.getTime() - nowMs
+    const absSeconds = Math.abs(diffMs) / 1000
+    if (absSeconds < 60) return rtf.format(Math.round(diffMs / 1000), 'second')
+    if (absSeconds < 3600)
+      return rtf.format(Math.round(diffMs / 60_000), 'minute')
+    if (absSeconds < 86_400)
+      return rtf.format(Math.round(diffMs / 3_600_000), 'hour')
+    if (absSeconds < 604_800)
+      return rtf.format(Math.round(diffMs / 86_400_000), 'day')
+    return date.toLocaleString(language === 'id' ? 'id-ID' : 'en-US', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+  const [notifNowMs] = useState(() => Date.now())
   const notifications = (notifQ.data?.notifications ?? []).map((n) => ({
     id: n.id,
     title: language === 'id' ? n.title : n.titleEn,
     desc: language === 'id' ? n.body : n.bodyEn,
     type: n.type,
     readAt: n.readAt,
-    time: n.createdAt
-      ? new Date(n.createdAt).toLocaleString('id-ID', {
-          day: '2-digit',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : '—',
+    time: relativeTime(n.createdAt, notifNowMs),
     icon: n.type.startsWith('license')
       ? ShieldCheck
       : n.type === 'order.pending'
@@ -160,8 +185,15 @@ export function ModaHeader() {
     isUnread: n.readAt == null,
     href: notificationHref(n),
   }))
+  // Badge integrity: unread comes from the server `unread` field — never
+  // from the limited items array (fetch caps at 20). `total` is likewise
+  // accepted from the server when present.
+  const serverUnread = notifQ.data?.unread
   const unreadNotifications = notifications.filter((n) => n.isUnread)
-  const hasUnread = unreadNotifications.length > 0
+  const unreadCount =
+    typeof serverUnread === 'number' ? serverUnread : unreadNotifications.length
+  const hasUnread = unreadCount > 0
+  const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount)
 
   return (
     <header className='bevel-shine sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/80 bg-background/85 px-4 backdrop-blur-xl transition-colors md:px-6'>
@@ -264,30 +296,56 @@ export function ModaHeader() {
         </div>
 
         {/* Notification Bell with 3D Dropdown Menu */}
-        <DropdownMenu>
+        <DropdownMenu
+          open={notifOpen}
+          onOpenChange={(open) => {
+            setNotifOpen(open)
+            if (!open) bellRef.current?.focus()
+          }}
+        >
           <DropdownMenuTrigger asChild>
             <button
               type='button'
+              ref={bellRef}
               className='interactive-press relative flex size-8 items-center justify-center rounded-xl border border-border/80 bg-card/80 text-muted-foreground shadow-xs transition-all hover:bg-muted/60 hover:text-foreground'
               title={language === 'id' ? 'Pemberitahuan' : 'Notifications'}
               aria-label={
-                language === 'id'
-                  ? `Pemberitahuan (${hasUnread ? unreadNotifications.length : 0} baru)`
-                  : `Notifications (${hasUnread ? unreadNotifications.length : 0} new)`
+                hasUnread
+                  ? language === 'id'
+                    ? `${badgeLabel} notifikasi belum dibaca`
+                    : `${badgeLabel} unread notifications`
+                  : language === 'id'
+                    ? 'Pemberitahuan'
+                    : 'Notifications'
               }
+              aria-haspopup='menu'
+              aria-expanded={notifOpen}
             >
               <Bell className='size-4' />
-              {/* Unread COUNT badge (numeric, both audiences) */}
+              {/* Unread COUNT badge (numeric, both audiences; capped at 99+) */}
               {hasUnread && (
-                <span className='absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white'>
-                  {unreadNotifications.length}
+                <span
+                  className='absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white'
+                  aria-hidden='true'
+                >
+                  {badgeLabel}
                 </span>
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align='end'
-            className='card-3d w-80 rounded-2xl border border-border/80 bg-card/95 p-0 shadow-2xl backdrop-blur-2xl'
+            className='card-3d w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-border/80 bg-card/95 p-0 shadow-2xl backdrop-blur-2xl'
+            onCloseAutoFocus={(e) => {
+              e.preventDefault()
+              bellRef.current?.focus()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setNotifOpen(false)
+                bellRef.current?.focus()
+              }
+            }}
           >
             <div className='flex items-center justify-between border-b border-border/70 p-3.5'>
               <span className='text-xs font-bold text-foreground'>
@@ -305,7 +363,36 @@ export function ModaHeader() {
               )}
             </div>
             <div className='max-h-72 divide-y divide-border/50 overflow-y-auto text-xs'>
-              {notifications.length === 0 ? (
+              {notifQ.isPending ? (
+                <div className='space-y-1.5 p-6 text-center' role='status'>
+                  <RefreshCw className='mx-auto size-5 animate-spin text-muted-foreground/60' />
+                  <p className='text-[11px] text-muted-foreground'>
+                    {language === 'id'
+                      ? 'Memuat pemberitahuan…'
+                      : 'Loading notifications…'}
+                  </p>
+                </div>
+              ) : notifQ.isError ? (
+                <div className='space-y-2 p-6 text-center' role='alert'>
+                  <AlertTriangle className='mx-auto size-5 text-destructive/70' />
+                  <p className='text-[11px] text-muted-foreground'>
+                    {isAdmin
+                      ? language === 'id'
+                        ? 'Gagal memuat pemberitahuan admin.'
+                        : 'Failed to load admin notifications.'
+                      : language === 'id'
+                        ? 'Gagal memuat pemberitahuan.'
+                        : 'Failed to load notifications.'}
+                  </p>
+                  <button
+                    type='button'
+                    onClick={() => void notifQ.refetch()}
+                    className='text-[11px] font-semibold text-[#7778FF] hover:underline focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none'
+                  >
+                    {language === 'id' ? 'Coba lagi' : 'Retry'}
+                  </button>
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className='space-y-1.5 p-6 text-center'>
                   <Inbox className='mx-auto size-5 text-muted-foreground/60' />
                   <p className='text-[11px] text-muted-foreground'>

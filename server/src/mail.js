@@ -45,6 +45,34 @@ function shortId(id) {
   return s ? `${s.slice(0, 8)}…` : '—';
 }
 
+/** Public dashboard — the one help/CTA destination for every template. */
+const EMAIL_DASHBOARD_URL = 'https://copilot.grouter.id/app/';
+
+/**
+ * Validate a caller-supplied URL at the template boundary. Only absolute
+ * http:/https: URLs survive; anything else (javascript:, data:, empty,
+ * unparseable, protocol-relative) falls back to the public dashboard so a
+ * template can never emit an unsafe href.
+ */
+function safeHttpUrl(raw) {
+  try {
+    const parsed = new URL(String(raw ?? '').trim());
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? parsed.href : EMAIL_DASHBOARD_URL;
+  } catch {
+    return EMAIL_DASHBOARD_URL;
+  }
+}
+
+/** Plain-text closing: same help pointer + no-reply meaning as the HTML shell. */
+function emailTextClosing(ctaLine) {
+  return [
+    ctaLine,
+    `Butuh bantuan? Buka dashboard Copilot: ${EMAIL_DASHBOARD_URL}`,
+    'Email otomatis dari sistem gRouter Copilot — mohon tidak membalas ke alamat ini.',
+    '— Tim gRouter Copilot',
+  ];
+}
+
 /**
  * ── Enterprise email design system (single place, all templates) ──
  * Email-client safe: table layout + inline styles only (no external CSS,
@@ -54,13 +82,8 @@ function shortId(id) {
  * Every dynamic value is escaped at the template call sites below.
  */
 const EMAIL_BRAND = {
-  // Fluid-hybrid responsive (see buildEmailShell): the 600px container is
-  // width:100%/max-width:600px and a single @media block collapses padding,
-  // type scale and CTA width under 620px. Clients without media-query
-  // support still get the fluid layout — nothing is fixed-width pixel-locked.
   bg: '#06080b',
   panel: '#0d1117',
-  panelAlt: '#11161f',
   border: '#232c38',
   ink: '#f2f6f9',
   inkDim: '#a7b3c0',
@@ -114,14 +137,17 @@ function emailStatusChip(tone, label) {
  * 24px, header→card 14px, card padding 26px, chip→title 12px, title→lead
  * 8px, lead→details 18px, details→CTA 20px, CTA→footnote 18px, card→footer
  * 16px. No interval exceeds 28px; the card hugs its content.
- * Anti-clip: fluid container (100%/max-600px), no fixed heights, long
- * values wrap (word-break on detail values), CTA never overflows.
+ * Anti-clip: fluid container (100%/max-600px), no fixed heights, every
+ * card text cell wraps long words (word-break on title/lead/footnote/detail
+ * values), CTA never overflows.
  * Themes: dark is the inline default; @media (prefers-color-scheme:
  * light) re-skins via classes (Apple Mail, iOS/Android Gmail dark-mode
  * aware clients). Clients without scheme support keep the dark default.
  */
 function buildEmailShell({ preheader, eyebrow, tone = 'ok', title, lead, rows = '', cta = null, footnote = 'Email otomatis dari sistem gRouter Copilot — mohon tidak membalas ke alamat ini.' }) {
   const L = EMAIL_LIGHT;
+  // ONE style block: client resets + mobile layer + light-scheme layer only.
+  // All base styling stays inline on the elements below.
   const styleBlock = `<style>`
     + `html,body{margin:0!important;padding:0!important;width:100%!important;}`
     + `table,td{mso-table-lspace:0pt!important;mso-table-rspace:0pt!important;border-collapse:collapse!important;}`
@@ -172,17 +198,17 @@ function buildEmailShell({ preheader, eyebrow, tone = 'ok', title, lead, rows = 
     + `<tr><td class="em-card" style="background-color:${EMAIL_BRAND.panel};border:1px solid ${EMAIL_BRAND.border};border-radius:12px;">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`
     + `<tr><td class="em-pad" style="padding:24px 28px 0 28px;">${emailStatusChip(tone, eyebrow)}</td></tr>`
-    + `<tr><td class="em-pad em-title em-ink" style="padding:12px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:27px;line-height:1.18;font-weight:700;letter-spacing:-.022em;color:${EMAIL_BRAND.ink};">${title}</td></tr>`
-    + `<tr><td class="em-pad em-lead em-dim" style="padding:8px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:14.5px;line-height:1.6;color:${EMAIL_BRAND.inkDim};">${lead}</td></tr>`
+    + `<tr><td class="em-pad em-title em-ink" style="padding:12px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:27px;line-height:1.18;font-weight:700;letter-spacing:-.022em;color:${EMAIL_BRAND.ink};word-break:break-word;">${title}</td></tr>`
+    + `<tr><td class="em-pad em-lead em-dim" style="padding:8px 28px 0 28px;font-family:${EMAIL_BRAND.sans};font-size:14.5px;line-height:1.6;color:${EMAIL_BRAND.inkDim};word-break:break-word;">${lead}</td></tr>`
     + (rows
       ? `<tr><td class="em-pad" style="padding:18px 28px 2px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">${rows}</table></td></tr>`
       : '')
     + ctaRow
-    + `<tr><td class="em-pad em-faint" style="padding:18px 28px 24px 28px;font-family:${EMAIL_BRAND.sans};font-size:12px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};">${footnote}</td></tr>`
+    + `<tr><td class="em-pad em-faint" style="padding:18px 28px 24px 28px;font-family:${EMAIL_BRAND.sans};font-size:12px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};word-break:break-word;">${footnote}</td></tr>`
     + `</table></td></tr>`
     + `<tr><td style="padding:16px 2px 0 2px;">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`
-    + `<tr><td class="em-faint em-foot-rule" style="border-top:1px solid ${EMAIL_BRAND.border};padding-top:14px;font-family:${EMAIL_BRAND.sans};font-size:11.5px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};">Butuh bantuan? Balas email ini, atau buka <a href="https://copilot.grouter.id/app/" class="em-accent-t" style="color:${EMAIL_BRAND.accent};text-decoration:none;">dashboard Copilot</a>.</td></tr>`
+    + `<tr><td class="em-faint em-foot-rule" style="border-top:1px solid ${EMAIL_BRAND.border};padding-top:14px;font-family:${EMAIL_BRAND.sans};font-size:11.5px;line-height:1.6;color:${EMAIL_BRAND.inkFaint};">Butuh bantuan? Buka <a href="https://copilot.grouter.id/app/" class="em-accent-t" style="color:${EMAIL_BRAND.accent};text-decoration:none;">dashboard Copilot</a>.</td></tr>`
     + `<tr><td class="em-sig" style="padding-top:8px;font-family:${EMAIL_BRAND.mono};font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#48525e;">gRouter Copilot &middot; Sistem lisensi &amp; AI untuk aplikasi Anda</td></tr>`
     + `</table></td></tr>`
     + `</table></td></tr></table></body></html>`;
@@ -196,7 +222,9 @@ export function buildPaymentReceivedEmail({ orderId, licenseId, planName } = {})
     + (licenseId ? emailDetailRow('Lisensi', escapeHtml(shortId(licenseId))) : '')
     + (planName ? emailDetailRow('Paket', escapeHtml(String(planName))) : '');
   const html = buildEmailShell({
-    preheader: 'Pembayaran terkonfirmasi server — lisensi Anda telah diterbitkan.',
+    preheader: licenseId
+      ? 'Pembayaran terkonfirmasi server — lisensi Anda telah diterbitkan.'
+      : 'Pembayaran Anda telah terkonfirmasi server.',
     eyebrow: 'Pembayaran berhasil',
     tone: 'ok',
     title: 'Pembayaran diterima.',
@@ -204,10 +232,14 @@ export function buildPaymentReceivedEmail({ orderId, licenseId, planName } = {})
       ? `Pembayaran untuk order <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server, dan lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> telah diterbitkan untuk akun Anda.`
       : `Pembayaran untuk order <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(orderId))}</strong>${escapeHtml(plan)} telah dikonfirmasi server. Terima kasih.`,
     rows,
-    cta: { href: 'https://copilot.grouter.id/app/', label: 'Buka Dashboard' },
+    cta: { href: EMAIL_DASHBOARD_URL, label: 'Buka Dashboard' },
   });
-  const licLine = licenseId ? ` Lisensi ${shortId(licenseId)} telah diterbitkan.` : '';
-  const text = `Pembayaran diterima. Pembayaran untuk order ${shortId(orderId)}${plan} telah dikonfirmasi server.${licLine} Buka dashboard: https://copilot.grouter.id/app/ — Tim gRouter Copilot`;
+  const licLine = licenseId ? `\nLisensi ${shortId(licenseId)} telah diterbitkan.` : '';
+  const text = [
+    `Pembayaran diterima. Pembayaran untuk order ${shortId(orderId)}${plan} telah dikonfirmasi server.${licLine}`,
+    ...(planName ? [`Paket: ${String(planName)}`] : []),
+    ...emailTextClosing(`Buka dashboard: ${EMAIL_DASHBOARD_URL}`),
+  ].join('\n');
   return { subject, html, text };
 }
 
@@ -224,16 +256,21 @@ export function buildLicenseIssuedEmail({ licenseId, planName } = {}) {
     title: 'Lisensi diterbitkan.',
     lead: `Lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong>${escapeHtml(plan)} telah diterbitkan untuk akun Anda dan siap dipakai di aplikasi host Anda.`,
     rows,
-    cta: { href: 'https://copilot.grouter.id/app/', label: 'Buka Dashboard' },
+    cta: { href: EMAIL_DASHBOARD_URL, label: 'Buka Dashboard' },
   });
-  const text = `Lisensi diterbitkan. Lisensi ${shortId(licenseId)}${plan} telah diterbitkan untuk akun Anda. Buka dashboard: https://copilot.grouter.id/app/ — Tim gRouter Copilot`;
+  const text = [
+    `Lisensi diterbitkan. Lisensi ${shortId(licenseId)}${plan} telah diterbitkan untuk akun Anda dan siap dipakai di aplikasi host Anda.`,
+    ...(planName ? [`Paket: ${String(planName)}`] : []),
+    ...emailTextClosing(`Buka dashboard: ${EMAIL_DASHBOARD_URL}`),
+  ].join('\n');
   return { subject, html, text };
 }
 
 /** License expiring — copy differs for the H-7 vs H-1 window via daysLeft. */
 export function buildLicenseExpiringEmail({ licenseId, expiresAt, daysLeft } = {}) {
-  const days = Number.isFinite(daysLeft) ? daysLeft : null;
-  const dateStr = expiresAt ? new Date(expiresAt).toISOString().slice(0, 10) : '';
+  const days = (typeof daysLeft === 'number' && Number.isFinite(daysLeft)) ? daysLeft : null;
+  const expiresMs = expiresAt != null ? new Date(expiresAt).getTime() : NaN;
+  const dateStr = Number.isNaN(expiresMs) ? '' : new Date(expiresMs).toISOString().slice(0, 10);
   const subject = days === 1
     ? 'Lisensi berakhir besok (H-1)'
     : days === 7
@@ -243,21 +280,29 @@ export function buildLicenseExpiringEmail({ licenseId, expiresAt, daysLeft } = {
     + (dateStr ? emailDetailRow('Berakhir', escapeHtml(dateStr)) : '')
     + (days != null ? emailDetailRow('Sisa waktu', `${days} hari`) : '');
   const html = buildEmailShell({
-    preheader: 'Lisensi Anda segera berakhir — perpanjang agar layanan tidak terputus.',
+    preheader: days === 1
+      ? 'Lisensi Anda berakhir besok — perpanjang agar layanan tidak terputus.'
+      : 'Lisensi Anda segera berakhir — perpanjang agar layanan tidak terputus.',
     eyebrow: 'Perlu perhatian',
     tone: 'warn',
     title: days === 1 ? 'Lisensi berakhir besok.' : 'Lisensi segera berakhir.',
     lead: `Lisensi <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(shortId(licenseId))}</strong> akan berakhir${dateStr ? ` pada <strong class="em-ink" style="color:${EMAIL_BRAND.ink};">${escapeHtml(dateStr)}</strong>` : ''}${days != null ? ` (${days} hari lagi)` : ''}. Perpanjang sekarang agar layanan di aplikasi host Anda tidak terputus.`,
     rows,
-    cta: { href: 'https://copilot.grouter.id/app/', label: 'Perpanjang Lisensi' },
+    cta: { href: EMAIL_DASHBOARD_URL, label: 'Perpanjang Lisensi' },
   });
-  const text = `Lisensi segera berakhir. Lisensi ${shortId(licenseId)} akan berakhir${dateStr ? ` pada ${dateStr}` : ''}${days != null ? ` (${days} hari lagi)` : ''}. Perpanjang agar layanan tidak terputus: https://copilot.grouter.id/app/ — Tim gRouter Copilot`;
+  const title = days === 1 ? 'Lisensi berakhir besok.' : 'Lisensi segera berakhir.';
+  const text = [
+    `${title} Lisensi ${shortId(licenseId)} akan berakhir${dateStr ? ` pada ${dateStr}` : ''}${days != null ? ` (${days} hari lagi)` : ''}. Perpanjang sekarang agar layanan di aplikasi host Anda tidak terputus.`,
+    ...(dateStr ? [`Berakhir: ${dateStr}`] : []),
+    ...(days != null ? [`Sisa waktu: ${days} hari`] : []),
+    ...emailTextClosing(`Perpanjang lisensi: ${EMAIL_DASHBOARD_URL}`),
+  ].join('\n');
   return { subject, html, text };
 }
 
 /** Password reset — the reset URL lives ONLY inside this payload. */
 export function buildPasswordResetEmail({ url } = {}) {
-  const safeUrl = String(url ?? '');
+  const safeUrl = safeHttpUrl(url);
   const subject = 'Atur ulang password akun gRouter Copilot Anda';
   const html = buildEmailShell({
     preheader: 'Tautan atur ulang password Anda (berlaku 1 jam, sekali pakai).',
@@ -267,9 +312,13 @@ export function buildPasswordResetEmail({ url } = {}) {
     lead: 'Kami menerima permintaan atur ulang password untuk akun gRouter Copilot Anda. Gunakan tombol di bawah untuk membuat password baru.',
     rows: emailDetailRow('Berlaku', '1 jam · sekali pakai'),
     cta: { href: escapeHtml(safeUrl), label: 'Buat Password Baru' },
-    footnote: 'Kalau Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah. Tautan hanya berlaku 1 jam dan sekali pakai.',
+    footnote: 'Kalau Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah. Tautan hanya berlaku 1 jam dan sekali pakai. Email otomatis dari sistem gRouter Copilot — mohon tidak membalas ke alamat ini.',
   });
-  const text = `Kami menerima permintaan atur ulang password akun gRouter Copilot Anda. Buka tautan berikut untuk membuat password baru (berlaku 1 jam, sekali pakai): ${safeUrl} Kalau Anda tidak meminta ini, abaikan email ini.`;
+  const text = [
+    `Atur ulang password Anda. Kami menerima permintaan atur ulang password untuk akun gRouter Copilot Anda. Buka tautan berikut untuk membuat password baru (berlaku 1 jam, sekali pakai): ${safeUrl}`,
+    'Kalau Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah.',
+    ...emailTextClosing(''),
+  ].filter((line) => line !== '').join('\n');
   return { subject, html, text };
 }
 

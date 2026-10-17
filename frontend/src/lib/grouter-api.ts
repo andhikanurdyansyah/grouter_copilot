@@ -238,6 +238,7 @@ export interface AppNotification {
 export interface NotificationsResponse {
   notifications: AppNotification[]
   unread: number
+  total?: number
 }
 
 export async function fetchMyNotifications(

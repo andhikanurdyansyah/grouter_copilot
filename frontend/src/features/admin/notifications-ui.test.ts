@@ -48,6 +48,8 @@ describe('grouter-api notification helpers', () => {
     ]) {
       expect(apiSource).toContain(field)
     }
+    expect(apiSource).toContain('unread: number')
+    expect(apiSource).toContain('total?: number')
   })
 })
 
@@ -81,7 +83,8 @@ describe('moda-header notification audiences', () => {
     expect(headerSource).toContain(
       'onClick={() => void handleNotificationClick(n)}'
     )
-    expect(headerSource).toContain('{unreadNotifications.length}')
+    expect(headerSource).toContain('{badgeLabel}')
+    expect(headerSource).toContain("typeof serverUnread === 'number'")
     expect(headerSource).toContain('No admin notifications yet.')
     expect(headerSource).toContain('No notifications yet.')
   })

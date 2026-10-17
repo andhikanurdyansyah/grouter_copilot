@@ -790,14 +790,17 @@ export function createCopilotServer({
           titleEn: n.titleEn ?? n.title,
           body: n.body,
           bodyEn: n.bodyEn ?? n.body,
+          linkKind: n.linkKind ?? null,
+          linkId: n.linkId ?? null,
           readAt: n.readAt ?? null,
           createdAt: n.createdAt,
-          emailStatus: n.emailStatus ?? null,
-          emailedAt: n.emailedAt ?? null,
-          emailAttempts: typeof n.emailAttempts === 'number' ? n.emailAttempts : 0,
         }));
-        const unread = items.filter((n) => n.readAt == null).length;
-        return sendJson(res, 200, { notifications: items, unread, total: items.length });
+        // unread/total describe the AUTHORIZED FULL collection, never the
+        // limited slice above — the bell badge must not under-report.
+        const counts = typeof store.countNotifications === 'function'
+          ? store.countNotifications(account.id)
+          : { total: items.length, unread: items.filter((n) => n.readAt == null).length };
+        return sendJson(res, 200, { notifications: items, unread: counts.unread, total: counts.total });
       })();
     }
 
@@ -822,8 +825,10 @@ export function createCopilotServer({
           readAt: n.readAt ?? null,
           createdAt: n.createdAt,
         }));
-        const unread = all.filter((n) => n.readAt == null).length;
-        return sendJson(res, 200, { notifications: items, unread, total: all.length });
+        const counts = typeof store.countAdminNotifications === 'function'
+          ? store.countAdminNotifications()
+          : { total: all.length, unread: all.filter((n) => n.readAt == null).length };
+        return sendJson(res, 200, { notifications: items, unread: counts.unread, total: counts.total });
       })();
     }
 

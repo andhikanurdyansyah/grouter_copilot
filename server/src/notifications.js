@@ -27,6 +27,11 @@ import {
 } from './mail.js';
 
 const DAY_MS = 86_400_000;
+// Bounded email retry (Phase 6): a `failed` row is retried only while
+// emailAttempts < cap. settings.js does not expose this key yet, so the
+// default lives here; if `notifications.maxEmailAttempts` ever appears in
+// the effective notifications config it overrides the default.
+const DEFAULT_MAX_EMAIL_ATTEMPTS = 5;
 
 function shortId(id) {
   const s = String(id ?? '');
@@ -113,10 +118,13 @@ export function createNotificationService({
   function notificationsConfig(eff) {
     const n = eff?.notifications ?? {};
     const d = resolveSettings({}, {}).notifications;
+    const configuredMax = n.maxEmailAttempts;
     return {
       schedulerIntervalMs: n.schedulerIntervalMs ?? d.schedulerIntervalMs,
       quotaThresholdPercent: n.quotaThresholdPercent ?? d.quotaThresholdPercent,
       expiringSoonDays: n.expiringSoonDays ?? d.expiringSoonDays,
+      maxEmailAttempts:
+        Number.isInteger(configuredMax) && configuredMax >= 1 ? configuredMax : DEFAULT_MAX_EMAIL_ATTEMPTS,
       email: { ...d.email, ...(n.email ?? {}) },
     };
   }
@@ -132,8 +140,10 @@ export function createNotificationService({
   function needsFirstAttempt(n) {
     return n && (n.emailAttempts ?? 0) === 0 && (n.emailStatus == null || n.emailStatus === undefined);
   }
-  function needsRetry(n) {
-    return n && n.emailStatus === 'failed';
+  function needsRetry(n, cfg = notificationsConfig(effectiveSettings())) {
+    if (!n || n.emailStatus !== 'failed') return false;
+    const attempts = typeof n.emailAttempts === 'number' ? n.emailAttempts : 0;
+    return attempts < cfg.maxEmailAttempts;
   }
 
   /**
@@ -196,7 +206,7 @@ export function createNotificationService({
       if (!item) return null;
       emitted.push(item);
       const isNew = !before;
-      if (email && (isNew || needsRetry(item))) {
+      if (email && (isNew || needsRetry(item, cfg))) {
         emailJobs.push({ notification: item, kind: email.kind, template: email.template });
       } else if (email && needsFirstAttempt(item) && !isNew) {
         // Row predates email metadata (migration): attempt once.
@@ -316,7 +326,24 @@ export function createNotificationService({
         });
       } else {
         const expiresMs = parseTimeMs(l.expiresAt);
-        if (expiresMs != null && expiresMs > nowMs && expiresMs - nowMs <= expiringDays * DAY_MS) {
+        if (expiresMs != null && expiresMs <= nowMs) {
+          // Lapsed without revoke: exactly one closing event, stable dedupe
+          // (license id — NOT daily like license.expiring). In-app only: the
+          // H-7/H-1 expiring emails already covered the warning path.
+          emitCustomer({
+            type: 'license.expired', dedupeKey: l.id,
+            title: 'Lisensi kedaluwarsa', titleEn: 'License expired',
+            body: `Lisensi ${shortId(l.id)} telah kedaluwarsa. Perpanjang untuk mengaktifkan kembali.`,
+            bodyEn: `License ${shortId(l.id)} has expired. Renew to reactivate.`,
+            linkKind: 'license', linkId: l.id, createdAt: expiresMs,
+          });
+          emitAdmin({
+            type: 'admin.license.expired', dedupeKey: l.id,
+            title: 'License expired', titleEn: 'License expired',
+            body: `License ${shortId8(l.id)} expired.`, bodyEn: `License ${shortId8(l.id)} expired.`,
+            linkKind: 'license', linkId: l.id, createdAt: expiresMs,
+          });
+        } else if (expiresMs != null && expiresMs - nowMs <= expiringDays * DAY_MS) {
           const daysLeft = Math.max(1, Math.ceil((expiresMs - nowMs) / DAY_MS));
           const dayKey = new Date(nowMs).toISOString().slice(0, 10);
           emitCustomer({
@@ -359,6 +386,24 @@ export function createNotificationService({
               bodyEn: `License ${shortId8(l.id)} reached quota threshold (${percent}%).`,
               linkKind: 'license', linkId: l.id, createdAt: nowMs,
             });
+            if (usedTokens >= limit) {
+              // Distinct terminal signal at 100% (in-app only, same period
+              // discipline): the gateway rejects further chat from here.
+              emitCustomer({
+                type: 'quota.exhausted', dedupeKey: periodKey,
+                title: 'Kuota habis', titleEn: 'Quota exhausted',
+                body: `Kuota token lisensi ${shortId(l.id)} telah habis. Perpanjang atau naik paket untuk melanjutkan.`,
+                bodyEn: `License ${shortId(l.id)} has exhausted its token quota. Renew or upgrade to continue.`,
+                linkKind: 'license', linkId: l.id, createdAt: nowMs,
+              });
+              emitAdmin({
+                type: 'admin.quota.exhausted', dedupeKey: periodKey,
+                title: 'Quota exhausted', titleEn: 'Quota exhausted',
+                body: `License ${shortId8(l.id)} exhausted its quota.`,
+                bodyEn: `License ${shortId8(l.id)} exhausted its quota.`,
+                linkKind: 'license', linkId: l.id, createdAt: nowMs,
+              });
+            }
           }
         }
       }

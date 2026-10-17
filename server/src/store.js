@@ -105,6 +105,18 @@ export class JsonStore {
       .slice(0, Math.min(Math.max(1, limit), 200));
   }
 
+  /** Total + unread over the account's FULL notification collection. */
+  countNotifications(accountId) {
+    let total = 0;
+    let unread = 0;
+    for (const n of this.data.notifications) {
+      if (n.accountId !== accountId) continue;
+      total += 1;
+      if (n.readAt == null) unread += 1;
+    }
+    return { total, unread };
+  }
+
   markNotificationRead(accountId, id) {
     const n = this.data.notifications.find((x) => x.id === id && x.accountId === accountId);
     if (!n) return null;
@@ -183,6 +195,16 @@ export class JsonStore {
       .slice()
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, Math.min(Math.max(1, limit), 500));
+  }
+
+  /** Total + unread over the FULL admin notification collection. */
+  countAdminNotifications() {
+    if (!Array.isArray(this.data.adminNotifications)) this.data.adminNotifications = [];
+    let unread = 0;
+    for (const n of this.data.adminNotifications) {
+      if (n.readAt == null) unread += 1;
+    }
+    return { total: this.data.adminNotifications.length, unread };
   }
 
   markAdminNotificationRead(id) {

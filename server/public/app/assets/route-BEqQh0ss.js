@@ -1,0 +1,1 @@
+import{s as e}from"./index-BMcMDpnU.js";var t=e;export{t as component};

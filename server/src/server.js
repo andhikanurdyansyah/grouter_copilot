@@ -265,7 +265,7 @@ export function createCopilotServer({
 
   // Notification engine (Phases 1+2): the single derivation + email module.
   // Settings are resolved at call time; the mailer shares the injected
-  // fetch (tests) — never a hidden global for Resend in tests that pass one.
+  // fetch (tests) — never a hidden global for the mail provider in tests that pass one.
   const notificationMailerImpl = notificationMailer ?? createMailer({
     fetchImpl: fetch,
     env: process.env,

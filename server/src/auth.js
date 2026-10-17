@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 import { resolveSettings } from './settings.js';
 import { createMailer, buildPasswordResetEmail } from './mail.js';
 
-// Password-reset mailer: delegates to the shared mail module (Resend via
+// Password-reset mailer: delegates to the shared mail module (Brevo via
 // injected/global fetch, settings-gated). Created lazily without store
 // access — auth.js builds the Better Auth singleton once at boot, before
 // any store exists; settings resolve to defaults + env seeds here, which
@@ -171,7 +171,7 @@ export const auth = betterAuth({
     // endpoint /api/auth/request-password-reset + /reset-password aktif. Anti user-enumeration:
     // response selalu 200 generik, URL reset TIDAK pernah dikirim ke client.
     // Pengiriman email: didelegasikan ke mail module (server/src/mail.js).
-    // Bila RESEND_API_KEY diset & email aktif → email nyata via Resend;
+    // Bila BREVO_API_KEY diset & email aktif → email nyata via Brevo;
     // bila tidak → status log_only. URL reset HANYA di dalam payload email,
     // tidak pernah di-log (hanya email + status).
     sendResetPassword: async ({ user, url }) => {

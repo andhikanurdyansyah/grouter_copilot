@@ -516,8 +516,8 @@ export function AdminSettings() {
                   </h2>
                   <p className='text-xs text-muted-foreground'>
                     {isId
-                      ? 'Jadwal pemeriksaan, ambang kuota, dan email pemberitahuan. Notifikasi dalam aplikasi tetap aktif; kredensial penyedia email dikonfigurasi via env server (RESEND_API_KEY / MAIL_FROM) dan tidak dapat dibaca dari halaman ini.'
-                      : 'Check schedule, quota threshold, and notification email. In-app notifications remain active; the email provider credential is configured via server env (RESEND_API_KEY / MAIL_FROM) and cannot be read from this page.'}
+                      ? 'Jadwal pemeriksaan, ambang kuota, dan email pemberitahuan. Notifikasi dalam aplikasi tetap aktif; kredensial penyedia email dikonfigurasi via env server (BREVO_API_KEY / MAIL_FROM) dan tidak dapat dibaca dari halaman ini.'
+                      : 'Check schedule, quota threshold, and notification email. In-app notifications remain active; the email provider credential is configured via server env (BREVO_API_KEY / MAIL_FROM) and cannot be read from this page.'}
                   </p>
                 </div>
 

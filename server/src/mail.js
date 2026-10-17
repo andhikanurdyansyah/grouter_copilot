@@ -1,8 +1,8 @@
 /**
- * Mail — Resend delivery for Copilot notification + password-reset email.
+ * Mail — Brevo delivery for Copilot notification + password-reset email.
  *
- * Single mail entry point. Uses the Resend HTTP API only when
- * RESEND_API_KEY is present AND email is enabled in the notifications
+ * Single mail entry point. Uses the Brevo HTTP API only when
+ * BREVO_API_KEY is present AND email is enabled in the notifications
  * settings (resolveSettings at call time). Without a key the result is
  * `log_only` (the caller records the attempt on the notification row);
  * per-kind toggles / global disable yield `disabled`. No secret (API
@@ -11,8 +11,8 @@
  */
 import { resolveSettings } from './settings.js';
 
-const RESEND_URL = 'https://api.resend.com/emails';
-const DEFAULT_FROM = 'gRouter Copilot <onboarding@resend.dev>';
+const BREVO_URL = 'https://api.brevo.com/v3/smtp/email';
+const DEFAULT_FROM = 'gRouter Copilot <copilot@grouter.id>';
 const MAX_ERROR_LEN = 200;
 
 function sanitizeError(err, secret) {
@@ -99,6 +99,18 @@ const KIND_SETTING_KEY = {
   passwordReset: 'passwordReset',
 };
 
+/** Parse a "Name <email>" (or bare email) sender into Brevo's sender shape. */
+function parseSender(from) {
+  const str = String(from ?? '').trim();
+  const m = str.match(/^(.*?)\s*<([^>]+)>$/);
+  if (m) {
+    const name = m[1].replace(/^["']|["']$/g, '').trim();
+    const email = m[2].trim();
+    return name ? { name, email } : { email };
+  }
+  return { email: str };
+}
+
 /**
  * @param {{fetchImpl?:Function, env?:object, settingsGetter?:Function}} deps
  * fetchImpl defaults to global fetch; env defaults to process.env (read at
@@ -111,7 +123,7 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
 
   async function send({ to, subject, html, text, kind } = {}, { timeoutMs = 10_000 } = {}) {
     const e = getEnv() || {};
-    const apiKey = String(e.RESEND_API_KEY || '').trim();
+    const apiKey = String(e.BREVO_API_KEY || '').trim();
     const notifications = resolveNotificationsSettings(settingsGetter);
     const emailCfg = notifications?.email ?? {};
     if (emailCfg.enabled === false) return { status: 'disabled' };
@@ -121,25 +133,32 @@ export function createMailer({ fetchImpl, env, settingsGetter } = {}) {
     if (!apiKey) return { status: 'log_only' };
     if (typeof doFetch !== 'function') return { status: 'failed', error: 'fetch unavailable' };
     const from = String(e.MAIL_FROM || '').trim() || DEFAULT_FROM;
+    const sender = parseSender(from);
     try {
-      const res = await doFetch(RESEND_URL, {
+      const res = await doFetch(BREVO_URL, {
         method: 'POST',
-        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ from, to: [to], subject: String(subject ?? ''), html: String(html ?? ''), text: String(text ?? '') }),
+        headers: { 'api-key': apiKey, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          sender,
+          to: [{ email: to }],
+          subject: String(subject ?? ''),
+          htmlContent: String(html ?? ''),
+          textContent: String(text ?? ''),
+        }),
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (res && res.ok) {
         let providerId;
         try {
           const data = await res.json();
-          if (data && typeof data.id === 'string') providerId = data.id;
+          if (data && typeof data.messageId === 'string') providerId = data.messageId;
         } catch { /* provider id is best-effort */ }
         return providerId ? { status: 'sent', providerId } : { status: 'sent' };
       }
       const status = res ? res.status : 'unknown';
       let detail = '';
       try { detail = (await res.text()).slice(0, 120); } catch { /* ignore */ }
-      return { status: 'failed', error: sanitizeError(`Resend HTTP ${status}${detail ? `: ${detail}` : ''}`, apiKey) };
+      return { status: 'failed', error: sanitizeError(`Brevo HTTP ${status}${detail ? `: ${detail}` : ''}`, apiKey) };
     } catch (err) {
       return { status: 'failed', error: sanitizeError(err, apiKey) };
     }

@@ -38,7 +38,7 @@ function settingsGetter(notifOverrides = {}) {
   };
 }
 
-test('mail: log_only when no RESEND_API_KEY, returns no secret, calls no fetch', async () => {
+test('mail: log_only when no BREVO_API_KEY, returns no secret, calls no fetch', async () => {
   let fetchCalls = 0;
   const mailer = createMailer({ fetchImpl: async () => { fetchCalls++; return new Response('{}', { status: 200 }); }, env: {}, settingsGetter: settingsGetter() });
   const res = await mailer.send({ to: 'user@gmail.com', subject: 'Hi', html: '<p>x</p>', text: 'x', kind: 'paymentReceived' });
@@ -49,7 +49,7 @@ test('mail: log_only when no RESEND_API_KEY, returns no secret, calls no fetch',
 
 test('mail: disabled when email.enabled false', async () => {
   let fetchCalls = 0;
-  const mailer = createMailer({ fetchImpl: async () => { fetchCalls++; return new Response(JSON.stringify({id:'e1'}), { status: 200 }); }, env: { RESEND_API_KEY: 're_test_key', MAIL_FROM: 'Test <t@example.com>' }, settingsGetter: settingsGetter({ email: { enabled: false } }) });
+  const mailer = createMailer({ fetchImpl: async () => { fetchCalls++; return new Response(JSON.stringify({messageId:'<e1@brevo>'}), { status: 201 }); }, env: { BREVO_API_KEY: 'xkeysib-testkey', MAIL_FROM: 'Test <t@example.com>' }, settingsGetter: settingsGetter({ email: { enabled: false } }) });
   const res = await mailer.send({ to: 'user@gmail.com', subject: 'Hi', html: '<p>x</p>', text: 'x', kind: 'paymentReceived' });
   assert.equal(res.status, 'disabled');
   assert.equal(fetchCalls, 0);
@@ -57,7 +57,7 @@ test('mail: disabled when email.enabled false', async () => {
 
 test('mail: disabled per-kind when kind toggle false', async () => {
   let fetchCalls = 0;
-  const mailer = createMailer({ fetchImpl: async () => { fetchCalls++; return new Response(JSON.stringify({id:'e1'}), { status: 200 }); }, env: { RESEND_API_KEY: 're_test_key' }, settingsGetter: settingsGetter({ email: { paymentReceived: false } }) });
+  const mailer = createMailer({ fetchImpl: async () => { fetchCalls++; return new Response(JSON.stringify({messageId:'<e1@brevo>'}), { status: 201 }); }, env: { BREVO_API_KEY: 'xkeysib-testkey' }, settingsGetter: settingsGetter({ email: { paymentReceived: false } }) });
   const res = await mailer.send({ to: 'user@gmail.com', subject: 'Hi', html: '<p>x</p>', text: 'x', kind: 'paymentReceived' });
   assert.equal(res.status, 'disabled');
   assert.equal(fetchCalls, 0);
@@ -67,33 +67,36 @@ test('mail: disabled per-kind when kind toggle false', async () => {
   assert.equal(fetchCalls, 1);
 });
 
-test('mail: sent with fake fetch, providerId captured, payload uses Resend endpoint and safe from fallback', async () => {
+test('mail: sent with fake fetch, providerId captured, payload uses Brevo endpoint and safe from fallback', async () => {
   let seen = null;
-  const mailer = createMailer({ fetchImpl: async (url, opts) => { seen = { url, opts }; return new Response(JSON.stringify({ id: 'email_123' }), { status: 200, headers: { 'content-type': 'application/json' } }); }, env: { RESEND_API_KEY: 're_test_key' }, settingsGetter: settingsGetter() });
+  const mailer = createMailer({ fetchImpl: async (url, opts) => { seen = { url, opts }; return new Response(JSON.stringify({ messageId: '<email_123@brevo>' }), { status: 201, headers: { 'content-type': 'application/json' } }); }, env: { BREVO_API_KEY: 'xkeysib-testkey' }, settingsGetter: settingsGetter() });
   const res = await mailer.send({ to: 'user@gmail.com', subject: 'Payment', html: '<p>paid</p>', text: 'paid', kind: 'paymentReceived' });
   assert.equal(res.status, 'sent');
-  assert.equal(res.providerId, 'email_123');
-  assert.equal(seen.url, 'https://api.resend.com/emails');
+  assert.equal(res.providerId, '<email_123@brevo>');
+  assert.equal(seen.url, 'https://api.brevo.com/v3/smtp/email');
   const payload = JSON.parse(seen.opts.body);
-  assert.equal(payload.from, 'gRouter Copilot <onboarding@resend.dev>');
-  assert.deepEqual(payload.to, ['user@gmail.com']);
+  assert.deepEqual(payload.sender, { name: 'gRouter Copilot', email: 'copilot@grouter.id' });
+  assert.deepEqual(payload.to, [{ email: 'user@gmail.com' }]);
   assert.equal(payload.subject, 'Payment');
-  assert.equal(seen.opts.headers.authorization, 'Bearer re_test_key');
+  assert.equal(payload.htmlContent, '<p>paid</p>');
+  assert.equal(payload.textContent, 'paid');
+  assert.equal(seen.opts.headers['api-key'], 'xkeysib-testkey');
+  assert.equal(seen.opts.headers.authorization, undefined);
   // return value must not leak key or body
-  assert.ok(!JSON.stringify(res).includes('re_test_key'));
+  assert.ok(!JSON.stringify(res).includes('xkeysib-testkey'));
   assert.ok(!JSON.stringify(res).includes('paid'));
 });
 
 test('mail: failed on non-ok fetch and on throw, error sanitized short, no secret leak', async () => {
-  const mailer = createMailer({ fetchImpl: async () => new Response(JSON.stringify({ message: 'bad ' + 'x'.repeat(500) }), { status: 500 }), env: { RESEND_API_KEY: 're_test_key' }, settingsGetter: settingsGetter() });
+  const mailer = createMailer({ fetchImpl: async () => new Response(JSON.stringify({ message: 'bad ' + 'x'.repeat(500) }), { status: 500 }), env: { BREVO_API_KEY: 'xkeysib-testkey' }, settingsGetter: settingsGetter() });
   const res = await mailer.send({ to: 'user@gmail.com', subject: 'Hi', html: '<p>x</p>', text: 'x', kind: 'paymentReceived' });
   assert.equal(res.status, 'failed');
   assert.ok(res.error && res.error.length <= 200, `error too long: ${res.error?.length}`);
-  assert.ok(!JSON.stringify(res).includes('re_test_key'));
-  const mailer2 = createMailer({ fetchImpl: async () => { throw new Error('network down re_test_key should not leak'); }, env: { RESEND_API_KEY: 're_test_key' }, settingsGetter: settingsGetter() });
+  assert.ok(!JSON.stringify(res).includes('xkeysib-testkey'));
+  const mailer2 = createMailer({ fetchImpl: async () => { throw new Error('network down xkeysib-testkey should not leak'); }, env: { BREVO_API_KEY: 'xkeysib-testkey' }, settingsGetter: settingsGetter() });
   const res2 = await mailer2.send({ to: 'user@gmail.com', subject: 'Hi', html: '<p>x</p>', text: 'x', kind: 'licenseExpiring' });
   assert.equal(res2.status, 'failed');
-  assert.ok(!JSON.stringify(res2).includes('re_test_key'), 'error must be sanitized of key');
+  assert.ok(!JSON.stringify(res2).includes('xkeysib-testkey'), 'error must be sanitized of key');
 });
 
 test('mail: password reset template contains URL only in payload, mailer return never contains it', async () => {

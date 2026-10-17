@@ -88,7 +88,7 @@ Audit live pertama: semua endpoint ✓ (lihat riwayat di handoff-2026-10-12). Ti
    Catatan: change-password TIDAK mencabut sesi lain (hanya reset password yang mencabut —
    `revokeSessionsOnPasswordReset`).
 2. **Mailer reset password — FONDASI AKTIF (env-driven, zero-dependency).** `sendResetPassword`
-   di `auth.js`: bila env `RESEND_API_KEY` diset → kirim email nyata via Resend HTTP API (fetch
+   di `auth.js`: bila env `BREVO_API_KEY` diset → kirim email nyata via Brevo HTTP API (fetch
    bawaan Node); bila tidak → URL reset di-log server (perilaku lama). `MAIL_FROM` opsional.
    Kredensial diisi di `server/.env` (JANGAN di-commit; contoh di `.env.example`). Menunggu
    kredensial/keputusan PO untuk aktivasi nyata.

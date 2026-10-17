@@ -100,6 +100,6 @@ describe('admin settings notifications tab', () => {
     expect(settingsSource).toContain('schedulerIntervalMs')
     expect(settingsSource).toContain('quotaThresholdPercent')
     expect(settingsSource).toContain('expiringSoonDays')
-    expect(settingsSource).toContain('RESEND_API_KEY / MAIL_FROM')
+    expect(settingsSource).toContain('BREVO_API_KEY / MAIL_FROM')
   })
 })

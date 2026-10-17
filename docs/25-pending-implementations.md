@@ -18,8 +18,8 @@
 | GO-3 | `ADMIN_TOKEN` produksi | **PO-owned** | nilai ops | isi `ADMIN_TOKEN` di `server/.env` (fail-closed tanpa itu di `NODE_ENV=production`) |
 | GO-4 | npm publish `@grouter/copilot` | **PO-owned (DILARANG)** | keputusan owner | tetap unpublished; `npx` path belum terverifikasi sampai publish |
 | GO-5 | Aktivasi AI per paket | **PO-owned** | kebijakan paket saat ini `ai.enabled:false` | toggle di `/admin/packages` bila PO memutuskan |
-| GO-6 | Kredensial Resend (email reset/notif) | **PO-owned** | butuh API key | isi `RESEND_API_KEY` (+`MAIL_FROM`) di `server/.env`; engine notifikasi D-022 (2026-10-17) sudah ter-ship & teruji dengan mailer di-inject — tanpa kredensial status per baris jujur `log_only`; verifikasi email masuk |
-| CLOSED (2026-10-17) | Notification multi-kanal admin+customer (D-022) | **DONE** | email NYATA masih GO-6 | engine `notifications.js` + `mail.js`, event customer 8 jenis + admin `admin.*` (koleksi terpisah tanpa identitas customer), scheduler produksi 15 mnt + lazy on-read, tab Notifikasi admin, bell admin badge angka, per-item read customer, hint lisensi widget dismissible; root 154 · server 161 · frontend 23 hijau; email live menunggu kredensial Resend (GO-6) |
+| GO-6 | Kredensial email transaksi (reset/notif) | **CLOSED (2026-10-17)** | — | Brevo dipilih PO (menggantikan Resend): `BREVO_API_KEY` + `MAIL_FROM=gRouter Copilot <copilot@grouter.id>` terisi di `server/.env` (sender `copilot@grouter.id` aktif di akun Brevo); probe langsung: account 200 + kirim SMTP API 201 dengan messageId; suite hijau dengan kontrak Brevo |
+| CLOSED (2026-10-17) | Notification multi-kanal admin+customer (D-022) | **DONE** | email nyata AKTIF via Brevo (GO-6 closed) | engine `notifications.js` + `mail.js`, event customer 8 jenis + admin `admin.*` (koleksi terpisah tanpa identitas customer), scheduler produksi 15 mnt + lazy on-read, tab Notifikasi admin, bell admin badge angka, per-item read customer, hint lisensi widget dismissible; root 154 · server 161 · frontend 23 hijau; email live via Brevo (GO-6 closed) |
 | OPEN-1 | Sample CRM/POS + skill authoring guide | **CLOSED** | — | `870c8e8`; `docs/skill-authoring.md` + synthetic read-only fixture + 2 contract tests |
 | OPEN-2 | Next.js first-class integration | **OPEN (partial)** | demo CRM/POS jadi gate | master-plan Phase 2; sebagian sudah ada di plugin |
 | OPEN-3 | Usage-ledger reconciliation job (upstream) | **BLOCKED (contract)** | `/check-usage` is aggregate for the single service credential; no customer/request attribution | `server/src/usageReconciliation.js` is a non-mutating blocked assessment with a contract test; unblock only after documented gRouter per-customer or per-request correlation |
@@ -81,7 +81,7 @@ Dua keputusan yang sengaja DITUNDA dan tidak boleh diimplementasi sekarang: futu
 
 1. **Ganti password dari UI — SELESAI 2026-10-12** (`ChangePasswordDialog` di dropdown sidebar; E2E verified).
 2. **Email reset password** — kode Resend **AKTIF** (`sendResetPassword` di `auth.js`, env-driven);
-   tersisa hanya kredensial (GO-6).
+   tersisa tidak ada — kredensial Brevo sudah terisi (GO-6 closed).
 3. **Security headers — SELESAI 2026-10-12** (`frontendServer.js`: nosniff, X-Frame-Options,
    Referrer-Policy, Permissions-Policy, CSP `frame-ancestors 'none'`).
 4. Halaman `/app/sign-up` (SPA) = showcase/simulasi (demo komponen); jalur sign-up resmi

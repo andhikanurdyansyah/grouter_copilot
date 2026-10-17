@@ -481,7 +481,8 @@ export function createCopilotServer({
     // Bind a gRouter api key to a license (admin).
     if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/bind$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
-      const id = url.pathname.split('/')[4];
+      const id = safeDecodePathSegment(url.pathname.split('/')[4]);
+      if (id === null) return sendJson(res, 400, { error: 'invalid license id' });
       return readBody(req).then((body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
         const bound = service.bindApiKey(id, body.grouterApiKey);
@@ -537,7 +538,8 @@ export function createCopilotServer({
 
     if (req.method === 'POST' && /^\/api\/admin\/licenses\/([^/]+)\/revoke$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
-      const id = url.pathname.split('/')[4];
+      const id = safeDecodePathSegment(url.pathname.split('/')[4]);
+      if (id === null) return sendJson(res, 400, { error: 'invalid license id' });
       const revoked = service.revoke(id);
       if (!revoked) return sendJson(res, 404, { error: 'not found' });
       return sendJson(res, 200, { license: sanitizeLicense(revoked) });
@@ -847,7 +849,8 @@ export function createCopilotServer({
         const session = await auth.api.getSession({ headers: req.headers });
         if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
         const account = accounts.ensureAccount(session.user);
-        const id = url.pathname.slice('/api/me/notifications/'.length, -'/read'.length);
+        const id = safeDecodePathSegment(url.pathname.slice('/api/me/notifications/'.length, -'/read'.length));
+        if (id === null) return sendJson(res, 400, { error: 'invalid notification id' });
         const updated = store.markNotificationRead(account.id, id);
         if (!updated) return sendJson(res, 404, { error: 'not found' });
         return sendJson(res, 200, { ok: true, notification: { id: updated.id, readAt: updated.readAt } });
@@ -1076,7 +1079,8 @@ export function createCopilotServer({
     // Admin reconciliation uses the same upstream verification as the webhook.
     if (req.method === 'POST' && /^\/api\/admin\/orders\/([^/]+)\/settle$/.test(url.pathname)) {
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
-      const orderId = url.pathname.split('/')[4];
+      const orderId = safeDecodePathSegment(url.pathname.split('/')[4]);
+      if (orderId === null) return sendJson(res, 400, { error: 'invalid order id' });
       return (async () => {
         if (!payment.store.getOrder(orderId)) return sendJson(res, 404, { error: 'order not found' });
         let status;

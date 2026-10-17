@@ -5,8 +5,9 @@
 > (2026-10-01) — docs lama yang menyebut jumlah/shape berbeda dianggap STALE.
 >
 > Konvensi umum: JSON in/out. Error shape `{ error: string }`.
-> Admin = `Authorization: Bearer <ADMIN_TOKEN>` (401 tanpa token; token kosong
+> Admin = `Authorization: Bearer *** (401 tanpa token; token kosong
 > di env = dev no-auth fallback — JANGAN di production).
+> Path ID dengan percent-encoding tidak valid → 400 `{error:'invalid <resource> id'}` **setelah** auth/session check (tanpa auth tetap 401).
 
 ## Arsitektur panggilan
 

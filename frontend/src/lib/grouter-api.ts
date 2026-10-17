@@ -102,6 +102,18 @@ export async function fetchMyOrders() {
 
 export const fetchCustomerStatus = fetchMe
 export const fetchCustomerOrders = fetchMyOrders
+
+export async function downloadCustomerExport(kind: 'usage' | 'orders'): Promise<void> {
+  const response = await api.get(`/me/${kind}/export`, { responseType: 'blob' })
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${kind}-export.csv`
+  link.click()
+  // Let the browser finish consuming the download before releasing the blob URL.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
 // Ledger milik akun yang sedang login (session-scoped, read-only).
 export async function fetchMyLedger(limit = 50) {
   const { data } = await api.get(`/me/ledger?limit=${limit}`)

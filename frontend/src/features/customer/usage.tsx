@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useMe } from '@/features/shared/use-me'
-import { fetchMyLedger } from '@/lib/grouter-api'
+import { fetchMyLedger, downloadCustomerExport } from '@/lib/grouter-api'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Download, AlertCircle, FileCode, CheckCircle2, Zap } from 'lucide-react'
 import {
@@ -13,7 +14,6 @@ import {
 } from '@/components/ui/dialog'
 import { useLanguage } from '@/context/language-provider'
 import { cn } from '@/lib/utils'
-import { buildCsv, downloadCsv } from '@/lib/csv-export'
 
 /**
  * AI Usage — REAL server data only (D-021 ledger).
@@ -101,8 +101,8 @@ export function CustomerUsage() {
           </h1>
           <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
             {isId
-              ? 'Token dari setiap permintaan Copilot. Permintaan gagal tidak memotong kuota.'
-              : 'Tokens from each Copilot request. Failed requests do not deduct quota.'}
+              ? 'Token dari setiap permintaan Copilot. Ekspor mencakup seluruh akun hingga 5.000 catatan terbaru; filter halaman tidak memengaruhi file.'
+              : 'Tokens from each Copilot request. Exports cover the account-wide latest 5,000 records; page filters do not affect the file.'}
           </p>
         </div>
       </div>
@@ -211,18 +211,14 @@ export function CustomerUsage() {
             <Button
               variant='outline'
               size='sm'
-              title={isId ? 'Ekspor penggunaan yang dimuat (50 terbaru) dan difilter' : 'Export loaded, filtered usage (latest 50)'}
+              title={isId ? 'Ekspor seluruh penggunaan akun (maks. 5.000 terbaru; filter tidak memengaruhi ekspor)' : 'Export account-wide usage (latest 5,000 max; filters do not affect the export)'}
               className='h-8 gap-1.5 border-border bg-card text-xs font-medium'
-              disabled={filteredRequests.length === 0}
-              onClick={() => {
-                const csv = buildCsv(
-                  ['created_at_ms', 'request_id', 'skill', 'model', 'total_tokens', 'status'],
-                  filteredRequests.map((r) => {
-                    const raw = ledgerRecords.find((record) => record.requestId === r.requestId)
-                    return [raw?.createdAt ?? null, r.requestId, raw?.skill ?? null, raw?.model ?? null, raw?.totalTokens ?? ((raw?.inputTokens ?? 0) + (raw?.outputTokens ?? 0)), raw?.status ?? null]
-                  }),
-                )
-                downloadCsv('usage-loaded-latest-50.csv', csv)
+              onClick={async () => {
+                try {
+                  await downloadCustomerExport('usage')
+                } catch {
+                  toast.error(isId ? 'Ekspor penggunaan gagal. Coba lagi.' : 'Usage export failed. Please try again.')
+                }
               }}
             >
               <Download className='size-3.5' /> {t('btn_export_csv')}

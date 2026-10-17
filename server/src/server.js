@@ -32,6 +32,7 @@ import {
   resolveSettings, validateSettings, stripMaskedSecrets, maskSettings, publicPlans, findPlan,
   resolvePlanAiPolicy,
 } from './settings.js';
+import { resolveCapability, featureError } from './entitlement.js';
 import { generateKeyPair } from '../../src/license/validate.js';
 
 /** HTTP status mapping for gateway error codes (safe, stable). */
@@ -786,6 +787,31 @@ export function createCopilotServer({
     // Customer: AI ledger milik akun (session-scoped, read-only). Mirip
     // /api/admin/ledger tapi hanya baris milik lisensi akun ini, tanpa
     // customer lain, tanpa secret. Dipakai halaman "Penggunaan AI" user.
+    // Customer CSV exports are session-scoped and server-authorized by the canonical plan feature matrix.
+    if (req.method === 'GET' && (url.pathname === '/api/me/usage/export' || url.pathname === '/api/me/orders/export')) {
+      return (async () => {
+        const session = await auth.api.getSession({ headers: req.headers });
+        if (!session?.user) return sendJson(res, 401, { error: 'unauthenticated' });
+        const account = accounts.ensureAccount(session.user);
+        const capability = url.pathname.endsWith('/usage/export') ? 'export_usage' : 'export_orders';
+        const owned = store.licensesByAccount(account.id);
+        const eff = resolveSettings(store.getSettings());
+        if (!owned.some((license) => resolveCapability({ license, settings: eff, capability }).entitled)) return sendJson(res, 403, featureError(capability));
+        const safe = (value) => { const text = value == null ? '' : String(value); return /^[=+\-@]/.test(text) ? `'${text}` : text; };
+        const csv = (rows) => '\uFEFF' + rows.map((row) => row.map((v) => `"${safe(v).replaceAll('"', '""')}"`).join(',')).join('\r\n') + '\r\n';
+        let body; let filename;
+        if (capability === 'export_usage') {
+          const ids = new Set(owned.map((l) => l.id));
+          const rows = store.listUsage().filter((u) => ids.has(u.licenseId)).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 5000);
+          body = csv([['created_at_ms', 'request_id', 'license_id', 'skill', 'model', 'input_tokens', 'output_tokens', 'total_tokens', 'status'], ...rows.map((u) => [u.createdAt, u.requestId, u.licenseId, u.skill, u.model, u.inputTokens, u.outputTokens, u.totalTokens, u.status])]); filename = 'usage-export.csv';
+        } else {
+          const rows = store.listOrders().filter((o) => o.accountId === account.id).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 1000);
+          body = csv([['created_at_ms', 'order_id', 'package_key', 'plan_name', 'amount', 'status', 'paid_at_ms', 'license_id'], ...rows.map((o) => [o.createdAt, o.id, o.packageKey, o.planName, o.amount, o.status, o.paidAt, o.licenseId])]); filename = 'orders-export.csv';
+        }
+        res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${filename}"`, 'cache-control': 'no-store' }); return res.end(body);
+      })();
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/me/ledger') {
       return (async () => {
         const session = await auth.api.getSession({ headers: req.headers });

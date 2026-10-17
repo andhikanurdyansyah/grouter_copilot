@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, fetchPlans, fetchMe, formatIDR, fmtDate } from '@/lib/grouter-api'
+import { api, fetchPlans, fetchMe, formatIDR, fmtDate, downloadCustomerExport } from '@/lib/grouter-api'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
@@ -256,6 +256,18 @@ export function CustomerOrders() {
               : 'Prices are set and verified server-side — amounts cannot be altered from the browser. QRIS payments are verified automatically.'}
           </p>
         </div>
+
+        <Button
+          variant='outline'
+          size='sm'
+          className='h-8 gap-1.5 border-border bg-card text-xs font-medium self-start sm:self-auto'
+          onClick={async () => {
+            try { await downloadCustomerExport('orders') }
+            catch { toast.error(isId ? 'Ekspor order gagal. Coba lagi.' : 'Order export failed. Please try again.') }
+          }}
+        >
+          <Download className='size-3.5' /> {isId ? 'Ekspor order' : 'Export orders'}
+        </Button>
 
         {/* Duration segmented control */}
         {availableDurations.length > 1 && (

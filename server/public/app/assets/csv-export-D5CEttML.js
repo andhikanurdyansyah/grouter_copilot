@@ -1,0 +1,3 @@
+function e(e){let t=e==null?``:String(e);return/[",\r\n]/.test(t)?`"${t.replace(/"/g,`""`)}"`:t}function t(t,n){return[t,...n].map(t=>t.map(e).join(`,`)).join(`\r
+`)+`\r
+`}function n(e,t){let n=new Blob([new Uint8Array([239,187,191]),t],{type:`text/csv;charset=utf-8`}),r=URL.createObjectURL(n),i=document.createElement(`a`);i.href=r,i.download=e,i.click(),setTimeout(()=>URL.revokeObjectURL(r),0)}export{n,t};

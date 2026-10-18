@@ -16,11 +16,13 @@ export function AdminLedger() {
   const [activeTab, setActiveTab] = useState<'all' | 'ok' | 'quota' | 'upstream' | 'replay'>('all')
   const [selectedModel, setSelectedModel] = useState('all')
   const [selectedPayload, setSelectedPayload] = useState<null | (typeof rowsList)[number]>(null)
+  const pageLimit = 50
+  const [pageSize, setPageSize] = useState(50)
 
   // Data REAL dari ledger gateway (D-021) — tanpa mock.
   const ledgerQuery = useQuery({
-    queryKey: ['admin-ledger-live'],
-    queryFn: () => fetchLedger({ limit: 50 }),
+    queryKey: ['admin-ledger-live', pageSize],
+    queryFn: () => fetchLedger({ limit: pageSize }),
     refetchInterval: isLive ? 15_000 : false,
   })
   const records = (ledgerQuery.data?.records ?? []) as Array<{
@@ -35,6 +37,9 @@ export function AdminLedger() {
     reservedTokens: number | null
     errorClassification: string | null
     createdAt: number | null
+    completedAt: number | null
+    errorStatus: number | null
+    errorCode: string | null
   }>
 
   const fmtTok = (n: number | null | undefined) =>
@@ -50,13 +55,20 @@ export function AdminLedger() {
     fullId: r.requestId,
     license: r.licenseId,
     time: fmtTime(r.createdAt),
+    createdAtIso: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+    completedAtIso: r.completedAt ? new Date(r.completedAt).toISOString() : null,
+    latencyMs: r.completedAt && r.createdAt ? Math.max(0, r.completedAt - r.createdAt) : null,
     model: r.model ?? '—',
-    reserved: fmtTok(r.reservedTokens),
-    in: fmtTok(r.inputTokens),
-    out: fmtTok(r.outputTokens),
+    reserved: r.reservedTokens ?? null,
+    in: r.inputTokens ?? null,
+    out: r.outputTokens ?? null,
+    total: r.totalTokens ?? ((r.inputTokens ?? 0) + (r.outputTokens ?? 0) > 0 ? (r.inputTokens ?? 0) + (r.outputTokens ?? 0) : null),
     status: r.status,
     type: r.status === 'ok' ? 'ok' : r.status === 'reserved' ? 'replay' : r.status === 'error' ? 'upstream' : 'quota',
     customer: r.customer ?? '—',
+    errorClassification: r.errorClassification ?? null,
+    errorStatus: r.errorStatus ?? null,
+    errorCode: r.errorCode ?? null,
   }))
 
   const filteredRows = rowsList.filter((row) => {
@@ -73,6 +85,9 @@ export function AdminLedger() {
     }
     return true
   })
+
+  const hasMore = records.length >= pageSize
+  const visibleCount = filteredRows.length
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -259,7 +274,7 @@ export function AdminLedger() {
               ) : (
                 filteredRows.map((row, i) => (
                   <tr
-                    key={i}
+                            key={i}
                     onClick={() => setSelectedPayload(row)}
                     className='hover:bg-muted/40 transition-colors cursor-pointer group'
                   >
@@ -269,9 +284,9 @@ export function AdminLedger() {
                   <td className='py-3.5 px-4 text-foreground font-medium'>{row.license}</td>
                   <td className='py-3.5 px-4 text-muted-foreground'>{row.time}</td>
                   <td className='py-3.5 px-4 text-foreground'>{row.model}</td>
-                  <td className='py-3.5 px-4 text-right text-muted-foreground'>{row.reserved}</td>
-                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{row.in}</td>
-                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{row.out}</td>
+                  <td className='py-3.5 px-4 text-right text-muted-foreground'>{fmtTok(row.reserved)}</td>
+                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{fmtTok(row.in)}</td>
+                  <td className='py-3.5 px-4 text-right text-foreground font-bold'>{fmtTok(row.out)}</td>
                   <td className='py-3.5 px-4 text-right font-sans'>
                     {row.type === 'ok' && (
                       <span className='inline-flex items-center gap-1.5 text-[#39D6A0] font-bold'>
@@ -312,14 +327,20 @@ export function AdminLedger() {
               ? 'Permintaan gagal/ditolak tidak ditagih · replay idempoten tidak menambah requestCount. Klik baris untuk inspeksi payload JSON.'
               : 'Failed/rejected requests are not billed · idempotent replay does not increment requestCount. Click any row to inspect JSON payload.'}
           </div>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={() => ledgerQuery.refetch()}
-            className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-semibold self-end sm:self-auto interactive-press'
-          >
-            {isId ? 'Muat lebih banyak' : 'Load more'}
-          </Button>
+          <div className='flex items-center gap-2 self-end sm:self-auto'>
+            <span className='text-[11px] text-muted-foreground'>
+              {visibleCount} {isId ? 'ditampilkan' : 'shown'}
+            </span>
+            <Button
+              variant='ghost'
+              size='sm'
+              disabled={!hasMore || ledgerQuery.isFetching}
+              onClick={() => setPageSize((n) => n + pageLimit)}
+              className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-semibold interactive-press'
+            >
+              {isId ? 'Muat lebih banyak' : 'Load more'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -342,28 +363,37 @@ export function AdminLedger() {
             </div>
 
             <div className='my-3 rounded-xl border border-border/70 bg-muted/70 dark:bg-muted/30 text-foreground dark:text-slate-200 p-4 text-xs font-mono space-y-2 overflow-x-auto shadow-inner'>
-              <div className='text-indigo-400 font-bold'>&#47;&#47; Gateway Contract D-021 Verified Payload</div>
+              <div className='text-indigo-400 font-bold'>&#47;&#47; {isId ? 'Record ledger tersimpan (server)' : 'Stored ledger record (server)'}</div>
               <pre className='text-[11px] leading-relaxed'>
-{`{
-  "requestId": "${selectedPayload.fullId}",
-  "licenseId": "${selectedPayload.license}",
-  "model": "${selectedPayload.model}",
-  "timestamp": "2026-10-11T${selectedPayload.time}Z",
-  "tokens": {
-    "reserved": "${selectedPayload.reserved}",
-    "input": ${selectedPayload.in === '—' ? 0 : selectedPayload.in.replace('.', '')},
-    "output": ${selectedPayload.out === '—' ? 0 : selectedPayload.out.replace('.', '')},
-    "billed": ${selectedPayload.type === 'ok' ? true : false}
+{JSON.stringify({
+  requestId: selectedPayload.fullId,
+  licenseId: selectedPayload.license,
+  customer: selectedPayload.customer,
+  model: selectedPayload.model,
+  status: selectedPayload.status,
+  tokens: {
+    reserved: selectedPayload.reserved,
+    input: selectedPayload.in,
+    output: selectedPayload.out,
+    total: selectedPayload.total,
   },
-  "status": "${selectedPayload.status}",
-  "signature": "ed25519:verified_ok"
-}`}
+  createdAt: selectedPayload.createdAtIso,
+  completedAt: selectedPayload.completedAtIso,
+  latencyMs: selectedPayload.latencyMs,
+  error: selectedPayload.errorClassification || selectedPayload.errorCode || selectedPayload.errorStatus
+    ? {
+        classification: selectedPayload.errorClassification,
+        code: selectedPayload.errorCode,
+        status: selectedPayload.errorStatus,
+      }
+    : null,
+}, null, 2)}
               </pre>
             </div>
 
             <div className='flex items-center justify-between pt-2'>
-              <span className='text-xs text-emerald-400 flex items-center gap-1.5 font-medium'>
-                <ShieldCheck className='size-4' /> Ed25519 cryptographically signed
+              <span className='text-xs text-muted-foreground flex items-center gap-1.5 font-medium'>
+                <ShieldCheck className='size-4' /> {isId ? 'Hanya field dari server; jawaban AI tidak disimpan.' : 'Server fields only; assistant answers are not stored.'}
               </span>
               <Button size='sm' onClick={() => setSelectedPayload(null)} className='bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-bold interactive-press'>
                 Tutup

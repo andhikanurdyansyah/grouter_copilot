@@ -211,17 +211,21 @@ test('gateway: gRouter auth failure, timeout, malformed upstream (never charged,
   }
 });
 
-test('gateway: duplicate requestId = idempotent replay (no double charge)', async () => {
+test('gateway: duplicate requestId = already-completed conflict, answers are not stored (no double charge)', async () => {
   const env = makeServer({ fetchImpl: okProvider(), apiKey: 'k' });
   try {
     const { token } = env.service.issue({ customer: 'IDEM' });
     const first = await env.gateway.chat({ token, messages: MESSAGES, requestId: 'req_dup_1' });
     assert.equal(first.status, 'ok');
+    assert.equal(first.answer, 'total is 42');
     const second = await env.gateway.chat({ token, messages: MESSAGES, requestId: 'req_dup_1' });
-    assert.equal(second.status, 'ok');
-    assert.equal(second.idempotentReplay, true);
+    assert.equal(second.status, 'error');
+    assert.equal(second.code, 'REQUEST_ALREADY_COMPLETED');
+    assert.equal(second.retryable, false);
+    assert.equal(second.answer, undefined, 'a replay must never fabricate an empty or repeated answer');
     const records = env.store.data.usage.filter((u) => u.requestId === 'req_dup_1');
     assert.equal(records.length, 1, 'exactly one ledger record');
+    assert.ok(records[0].answer == null, 'assistant answers are deliberately not persisted');
     assert.equal(env.store.usageTotals(env.service.list()[0].id).usedTokens, 20, 'charged once');
   } finally {
     env.cleanup();

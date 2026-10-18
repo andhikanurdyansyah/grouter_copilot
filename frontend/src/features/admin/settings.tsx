@@ -110,10 +110,13 @@ export function AdminSettings() {
   }
   const shownNotif = notifDraft ?? effectiveNotif
   const queryClient = useQueryClient()
+  const [restartRequiredNotice, setRestartRequiredNotice] = useState<string[]>([])
   const saveNotif = useMutation({
     mutationFn: (payload: NotificationSettings) =>
       patchAdminSettings({ notifications: payload }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const notice = Array.isArray(data?.requiresRestart) ? data.requiresRestart.filter((s) => typeof s === 'string') : []
+      setRestartRequiredNotice(notice)
       setNotifStatus('success')
       void queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
     },
@@ -698,6 +701,13 @@ export function AdminSettings() {
                       {isId
                         ? 'Pengaturan notifikasi tersimpan.'
                         : 'Notification settings saved.'}
+                    </span>
+                  )}
+                  {restartRequiredNotice.length > 0 && (
+                    <span role='alert' className='text-[11px] font-medium text-amber-500'>
+                      {isId
+                        ? `Bagian berikut baru berlaku setelah restart backend: ${restartRequiredNotice.join(', ')}.`
+                        : `These sections take effect after a backend restart: ${restartRequiredNotice.join(', ')}.`}
                     </span>
                   )}
                   {notifStatus === 'error' && (

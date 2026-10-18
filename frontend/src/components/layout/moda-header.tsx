@@ -70,7 +70,7 @@ export function ModaHeader() {
       if (pathname.includes('/install'))
         return `${prefix} / ${t('nav_user_install')}`
       if (pathname.includes('/licenses'))
-        return `${prefix} / ${t('nav_user_install')}`
+        return `${prefix} / ${t('nav_user_licenses')}`
       if (pathname.includes('/usage'))
         return `${prefix} / ${t('nav_user_usage')}`
       if (pathname.includes('/orders'))
@@ -450,12 +450,16 @@ export function ModaHeader() {
             </div>
             <div className='border-t border-border/70 bg-muted/20 p-2.5 text-center'>
               <a
-                href='/user/payments'
+                href={isAdmin ? '/admin/orders' : '/user/payments'}
                 className='block text-[11px] font-semibold text-[#7778FF] hover:underline'
               >
-                {language === 'id'
-                  ? 'Lihat paket & tagihan'
-                  : 'View plans & billing'}
+                {isAdmin
+                  ? language === 'id'
+                    ? 'Lihat semua pesanan'
+                    : 'View all orders'
+                  : language === 'id'
+                    ? 'Lihat paket & tagihan'
+                    : 'View plans & billing'}
               </a>
             </div>
           </DropdownMenuContent>

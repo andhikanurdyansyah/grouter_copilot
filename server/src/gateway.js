@@ -109,14 +109,14 @@ export class CopilotGateway {
     const existing = this.store.getUsageRecord(requestId);
     if (existing) {
       if (existing.status === 'ok') {
-        const eff = this.resolveSettings();
-        const plan = (eff.plans || []).find((p) => p.key === lic.planKey);
+        // Assistant answers are deliberately NOT persisted (privacy). A
+        // replay therefore cannot return the original answer — report the
+        // completed state honestly instead of fabricating an empty success.
         return {
-          requestId, status: existing.responseStatus ?? 'ok', answer: existing.answer ?? '',
-          usage: { inputTokens: existing.inputTokens ?? 0, outputTokens: existing.outputTokens ?? 0 },
-          licenseId: lic.id,
-          quota: this._quotaView(plan?.quotaTokens ?? null, this.store.usageTotals(lic.id)),
-          idempotentReplay: true,
+          requestId, status: 'error',
+          code: 'REQUEST_ALREADY_COMPLETED',
+          message: 'This requestId has already completed; its answer is not stored and cannot be replayed.',
+          retryable: false, licenseId: lic.id,
         };
       }
       return {
@@ -157,8 +157,13 @@ export class CopilotGateway {
     }
     if (policy.provider !== 'grouter') {
       // Only gRouter is wired to a real upstream (SUPPORTED_AI_PROVIDERS);
-      // validation already keeps other values out of the catalogue.
-      this.store.updateUsageRecord(requestId, { status: 'error', completedAt: Date.now(), reservedTokens: 0, errorClassification: 'not_configured', errorStatus: 503, errorCode: 'NOT_CONFIGURED' });
+      // validation already keeps other values out of the catalogue. Ledger
+      // the rejection: this path never reserved a row to update.
+      const entry = this._ledgerEntry({ requestId, lic, status: 'rejected', errorClassification: 'not_configured' });
+      entry.errorStatus = 503;
+      entry.errorCode = 'NOT_CONFIGURED';
+      entry.completedAt = Date.now();
+      this.store.addUsageRecord(entry);
       return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'The configured AI provider is not available.', retryable: false, licenseId: lic.id };
     }
     // Model resolution + allowlist enforcement (server-side policy):
@@ -181,13 +186,12 @@ export class CopilotGateway {
       }
     }
     if (!effModel) {
-      this.store.updateUsageRecord(requestId, {
-        status: 'error',
-        completedAt: Date.now(),
-        reservedTokens: 0,
-        errorClassification: 'not_configured',
-        errorStatus: 503, errorCode: 'NOT_CONFIGURED',
-      });
+      // Ledger the rejection: this path never reserved a row to update.
+      const entry = this._ledgerEntry({ requestId, lic, status: 'rejected', errorClassification: 'not_configured' });
+      entry.errorStatus = 503;
+      entry.errorCode = 'NOT_CONFIGURED';
+      entry.completedAt = Date.now();
+      this.store.addUsageRecord(entry);
       return { requestId, status: 'error', code: 'NOT_CONFIGURED', message: 'No usable model is configured for this package.', retryable: false, licenseId: lic.id };
     }
 

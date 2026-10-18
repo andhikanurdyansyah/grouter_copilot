@@ -3,9 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchMe } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
 import {
-  Shield,
-  Building,
   KeyRound,
+  Building,
   LogOut,
   AlertTriangle,
   RotateCw,
@@ -59,7 +58,6 @@ export function CustomerAccount() {
   const quotaLimit = (activeUsage as { quotaLimit?: number | null } | undefined)?.quotaLimit ?? null
   const usedTokens = (activeUsage as { usedTokens?: number | null } | undefined)?.usedTokens ?? 0
   const quotaPercent = quotaLimit ? Math.min(100, Math.round((usedTokens / quotaLimit) * 100)) : null
-  const emailDomain = userEmail.includes('@') ? userEmail.split('@')[1] : null
   const activeExpiresAt = activeLicense ? (activeLicense as { expiresAt?: string | number | null }).expiresAt ?? null : null
 
   return (
@@ -148,19 +146,10 @@ export function CustomerAccount() {
                 <div className='py-3 flex justify-between items-center'>
                   <span className='text-muted-foreground flex items-center gap-2'>
                     <Building className='size-4 text-muted-foreground' />
-                    {language === 'id' ? 'Organisasi' : 'Organization'}
-                  </span>
-                  <span className='font-bold text-foreground'>{emailDomain ?? '—'}</span>
-                </div>
-                <div className='py-3 flex justify-between items-center'>
-                  <span className='text-muted-foreground flex items-center gap-2'>
-                    <Shield className='size-4 text-muted-foreground' />
-                    {language === 'id' ? 'Domain Terikat' : 'Bound Domains'}
+                    {language === 'id' ? 'Lisensi Aktif' : 'Active License'}
                   </span>
                   <span className='font-mono text-xs text-foreground font-bold'>
-                    {licenses.find((l: { status?: string | null }) => String(l.status ?? 'active') === 'active')
-                      ? (licenses.find((l: { status?: string | null }) => String(l.status ?? 'active') === 'active') as { id?: string }).id
-                      : '—'}
+                    {activeLicense ? String((activeLicense as { id?: string }).id ?? '—') : '—'}
                   </span>
                 </div>
                 <div className='py-3 flex justify-between items-center'>

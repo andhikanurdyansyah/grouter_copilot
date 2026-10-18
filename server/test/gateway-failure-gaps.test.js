@@ -79,8 +79,12 @@ test('gateway propagates trusted runtime truncation as partial without changing 
     assert.equal(out.status, 'partial');
     assert.equal(env.store.getUsageRecord('req_partial').status, 'ok');
     assert.equal(env.store.getUsageRecord('req_partial').responseStatus, 'partial');
+    // The answer is not persisted, so a duplicate requestId cannot replay the
+    // partial answer either (A-13): it is an honest already-completed conflict.
     const replay = await env.gateway.chat({ token, messages: MESSAGES, requestId: 'req_partial' });
-    assert.equal(replay.status, 'partial');
+    assert.equal(replay.status, 'error');
+    assert.equal(replay.code, 'REQUEST_ALREADY_COMPLETED');
+    assert.equal(replay.answer, undefined);
   } finally { env.restore(); }
 });
 

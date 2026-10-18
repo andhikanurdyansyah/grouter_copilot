@@ -216,7 +216,7 @@ export async function fetchAdminSettings() {
 
 export async function patchAdminSettings(payload: unknown) {
   const { data } = await api.patch('/admin/settings', payload)
-  return data
+  return data as { settings: Record<string, unknown>; requiresRestart?: string[] }
 }
 
 export interface AppNotification {

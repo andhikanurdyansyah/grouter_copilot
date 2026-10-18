@@ -187,7 +187,11 @@ test('entitlement: default model drifted outside the package allowlist fails clo
     assert.equal(drifted.status, 'error', JSON.stringify(drifted));
     assert.equal(drifted.code, 'NOT_CONFIGURED');
     assert.equal(providerCalls, 0, 'the un-allowed drifted default must never reach upstream');
-    assert.equal(env.store.getUsageRecord('req_drift'), null, 'fail-closed before reservation → no ledger row');
+    const driftRecord = env.store.getUsageRecord('req_drift');
+    assert.ok(driftRecord, 'fail-closed rejection must leave a ledger row (A-12)');
+    assert.equal(driftRecord.status, 'rejected');
+    assert.equal(driftRecord.errorClassification, 'not_configured');
+    assert.equal(driftRecord.reservedTokens, 0, 'rejected requests are never charged');
     assert.equal(env.store.usageTotals(env.service.list()[0].id).usedTokens, 0);
 
     // (b) control: an explicit ALLOWLISTED model under the same drifted config is accepted.

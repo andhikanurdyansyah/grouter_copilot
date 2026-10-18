@@ -30,9 +30,10 @@ export function CustomerUsage() {
   const [selectedRequest, setSelectedRequest] = useState<null | (typeof requestsList)[number]>(null)
 
   // Data REAL dari ledger milik akun (D-021, server-side).
+  const [ledgerPageSize, setLedgerPageSize] = useState(50)
   const myLedger = useQuery({
-    queryKey: ['my-ledger-live'],
-    queryFn: () => fetchMyLedger(50),
+    queryKey: ['my-ledger-live', ledgerPageSize],
+    queryFn: () => fetchMyLedger(ledgerPageSize),
     refetchInterval: 30_000,
   })
   const { data: meData } = useMe(true)
@@ -329,7 +330,8 @@ export function CustomerUsage() {
           <Button
             variant='ghost'
             size='sm'
-            onClick={() => myLedger.refetch()}
+            disabled={requestsList.length < ledgerPageSize || myLedger.isFetching}
+            onClick={() => setLedgerPageSize((n) => n + 50)}
             className='h-7 text-xs text-[#7778FF] hover:text-[#8F90FF] font-medium interactive-press'
           >
             {isId ? 'Muat lebih banyak' : 'Load more'}

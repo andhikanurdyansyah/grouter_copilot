@@ -16,7 +16,21 @@ export class AccountService {
    */
   ensureAccount(user) {
     if (!user || !user.id) return null;
-    const existing = this.store.getAccountByEmail(user.email);
+    // Normalize once, here (A-15): emails arrive from providers with
+    // arbitrary case/whitespace. An empty email must never become a
+    // cross-linkable store account.
+    const email = String(user.email ?? '').trim().toLowerCase();
+    if (!email) return null;
+    // Prefer the durable auth identity over the (recyclable) email address.
+    let existing = this.store.data.accounts.find((a) => a.authUserId === user.id) ?? null;
+    if (!existing) {
+      const byEmail = this.store.getAccountByEmail(email);
+      // Never merge a second auth identity into an account that already
+      // belongs to someone else — that is an account takeover by email.
+      if (byEmail && !byEmail.authUserId) existing = byEmail;
+      else if (byEmail && byEmail.authUserId !== user.id) existing = null;
+      else existing = byEmail;
+    }
     if (existing) {
       // keep external auth id in sync
       if (!existing.authUserId) {
@@ -35,7 +49,7 @@ export class AccountService {
       id: `acc_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`,
       authUserId: user.id,
       name: user.name ?? '',
-      email: user.email ?? '',
+      email,
       createdAt: Date.now(),
     };
     return this.store.addAccount(account);

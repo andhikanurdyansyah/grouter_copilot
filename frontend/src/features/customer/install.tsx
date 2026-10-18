@@ -79,14 +79,14 @@ export function CustomerInstall() {
   // License ID. Menempelkan License ID gagal nyata: "Malformed license".
   const installCmd = 'npx @grouter/copilot install --license <TOKEN-LISENSI>'
 
-  const handleCopyCmd = () => {
-    navigator.clipboard.writeText(installCmd)
+  const handleCopyCmd = async () => {
+    await navigator.clipboard.writeText(installCmd)
     setCopiedCmd(true)
     setTimeout(() => setCopiedCmd(false), 2000)
   }
 
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(licenseId)
+  const handleCopyId = async () => {
+    await navigator.clipboard.writeText(licenseId)
     setCopiedId(true)
     setTimeout(() => setCopiedId(false), 2000)
   }
@@ -586,10 +586,9 @@ export function CustomerInstall() {
                   size='sm'
                   variant='ghost'
                   className='h-6 px-2 text-[11px] text-[#7778FF] hover:text-[#8F90FF]'
-                  onClick={() => {
+                  onClick={async () => {
                     const code = `export default {\n  name: 'orders.lookup',\n  description: 'Lookup customer order status and delivery tracking',\n  parameters: {\n    type: 'object',\n    properties: {\n      order_id: { type: 'string', description: 'Order reference ID' }\n    },\n    required: ['order_id']\n  },\n  async handler({ order_id }, context) {\n    const order = await context.db.orders.findById(order_id);\n    if (!order) return { error: 'Order not found' };\n    return {\n      status: order.status,\n      items_count: order.items.length,\n      tracking_number: order.tracking_no\n    };\n  }\n};`
-                    navigator.clipboard.writeText(code)
-                    setCopiedSkillExample(true)
+                    try { await navigator.clipboard.writeText(code); setCopiedSkillExample(true) } catch { toast.error(isId ? 'Gagal menyalin' : 'Copy failed'); return }
                     setTimeout(() => setCopiedSkillExample(false), 2000)
                   }}
                 >

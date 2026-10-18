@@ -15,6 +15,7 @@
  */
 
 import { createServer } from 'node:http';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -51,6 +52,8 @@ const GATEWAY_HTTP = {
   MODEL_NOT_ALLOWED: 403,
   // License references a package absent from the catalogue → fail closed.
   PLAN_NOT_FOUND: 403,
+  // A completed requestId cannot be replayed because answers are not stored.
+  REQUEST_ALREADY_COMPLETED: 409,
   TIMEOUT: 504,
   UPSTREAM_UNAVAILABLE: 502,
 };
@@ -147,16 +150,59 @@ function resolveAdminIssueEntitlement(eff, rawPlanKey) {
  * legitimate traffic.
  */
 const RATE_LIMITS = new Map([
+  ['/api/orders', { windowMs: 60_000, max: 20 }],
+  ['/api/admin', { windowMs: 60_000, max: 120 }],
   ['/api/resolve', { windowMs: 60_000, max: 30 }],
   ['/api/copilot/chat', { windowMs: 60_000, max: 60 }],
   ['/api/heartbeat', { windowMs: 60_000, max: 60 }],
   ['/api/payment/klikqris/webhook', { windowMs: 60_000, max: 60 }],
 ]);
+// Settings sections whose consumers are built once at process boot
+// (KlikQRIS/usage clients, gateway adapter, Better Auth). A PATCH persists
+// them immediately but they only take effect after a backend restart; the
+// PATCH response discloses them so the admin UI never implies otherwise.
+// plans/notifications/branding/license-entitlement reads resolve settings
+// per request and are intentionally absent here.
+const RESTART_REQUIRED_SECTIONS = ['auth', 'payment', 'provider', 'usage'];
+
 const rateBuckets = new Map();
 let lastRatePrune = Date.now();
 
+const LOOPBACK_PEERS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+/**
+ * Rate-limit identity for a request. Behind the single public origin every
+ * socket peer is the local frontend proxy (or cloudflared), so the socket
+ * address alone would put all customers in one bucket. Only a loopback peer
+ * may speak for the end client via the same forwarding headers Better Auth
+ * trusts; a direct non-loopback caller can never spoof another identity.
+ */
+function rateLimitKey(req) {
+  const peer = req.socket?.remoteAddress ?? 'unknown';
+  if (LOOPBACK_PEERS.has(peer)) {
+    const cf = req.headers?.['cf-connecting-ip'];
+    if (typeof cf === 'string' && cf.trim()) return cf.trim();
+    const forwarded = req.headers?.['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) {
+      const hops = forwarded.split(',').map((hop) => hop.trim()).filter(Boolean);
+      const client = [...hops].reverse().find((hop) => !LOOPBACK_PEERS.has(hop));
+      if (client) return client;
+    }
+    const realIp = req.headers?.['x-real-ip'];
+    if (typeof realIp === 'string' && realIp.trim()) return realIp.trim();
+  }
+  return peer;
+}
+
+function rateRuleFor(pathname) {
+  const exact = RATE_LIMITS.get(pathname);
+  if (exact) return exact;
+  if (pathname.startsWith('/api/admin/')) return RATE_LIMITS.get('/api/admin') ?? null;
+  return null;
+}
+
 function isRateLimited(ip, pathname) {
-  const rule = RATE_LIMITS.get(pathname);
+  const rule = rateRuleFor(pathname);
   if (!rule) return false;
   const now = Date.now();
   if (now - lastRatePrune > 300_000) {
@@ -165,7 +211,7 @@ function isRateLimited(ip, pathname) {
     }
     lastRatePrune = now;
   }
-  const key = `${pathname}|${ip}`;
+  const key = `${pathname.startsWith('/api/admin/') ? '/api/admin' : pathname}|${ip}`;
   const bucket = rateBuckets.get(key);
   if (!bucket || now - bucket.windowStart >= rule.windowMs) {
     rateBuckets.set(key, { windowStart: now, count: 1 });
@@ -309,8 +355,10 @@ export function createCopilotServer({
     res.setHeader('x-permitted-cross-domain-policies', 'none');
 
     // In-memory fixed-window rate limit (zero-dependency) for unauthenticated
-    // license-exchange surfaces. Per-IP, generous enough for real plugins.
-    if (isRateLimited(req.socket?.remoteAddress ?? 'unknown', url.pathname)) {
+    // license-exchange surfaces, keyed by the trusted client identity.
+    // /api/copilot/chat is limited once, inside its own handler below.
+    if (url.pathname !== '/api/copilot/chat'
+      && isRateLimited(rateLimitKey(req), url.pathname)) {
       return sendJson(res, 429, { error: 'too many requests' });
     }
 
@@ -557,7 +605,7 @@ export function createCopilotServer({
     if (req.method === 'POST' && url.pathname === '/api/copilot/chat') {
       return readBody(req).then(async (body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
-        if (isRateLimited(req.socket?.remoteAddress ?? 'unknown', '/api/copilot/chat')) {
+        if (isRateLimited(rateLimitKey(req), '/api/copilot/chat')) {
           return sendJson(res, 429, { error: 'too many requests' });
         }
         const out = await gateway.chat(body);
@@ -728,9 +776,12 @@ export function createCopilotServer({
       return sendJson(res, 200, {
         providers: { google: googleEnabled },
         basePath: '/api/auth',
+        // Derived per request from effective settings (A-17): the boot
+        // object would drift after an admin payment PATCH until restart,
+        // and that drift is disclosed by requiresRestart at PATCH time.
         payment: {
-          enabled: klikqris.configured,
-          mode: klikqris.mode,
+          enabled: Boolean(String(eff.payment.merchantId ?? '').trim() && String(eff.payment.klikqrisApiKey ?? '').trim()),
+          mode: eff.payment.mode,
         },
         branding: {
           productName: eff.branding.productName,
@@ -759,14 +810,21 @@ export function createCopilotServer({
       if (!requireAdmin(req, adminToken, allowUnauthenticatedAdmin)) return sendJson(res, 401, { error: 'unauthorized' });
       return readBody(req).then((body) => {
         if (body.__error) return sendJson(res, 400, { error: 'invalid request body' });
+        let patch;
         try {
           const clean = stripMaskedSecrets(body);
-          const patch = validateSettings(clean);
+          patch = validateSettings(clean);
+        } catch (err) {
+          return sendJson(res, err.code === 'INVALID_SETTINGS' ? 400 : 500, { error: err.code === 'INVALID_SETTINGS' ? err.message : 'invalid settings request' });
+        }
+        try {
           store.updateSettings(patch);
           const eff = resolveSettings(store.getSettings());
-          return sendJson(res, 200, { settings: maskSettings(eff) });
+          const requiresRestart = RESTART_REQUIRED_SECTIONS.filter((section) => Object.hasOwn(patch, section));
+          return sendJson(res, 200, { settings: maskSettings(eff), requiresRestart });
         } catch (err) {
-          return sendJson(res, err.code === 'INVALID_SETTINGS' ? 400 : 500, { error: err.message });
+          console.error(`[settings] save failed: ${String(err?.message ?? 'unknown').slice(0, 200)}`);
+          return sendJson(res, 500, { error: 'settings could not be saved' });
         }
       });
     }
@@ -1294,7 +1352,12 @@ function requireAdmin(req, adminToken, allowUnauthenticatedAdmin = false) {
     return allowUnauthenticatedAdmin;
   }
   const auth = req.headers.authorization ?? '';
-  return auth === `Bearer ${adminToken}`;
+  const expected = `Bearer ${adminToken}`;
+  // Timing-safe comparison over fixed-length digests (A-11): never
+  // short-circuit on a prefix, never leak the token length.
+  const a = createHash('sha256').update(auth).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
 }
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -1340,6 +1403,6 @@ function renderDashboardHtml(service) {
   const licenses = service.list().map(sanitizeLicense);
   const base = readFileSync(path.join(__dirname, '..', 'public', 'dashboard.html'), 'utf8');
   return base
-    .replace('__STATS_JSON__', JSON.stringify(stats))
-    .replace('__LICENSES_JSON__', JSON.stringify(licenses));
+    .replace('__STATS_JSON__', JSON.stringify(stats).replace(/</g, '\\u003c'))
+    .replace('__LICENSES_JSON__', JSON.stringify(licenses).replace(/</g, '\\u003c'));
 }

@@ -27,6 +27,7 @@ export const dictionary: Translations = {
 
   nav_user_overview: { id: 'Ringkasan', en: 'Overview' },
   nav_user_install: { id: 'Lisensi & instalasi', en: 'Licenses & setup' },
+  nav_user_licenses: { id: 'Lisensi & instalasi', en: 'Licenses & setup' },
   nav_user_usage: { id: 'Penggunaan AI', en: 'AI Usage' },
   nav_user_plans: { id: 'Paket & harga', en: 'Plans & pricing' },
   nav_user_orders: { id: 'Pesanan & pembayaran', en: 'Orders & billing' },

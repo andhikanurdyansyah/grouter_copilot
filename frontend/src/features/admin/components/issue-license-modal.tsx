@@ -60,9 +60,9 @@ export function IssueLicenseModal({ open, onOpenChange, onSuccess }: IssueLicens
     issueMut.mutate()
   }
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (issuedLicense) {
-      navigator.clipboard.writeText(issuedLicense.token)
+      await navigator.clipboard.writeText(issuedLicense.token)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     }

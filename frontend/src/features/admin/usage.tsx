@@ -20,7 +20,7 @@ export function AdminUsage() {
 
   const [nowMs] = useState(() => Date.now())
   const rangeDays = timeRange === '24j' ? 1 : timeRange === '30h' ? 30 : 14
-  const { barData, topLicenses, inboundTokens, outboundTokens, requestCount, maxDailyTokens } = useMemo(() => {
+  const { barData, topLicenses, inboundTokens, outboundTokens, requestCount, maxDailyTokens, chartScaleMax, scaleLabels, fmtScale } = useMemo(() => {
     const records = (ledger.data?.records ?? []) as Array<{
       licenseId: string; customer: string | null
       inputTokens: number | null; outputTokens: number | null
@@ -69,7 +69,12 @@ export function AdminUsage() {
         percent: Math.round((v.tokens / maxTokens) * 100),
         isExceeded: false,
       }))
-    void sumIn; void sumOut; return { barData: bars, topLicenses: top, inboundTokens: sumIn, outboundTokens: sumOut, requestCount: records.length, maxDailyTokens: Math.max(0, ...bars.map((d) => d.in + d.out)) }
+    // Chart scale derives from the data itself (D-21) — never a fixed 4M axis.
+    const maxDailyInMillions = Math.max(0, ...bars.map((d) => d.in + d.out))
+    const chartScaleMax = maxDailyInMillions > 0 ? Math.ceil(maxDailyInMillions * 1.1 * 10) / 10 : 1
+    const scaleLabels = [chartScaleMax, chartScaleMax * 0.75, chartScaleMax * 0.5, chartScaleMax * 0.25, 0]
+    const fmtScale = (n: number) => n >= 1 ? n.toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt' : Math.round(n * 1_000_000).toLocaleString('id-ID')
+    void sumIn; void sumOut; return { barData: bars, topLicenses: top, inboundTokens: sumIn, outboundTokens: sumOut, requestCount: records.length, maxDailyTokens: maxDailyInMillions, chartScaleMax, scaleLabels, fmtScale }
   }, [ledger.data, nowMs, rangeDays])
 
   return (
@@ -174,19 +179,17 @@ export function AdminUsage() {
           {/* Stacked Bars Component */}
           <div className='relative h-64 w-full pt-4'>
             <div className='absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-muted-foreground font-mono'>
-              <span>4M</span>
-              <span>3M</span>
-              <span>2M</span>
-              <span>1M</span>
-              <span>0</span>
+              {scaleLabels.map((v, i) => (
+                <span key={i}>{fmtScale(v)}</span>
+              ))}
             </div>
 
             <div className='ml-7 h-full flex items-end justify-between gap-1 pb-6 border-b border-border'>
               {barData.map((d, i) => {
                 const total = d.in + d.out
                 void total
-                const inHeightPct = (d.in / 4.0) * 100
-                const outHeightPct = (d.out / 4.0) * 100
+                const inHeightPct = (d.in / chartScaleMax) * 100
+                const outHeightPct = (d.out / chartScaleMax) * 100
                 return (
                   <div key={i} className='flex-1 flex flex-col items-center h-full justify-end group cursor-pointer'>
                     <div className='w-full max-w-[24px] flex flex-col rounded-t-sm overflow-hidden'>

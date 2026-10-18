@@ -25,6 +25,7 @@ export function AdminOrders() {
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<{
     id: string
+    fullId: string
     customer: string
     plan: string
     amount: string
@@ -277,12 +278,12 @@ export function AdminOrders() {
                         size='sm'
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleVerify(row.id)
+                          handleVerify(row.fullId)
                         }}
-                        disabled={verifyingId === row.id}
+                        disabled={verifyingId === row.fullId}
                         className='h-7 bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs font-medium px-3'
                       >
-                        {verifyingId === row.id ? (
+                        {verifyingId === row.fullId ? (
                           <RefreshCw className='size-3 animate-spin' />
                         ) : (
                           t('btn_verify_settle')
@@ -413,8 +414,8 @@ export function AdminOrders() {
                   <span className='font-mono text-foreground'>KlikQRIS (Sandbox)</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Ref Provider</span>
-                  <span className='font-mono text-foreground'>REF-20261010-9QX2</span>
+                  <span className='text-muted-foreground'>{isId ? 'ID Order' : 'Order ID'}</span>
+                  <span className='font-mono text-foreground'>{selectedOrder.fullId}</span>
                 </div>
               </div>
             </div>
@@ -424,10 +425,9 @@ export function AdminOrders() {
             {selectedOrder?.status === 'pending' && (
               <Button
                 onClick={() => {
-                  handleVerify(selectedOrder.id)
-                  setSelectedOrder(prev => prev ? { ...prev, status: 'paid', statusLabel: isId ? 'Lunas' : 'Paid' } : null)
+                  handleVerify(selectedOrder.fullId)
                 }}
-                disabled={verifyingId === selectedOrder?.id}
+                disabled={verifyingId === selectedOrder?.fullId}
                 className='w-full bg-[#7778FF] hover:bg-[#8F90FF] text-white text-xs h-9 font-semibold gap-1.5'
               >
                 {verifyingId === selectedOrder?.id ? (

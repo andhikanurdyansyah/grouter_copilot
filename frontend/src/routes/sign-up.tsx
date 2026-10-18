@@ -1,16 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { AuthComponent } from '@/components/ui/sign-up'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 /**
- * /sign-up — Glass sign-up experience (shadcn UI component integration).
- * Showcase mode: tanpa handler backend, onboarding disimulasikan.
- * Wire ke Better Auth: pass onSignUp={(p) => ...} → POST /api/auth/sign-up/email
- * dan onSocial untuk /api/auth/sign-in/social.
+ * /sign-up — kompat lama. Rute ini dulu render form showcase TANPA handler
+ * (selalu "berhasil" tanpa request backend — D-01). Satu-satunya
+ * sign-up nyata adalah /login/sign-up (POST /api/auth/sign-up/email).
+ * Jangan pernah render form registrasi di production tanpa handler.
  */
 export const Route = createFileRoute('/sign-up')({
-  component: SignUpPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/login/sign-up', replace: true })
+  },
+  component: () => null,
 })
-
-function SignUpPage() {
-  return <AuthComponent brandName="gRouter Copilot" />
-}

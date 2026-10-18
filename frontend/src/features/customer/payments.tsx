@@ -284,11 +284,25 @@ export function CustomerPayments() {
 
             <div className='flex flex-col items-center justify-center p-4 rounded-xl border border-border/80 bg-muted/20 space-y-4'>
               <div className='relative size-52 bg-white rounded-xl p-3 shadow-md flex items-center justify-center overflow-hidden'>
-                {/* QR dari provider utk order INI (KlikQRIS createQris). Fallback statis
-                    hanya bila provider tidak mengirim image — jangan pernah pakai QR statis
-                    sebagai QR pembayaran riil (setiap order punya kode berbeda). */}
+                {/* QR dari provider utk order INI (KlikQRIS createQris). Bila provider
+                    belum mengirim QR, tampilkan state jujur — JANGAN PERNAH render QR
+                    statis bersama sebagai QR pembayaran (setiap order punya kode berbeda;
+                    QR yang sama untuk semua order = pembayaran ke tujuan yang salah, D-02). */}
                 {(() => {
-                  const qr = activePaymentOrder.qrImage || activePaymentOrder.qrUrl || '/app/images/qris-code.png'
+                  const qr = activePaymentOrder.qrImage || activePaymentOrder.qrUrl
+                  if (!qr) {
+                    return (
+                      <div role='status' className='flex flex-col items-center justify-center gap-2 p-3 text-center'>
+                        <QrCode className='size-8 text-muted-foreground' />
+                        <p className='text-xs font-semibold text-foreground'>
+                          {language === 'id' ? 'QR belum tersedia dari provider.' : 'QR not available from the provider yet.'}
+                        </p>
+                        <p className='text-[11px] leading-relaxed text-muted-foreground'>
+                          {language === 'id' ? 'Jangan membayar memakai kode lain. Tutup dialog lalu buka kembali untuk memuat ulang.' : 'Do not pay using any other code. Close and reopen this dialog to reload.'}
+                        </p>
+                      </div>
+                    )
+                  }
                   return (
                     <img
                       src={qr}

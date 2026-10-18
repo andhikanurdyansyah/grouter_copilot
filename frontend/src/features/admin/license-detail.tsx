@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { fetchAdminLicenses, fetchLedger } from '@/lib/grouter-api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchAdminLicenses, fetchLedger, revokeLicense } from '@/lib/grouter-api'
 import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
   Check,
   Slash,
   AlertTriangle,
-  CheckCircle2,
 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import {
@@ -32,6 +31,9 @@ export function AdminLicenseDetail() {
   const [renewModalOpen, setRenewModalOpen] = useState(false)
   const [renewDuration, setRenewDuration] = useState('30')
   const [renewQuota, setRenewQuota] = useState('1000000')
+  const [revokeError, setRevokeError] = useState(false)
+  const [renewUnavailable, setRenewUnavailable] = useState(false)
+  const qc = useQueryClient()
   
   const licenses = useQuery({ queryKey: ['admin-licenses'], queryFn: fetchAdminLicenses })
   const ledger = useQuery({
@@ -97,23 +99,29 @@ export function AdminLicenseDetail() {
     ? [{ event: 'license.issued', actor: 'admin (Operator Console)', time: fmtDateID(licRecord.createdAt ?? null), details: `Plan ${licRecord.planKey ?? '—'} · Ed25519` }]
     : []
 
-  const [renewError, setRenewError] = useState(false)
+  // D-04: cabut lisensi HARUS memanggil API nyata (POST /admin/licenses/:id/revoke).
+  // Confirm yang hanya menutup dialog membaca sebagai aksi yang tidak pernah terjadi.
+  const revokeMut = useMutation({
+    mutationFn: () => revokeLicense(licenseId),
+    onSuccess: () => {
+      setRevokeError(false)
+      setRevokeModalOpen(false)
+      qc.invalidateQueries({ queryKey: ['admin-licenses'] })
+      qc.invalidateQueries({ queryKey: ['admin-ledger'] })
+    },
+    onError: () => setRevokeError(true),
+  })
 
-  // renewError ditampilkan di header bila true (server belum punya endpoint renew)
+  // D-05: renew BELUM punya endpoint server, jadi perilaku satu-satunya yang jujur
+  // adalah menyatakan "belum tersedia" di dalam modal yang sama — bukan sukses palsu.
+  // Flag yang sama TIDAK PERNAH dirender sebagai keberhasilan dalam bentuk apa pun.
   const handleRenewSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Pembaruan lisensi membutuhkan endpoint khusus di server (belum tersedia).
-    // Form dinonaktifkan agar tidak menampilkan keberhasilan palsu.
-    setRenewError(true)
+    setRenewUnavailable(true)
   }
 
   return (
     <div className='space-y-6 animate-fade-in'>
-      {renewError && (
-        <div className='rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-500 font-medium'>
-          {isId ? 'Pembaruan lisensi belum tersedia di server — hubungi operator.' : 'License renewal is not available server-side yet — contact an operator.'}
-        </div>
-      )}
       {/* ── Top Header Row ── */}
       <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
@@ -140,7 +148,7 @@ export function AdminLicenseDetail() {
           <Button
             variant='outline'
             size='sm'
-            onClick={() => setRenewModalOpen(true)}
+            onClick={() => { setRenewUnavailable(false); setRenewModalOpen(true) }}
             className='h-9 border-border bg-card/60 hover:bg-muted text-xs sm:text-sm font-medium interactive-press'
           >
             {isId ? 'Perpanjang' : 'Renew'}
@@ -553,10 +561,10 @@ export function AdminLicenseDetail() {
               </select>
             </div>
 
-            {renewError && (
-              <div className='flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold'>
-                <CheckCircle2 className='size-4' />
-                <span>{isId ? 'Lisensi berhasil diperpanjang!' : 'License renewed successfully!'}</span>
+            {renewUnavailable && (
+              <div role='alert' className='flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-500 text-xs font-semibold'>
+                <AlertTriangle className='size-4 shrink-0' />
+                <span>{isId ? 'Pembaruan lisensi belum tersedia di server — hubungi operator.' : 'License renewal is not available server-side yet — contact an operator.'}</span>
               </div>
             )}
 
@@ -596,6 +604,11 @@ export function AdminLicenseDetail() {
               ? `Lisensi ${licenseId} (${licenseData.customer}) akan dicabut secara permanen. Semua panggilan API dari aplikasi host akan langsung ditolak.`
               : `License ${licenseId} (${licenseData.customer}) will be permanently revoked. All API calls from the host application will be rejected immediately.`}
           </DialogDescription>
+          {revokeError && (
+            <p role='alert' className='pt-2 text-xs font-medium text-destructive'>
+              {isId ? 'Gagal mencabut lisensi — coba lagi.' : 'Failed to revoke the license — please retry.'}
+            </p>
+          )}
           <DialogFooter className='pt-4 gap-2'>
             <Button variant='outline' size='sm' onClick={() => setRevokeModalOpen(false)}>
               {isId ? 'Batal' : 'Cancel'}
@@ -603,9 +616,16 @@ export function AdminLicenseDetail() {
             <Button
               size='sm'
               className='bg-[#FF667A] hover:bg-[#FF667A]/90 text-white'
-              onClick={() => setRevokeModalOpen(false)}
+              disabled={revokeMut.isPending}
+              onClick={() => revokeMut.mutate()}
             >
-              {isId ? 'Ya, cabut sekarang' : 'Yes, revoke now'}
+              {revokeMut.isPending
+                ? isId
+                  ? 'Mencabut…'
+                  : 'Revoking…'
+                : isId
+                  ? 'Ya, cabut sekarang'
+                  : 'Yes, revoke now'}
             </Button>
           </DialogFooter>
         </DialogContent>

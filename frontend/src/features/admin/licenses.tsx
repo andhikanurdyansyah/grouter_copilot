@@ -9,6 +9,8 @@ import {
   Download,
   MoreHorizontal,
   AlertTriangle,
+  AlertCircle,
+  RotateCw,
   ExternalLink,
 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
@@ -276,7 +278,56 @@ export function AdminLicenses() {
               </tr>
             </thead>
             <tbody className='divide-y divide-border/60'>
-              {filteredLicenses.map((row) => (
+              {lic.isError ? (
+                <tr>
+                  <td colSpan={7} className='py-8 text-center'>
+                    <div role='alert' className='inline-flex flex-col items-center gap-2'>
+                      <AlertCircle className='size-5 text-destructive' aria-hidden='true' />
+                      <p className='text-sm font-semibold text-foreground'>
+                        {isId ? 'Gagal memuat lisensi' : 'Could not load licenses'}
+                      </p>
+                      <p className='text-xs text-muted-foreground'>
+                        {isId
+                          ? 'Server tidak mengembalikan data lisensi. Tabel dikosongkan, bukan diisi data palsu.'
+                          : 'The server did not return license data. The table stays empty rather than showing fabricated rows.'}
+                      </p>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        onClick={() => void lic.refetch()}
+                        className='mt-1 h-8 gap-1.5 text-xs'
+                      >
+                        <RotateCw className='size-3.5' aria-hidden='true' />
+                        {isId ? 'Coba lagi' : 'Try again'}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : lic.isLoading ? (
+                <tr>
+                  <td colSpan={7} className='py-6' aria-busy='true' aria-live='polite'>
+                    <span className='sr-only'>{isId ? 'Memuat lisensi…' : 'Loading licenses…'}</span>
+                    <div className='space-y-2.5'>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className='flex items-center gap-3 px-4'>
+                          <div className='h-3 w-24 animate-pulse rounded bg-accent' />
+                          <div className='h-3 w-32 animate-pulse rounded bg-accent' />
+                          <div className='h-3 flex-1 animate-pulse rounded bg-accent' />
+                          <div className='h-3 w-16 animate-pulse rounded bg-accent' />
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredLicenses.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className='py-8 text-center text-xs text-muted-foreground'>
+                    {isId ? 'Tidak ada lisensi yang cocok dengan filter ini.' : 'No licenses match this filter.'}
+                  </td>
+                </tr>
+              ) : (
+              filteredLicenses.map((row) => (
                 <tr
                   key={row.id}
                   onClick={() => setSelectedLicense(row)}
@@ -405,7 +456,8 @@ export function AdminLicenses() {
                     </DropdownMenu>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

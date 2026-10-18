@@ -46,7 +46,12 @@ export function CustomerPayments() {
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 1500)
     } catch {
-      // ignore
+      // D-18: a failed copy must tell the user, not silently look like success.
+      setStatusNote(
+        language === 'id'
+          ? 'Gagal menyalin — izin clipboard ditolak browser. Salin ID secara manual.'
+          : 'Copy failed — the browser denied clipboard access. Copy the ID manually.',
+      )
     }
   }
 

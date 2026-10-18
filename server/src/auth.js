@@ -126,6 +126,17 @@ const cookieDomain = (process.env.BETTER_AUTH_COOKIE_DOMAIN || '').trim() || nul
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || undefined,
   trustedOrigins,
+  // A-14: explicit, operator-visible session policy from the settings SSOT.
+  // Pinning these here means session lifetime and rolling-refresh cadence are a
+  // documented product decision, not an undocumented library default.
+  session: {
+    expiresIn: effAuth.session.expiresInSeconds,
+    updateAge: effAuth.session.updateAgeSeconds,
+    cookieCache: {
+      enabled: effAuth.session.cookieCacheSeconds > 0,
+      maxAge: effAuth.session.cookieCacheSeconds,
+    },
+  },
   database: new Database(dbFile),
   plugins: [
     dash({

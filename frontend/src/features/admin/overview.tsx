@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminStats, fetchAdminOrders, fetchAdminLicenses, fetchHealth, fetchLedger, settleOrder } from '@/lib/grouter-api'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Plus, Clock, KeyRound, Receipt, Activity, ShieldCheck, Copy, Check, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, AlertCircle, RefreshCw, Plus, Clock, KeyRound, Receipt, Activity, ShieldCheck, Copy, Check, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { useLanguage } from '@/context/language-provider'
 import { IssueLicenseModal } from './components/issue-license-modal'
 import {
@@ -242,6 +242,43 @@ export function AdminOverview() {
           </Button>
         </div>
       </div>
+
+      {/* ── D-13: honest failure surface. Never let a failed fetch read as 0 data. ── */}
+      {(orders.isError || lic.isError || stats.isError || health.isError || ledgerAll.isError) && (
+        <div role='alert' className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4'>
+          <div className='flex items-center gap-3'>
+            <div className='size-8 rounded-lg bg-destructive/15 border border-destructive/30 flex items-center justify-center shrink-0 text-destructive'>
+              <AlertCircle className='size-4' aria-hidden='true' />
+            </div>
+            <div>
+              <p className='text-sm font-semibold text-foreground'>
+                {isId ? 'Sebagian data operasional gagal dimuat' : 'Some operational data failed to load'}
+              </p>
+              <p className='text-xs text-muted-foreground'>
+                {isId
+                  ? 'Angka di bawah ini belum lengkap. Muat ulang untuk mengambil data terbaru.'
+                  : 'The figures below are incomplete. Reload to fetch fresh data.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='h-8 gap-1.5 text-xs'
+            onClick={() => {
+              void orders.refetch()
+              void lic.refetch()
+              void stats.refetch()
+              void health.refetch()
+              void ledgerAll.refetch()
+            }}
+          >
+            <RefreshCw className='size-3.5' aria-hidden='true' />
+            {isId ? 'Muat ulang' : 'Reload'}
+          </Button>
+        </div>
+      )}
 
       {/* ── Alert banner: hanya tampil bila ada tugas nyata di server ── */}
       {pendingOrdersCount > 0 && (

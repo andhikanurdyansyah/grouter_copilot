@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { SurfaceError, SurfaceSkeleton } from '@/components/ui/data-surface'
 import { fetchMe } from '@/lib/grouter-api'
 import { useLanguage } from '@/context/language-provider'
 import {
@@ -60,8 +61,28 @@ export function CustomerAccount() {
   const quotaPercent = quotaLimit ? Math.min(100, Math.round((usedTokens / quotaLimit) * 100)) : null
   const activeExpiresAt = activeLicense ? (activeLicense as { expiresAt?: string | number | null }).expiresAt ?? null : null
 
+  // D-13: when /me has not produced data yet, the whole surface is replaced by a
+  // loading or failure state. Rendering the real layout with '—' placeholders
+  // would present an unknown account as if it were an empty one.
+  const surfacePending = me.isLoading || me.isError
+
   return (
     <div className='max-w-7xl mx-auto space-y-6 pb-12'>
+      {me.isError ? (
+        <SurfaceError
+          onRetry={() => void me.refetch()}
+          title={language === 'id' ? 'Gagal memuat data akun' : 'Could not load account data'}
+          body={
+            language === 'id'
+              ? 'Sesi atau koneksi bermasalah. Data akun tidak ditampilkan agar tidak menyesatkan.'
+              : 'Your session or connection failed. Account data is hidden rather than shown as empty.'
+          }
+        />
+      ) : me.isLoading ? (
+        <SurfaceSkeleton rows={5} />
+      ) : null}
+      {surfacePending ? null : (
+      <>
       {/* Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
         <div>
@@ -549,6 +570,8 @@ export function CustomerAccount() {
       </Dialog>
 
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
+      </>
+      )}
     </div>
   )
 }

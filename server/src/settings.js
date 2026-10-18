@@ -105,6 +105,15 @@ export const DEFAULT_SETTINGS = {
       compromisedPasswordMinBreaches: 1,
     },
     activityTrackingIntervalMs: 300000,
+    // A-14: explicit session policy. Without this block Better Auth falls back
+    // to its own library default (7-day absolute, 1-day rolling refresh), which
+    // is neither documented to operators nor adjustable from the admin console.
+    // Values here are the effective policy and are validated below.
+    session: {
+      expiresInSeconds: 604800,   // absolute lifetime: 7 days
+      updateAgeSeconds: 86400,    // rolling refresh cadence: 1 day
+      cookieCacheSeconds: 300,    // signed-cookie cache to cut session lookups
+    },
   },
   // Notification engine (Phases 1+2): scheduler cadence, quota/expiry
   // thresholds, and per-kind email toggles. All thresholds are read via
@@ -218,9 +227,12 @@ function fail(msg) {
   return err;
 }
 
-function assertInt(v, label, { min = 0 } = {}) {
+function assertInt(v, label, { min = 0, max } = {}) {
   if (typeof v !== 'number' || !Number.isFinite(v) || Math.floor(v) !== v || v < min) {
     throw fail(`${label} must be an integer >= ${min}.`);
+  }
+  if (max !== undefined && v > max) {
+    throw fail(`${label} must be an integer <= ${max}.`);
   }
 }
 
@@ -398,6 +410,32 @@ export function validateSettings(patch) {
   if (p.auth?.trustedOrigins !== undefined) {
     if (!Array.isArray(p.auth.trustedOrigins) || p.auth.trustedOrigins.some((s) => typeof s !== 'string')) {
       throw fail('auth.trustedOrigins must be an array of strings.');
+    }
+  }
+  // A-14: session policy bounds. A session lifetime under an hour would log
+  // active customers out mid-task; an update cadence longer than the lifetime
+  // makes the rolling refresh dead code. Both are refused rather than clamped,
+  // so a misconfiguration surfaces instead of silently changing security policy.
+  if (p.auth?.session !== undefined) {
+    const s = p.auth.session;
+    if (s === null || typeof s !== 'object' || Array.isArray(s)) {
+      throw fail('auth.session must be an object.');
+    }
+    if (s.expiresInSeconds !== undefined) {
+      assertInt(s.expiresInSeconds, 'auth.session.expiresInSeconds', { min: 3600, max: 7776000 });
+    }
+    if (s.updateAgeSeconds !== undefined) {
+      assertInt(s.updateAgeSeconds, 'auth.session.updateAgeSeconds', { min: 60, max: 604800 });
+    }
+    if (s.cookieCacheSeconds !== undefined) {
+      assertInt(s.cookieCacheSeconds, 'auth.session.cookieCacheSeconds', { min: 0, max: 3600 });
+    }
+    if (
+      s.expiresInSeconds !== undefined &&
+      s.updateAgeSeconds !== undefined &&
+      s.updateAgeSeconds > s.expiresInSeconds
+    ) {
+      throw fail('auth.session.updateAgeSeconds must not exceed auth.session.expiresInSeconds.');
     }
   }
   if (p.auth?.sentinel !== undefined) {

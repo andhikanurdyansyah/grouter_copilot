@@ -254,9 +254,51 @@ export function AdminLedger() {
               </tr>
             </thead>
             <tbody className='divide-y divide-border/60 font-mono'>
-              {filteredRows.length === 0 ? (
+              {ledgerQuery.isError ? (
                 <tr>
-                  <td colSpan={7} className='py-8 text-center text-muted-foreground font-sans'>
+                  <td colSpan={8} className='py-8 text-center font-sans'>
+                    <div role='alert' className='inline-flex flex-col items-center gap-2'>
+                      <AlertCircle className='size-5 text-destructive' aria-hidden='true' />
+                      <p className='text-sm font-semibold text-foreground'>
+                        {isId ? 'Gagal memuat ledger' : 'Could not load the ledger'}
+                      </p>
+                      <p className='text-xs text-muted-foreground'>
+                        {isId
+                          ? 'Server tidak mengembalikan data ledger. Percobaan ulang tidak akan menampilkan angka palsu.'
+                          : 'The server did not return ledger data. A retry will not show fabricated numbers.'}
+                      </p>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        onClick={() => void ledgerQuery.refetch()}
+                        className='mt-1 h-8 gap-1.5 text-xs'
+                      >
+                        <RotateCw className='size-3.5' aria-hidden='true' />
+                        {isId ? 'Coba lagi' : 'Try again'}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : ledgerQuery.isLoading ? (
+                <tr>
+                  <td colSpan={8} className='py-6' aria-busy='true' aria-live='polite'>
+                    <span className='sr-only'>{isId ? 'Memuat ledger…' : 'Loading ledger…'}</span>
+                    <div className='space-y-2.5'>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className='flex items-center gap-3 px-4'>
+                          <div className='h-3 w-28 animate-pulse rounded bg-accent' />
+                          <div className='h-3 w-20 animate-pulse rounded bg-accent' />
+                          <div className='h-3 flex-1 animate-pulse rounded bg-accent' />
+                          <div className='h-3 w-12 animate-pulse rounded bg-accent' />
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className='py-8 text-center text-muted-foreground font-sans'>
                     <p className='text-xs'>{isId ? 'Tidak ada entri ledger yang sesuai dengan filter ini.' : 'No ledger entries match this filter.'}</p>
                     <button
                       type='button'

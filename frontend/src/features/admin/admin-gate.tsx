@@ -8,10 +8,13 @@ import { useAdminAuth } from '@/features/shared/admin-auth'
 import { fetchAdminStats } from '@/lib/grouter-api'
 import { ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLanguage } from '@/context/language-provider'
 
 export function AdminGate() {
   const nav = useNavigate()
   const setToken = useAdminAuth((s) => s.setToken)
+  const { language } = useLanguage()
+  const isId = language === 'id'
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -29,7 +32,11 @@ export function AdminGate() {
     } catch (err) {
       sessionStorage.removeItem('adminToken')
       const status = (err as { response?: { status?: number } })?.response?.status
-      toast.error(status === 401 ? 'Token ditolak server (401)' : 'Gagal memverifikasi token')
+      toast.error(
+        status === 401
+          ? (isId ? 'Token ditolak server (401)' : 'Token rejected by the server (401)')
+          : (isId ? 'Gagal memverifikasi token' : 'Could not verify the token'),
+      )
     } finally {
       setBusy(false)
     }
@@ -42,7 +49,9 @@ export function AdminGate() {
           <div className='mb-1 flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm'>gR</div>
           <h1 className='text-lg font-semibold'>Copilot Admin</h1>
           <CardDescription>
-            Masukkan admin token (server-side authorization tetap berlaku di setiap request API).
+            {isId
+              ? 'Masukkan admin token (otorisasi server-side tetap berlaku di setiap request API).'
+              : 'Enter the admin token (server-side authorization still applies to every API request).'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,11 +70,13 @@ export function AdminGate() {
               />
             </div>
             <Button type='submit' className='w-full' disabled={busy}>
-              {busy ? 'Memverifikasi…' : 'Buka konsol'}
+              {busy ? (isId ? 'Memverifikasi…' : 'Verifying…') : (isId ? 'Buka konsol' : 'Open console')}
             </Button>
             <p className='flex items-start gap-1.5 text-xs text-muted-foreground'>
               <ShieldAlert className='size-3.5 mt-0.5 shrink-0' />
-              Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim ke tempat lain selain API admin.
+              {isId
+                ? 'Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim ke tempat lain selain API admin.'
+                : 'The token is stored only in this browser’s sessionStorage and is never sent anywhere except the admin API.'}
             </p>
           </form>
         </CardContent>

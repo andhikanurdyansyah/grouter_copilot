@@ -1,0 +1,1 @@
+import{f as e}from"./grouter-api-BmsSLphy.js";import{t}from"./useQuery-W8mGMZu9.js";function n(n=!0){return t({queryKey:[`me`],queryFn:async()=>{try{return await e()}catch(e){throw e?.response?.status===401&&(window.location.href=`/login`),e}},enabled:n,retry:!1,staleTime:1e4})}export{n as t};

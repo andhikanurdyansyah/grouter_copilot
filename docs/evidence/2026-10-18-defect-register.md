@@ -5,6 +5,14 @@ Baseline: HEAD `5948420` (== origin/main). Sumber: audit worker deleg_96d9e999
 kode nyata (probe temp + baca file:line). Status: [VERIFIED] = terbukti baca/
 probe supervisor · [PENDING] = klaim worker, belum diverifikasi.
 
+## Update rilis 2026-10-18 (supervisor, bukti test live)
+- Backend `3e9fe4c` LIVE: A-01, A-02, A-06, A-07, A-10.
+- FE-P0 `e1a59b8`+`d2a7955` LIVE: D-01..D-05.
+- FE-P1 `05622f4`+`4674e9e` LIVE: D-06, D-07, D-08, D-09, D-11, D-12, D-19.
+- P2/P3 `11bea49`+`2d565f6` LIVE: A-03 (disclosure restart-only; hot-reload penuh DITOLAK — `settings-wiring.test.js` mengunci wiring boot-time, UsageResolver memegang cache TTL), A-04 (limiter POST /api/orders 20/mnt + /api/admin/* 120/mnt per identitas tepercaya), A-05 (chat single-count, kunci identitas proxy tepercaya), A-09 (error settings generik), A-11 (timingSafeEqual), A-12 (penolakan NOT_CONFIGURED ber-ledger), A-13 (replay = REQUEST_ALREADY_COMPLETED 409; jawaban tidak dipersist), A-15 (normalisasi email + tanpa merge lintas auth-user), A-16 (escape `<` pada JSON dashboard klasik), A-17 (config payment per-request), D-15 (breadcrumb licenses + footer notif per-surface), D-16 (pagination nyata ledger admin/customer), D-17 (clipboard menunggu resolve + toast gagal), D-20 (baris Organisasi/Domain Terikat fabrikasi dihapus), D-21 (sumbu grafik dari data), ledger inspect = record server nyata (klaim "D-021 Verified/signature" fabrikasi dihapus).
+- Sisa terbuka (butuh keputusan, bukan ditebak): A-08 retensi store (kebijakan arsip kuota lifetime), A-14 pin umur sesi Better Auth + audit permukaan `organization()`, D-13/D-14/D-18/D-22 (audit UX lanjutan), D-23/D-24/D-25 (redundansi/kode yatim — kosmetik), test source-string rapuh warisan (widget/signup/readiness/notifications-ui) — kontrak baru di repo ini juga source-string dan dinyatakan eksplisit bukan mounted proof.
+- Eksternal (fakta PO, tidak diubah agar checklist hijau): payment `sandbox`, semua plan `ai.enabled:false`, npm belum publish, `crmdemo.grouter.id` 502 (di luar repo), rotasi key Brevo hanya dari dashboard operator.
+
 ## P0 frontend (VERIFIED)
 - D-01 `/sign-up` registrasi palsu (showcase tanpa handler) — `routes/sign-up.tsx:15`, `components/ui/sign-up.tsx:217`.
 - D-02 QR pembayaran fallback statis `/app/images/qris-code.png` untuk semua order — `customer/payments.tsx:291`.

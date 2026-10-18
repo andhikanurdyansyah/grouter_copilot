@@ -1,602 +1,1106 @@
 {
   "base": "http://localhost:4601",
-  "generatedAt": "2026-10-18T15:47:52.401Z",
+  "generatedAt": "2026-10-18T16:00:44.712Z",
   "results": [
     {
       "viewport": "320-mobile-narrow",
-      "route": "/admin",
-      "name": "admin-overview",
+      "route": "/user",
+      "name": "customer-overview",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 320,
       "clientW": 320,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED"
+      ]
+    },
+    {
+      "viewport": "320-mobile-narrow",
+      "route": "/user/orders",
+      "name": "customer-orders",
+      "status": 200,
+      "finalUrl": "/login",
+      "scrollW": 320,
+      "clientW": 320,
+      "docOverflow": false,
+      "overflowing": [],
+      "clipped": [],
+      "hScrollers": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "320-mobile-narrow",
-      "route": "/admin/orders",
-      "name": "admin-orders",
+      "route": "/user/payments",
+      "name": "customer-payments",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 320,
       "clientW": 320,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/orders :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+      ]
+    },
+    {
+      "viewport": "320-mobile-narrow",
+      "route": "/user/licenses",
+      "name": "customer-licenses",
+      "status": 200,
+      "finalUrl": "/login",
+      "scrollW": 320,
+      "clientW": 320,
+      "docOverflow": false,
+      "overflowing": [],
+      "clipped": [],
+      "hScrollers": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "320-mobile-narrow",
-      "route": "/admin/licenses",
-      "name": "admin-licenses",
+      "route": "/user/usage",
+      "name": "customer-usage",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 320,
       "clientW": 320,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "320-mobile-narrow",
-      "route": "/admin/packages",
-      "name": "admin-packages",
+      "route": "/user/install",
+      "name": "customer-install",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 320,
       "clientW": 320,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "320-mobile-narrow",
-      "route": "/admin/usage",
-      "name": "admin-usage",
+      "route": "/user/account",
+      "name": "customer-account",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 320,
       "clientW": 320,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
-    },
-    {
-      "viewport": "320-mobile-narrow",
-      "route": "/admin/ledger",
-      "name": "admin-ledger",
-      "status": 200,
-      "finalUrl": "/app/admin-gate",
-      "scrollW": 320,
-      "clientW": 320,
-      "docOverflow": false,
-      "overflowing": [],
-      "clipped": [],
-      "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
-    },
-    {
-      "viewport": "320-mobile-narrow",
-      "route": "/admin/settings",
-      "name": "admin-settings",
-      "status": 200,
-      "finalUrl": "/app/admin-gate",
-      "scrollW": 320,
-      "clientW": 320,
-      "docOverflow": false,
-      "overflowing": [],
-      "clipped": [],
-      "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin",
-      "name": "admin-overview",
+      "route": "/user",
+      "name": "customer-overview",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/orders :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/orders",
-      "name": "admin-orders",
+      "route": "/user/orders",
+      "name": "customer-orders",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/licenses",
-      "name": "admin-licenses",
+      "route": "/user/payments",
+      "name": "customer-payments",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/orders :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/packages",
-      "name": "admin-packages",
+      "route": "/user/licenses",
+      "name": "customer-licenses",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/usage",
-      "name": "admin-usage",
+      "route": "/user/usage",
+      "name": "customer-usage",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/ledger",
-      "name": "admin-ledger",
+      "route": "/user/install",
+      "name": "customer-install",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "390-mobile",
-      "route": "/admin/settings",
-      "name": "admin-settings",
+      "route": "/user/account",
+      "name": "customer-account",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 390,
       "clientW": 390,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin",
-      "name": "admin-overview",
+      "route": "/user",
+      "name": "customer-overview",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcviYwY.woff2 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/orders",
-      "name": "admin-orders",
+      "route": "/user/orders",
+      "name": "customer-orders",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/licenses",
-      "name": "admin-licenses",
+      "route": "/user/payments",
+      "name": "customer-payments",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/packages",
-      "name": "admin-packages",
+      "route": "/user/licenses",
+      "name": "customer-licenses",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/usage",
-      "name": "admin-usage",
+      "route": "/user/usage",
+      "name": "customer-usage",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/ledger",
-      "name": "admin-ledger",
+      "route": "/user/install",
+      "name": "customer-install",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "768-tablet",
-      "route": "/admin/settings",
-      "name": "admin-settings",
+      "route": "/user/account",
+      "name": "customer-account",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 768,
       "clientW": 768,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin",
-      "name": "admin-overview",
+      "route": "/user",
+      "name": "customer-overview",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/orders",
-      "name": "admin-orders",
+      "route": "/user/orders",
+      "name": "customer-orders",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/licenses",
-      "name": "admin-licenses",
+      "route": "/user/payments",
+      "name": "customer-payments",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/packages",
-      "name": "admin-packages",
+      "route": "/user/licenses",
+      "name": "customer-licenses",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/usage",
-      "name": "admin-usage",
+      "route": "/user/usage",
+      "name": "customer-usage",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/ledger",
-      "name": "admin-ledger",
+      "route": "/user/install",
+      "name": "customer-install",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1024-compact",
-      "route": "/admin/settings",
-      "name": "admin-settings",
+      "route": "/user/account",
+      "name": "customer-account",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1024,
       "clientW": 1024,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin",
-      "name": "admin-overview",
+      "route": "/user",
+      "name": "customer-overview",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/orders :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/orders",
-      "name": "admin-orders",
+      "route": "/user/orders",
+      "name": "customer-orders",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/licenses",
-      "name": "admin-licenses",
+      "route": "/user/payments",
+      "name": "customer-payments",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/packages",
-      "name": "admin-packages",
+      "route": "/user/licenses",
+      "name": "customer-licenses",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/usage",
-      "name": "admin-usage",
+      "route": "/user/usage",
+      "name": "customer-usage",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/ledger",
-      "name": "admin-ledger",
+      "route": "/user/install",
+      "name": "customer-install",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
-      "failedRequests": []
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "failedRequests": [
+        "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED",
+        "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+      ]
     },
     {
       "viewport": "1440-desktop",
-      "route": "/admin/settings",
-      "name": "admin-settings",
+      "route": "/user/account",
+      "name": "customer-account",
       "status": 200,
-      "finalUrl": "/app/admin-gate",
+      "finalUrl": "/login",
       "scrollW": 1440,
       "clientW": 1440,
       "docOverflow": false,
       "overflowing": [],
       "clipped": [],
       "hScrollers": [],
-      "bodyText": "gR Copilot Admin Masukkan admin token (server-side authorization tetap berlaku di setiap request API). Admin token Buka konsol Token tersimpan hanya di sessionStorage browser ini, tidak pernah dikirim",
-      "hasMain": true,
-      "consoleErrors": [],
+      "bodyText": "G gRouter Copilot Welcome Back Sign in to your account to continue Email Address Password Remember me Forgot password? Sign In Don't have an account? Sign up",
+      "hasMain": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
       "failedRequests": []
     }
   ],
-  "findings": []
+  "findings": [
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "320-mobile-narrow",
+      "route": "/user",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED | GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/orders",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/payments",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/payments",
+      "detail": "GET http://localhost:4601/api/orders :: net::ERR_ABORTED | GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/licenses",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/usage",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/install",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "320-mobile-narrow",
+      "route": "/user/account",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "390-mobile",
+      "route": "/user",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED | GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED | GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/orders",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/payments",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "390-mobile",
+      "route": "/user/payments",
+      "detail": "GET http://localhost:4601/api/orders :: net::ERR_ABORTED | GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/licenses",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/usage",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "390-mobile",
+      "route": "/user/usage",
+      "detail": "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED | GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/install",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "390-mobile",
+      "route": "/user/install",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "390-mobile",
+      "route": "/user/account",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "768-tablet",
+      "route": "/user",
+      "detail": "GET https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcviYwY.woff2 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/orders",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/payments",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/licenses",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/usage",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/install",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "768-tablet",
+      "route": "/user/install",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "768-tablet",
+      "route": "/user/account",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/orders",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1024-compact",
+      "route": "/user/orders",
+      "detail": "GET http://localhost:4601/api/orders/latest :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/payments",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/licenses",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/usage",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1024-compact",
+      "route": "/user/usage",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/install",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1024-compact",
+      "route": "/user/install",
+      "detail": "GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1024-compact",
+      "route": "/user/account",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1024-compact",
+      "route": "/user/account",
+      "detail": "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1440-desktop",
+      "route": "/user",
+      "detail": "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED | GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED | GET http://localhost:4601/api/me/ledger?limit=200 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/orders",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/payments",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/licenses",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/usage",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/install",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "severity": "warning",
+      "kind": "failed-request",
+      "viewport": "1440-desktop",
+      "route": "/user/install",
+      "detail": "GET http://localhost:4601/api/me/notifications?limit=20 :: net::ERR_ABORTED | GET http://localhost:4601/api/me/ledger?limit=50 :: net::ERR_ABORTED"
+    },
+    {
+      "severity": "warning",
+      "kind": "console-error",
+      "viewport": "1440-desktop",
+      "route": "/user/account",
+      "detail": "Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ]
 }

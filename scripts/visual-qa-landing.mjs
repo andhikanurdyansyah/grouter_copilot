@@ -1,45 +1,50 @@
-// Visual/responsive QA probe for the gRouter Copilot landing page (/),
-// plus /login and /sign-up as public lightweight controls.
+// Visual/responsive QA for the gRouter Copilot landing page and the public
+// auth routes.
 //
-// Why separate from scripts/visual-qa.mjs: the landing page is WebGL-heavy
-// (Three.js scroll scene) and keeps RAF/sockets alive forever, so it never
-// reaches 'networkidle' and the shared probe times out on it. This probe
-// therefore uses waitUntil 'load' + a bounded settle wait, and gates every
-// verdict on real DOM text (body innerText length > 100) so a blank or
-// WebGL-stubbed render can never be recorded as a pass.
+// WHY A SEPARATE PROBE: the landing page is a WebGL-heavy scroll scene. It
+// never reaches 'networkidle' (RAF + sockets stay alive), and loading it
+// repeatedly inside one browser process accumulates GPU/renderer pressure
+// until the renderer crashes mid-run. An earlier single-process attempt died
+// at 768px after three prior landing loads and left only 10 of 20 checks.
 //
-// Reuses the measurement approach (overflow / clipped text / console errors /
-// failed requests) from scripts/visual-qa.mjs verbatim in spirit.
+// ARCHITECTURE: this file is both the runner and the per-viewport worker.
+//   - runner (default): spawns ONE child process per viewport, each with a
+//     fresh browser, and merges the JSON each child prints. A crashed or
+//     timed-out viewport is recorded as a failure instead of killing the run,
+//     and incomplete coverage is itself a blocking finding.
+//   - worker (--worker): measures all routes at one viewport, prints a single
+//     JSON line, exits.
+//
+// A blank render can never pass: content routes must produce real DOM text,
+// and form routes must produce real form controls.
 //
 // Usage:
-//   CHROMIUM_PATH=/root/.cache/ms-playwright/chromium-1248/chrome-linux-arm64/chrome \
-//     node scripts/visual-qa-landing.mjs [--base http://localhost:4601]
-//
-// Exit code 1 when any route/viewport reports a blocking finding.
-// Evidence: frontend/docs/evidence/2026-10-18-visual-qa/landing-qa.json
+//   CHROMIUM_PATH=/path/to/chrome node scripts/visual-qa-landing.mjs \
+//     [--base http://localhost:4601] [--timeout 90] [--settle 2000] [--only 768]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
 
 const argv = process.argv.slice(2);
 const arg = (name, dflt) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
+const has = (name) => argv.includes(name);
 
 const BASE = arg('--base', 'http://localhost:4601');
-const TIMEOUT = Number(arg('--timeout', '30000'));
-const SETTLE_MS = Number(arg('--settle', '2500'));
+const TIMEOUT = Number(arg('--timeout', '90'));
+const SETTLE_MS = Number(arg('--settle', '2000'));
+const VIEWPORT_TIMEOUT_MS = Number(arg('--viewport-timeout', '240'));
+const ONLY = arg('--only', '');
 
 const ROUTES = [
-  { path: '/', name: 'landing' },
-  { path: '/login', name: 'login' },
-  // NOTE: /sign-up is a hard 404 on this server (verified via curl + probe);
-  // the real sign-up route linked from /login is /login/sign-up. Both are
-  // measured so the 404 is recorded as evidence, not hidden.
-  { path: '/sign-up', name: 'sign-up' },
-  { path: '/login/sign-up', name: 'login-sign-up' },
+  { path: '/', name: 'landing', kind: 'content' },
+  { path: '/login', name: 'login', kind: 'content' },
+  { path: '/sign-up', name: 'sign-up', kind: 'form' },
+  { path: '/login/sign-up', name: 'login-sign-up', kind: 'form' },
 ];
 
 const VIEWPORTS = [
@@ -50,206 +55,230 @@ const VIEWPORTS = [
   { w: 1440, h: 900, label: '1440-desktop' },
 ];
 
-const browser = await chromium.launch({
-  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
-  args: [
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
-    '--disable-dev-shm-usage',
-    '--disable-gpu-sandbox',
-    '--no-sandbox',
-    '--js-flags=--max-old-space-size=512',
-  ],
-});
-const findings = [];
-const results = [];
+// ---------------------------------------------------------------- worker ----
 
-for (const vp of VIEWPORTS) {
-  // Fresh context per route (not per viewport): the WebGL landing scene
-  // accumulates GPU/renderer pressure in a shared context and crashed the
-  // browser mid-run on the 768 pass. Isolating per route keeps a crash
-  // attributable to one route/viewport instead of killing the whole run.
-  for (const route of ROUTES) {
-    const ctx = await browser.newContext({
-      viewport: { width: vp.w, height: vp.h },
-      deviceScaleFactor: 1,
-    });
-    const page = await ctx.newPage();
-    const consoleErrors = [];
-    const failedRequests = [];
-    page.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300));
-    });
-    page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${String(e).slice(0, 300)}`));
-    page.on('requestfailed', (r) => {
-      const url = r.url();
-      if (/favicon|\.map$/.test(url)) return;
-      failedRequests.push(`${r.method()} ${url.slice(0, 160)} :: ${r.failure()?.errorText ?? ''}`);
-    });
+async function runWorker(vp) {
+  const browser = await chromium.launch({
+    ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+    args: ['--disable-dev-shm-usage', '--no-sandbox'],
+  });
+  const results = [];
+  try {
+    for (const route of ROUTES) {
+      const entry = { viewport: vp.label, width: vp.w, route: route.path, name: route.name };
+      const consoleErrors = [];
+      const failedRequests = [];
+      let ctx = null;
+      try {
+        ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, deviceScaleFactor: 1 });
+        const page = await ctx.newPage();
+        page.on('console', (m) => {
+          if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300));
+        });
+        page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${String(e).slice(0, 300)}`));
+        page.on('requestfailed', (r) => {
+          const url = r.url();
+          if (/favicon|\.map$/.test(url)) return;
+          failedRequests.push(`${r.method()} ${url.slice(0, 160)} :: ${r.failure()?.errorText ?? ''}`);
+        });
 
-    const entry = { viewport: vp.label, width: vp.w, route: route.path, name: route.name };
-    try {
-      // NOT networkidle: WebGL RAF + sockets never idle on the landing page.
-      const resp = await page.goto(`${BASE}${route.path}`, {
-        waitUntil: 'load',
-        timeout: TIMEOUT,
-      });
-      entry.status = resp?.status() ?? null;
-      entry.finalUrl = new URL(page.url()).pathname;
+        // 'load' — never 'networkidle': the WebGL scene keeps RAF/sockets alive.
+        const resp = await page.goto(`${BASE}${route.path}`, { waitUntil: 'load', timeout: TIMEOUT * 1000 });
+        entry.status = resp?.status() ?? null;
 
-      // Bounded settle: let React mount + fonts/scene init, but never hang.
-      // Race against page close so a crashed/closed page fails fast instead
-      // of hanging the whole run.
-      await Promise.race([
-        page.waitForTimeout(SETTLE_MS),
-        new Promise((_, reject) => page.once('close', () => reject(new Error('page closed during settle')))),
-      ]);
+        // Bounded settle so React mounts; raced against close so a crashed
+        // page fails fast instead of hanging the whole viewport.
+        await Promise.race([
+          page.waitForTimeout(SETTLE_MS),
+          new Promise((_, reject) => page.once('close', () => reject(new Error('page closed during settle')))),
+        ]);
 
-      const metrics = await page.evaluate(() => {
-        const doc = document.documentElement;
-        const scrollW = Math.max(doc.scrollWidth, document.body?.scrollWidth ?? 0);
-        const clientW = doc.clientWidth;
+        entry.finalUrl = new URL(page.url()).pathname;
 
-        const overflowing = [];
-        const all = document.querySelectorAll('body *');
-        for (const el of all) {
-          const r = el.getBoundingClientRect();
-          if (r.width === 0 || r.height === 0) continue;
-          const style = getComputedStyle(el);
-          if (style.position === 'fixed' || style.visibility === 'hidden') continue;
-          if (r.right > clientW + 2) {
-            const tag = el.tagName.toLowerCase();
-            const cls = (el.className && typeof el.className === 'string')
-              ? el.className.split(/\s+/).slice(0, 3).join('.')
-              : '';
-            overflowing.push(`${tag}${cls ? '.' + cls : ''} right=${Math.round(r.right)} (vw=${clientW})`);
-            if (overflowing.length >= 5) break;
+        // The landing canvas starves the main thread, so a full-DOM geometry
+        // sweep can take a minute. Freeze RAF before measuring: DOM geometry
+        // is unaffected (the canvas is a decorative background) and the text
+        // length is read in the same evaluate, so a blank render still fails.
+        await page.evaluate(() => {
+          window.requestAnimationFrame = () => 0;
+        }).catch(() => {});
+
+        const metrics = await page.evaluate(async () => {
+          const doc = document.documentElement;
+          const scrollW = Math.max(doc.scrollWidth, document.body?.scrollWidth ?? 0);
+          const clientW = doc.clientWidth;
+          const all = [...document.querySelectorAll('body *')];
+          const overflowing = [];
+          const hScrollers = [];
+          for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            const r = el.getBoundingClientRect();
+            if (r.width !== 0 && r.height !== 0) {
+              const style = getComputedStyle(el);
+              if (style.position !== 'fixed' && style.visibility !== 'hidden'
+                  && r.right > clientW + 2 && overflowing.length < 5) {
+                const tag = el.tagName.toLowerCase();
+                const cls = (el.className && typeof el.className === 'string')
+                  ? el.className.split(/\s+/).slice(0, 3).join('.') : '';
+                overflowing.push(`${tag}${cls ? '.' + cls : ''} right=${Math.round(r.right)} (vw=${clientW})`);
+              }
+              if ((style.overflowX === 'auto' || style.overflowX === 'scroll')
+                  && el.scrollWidth > el.clientWidth + 2 && hScrollers.length < 5) {
+                hScrollers.push(el.tagName.toLowerCase());
+              }
+            }
+            if (i % 15 === 14) await new Promise((r) => setTimeout(r, 0));
           }
-        }
 
-        const clipped = [];
-        for (const el of document.querySelectorAll('h1,h2,h3,p,span,td,th,button,a,label')) {
-          if (!el.textContent || !el.textContent.trim()) continue;
-          const s = getComputedStyle(el);
-          if (s.overflow === 'visible') continue;
-          if (el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) {
-            const txt = el.textContent.trim().slice(0, 40);
-            clipped.push(`${el.tagName.toLowerCase()}:"${txt}" ${el.scrollWidth}>${el.clientWidth}`);
-            if (clipped.length >= 5) break;
+          const textEls = [...document.querySelectorAll('h1,h2,h3,p,span,td,th,button,a,label')];
+          const clipped = [];
+          for (let i = 0; i < textEls.length; i++) {
+            const el = textEls[i];
+            if (el.textContent && el.textContent.trim()) {
+              const s = getComputedStyle(el);
+              if (s.overflow !== 'visible' && el.scrollWidth > el.clientWidth + 2
+                  && el.clientWidth > 0 && clipped.length < 5) {
+                clipped.push(`${el.tagName.toLowerCase()}:"${el.textContent.trim().slice(0, 40)}" ${el.scrollWidth}>${el.clientWidth}`);
+              }
+            }
+            if (i % 15 === 14) await new Promise((r) => setTimeout(r, 0));
           }
-        }
 
-        const hScrollers = [];
-        for (const el of document.querySelectorAll('body *')) {
-          const s = getComputedStyle(el);
-          if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 2) {
-            hScrollers.push(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/)[0] : ''));
-            if (hScrollers.length >= 5) break;
-          }
-        }
+          const bodyText = (document.body?.innerText ?? '').replace(/\s+/g, ' ').trim();
+          return {
+            scrollW, clientW,
+            docOverflow: scrollW > clientW + 2,
+            overflowing, clipped, hScrollers,
+            bodyTextLength: bodyText.length,
+            bodyText: bodyText.slice(0, 200),
+            formControls: document.querySelectorAll('input,select,textarea,button[type=submit],form').length,
+            canvasCount: document.querySelectorAll('canvas').length,
+          };
+        });
 
-        const bodyTextRaw = document.body?.innerText ?? '';
-        return {
-          scrollW,
-          clientW,
-          docOverflow: scrollW > clientW + 2,
-          overflowing,
-          clipped,
-          hScrollers,
-          bodyTextLength: bodyTextRaw.replace(/\s+/g, ' ').trim().length,
-          bodyText: bodyTextRaw.replace(/\s+/g, ' ').slice(0, 200),
-          hasMain: !!document.querySelector('main'),
-          canvasCount: document.querySelectorAll('canvas').length,
-        };
-      });
-
-      Object.assign(entry, metrics);
-      entry.consoleErrors = consoleErrors;
-      entry.failedRequests = failedRequests;
-      entry.textPresent = metrics.bodyTextLength > 100;
-
-      if (!entry.textPresent) {
-        findings.push({
-          severity: 'blocking',
-          kind: 'blank-or-missing-text',
-          viewport: vp.label,
-          route: route.path,
-          detail: `body innerText length ${metrics.bodyTextLength} <= 100; refusing to pass a blank render`,
-        });
+        Object.assign(entry, metrics);
+        entry.consoleErrors = consoleErrors;
+        entry.failedRequests = failedRequests;
+      } catch (err) {
+        entry.error = String(err).slice(0, 300);
+      } finally {
+        if (ctx) await ctx.close().catch(() => {});
       }
-      if (metrics.docOverflow) {
-        findings.push({
-          severity: 'blocking',
-          kind: 'horizontal-overflow',
-          viewport: vp.label,
-          route: route.path,
-          detail: `document scrollWidth ${metrics.scrollW} > clientWidth ${metrics.clientW}; ${metrics.overflowing.join(' | ')}`,
-        });
-      }
-      if (metrics.clipped.length) {
-        findings.push({
-          severity: 'warning',
-          kind: 'clipped-text',
-          viewport: vp.label,
-          route: route.path,
-          detail: metrics.clipped.join(' | '),
-        });
-      }
-      if (consoleErrors.length) {
-        findings.push({
-          severity: 'warning',
-          kind: 'console-error',
-          viewport: vp.label,
-          route: route.path,
-          detail: consoleErrors.slice(0, 3).join(' | '),
-        });
-      }
-      if (failedRequests.length) {
-        findings.push({
-          severity: 'warning',
-          kind: 'failed-request',
-          viewport: vp.label,
-          route: route.path,
-          detail: failedRequests.slice(0, 3).join(' | '),
-        });
-      }
-    } catch (err) {
-      entry.error = String(err).slice(0, 300);
-      entry.textPresent = false;
-      findings.push({
-        severity: 'blocking',
-        kind: 'navigation-error',
-        viewport: vp.label,
-        route: route.path,
-        detail: entry.error,
-      });
+      results.push(entry);
     }
-    results.push(entry);
-    console.log(
-      `[${vp.label}] ${route.path} status=${entry.status ?? 'ERR'} scrollW=${entry.scrollW ?? '-'} clientW=${entry.clientW ?? '-'} overflow=${entry.docOverflow ?? '-'} textLen=${entry.bodyTextLength ?? '-'} textPresent=${entry.textPresent} canvases=${entry.canvasCount ?? '-'} consoleErr=${(entry.consoleErrors ?? []).length} failedReq=${(entry.failedRequests ?? []).length}${entry.error ? ' ERROR=' + entry.error : ''}`,
-    );
-    await page.close().catch(() => {});
-    await ctx.close().catch(() => {});
+  } finally {
+    await browser.close().catch(() => {});
   }
+  return results;
 }
 
-await browser.close();
+// ---------------------------------------------------------------- runner ----
 
-const blocking = findings.filter((f) => f.severity === 'blocking');
-const warnings = findings.filter((f) => f.severity === 'warning');
+async function runRunner() {
+  const self = fileURLToPath(import.meta.url);
+  const viewports = ONLY ? VIEWPORTS.filter((v) => v.label.includes(ONLY)) : VIEWPORTS;
+  const perViewport = {};
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const outDir = path.join(scriptDir, '..', 'frontend', 'docs', 'evidence', '2026-10-18-visual-qa');
-fs.mkdirSync(outDir, { recursive: true });
-const outPath = path.join(outDir, 'landing-qa.json');
-fs.writeFileSync(
-  outPath,
-  JSON.stringify({ base: BASE, generatedAt: new Date().toISOString(), results, findings }, null, 2),
-);
+  for (const vp of viewports) {
+    const child = spawn(process.execPath, [self, '--worker', '--vp', String(vp.w), '--vplabel', vp.label,
+      '--base', BASE, '--timeout', String(TIMEOUT), '--settle', String(SETTLE_MS)], {
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    let errOut = '';
+    child.stdout.on('data', (c) => { out += c; });
+    child.stderr.on('data', (c) => { errOut += c; });
 
-console.log(`routes=${ROUTES.length} viewports=${VIEWPORTS.length} checks=${results.length}`);
-console.log(`blocking=${blocking.length} warnings=${warnings.length}`);
-for (const f of blocking) console.log(`BLOCK ${f.kind} [${f.viewport}] ${f.route}: ${f.detail}`);
-for (const f of warnings) console.log(`WARN  ${f.kind} [${f.viewport}] ${f.route}: ${f.detail}`);
-console.log(`evidence=${outPath}`);
-process.exit(blocking.length ? 1 : 0);
+    const timer = setTimeout(() => { child.kill('SIGKILL'); }, VIEWPORT_TIMEOUT_MS * 1000);
+    const code = await new Promise((resolve) => child.on('close', (c) => { clearTimeout(timer); resolve(c); }));
+
+    let parsed = null;
+    const line = out.split('\n').reverse().find((l) => l.trim().startsWith('['));
+    if (line) { try { parsed = JSON.parse(line); } catch { parsed = null; } }
+
+    if (parsed && Array.isArray(parsed)) {
+      perViewport[vp.label] = parsed;
+      console.log(`[${vp.label}] ${parsed.length}/${ROUTES.length} routes measured`);
+    } else {
+      perViewport[vp.label] = [];
+      const lastErr = errOut.trim().split('\n').slice(-1)[0] ?? '';
+      console.log(`[${vp.label}] FAILED (exit ${code}) ${lastErr}`.trim());
+    }
+  }
+
+  // Merge in viewport order, then route order, so the evidence file is stable.
+  const results = [];
+  for (const vp of viewports) results.push(...(perViewport[vp.label] ?? []));
+
+  const findings = [];
+  for (const e of results) {
+    const route = ROUTES.find((r) => r.path === e.route);
+    const kind = route?.kind ?? 'content';
+    if (e.error) {
+      findings.push({ severity: 'blocking', kind: 'navigation-error', viewport: e.viewport, route: e.route, detail: e.error });
+      continue;
+    }
+    const blankOk = kind === 'form' ? (e.formControls ?? 0) > 0 : (e.bodyTextLength ?? 0) > 100;
+    if (!blankOk) {
+      findings.push({
+        severity: 'blocking', kind: 'blank-or-missing-render', viewport: e.viewport, route: e.route,
+        detail: `textLen=${e.bodyTextLength} formControls=${e.formControls}; refusing to pass a blank render`,
+      });
+    }
+    if (e.docOverflow) {
+      findings.push({
+        severity: 'blocking', kind: 'horizontal-overflow', viewport: e.viewport, route: e.route,
+        detail: `scrollW ${e.scrollW} > clientW ${e.clientW}; ${(e.overflowing ?? []).join(' | ')}`,
+      });
+    }
+    if ((e.clipped ?? []).length) {
+      findings.push({ severity: 'warning', kind: 'clipped-text', viewport: e.viewport, route: e.route, detail: e.clipped.join(' | ') });
+    }
+    if ((e.consoleErrors ?? []).length) {
+      findings.push({ severity: 'warning', kind: 'console-error', viewport: e.viewport, route: e.route, detail: e.consoleErrors.slice(0, 3).join(' | ') });
+    }
+    if ((e.failedRequests ?? []).length) {
+      findings.push({ severity: 'warning', kind: 'failed-request', viewport: e.viewport, route: e.route, detail: e.failedRequests.slice(0, 3).join(' | ') });
+    }
+  }
+
+  const expected = viewports.length * ROUTES.length;
+  const missing = expected - results.length;
+  if (missing > 0) {
+    findings.push({
+      severity: 'blocking', kind: 'incomplete-coverage',
+      detail: `${results.length}/${expected} checks collected; ${missing} missing — partial evidence cannot be a pass`,
+    });
+  }
+
+  const blocking = findings.filter((f) => f.severity === 'blocking');
+  const warnings = findings.filter((f) => f.severity === 'warning');
+
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const outDir = path.join(scriptDir, '..', 'frontend', 'docs', 'evidence', '2026-10-18-visual-qa');
+  fs.mkdirSync(outDir, { recursive: true });
+  const outPath = path.join(outDir, 'landing-qa.json');
+  fs.writeFileSync(outPath, JSON.stringify({
+    base: BASE, generatedAt: new Date().toISOString(),
+    expectedChecks: expected, collectedChecks: results.length,
+    results, findings,
+  }, null, 2));
+
+  console.log(`checks=${results.length}/${expected} blocking=${blocking.length} warnings=${warnings.length}`);
+  for (const f of blocking) console.log(`BLOCK ${f.kind} [${f.viewport ?? '-'}] ${f.route ?? '-'}: ${f.detail}`);
+  for (const f of warnings.slice(0, 20)) console.log(`WARN  ${f.kind} [${f.viewport}] ${f.route}: ${f.detail}`);
+  console.log(`evidence=${outPath}`);
+  process.exit(blocking.length ? 1 : 0);
+}
+
+// ------------------------------------------------------------------ main ----
+
+if (has('--worker')) {
+  const vp = { w: Number(arg('--vp', '390')), h: 800, label: arg('--vplabel', 'worker') };
+  const res = await runWorker(vp);
+  console.log(JSON.stringify(res));
+  process.exit(0);
+} else {
+  await runRunner();
+}

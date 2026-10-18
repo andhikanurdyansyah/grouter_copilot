@@ -33,6 +33,8 @@ export class JsonStore {
     this.filePath = filePath;
     mkdirSync(path.dirname(filePath), { recursive: true });
     this.data = this._load();
+    // A-08: derive/repair cumulative quota counters before any request is served.
+    this._reconcileUsageCounters();
   }
 
   _load() {
@@ -57,12 +59,48 @@ export class JsonStore {
         // Runtime configuration (SSOT). Resolved against defaults + env seeds
         // by server/src/settings.js — this is only the persisted override layer.
         settings: parsed.settings ?? {},
+        // A-08: per-license cumulative usage counters (durable quota source of
+        // truth, independent of how much usage[] history is retained). Absent in
+        // stores written before counters existed; reconciled in _load below.
+        usageCounters: parsed.usageCounters ?? null,
       };
     } catch (err) {
       // Fail closed (A-01): a corrupt store must stop the process loudly,
       // never silently start empty and persist the wipe on first mutation.
       throw new Error(`store file is corrupt and cannot be parsed (${this.filePath}): ${err.message}`);
     }
+  }
+
+  /**
+   * A-08: establish the cumulative counters at load.
+   *
+   * The counters are the durable quota source of truth; usage[] rows are the
+   * audit history and may be archived. Therefore:
+   *   - counters ABSENT (store predates the feature) -> derive from rows once.
+   *   - counters PRESENT -> trust them and do NOT recompute from rows, because
+   *     archived rows would silently reset the total and hand out free quota.
+   *
+   * Use rebuildUsageCounters() explicitly (operator action) when the rows are
+   * known to be complete and authoritative.
+   */
+  _reconcileUsageCounters() {
+    if (this.data.usageCounters && typeof this.data.usageCounters === 'object') {
+      return this.data.usageCounters;
+    }
+    const derived = this._recomputeUsageCounters();
+    this._save();
+    return derived;
+  }
+
+  /**
+   * A-08: operator escape hatch — rebuild counters from the retained rows.
+   * Only correct when usage[] is known to be complete (e.g. after restoring a
+   * full backup). Never call this on a store whose history was archived.
+   */
+  rebuildUsageCounters() {
+    const derived = this._recomputeUsageCounters();
+    this._save();
+    return derived;
   }
 
   // --- notifications (in-app product events; durable, per-account) ---
@@ -421,8 +459,56 @@ export class JsonStore {
     return this.data.usage;
   }
 
+  /**
+   * Tokens/requests a usage record contributes to quota accounting.
+   * Reserved requests count their reservation (prevents quota bypass via
+   * concurrent in-flight requests); errored/rejected requests count nothing.
+   */
+  static _usageContribution(u) {
+    if (!u) return { tokens: 0, requests: 0 };
+    if (u.status === 'ok') return { tokens: u.totalTokens ?? 0, requests: 1 };
+    if (u.status === 'reserved') return { tokens: u.reservedTokens ?? 0, requests: 0 };
+    return { tokens: 0, requests: 0 };
+  }
+
+  /**
+   * A-08: rebuild the per-license cumulative counters from usage[].
+   *
+   * These counters are the durable quota source of truth. Without them, quota
+   * enforcement had to sum the entire usage[] history, which made archiving
+   * that history impossible: pruning rows would silently under-count usage and
+   * hand customers free tokens. Keeping the total here decouples retention
+   * policy from quota correctness.
+   */
+  _recomputeUsageCounters() {
+    const counters = {};
+    for (const u of this.data.usage) {
+      const licenseId = u?.licenseId;
+      if (!licenseId) continue;
+      const c = (counters[licenseId] ??= { usedTokens: 0, requestCount: 0 });
+      const { tokens, requests } = JsonStore._usageContribution(u);
+      c.usedTokens += tokens;
+      c.requestCount += requests;
+    }
+    this.data.usageCounters = counters;
+    return counters;
+  }
+
+  /** Apply a delta to one license's cumulative counter, never below zero. */
+  _bumpUsageCounter(licenseId, deltaTokens, deltaRequests) {
+    if (!licenseId) return;
+    const counters = (this.data.usageCounters ??= {});
+    const c = (counters[licenseId] ??= { usedTokens: 0, requestCount: 0 });
+    c.usedTokens = Math.max(0, (c.usedTokens ?? 0) + deltaTokens);
+    c.requestCount = Math.max(0, (c.requestCount ?? 0) + deltaRequests);
+  }
+
   addUsageRecord(record) {
     this.data.usage.push(record);
+    // A-08: keep the cumulative counter in step with the new row so quota does
+    // not depend on the full history being retained.
+    const { tokens, requests } = JsonStore._usageContribution(record);
+    this._bumpUsageCounter(record?.licenseId, tokens, requests);
     this._save();
     return record;
   }
@@ -430,7 +516,18 @@ export class JsonStore {
   updateUsageRecord(requestId, patch) {
     const record = this.getUsageRecord(requestId);
     if (!record) return null;
+    // A-08: a status transition changes what this row contributes to quota
+    // (reserved -> ok swaps the reservation for the real charge; reserved ->
+    // error releases it). Apply the difference, not the absolute value, so
+    // repeated updates cannot double-count.
+    const before = JsonStore._usageContribution(record);
     Object.assign(record, patch);
+    const after = JsonStore._usageContribution(record);
+    this._bumpUsageCounter(
+      record.licenseId,
+      after.tokens - before.tokens,
+      after.requests - before.requests,
+    );
     this._save();
     return record;
   }
@@ -439,20 +536,28 @@ export class JsonStore {
    * Effective charged tokens for a license. Reserved requests count their
    * reservation (prevents quota bypass via concurrent in-flight requests);
    * errored requests count nothing (reservation released).
+   *
+   * Reads the cumulative counter (A-08), which is authoritative and independent
+   * of how much usage[] history is retained. If a license has no counter yet,
+   * its total is derived once from the rows that exist for it and memoised —
+   * deriving on every read would be O(history) and, worse, would reset to zero
+   * the moment that history is archived.
    */
   usageTotals(licenseId) {
-    let usedTokens = 0;
-    let requestCount = 0;
-    for (const u of this.data.usage) {
-      if (u.licenseId !== licenseId) continue;
-      if (u.status === 'ok') {
-        usedTokens += u.totalTokens ?? 0;
-        requestCount += 1;
-      } else if (u.status === 'reserved') {
-        usedTokens += u.reservedTokens ?? 0;
+    const counters = (this.data.usageCounters ??= {});
+    let c = counters[licenseId];
+    if (!c) {
+      c = { usedTokens: 0, requestCount: 0 };
+      for (const u of this.data.usage) {
+        if (u?.licenseId !== licenseId) continue;
+        const { tokens, requests } = JsonStore._usageContribution(u);
+        c.usedTokens += tokens;
+        c.requestCount += requests;
       }
+      counters[licenseId] = c;
+      this._save();
     }
-    return { usedTokens, requestCount };
+    return { usedTokens: c.usedTokens ?? 0, requestCount: c.requestCount ?? 0 };
   }
 
   revokeLicense(id, { at = Date.now() } = {}) {

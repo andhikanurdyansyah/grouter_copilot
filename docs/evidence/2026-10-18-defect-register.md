@@ -82,14 +82,23 @@ sha256 `f1a9982e…` identik sebelum/sesudah.
 
 ### Tetap terbuka
 
-- **A-08** — **diblokir keputusan PO.** `store.usageTotals()` menjumlahkan SELURUH riwayat
-  per lisensi untuk enforce kuota; memangkas/mengarsipkan `usage[]` membuat kuota
-  under-count dan pelanggan otomatis dapat token gratis. Opsi aman: tambah counter
-  kumulatif per-lisensi lebih dulu. Store saat ini 146 KB / 185 record — belum mendesak,
-  tapi pertumbuhan tak terbatas.
 - **Visual QA landing page** — probe timeout: landing memakai WebGL berat dan binary
   Playwright host (`chromium-1248`) tidak cocok dengan revisi yang diminta paket (`1217`).
   Permukaan admin + customer terukur penuh; landing **tidak** diklaim terverifikasi.
+
+### A-08 — DITUTUP pada rilis lanjutan (`989c4b8`+)
+
+Akar masalah: `usageTotals()` menjumlahkan seluruh riwayat `usage[]`, sehingga
+riwayat tidak boleh dipangkas tanpa memberi kuota gratis.
+
+Perbaikan: counter kumulatif per-lisensi (`usageCounters`) sebagai sumber kebenaran
+kuota, diperbarui pada setiap transisi status (selisih, bukan absolut). Saat load:
+counter yang ada **dipercaya**; hanya store lama tanpa counter yang diturunkan dari
+baris. Kebijakan retensi lengkap: `docs/evidence/2026-10-18-a08-retention-policy.md`.
+
+Bukti: 9 test (`server/test/a08-usage-retention.test.js`), migrasi pada salinan prod
+cocok dengan hitungan baris, prod `usageCounters` = `158322` token / `163` request
+(identik pra/post), 185 baris `usage` utuh, backup pra-migrasi tersedia.
 
 ### Bukti QA rilis ini
 

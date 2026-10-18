@@ -109,12 +109,40 @@ export class KlikQris {
       throw new KlikQrisError('Unable to reach KlikQRIS.', { code: 'NETWORK', cause: err });
     }
 
-    const data = await res.json().catch(() => ({}));
+    // Parse defensively, but keep the parse outcome. A body that is not JSON
+    // carries no status claim, so the HTTP status alone must decide the
+    // classification below — silently substituting {} made a plain-text 401
+    // look like a generic failure and a corrupt 200 look like "status unknown".
+    let data = null;
+    let parsed = false;
+    try {
+      data = await res.json();
+      parsed = true;
+    } catch {
+      data = null;
+    }
     // A non-2xx upstream response (e.g. 500 with a plain-text/HTML body) must
     // never be read as a valid "UNKNOWN" status. Treat it as an upstream
     // failure so the webhook answers 502 (provider retries) and nothing settles.
-    if (!res.ok && data.status !== false) {
-      throw new KlikQrisError(`KlikQRIS HTTP ${res.status}`, { code: 'REQUEST_FAILED' });
+    // Auth failures are classified from the HTTP status even when the provider
+    // returns a non-JSON body (some gateways answer 401 with plain text).
+    if (!res.ok) {
+      if (data && data.status === false) {
+        const msg = data.message || 'KlikQRIS error.';
+        if (res.status === 401 || /invalid api key|unauthorized|inactive/i.test(msg)) {
+          throw new KlikQrisError(msg, { code: 'AUTH_FAILED' });
+        }
+        throw new KlikQrisError(msg, { code: 'REQUEST_FAILED' });
+      }
+      throw new KlikQrisError(`KlikQRIS HTTP ${res.status}`, {
+        code: res.status === 401 || res.status === 403 ? 'AUTH_FAILED' : 'REQUEST_FAILED',
+      });
+    }
+    if (!parsed) {
+      // A 2xx with an unparseable body is a broken upstream response, not a
+      // status. Surfacing it as an error lets the caller retry/alert instead of
+      // treating it as an authoritative "unknown".
+      throw new KlikQrisError('KlikQRIS returned an unparseable response.', { code: 'REQUEST_FAILED' });
     }
     if (data.status === false) {
       const msg = data.message || 'KlikQRIS error.';

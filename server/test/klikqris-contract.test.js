@@ -241,36 +241,43 @@ test('wire contract: checkStatus sends GET with no body and URL-encodes the orde
   assert.equal(wouldSettle(out, 'ord test/123?x'), false);
 });
 
-test('wire contract: malformed JSON body is never a silent success (documents silent UNKNOWN mapping)', async (t) => {
+test('wire contract: a 2xx with an unparseable body throws instead of reporting UNKNOWN', async (t) => {
   const stub = await startStub(async (req, res) => respondJson(res, 200, 'this is {{ not json'));
   t.after(() => stub.close());
 
   const client = clientFor(stub.base);
-  let error = null;
-  let out = null;
-  try {
-    out = await client.checkStatus(ORDER_ID);
-  } catch (err) {
-    error = err;
-  }
+  // Formerly klikqris.js swallowed the parse error (`res.json().catch(() => ({}))`)
+  // before the status checks, so a 200 with a corrupt body resolved to
+  // status 'UNKNOWN' — indistinguishable from a genuine unknown status. It could
+  // never settle an order (not paid), but it hid a broken upstream response.
+  // Now a 2xx without a parseable envelope is surfaced as an error so the caller
+  // can retry/alert rather than treating garbage as an authoritative answer.
+  await assert.rejects(
+    () => client.checkStatus(ORDER_ID),
+    (err) => err instanceof KlikQrisError && err.code === 'REQUEST_FAILED' && /unparseable/i.test(err.message),
+  );
   assert.equal(stub.requests.length, 1, 'request must reach the stub before the body is read');
+});
 
-  // klikqris.js:112 (`res.json().catch(() => ({}))`) swallows the parse error
-  // BEFORE the !res.ok / status===false checks, so with HTTP 200 a malformed
-  // body resolves to an empty envelope and checkStatus reports 'UNKNOWN'
-  // instead of throwing. That is not a silent SUCCESS — the caller cannot
-  // settle on it — but a truncated/corrupted provider body is
-  // indistinguishable from "status unknown": throw-vs-UNKNOWN is recorded
-  // here as the current (tolerable but lossy) contract.
-  if (error) {
-    assert.ok(error instanceof KlikQrisError, `malformed JSON must surface as KlikQrisError, got: ${error}`);
-    assert.notEqual(error.code, undefined);
-  } else {
-    assert.equal(out.status, 'UNKNOWN', 'malformed body maps to UNKNOWN under the current contract');
-    assert.equal(out.orderId, ORDER_ID, 'checkStatus falls back to the requested order id');
-    assert.equal(out.paidAt, null);
-    assert.equal(isPaidStatus(out.status), false);
-    assert.equal(wouldSettle(out, ORDER_ID), false, 'a garbage body must never settle an order');
+test('wire contract: plain-text 401/403 are classified AUTH_FAILED, not a generic failure', async (t) => {
+  // Some gateways answer auth errors with a non-JSON body. Classifying those as
+  // REQUEST_FAILED made an operator credential problem look like a transient
+  // upstream fault (server.js maps AUTH_FAILED to 502 for checkout).
+  for (const [status, body] of [[401, 'Unauthorized'], [403, 'Forbidden']]) {
+    const stub = await startStub(async (req, res) => {
+      res.writeHead(status, { 'content-type': 'text/plain' });
+      res.end(body);
+    });
+    const client = clientFor(stub.base);
+    try {
+      await assert.rejects(
+        () => client.checkStatus(ORDER_ID),
+        (err) => err instanceof KlikQrisError && err.code === 'AUTH_FAILED',
+        `HTTP ${status} with a plain-text body must be AUTH_FAILED`,
+      );
+    } finally {
+      await stub.close();
+    }
   }
 });
 
@@ -323,13 +330,28 @@ test('wire contract: unconfigured client fails closed before any network I/O', a
   await assert.rejects(() => unconfigured.createQris({ orderId: ORDER_ID, amount: 1000 }), (err) => err instanceof KlikQrisError && err.code === 'NOT_CONFIGURED');
   assert.equal(stub.requests.length, 0, 'an unconfigured client must not touch the wire');
 
-  // Same guarantee for the default (env-backed) constructor: undefined
-  // credentials must fail closed, never fall back to a hard-coded key.
-  for (const params of [{}, { baseUrl: `http://127.0.0.1:9/api/sandbox?x=1` }]) {
-    const client = new KlikQris(params);
-    assert.equal(client.configured, false, `env credentials must stay unset, got configured=true for ${JSON.stringify(params)}`);
-    await assert.rejects(() => client.checkStatus(ORDER_ID), (err) => err instanceof KlikQrisError && err.code === 'NOT_CONFIGURED');
-    assert.equal(stub.requests.length, 0);
+  // Same guarantee for the default (env-backed) constructor: with no env
+  // credentials it must fail closed, never fall back to a hard-coded key.
+  //
+  // The env vars are cleared for the duration of this check. Without that, the
+  // assertion only holds on a machine where they happen to be unset: on a host
+  // that exports real KlikQRIS credentials the constructor is legitimately
+  // configured and the suite went red for a non-defect. A test must not depend
+  // on the operator's shell environment.
+  const savedApiKey = process.env.KLIKQRIS_API_KEY;
+  const savedMerchant = process.env.KLIKQRIS_MERCHANT_ID;
+  delete process.env.KLIKQRIS_API_KEY;
+  delete process.env.KLIKQRIS_MERCHANT_ID;
+  try {
+    for (const params of [{}, { baseUrl: `http://127.0.0.1:9/api/sandbox?x=1` }]) {
+      const client = new KlikQris(params);
+      assert.equal(client.configured, false, `env credentials must stay unset, got configured=true for ${JSON.stringify(params)}`);
+      await assert.rejects(() => client.checkStatus(ORDER_ID), (err) => err instanceof KlikQrisError && err.code === 'NOT_CONFIGURED');
+      assert.equal(stub.requests.length, 0);
+    }
+  } finally {
+    if (savedApiKey !== undefined) process.env.KLIKQRIS_API_KEY = savedApiKey;
+    if (savedMerchant !== undefined) process.env.KLIKQRIS_MERCHANT_ID = savedMerchant;
   }
 });
 

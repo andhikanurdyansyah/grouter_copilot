@@ -16,7 +16,8 @@ import { type Language, dictionary } from '@/context/language-provider'
 export function buildSidebarData(
   isAdmin: boolean,
   lang: Language = 'id',
-  user?: { name?: string; email?: string }
+  user?: { name?: string; email?: string },
+  adminCounts?: { licenses?: number | null; pendingOrders?: number | null }
 ): SidebarData {
   const t = (key: string) => {
     const entry = dictionary[key]
@@ -45,15 +46,17 @@ export function buildSidebarData(
               title: t('nav_licenses'),
               url: '/admin/licenses',
               icon: KeyRound,
-              badge: '128',
-              badgeVariant: 'muted',
+              ...(adminCounts?.licenses != null
+                ? { badge: adminCounts.licenses > 99 ? '99+' : String(adminCounts.licenses), badgeVariant: 'muted' as const }
+                : {}),
             },
             {
               title: t('nav_orders'),
               url: '/admin/orders',
               icon: Receipt,
-              badge: '4',
-              badgeVariant: 'amber',
+              ...(adminCounts?.pendingOrders != null && adminCounts.pendingOrders > 0
+                ? { badge: adminCounts.pendingOrders > 99 ? '99+' : String(adminCounts.pendingOrders), badgeVariant: 'amber' as const }
+                : {}),
             },
             {
               title: t('nav_ledger'),
@@ -108,8 +111,6 @@ export function buildSidebarData(
             title: t('nav_user_install'),
             url: '/user/install',
             icon: KeyRound,
-            badge: '●',
-            badgeVariant: 'dot',
           },
           {
             title: t('nav_user_usage'),
@@ -130,8 +131,6 @@ export function buildSidebarData(
             title: t('nav_user_orders'),
             url: '/user/payments',
             icon: CreditCard,
-            badge: '1',
-            badgeVariant: 'amber',
           },
         ],
       },

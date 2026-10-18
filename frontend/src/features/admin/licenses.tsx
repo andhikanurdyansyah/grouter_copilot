@@ -93,7 +93,7 @@ export function AdminLicenses() {
         id: shortId(l.id),
         fullId: l.id,
         customer: l.customer ?? '—',
-        domain: (l.planKey ?? '—') as string,
+        owner: (l.accountId as string | null | undefined) ?? null,
         plan: (l.planKey ?? '—') as string,
         usedQuota: used ? used.toLocaleString('id-ID') : '0',
         totalQuota: limit ? limit.toLocaleString('id-ID') : '—',
@@ -134,7 +134,7 @@ export function AdminLicenses() {
         return (
           item.id.toLowerCase().includes(query) ||
           item.customer.toLowerCase().includes(query) ||
-          item.domain.toLowerCase().includes(query)
+          (item.owner ?? '').toLowerCase().includes(query)
         )
       }
       return true
@@ -200,7 +200,7 @@ export function AdminLicenses() {
               aria-label={isId ? 'Cari lisensi' : 'Search licenses'}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={isId ? 'Cari ID, domain, atau email...' : 'Search ID, domain, or email...'}
+              placeholder={isId ? 'Cari ID, pelanggan, atau pemilik akun...' : 'Search ID, customer, or account owner...'}
               className='w-full rounded-lg border border-border bg-card/60 pl-9 pr-3.5 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-hidden focus:ring-1 focus:ring-primary shadow-2xs'
             />
           </div>
@@ -299,7 +299,7 @@ export function AdminLicenses() {
                   {/* Customer */}
                   <td className='py-3.5 px-4'>
                     <div className='font-bold text-foreground text-xs group-hover:text-[#7778FF] transition-colors'>{row.customer}</div>
-                    <div className='text-[11px] text-muted-foreground font-mono'>{row.domain}</div>
+                    <div className='text-[11px] text-muted-foreground font-mono'>{row.owner ?? '—'}</div>
                   </td>
 
                   {/* Plan */}
@@ -474,7 +474,7 @@ export function AdminLicenses() {
               {selectedLicense?.customer}
             </SheetTitle>
             <SheetDescription className='text-xs font-mono text-muted-foreground'>
-              {selectedLicense?.domain}
+              {selectedLicense?.owner ?? '—'}
             </SheetDescription>
           </SheetHeader>
 
@@ -554,8 +554,8 @@ export function AdminLicenses() {
                   <span className='font-mono text-emerald-500 font-bold'>Ed25519 (Offline)</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>{isId ? 'Domain Terikat' : 'Bound Domain'}</span>
-                  <span className='font-mono text-foreground'>{selectedLicense.domain}</span>
+                  <span className='text-muted-foreground'>{isId ? 'Pemilik Akun' : 'Account Owner'}</span>
+                  <span className='font-mono text-foreground'>{selectedLicense.owner ?? '—'}</span>
                 </div>
               </div>
 

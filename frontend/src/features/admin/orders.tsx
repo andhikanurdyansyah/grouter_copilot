@@ -385,12 +385,6 @@ export function AdminOrders() {
                   <span className='font-bold text-foreground'>{selectedOrder.customer}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Domain</span>
-                  <span className='font-mono text-foreground'>
-                    {selectedOrder.customer.toLowerCase().replace(/\s+/g, '')}.id
-                  </span>
-                </div>
-                <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Dibuat</span>
                   <span className='font-mono text-foreground'>{selectedOrder.createdAt}</span>
                 </div>

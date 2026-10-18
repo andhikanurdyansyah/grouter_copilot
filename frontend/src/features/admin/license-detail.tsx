@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { normalizeLicenseStatus } from './license-status-counts'
 
 export function AdminLicenseDetail() {
   const { licenseId } = useParams({ from: '/_authenticated/admin/licenses_/$licenseId' })
@@ -59,15 +60,24 @@ export function AdminLicenseDetail() {
       : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
+  const [statusNowMs] = useState(() => Date.now())
+  const notFound = licenses.isFetched && !licenses.isError && !licRecord
+  const statusKey = licRecord ? normalizeLicenseStatus(licRecord, statusNowMs) : 'unknown'
+  const statusLabel = notFound
+    ? (isId ? 'Tidak ditemukan' : 'Not found')
+    : statusKey === 'active' ? (isId ? 'Aktif' : 'Active')
+      : statusKey === 'expired' ? (isId ? 'Kedaluwarsa' : 'Expired')
+        : statusKey === 'revoked' ? (isId ? 'Dicabut' : 'Revoked')
+          : (isId ? 'Tidak diketahui' : 'Unknown')
+
   const licenseData = {
     customer: licRecord?.customer ?? '—',
-    domain: licRecord?.planKey ?? '—',
     plan: licRecord?.planKey ?? '—',
     pricePerDay: '—',
     issuedAt: fmtDateID(licRecord?.createdAt ?? null),
     expiresAt: fmtDateID(licRecord?.expiresAt ?? null),
     owner: (licRecord?.accountId as string | null | undefined) ?? '—',
-    status: String(licRecord?.status ?? (licRecord ? 'active' : 'unknown')),
+    status: statusKey,
     usedQuota: usedTokens.toLocaleString('id-ID'),
     totalQuota: totalQuotaN != null ? totalQuotaN.toLocaleString('id-ID') : '—',
     percent,
@@ -134,13 +144,31 @@ export function AdminLicenseDetail() {
             <h1 className='text-2xl font-bold tracking-tight text-foreground'>
               {licenseData.customer}
             </h1>
-            <span className='inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-500'>
-              <span className='size-1.5 rounded-full bg-emerald-500' />
-              {isId ? 'Aktif' : 'Active'}
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              statusKey === 'active'
+                ? 'bg-emerald-500/15 text-emerald-500'
+                : statusKey === 'revoked'
+                  ? 'bg-[#FF667A]/15 text-[#FF667A]'
+                  : statusKey === 'expired'
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-amber-500/15 text-amber-500'
+            )}>
+              <span className={cn(
+                'size-1.5 rounded-full',
+                statusKey === 'active'
+                  ? 'bg-emerald-500'
+                  : statusKey === 'revoked'
+                    ? 'bg-[#FF667A]'
+                    : statusKey === 'expired'
+                      ? 'bg-muted-foreground'
+                      : 'bg-amber-500'
+              )} />
+              {statusLabel}
             </span>
           </div>
           <p className='text-xs sm:text-sm text-muted-foreground font-mono pl-8'>
-            {licenseId.slice(0, 16)}... · {licenseData.domain} · {licenseData.plan}
+            {licenseId.slice(0, 16)}... · {licenseData.plan}
           </p>
         </div>
 
@@ -148,6 +176,7 @@ export function AdminLicenseDetail() {
           <Button
             variant='outline'
             size='sm'
+            disabled={notFound}
             onClick={() => { setRenewUnavailable(false); setRenewModalOpen(true) }}
             className='h-9 border-border bg-card/60 hover:bg-muted text-xs sm:text-sm font-medium interactive-press'
           >
@@ -155,6 +184,7 @@ export function AdminLicenseDetail() {
           </Button>
           <Button
             size='sm'
+            disabled={notFound}
             onClick={() => setRevokeModalOpen(true)}
             className='h-9 border border-[#FF667A]/40 bg-transparent hover:bg-[#FF667A]/15 text-[#FF667A] text-xs sm:text-sm font-medium interactive-press'
           >
@@ -162,6 +192,13 @@ export function AdminLicenseDetail() {
           </Button>
         </div>
       </div>
+
+      {notFound && (
+        <div role='alert' className='flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs font-medium text-amber-500'>
+          <AlertTriangle className='size-4 shrink-0' />
+          <span>{isId ? 'Lisensi dengan ID ini tidak ditemukan di server. Periksa ID atau kembali ke daftar lisensi.' : 'No license with this ID exists on the server. Check the ID or return to the license list.'}</span>
+        </div>
+      )}
 
       {/* ── Tabs Navigation ── */}
       <div className='border-b border-border'>

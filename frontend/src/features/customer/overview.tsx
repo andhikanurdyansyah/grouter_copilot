@@ -58,6 +58,14 @@ export function CustomerOverview() {
     y: Math.round(190 - (d.tokens / histMax) * 165),
   }))
   const activePoint = activePointIndex !== null ? usageHistory[activePointIndex] : null
+  // D-09: kurva dibangun dari titik data nyata (bukan path statis). viewBox diasumsikan 620x200.
+  const hasChartData = usageHistory.length > 1
+  const chartLine = hasChartData
+    ? usageHistory.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    : ''
+  const chartArea = hasChartData
+    ? `${chartLine} L ${usageHistory[usageHistory.length - 1].x} 200 L ${usageHistory[0].x} 200 Z`
+    : ''
   const avgDaily = usageHistory.length
     ? Math.round(usageHistory.reduce((sum, d) => sum + d.tokens, 0) / usageHistory.length)
     : 0
@@ -205,7 +213,7 @@ export function CustomerOverview() {
       </div>
 
       {/* ── Contextual QRIS Payment Warning / Success Banner ── */}
-      {isPaid ? (
+      {latestOrder != null && (isPaid ? (
         <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 shadow-sm bevel-shine transition-all'>
           <div className='flex items-center gap-3 text-xs sm:text-sm text-foreground'>
             <div className='size-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-500'>
@@ -256,7 +264,7 @@ export function CustomerOverview() {
             </Link>
           </Button>
         </div>
-      )}
+      ))}
 
       {/* ── 4-KPI Bento Metric Cards (Moda page-48) ── */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
@@ -300,7 +308,7 @@ export function CustomerOverview() {
         {/* KPI 3: Permintaan 14h */}
         <div className='rounded-xl border border-border/80 bg-card/80 p-3 sm:p-5 card-3d hover-lift-3d bevel-shine'>
           <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-            {isId ? 'Permintaan · 14h' : 'Requests · 14d'}
+            {isId ? 'Permintaan (riwayat)' : 'Requests (all-time)'}
           </p>
           <p className='mt-2 text-xl sm:text-2xl font-extrabold font-mono tracking-tight text-foreground'>
             {(myLedger.data?.total ?? 0).toLocaleString('id-ID')}
@@ -383,20 +391,21 @@ export function CustomerOverview() {
               ))}
 
               {/* Gradient Area Fill */}
-              <path
-                d='M 20 145 C 65 120, 110 135, 155 100 C 200 165, 245 175, 290 85 C 335 75, 380 78, 425 65 C 470 58, 515 148, 560 155 L 600 30 L 600 200 L 20 200 Z'
-                fill='url(#gradCust)'
-              />
+              {chartArea && (
+                <path d={chartArea} fill='url(#gradCust)' />
+              )}
 
               {/* Animated Glowing Stroke Line */}
-              <path
-                d='M 20 145 C 65 120, 110 135, 155 100 C 200 165, 245 175, 290 85 C 335 75, 380 78, 425 65 C 470 58, 515 148, 560 155 L 600 30'
-                fill='none'
-                stroke='#7778FF'
-                strokeWidth='3'
-                filter='url(#glowLine)'
-                className='animate-draw-path'
-              />
+              {chartLine && (
+                <path
+                  d={chartLine}
+                  fill='none'
+                  stroke='#7778FF'
+                  strokeWidth='3'
+                  filter='url(#glowLine)'
+                  className='animate-draw-path'
+                />
+              )}
 
               {/* Active Tracking Point & Guide Line */}
               {activePoint && (
@@ -459,6 +468,17 @@ export function CustomerOverview() {
                     {histMax > 0 ? `${((activePoint.tokens / histMax) * 100).toFixed(0)}% ${isId ? 'dari puncak' : 'of peak'}` : '—'}
                   </span>
                 </div>
+              </div>
+            )}
+
+            {/* Grafik butuh >=2 titik harian nyata; bila belum ada -> empty state jujur. */}
+            {!hasChartData && (
+              <div className='absolute inset-0 flex items-center justify-center px-6 text-center'>
+                <p className='text-xs text-muted-foreground'>
+                  {isId
+                    ? 'Belum ada data pemakaian token harian untuk digambar. Grafik muncul setelah ada aktivitas pada 2 hari berbeda.'
+                    : 'No daily token usage data to chart yet. The chart appears once activity spans 2 different days.'}
+                </p>
               </div>
             )}
 

@@ -12,6 +12,8 @@ import { useLanguage } from '@/context/language-provider'
 import { buildSidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { useMe } from '@/features/shared/use-me'
+import { useQuery } from '@tanstack/react-query'
+import { fetchAdminOrders, fetchAdminStats } from '@/lib/grouter-api'
 import {
   Search,
   ChevronsUpDown,
@@ -47,12 +49,34 @@ export function AppSidebar() {
   const orgName = accountEmail?.includes('@') ? accountEmail.split('@')[1] : null
   const orgInitials = (orgName ?? '?').slice(0, 2).toUpperCase()
 
+  // D-11: badge sidebar admin = angka nyata dari API admin (stats lisensi +
+  // pesanan menunggu settle). Query HANYA aktif di surface admin — sesi customer
+  // tidak pernah memanggil endpoint admin-gated.
+  const adminStats = useQuery({
+    queryKey: ['admin-stats', 'sidebar'],
+    queryFn: fetchAdminStats,
+    enabled: isAdmin,
+  })
+  const adminOrdersBadge = useQuery({
+    queryKey: ['admin-orders', 'sidebar-badge'],
+    queryFn: () => fetchAdminOrders(100),
+    enabled: isAdmin,
+  })
+  const stats = (adminStats.data ?? null) as { totalLicenses?: number } | null
+  const pendingOrders = (adminOrdersBadge.data?.orders ?? []).filter(
+    (o) => String(o.status || '').toLowerCase() === 'pending'
+  ).length
+
   const sidebarData = buildSidebarData(
     isAdmin,
     language,
     data && 'account' in data
       ? { name: data.account.name, email: data.account.email }
-      : undefined
+      : undefined,
+    {
+      licenses: stats?.totalLicenses ?? null,
+      pendingOrders: adminOrdersBadge.data ? pendingOrders : null,
+    }
   )
 
   return (

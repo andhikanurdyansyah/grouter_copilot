@@ -87,14 +87,25 @@ export class PaymentService {
     const expiresInDays = plan?.expiresInDays ?? eff.license.defaultExpiresInDays;
     const quota = plan?.quota ?? order.quota ?? null;
 
-    const { record } = this.licenseService.issue({
-      customer: order.planName || order.packageKey, // license named after the plan
-      accountId: order.accountId,
-      planKey: order.packageKey, // entitlement (quotaTokens) resolves from the plan catalogue
-      features,
-      expiresInDays,
-      quota,
-    });
+    // Crash recovery (A-06): if a previous settle crashed after issuing the
+    // license but before marking the order PAID, reuse that license instead
+    // of minting an orphan duplicate.
+    let record = order.licenseId ? this.store.getLicense(order.licenseId) : null;
+    if (!record && order.accountId) {
+      record = (this.store.licensesByAccount?.(order.accountId) ?? [])
+        .filter((l) => l.createdAt >= (order.createdAt ?? 0) && !(l.revokedAt))
+        .sort((a, b) => a.createdAt - b.createdAt)[0] ?? null;
+    }
+    if (!record) {
+      ({ record } = this.licenseService.issue({
+        customer: order.planName || order.packageKey, // license named after the plan
+        accountId: order.accountId,
+        planKey: order.packageKey, // entitlement (quotaTokens) resolves from the plan catalogue
+        features,
+        expiresInDays,
+        quota,
+      }));
+    }
 
     order.status = 'PAID';
     order.paidAt = Date.now();

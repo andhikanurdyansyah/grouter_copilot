@@ -946,9 +946,15 @@ export function createCopilotServer({
         const orders = store.listOrders().filter((o) => o.accountId === account.id);
         const order = orders.length ? orders[orders.length - 1] : null;
         if (!order) return sendJson(res, 200, { order: null });
-        const license = store.licensesByAccount(account.id)
-          .filter((l) => l.createdAt >= order.createdAt)
-          .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+        // Prefer the license this order's settlement persisted (A-10);
+        // the time-window heuristic remains only as a legacy fallback.
+        let license = order.licenseId ? store.getLicense(order.licenseId) : null;
+        if (license && license.accountId !== account.id) license = null;
+        if (!license) {
+          license = store.licensesByAccount(account.id)
+            .filter((l) => l.createdAt >= order.createdAt)
+            .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+        }
         return sendJson(res, 200, {
           order: sanitizeOrder(order, { includeQr: true }),
           license: license ? sanitizeLicense(license, { includeToken: true }) : null,

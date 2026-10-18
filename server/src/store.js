@@ -14,7 +14,7 @@
  * }
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, chmodSync } from 'node:fs';
 import path from 'node:path';
 import { deepMerge } from './settings.js';
 
@@ -58,8 +58,10 @@ export class JsonStore {
         // by server/src/settings.js — this is only the persisted override layer.
         settings: parsed.settings ?? {},
       };
-    } catch {
-      return empty;
+    } catch (err) {
+      // Fail closed (A-01): a corrupt store must stop the process loudly,
+      // never silently start empty and persist the wipe on first mutation.
+      throw new Error(`store file is corrupt and cannot be parsed (${this.filePath}): ${err.message}`);
     }
   }
 
@@ -337,10 +339,14 @@ export class JsonStore {
   }
 
   _save() {
+    // The store holds signed license tokens; keep it owner-only (A-02).
     // atomic-ish: write temp then rename
     const tmp = `${this.filePath}.tmp`;
-    writeFileSync(tmp, JSON.stringify(this.data, null, 2), 'utf8');
+    writeFileSync(tmp, JSON.stringify(this.data, null, 2), { encoding: 'utf8', mode: 0o600 });
     renameSync(tmp, this.filePath);
+    // rename keeps the tmp inode mode, but an existing target replaced by
+    // other writers may differ; enforce owner-only explicitly (A-02).
+    try { chmodSync(this.filePath, 0o600); } catch { /* best-effort on odd filesystems */ }
   }
 
   listLicenses() {

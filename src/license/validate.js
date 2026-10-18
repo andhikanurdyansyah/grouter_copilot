@@ -44,9 +44,11 @@ export function mintLicense({ privateKeyPem, payload, notBefore, expiresAt }) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'EdDSA', typ: 'JWT' };
   const body = {
+    ...payload,
+    // Reserved claims are authoritative: a payload field must never override
+    // the signed validity window (A-07).
     iat: notBefore ?? now,
     exp: expiresAt ?? now + 365 * 24 * 3600,
-    ...payload,
   };
   const headerPart = b64urlEncode(utf8(JSON.stringify(header)));
   const payloadPart = b64urlEncode(utf8(JSON.stringify(body)));

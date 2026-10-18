@@ -188,6 +188,19 @@ export function createFrontendServer({ port = 4601, backendUrl = BACKEND_URL } =
       }
     }
 
+    // Legacy /sign-up → app shell, so the router's beforeLoad redirect to
+    // /login/sign-up actually runs. The route is a redirect-only stub (D-01:
+    // never render a registration form without a handler), so serving the
+    // shell is what makes the old URL keep working. Without this the path
+    // fell through to the final 404 and the legacy sign-up URL was dead.
+    if (url.pathname === '/sign-up' || url.pathname === '/sign-up/') {
+      const spaIndex = path.join(PUBLIC_DIR, 'app', 'index.html');
+      if (existsSync(spaIndex)) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
+        return res.end(readFileSync(spaIndex));
+      }
+    }
+
     // SPA dashboard baru (Vite build di public/app, base '/app/')
     if (url.pathname.startsWith('/app/')) {
       const rel = url.pathname.slice('/app/'.length) || 'index.html';

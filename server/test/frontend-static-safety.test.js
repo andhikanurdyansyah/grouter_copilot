@@ -106,6 +106,25 @@ test('frontend server: directory paths are answered, never hung (EISDIR regressi
       'intro transitions with same-origin navigation');
     assert.doesNotMatch(introBody.body, /document\.write\(landingHtml\)/,
       'intro must not document.write landing HTML');
+
+    // Legacy sign-up URLs must reach the SPA shell.
+    //
+    // Defect (found 2026-10-18): /sign-up exists in the router as a redirect-only
+    // stub to /login/sign-up (D-01 forbids rendering a form without a handler),
+    // but frontendServer had no branch for it, so the path fell through to the
+    // final 404. Old links/bookmarks to /sign-up were dead — the redirect could
+    // never run because the app shell was never served. /login/sign-up worked,
+    // which is exactly what made this easy to miss.
+    const signUp = await get(port, '/sign-up');
+    assert.equal(signUp.status, 200, `/sign-up must serve the app shell (got ${signUp.status})`);
+    assert.match(signUp.body, /<div id="root"|<script/i,
+      '/sign-up must return the SPA shell so the router redirect can run');
+
+    const signUpSlash = await get(port, '/sign-up/');
+    assert.equal(signUpSlash.status, 200, '/sign-up/ (trailing slash) must serve the shell');
+
+    const loginSignUp = await get(port, '/login/sign-up');
+    assert.equal(loginSignUp.status, 200, '/login/sign-up must keep serving the shell');
   } finally {
     await new Promise((r) => srv.close(r));
     rmSync(dir, { recursive: true, force: true });

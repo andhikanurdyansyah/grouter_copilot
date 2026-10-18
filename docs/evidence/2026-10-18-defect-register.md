@@ -56,3 +56,48 @@ probe supervisor · [PENDING] = klaim worker, belum diverifikasi.
   `features/admin/notifications-ui.test.ts` (memperkuat butuh harness browser nyata, bukan prioritas).
 
 Register backend lengkap: `docs/evidence/2026-10-18-backend-security-audit.md`.
+
+## Penutupan rilis 2026-10-18 (supervisor, sesi lanjutan)
+
+Baseline masuk: HEAD `ab3cdd4` (== origin/main, tree clean). Rilis: `cda871b` + `75b88f5`,
+di-deploy (FE atomic swap + `pm2 restart copilot-backend`), prod store
+sha256 `f1a9982e…` identik sebelum/sesudah.
+
+### Ditutup pada rilis ini
+
+| ID | Akar masalah | Perbaikan | Regression test | Bukti |
+|---|---|---|---|---|
+| D-13 | Tidak ada komponen state bersama. 5 fitur punya `useQuery` tapi **nol** `isLoading`/`isError`; tabel merender "tidak ada data" saat fetch gagal, dan admin overview menampilkan `0` sebagai angka nyata. | `components/ui/data-surface.tsx` (SurfaceSkeleton/InlineLoading/SurfaceError/SurfaceEmpty/QuerySurface, `role=status`+`aria-busy`+`role=alert`). Diterapkan di admin ledger, admin licenses, admin overview (banner data-tidak-lengkap), customer account (surface diganti total, placeholder `—` tidak lagi menyamar sebagai identitas kosong). | `frontend/src/features/customer/d13-data-surface.behavior.test.tsx` (6 mounted browser test) | 6/6 lulus; test menangkap bug nyata (body tetap render saat error) lalu diperbaiki |
+| D-18 | `payments.tsx` `copyId` menelan kegagalan clipboard (`catch { /* ignore */ }`) — user melihat seolah sukses. | Kegagalan copy sekarang memberi pesan eksplisit + instruksi salin manual. | tercakup perilaku UI | baca kode + tsc |
+| D-22 | `admin-gate.tsx` 100% hardcoded Indonesia, tanpa cabang EN sama sekali. | Seluruh copy gate (deskripsi, tombol, pesan error, catatan keamanan) jadi bilingual. | — | tsc + bundle live memuat string EN |
+| D-25 | `features/dashboard/*` (5 file) dan `components/coming-soon.tsx` nol referensi. | Dihapus; diverifikasi tidak ada import dinamis. | build | `tsc` + `vite build` bersih, bundle tidak memuat `recent-sales` |
+| A-14 | Better Auth config tidak punya blok `session` sama sekali → umur sesi & cadence refresh memakai default library yang tidak terdokumentasi dan tidak bisa diatur operator. | `auth.session` masuk SSOT settings (`expiresInSeconds`/`updateAgeSeconds`/`cookieCacheSeconds`) + validasi berbatas yang **menolak** (bukan clamp) nilai tidak valid; di-wire ke `betterAuth()`. Bonus: `assertInt` sebelumnya mengabaikan `max` — kini ditegakkan. | `server/test/a14-session-policy.test.js` (7 test) | 7/7 lulus; policy terbaca live di `/api/admin/settings` |
+
+### Disposisi non-defect (tidak diubah, dengan alasan)
+
+- **D-23** — dua tabel "Permintaan terbaru" di `license-detail.tsx` **bukan duplikat**:
+  satu di tab *overview*, satu di tab *ledger*. Tidak dihapus.
+- **D-24** — kartu install di `install.tsx` sudah berupa satu kartu skill read-only;
+  tidak ditemukan redundansi yang bisa dihapus tanpa menghilangkan informasi.
+
+### Tetap terbuka
+
+- **A-08** — **diblokir keputusan PO.** `store.usageTotals()` menjumlahkan SELURUH riwayat
+  per lisensi untuk enforce kuota; memangkas/mengarsipkan `usage[]` membuat kuota
+  under-count dan pelanggan otomatis dapat token gratis. Opsi aman: tambah counter
+  kumulatif per-lisensi lebih dulu. Store saat ini 146 KB / 185 record — belum mendesak,
+  tapi pertumbuhan tak terbatas.
+- **Visual QA landing page** — probe timeout: landing memakai WebGL berat dan binary
+  Playwright host (`chromium-1248`) tidak cocok dengan revisi yang diminta paket (`1217`).
+  Permukaan admin + customer terukur penuh; landing **tidak** diklaim terverifikasi.
+
+### Bukti QA rilis ini
+
+- Visual/responsive: `scripts/visual-qa.mjs` — 14 route × 5 viewport (320/390/768/1024/1440)
+  = **70 cek, 0 blocking, 0 overflow horizontal**. Evidence:
+  `frontend/docs/evidence/2026-10-18-visual-qa/visual-qa.json`.
+  Warning yang tersisa = 401 karena probe berjalan tanpa sesi login (ekspektasi), bukan defect.
+- Suite: root **154/154**, server **223/223** (216 + 7 A-14), frontend **55/55**
+  (49 + 6 D-13). `tsc --noEmit` bersih, `vite build` bersih.
+- Catatan flakiness: menjalankan suite root dan frontend **paralel** membuat satu test
+  frontend gagal (kontensi Chromium). Serial: 3× berturut 55/55.

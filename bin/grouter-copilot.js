@@ -624,6 +624,15 @@ function main() {
     runInstall(parseFlags(argv));
     return;
   }
+  if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
+    // Read from package.json so the CLI can never disagree with the published
+    // package version. `--version` was previously an unknown command, which
+    // breaks the most basic `npx` sanity check a new user runs first.
+    const pkgPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    console.log(pkg.version);
+    return;
+  }
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
     console.log('Usage:');
     console.log('  grouter-copilot init');

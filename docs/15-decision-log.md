@@ -184,3 +184,60 @@ enforcement quota customer) ≠ **gRouter infrastructure usage** per service cre
 - open-source;
 - validasi online-only;
 - embed api key di token license.
+
+## D-026 — Plan berbayar tidak boleh mematikan AI (2026-10-19)
+
+**Konteks.** Kedua plan berbayar di katalog produksi (`quota-3b-90d` Rp 10.000,
+`quota-15b-365d` Rp 20.000) membawa `ai: { enabled: false }` sekaligus
+`quotaTokens`. Dua order sudah berstatus PAID dan lisensinya terbit.
+
+**Bukti.** Dengan token lisensi nyata dari plan tersebut:
+
+```
+POST /api/copilot/chat
+→ status: error | code: AI_DISABLED
+  "AI access is not enabled for this package."
+```
+
+Pelanggan membayar paket yang tidak bisa melakukan hal yang dijualnya.
+
+**Akar masalah.** Bukan keputusan produk: katalog default di `settings.js` tidak
+punya field `ai` sama sekali, dan `resolvePlanAiPolicy` memperlakukan policy yang
+tidak ada sebagai **enabled**. Penonaktifan berasal dari settings tersimpan, dan
+tidak ada satu pun keputusan di log ini yang memintanya. Jadi ini defect
+konfigurasi, bukan kebijakan.
+
+**Keputusan.**
+1. Data: ketiga plan tersimpan kini `ai.enabled: true` dengan `provider` dan
+   `quotaTokens` milik plan itu sendiri.
+2. Guard: `validateSettings` **menolak** menyimpan plan yang memungut biaya dan
+   memberi `quotaTokens` dengan AI dimatikan. Plan gratis tetap boleh
+   mematikan AI secara eksplisit, dan plan tanpa policy `ai` tetap default enabled.
+
+**Verifikasi.** Lisensi yang sebelumnya `AI_DISABLED` kini menjawab, dan quota
+view melaporkan 258/3000000 token dengan `requestCount: 1` (sekaligus menguji
+counter kumulatif A-08 pada request nyata). Validator menolak bentuk lama dengan
+HTTP 400 di produksi. Test: `paid-plan-ai-entitlement.test.js` (4).
+
+## D-027 — Email transaksi: `log_only` berarti kredensial tidak terbaca (2026-10-19)
+
+**Konteks.** Seluruh baris notifikasi lama berstatus `log_only`, bukan `sent`.
+
+**Yang terbukti, dan yang tidak.** `BREVO_API_KEY` di `server/.env` **valid**
+(probe `GET /v3/account` → HTTP 200). Mailer dengan env tersebut benar-benar
+mengirim: `{status:"sent", providerId:"<...@smtp-relay.mailin.fr>"}`, dan
+idempotency Brevo bekerja (`duplicateSuppressed` pada kiriman ulang dengan key
+sama). Diuji dari cwd produksi dan dari dalam proses yang dijalankan pm2.
+
+**Yang TIDAK boleh disimpulkan.** Membaca `/proc/<pid>/environ` **tidak**
+membuktikan mailer buta kredensial: `loadEnv()` menulis ke `process.env` runtime,
+sedangkan blok environ awal proses tetap seperti saat exec. Probe `/proc` karena
+itu memberi false negative dan sempat menyesatkan audit ini.
+
+**Status.** Email produksi sehat. Baris `log_only` yang ada adalah sisa
+notifikasi yang dibuat **sebelum** key dipasang, dan tidak akan dikirim ulang
+(retry hanya untuk `failed`). Tidak ada email probe yang terkirim ke pelanggan
+nyata (diverifikasi: 0 baris `sent` milik akun pelanggan).
+
+**Aturan diagnosis ke depan.** Untuk memastikan email jalan, buktikan lewat
+`mailer.send()` nyata atau status baris notifikasi — jangan lewat `/proc/environ`.

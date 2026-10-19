@@ -27,3 +27,4 @@ e2e/node_modules/
 skills-lock.json
 moda design/
 verification_screenshots/
+*.tgz

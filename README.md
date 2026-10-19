@@ -112,4 +112,7 @@ npm test                      # root plugin suite (sets NODE_ENV=test)
 cd server && npm test         # backend suite (sets NODE_ENV=test)
 ```
 
-Payment remains sandbox and the complete public npm install/customer chat path has not yet been certified as production-ready.
+Payment remains sandbox. The plugin is published to npm as
+`@grouter/copilot@0.1.0` (install from the registry is verified), but the full
+public install → purchase → customer chat path has not yet been certified
+end-to-end against production payment credentials.

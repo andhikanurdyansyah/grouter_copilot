@@ -241,3 +241,41 @@ nyata (diverifikasi: 0 baris `sent` milik akun pelanggan).
 
 **Aturan diagnosis ke depan.** Untuk memastikan email jalan, buktikan lewat
 `mailer.send()` nyata atau status baris notifikasi — jangan lewat `/proc/environ`.
+
+## D-028 — Publikasi npm lewat staged publishing + approval 2FA (2026-10-19)
+
+**Konteks.** `@grouter/copilot@0.1.0` diterbitkan 2026-10-19. Publish langsung
+(`npm publish`) **tidak mungkin** lagi, dan bukan karena kesalahan konfigurasi:
+sejak changelog GitHub 2026-07-08, token granular dengan *bypass 2FA* kehilangan
+kemampuan publish langsung; surface-nya tinggal membaca paket privat dan
+**staging**. Publish langsung dihapus penuh sekitar Januari 2027.
+
+**Jalur yang dipakai.** `npm stage publish` → review → `npm stage approve`
+dengan approval 2FA manusia. Stage `795932d4-f7eb-443c-9328-e59ed704e789`
+lolos validasi registry (`validating` → `staged`) lalu disetujui Jie.
+
+**Jebakan yang mahal kalau tidak tahu.**
+1. Token `bypass_2fa: false` membuat `npm publish` gagal **403** dengan pesan
+   yang menyebut 2FA — mudah salah dibaca sebagai "centang checkbox-nya".
+   Bahkan dengan `bypass_2fa: true` pun publish langsung sudah tidak jalan.
+2. **Staged approval tidak pernah dibypass token.** Dokumentasi npm tegas:
+   *"A GAT with bypass 2FA does not bypass the 2FA check during staged package
+   approval."* Approval butuh 2FA aktif di level **akun**.
+3. Tanpa 2FA aktif, `npm stage approve` menjawab **404 "staged version not
+   found"** padahal `GET /-/stage/{id}` untuk ID yang sama menjawab **200**.
+   Ini penyamaran yang menyesatkan: terlihat seperti ID salah, padahal gerbang
+   2FA. Setelah 2FA diaktifkan, perintah yang sama langsung meminta autentikasi
+   browser.
+4. `GET /-/npm/v1/user` menjawab **403 untuk GAT apa pun** — jadi endpoint itu
+   **bukan** cara memeriksa status 2FA. Satu-satunya uji sah adalah menjalankan
+   approval itu sendiri.
+
+**Verifikasi.** Registry (bukan klaim CLI) melaporkan `dist-tags.latest = 0.1.0`,
+`shasum 32c5527df948fe2b0048bbc9932d7c9ff1118994` — identik dengan tarball yang
+dibangun — `license MIT`, `repository` terisi, nol dependency. Instalasi bersih
+di direktori kosong berhasil dan `grouter-copilot --version` mencetak `0.1.0`
+lewat bin maupun `npx`.
+
+**Aturan ke depan.** Untuk rilis berikutnya jangan pakai token bypass-2FA.
+Pilih salah satu: `npm stage publish` + approve manusia, atau trusted publishing
+(OIDC) untuk otomatis penuh.

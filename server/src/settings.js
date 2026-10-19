@@ -262,7 +262,7 @@ function validatePlans(plans) {
     if (p.active !== undefined && typeof p.active !== 'boolean') {
       throw fail(`plans[${i}].active must be a boolean.`);
     }
-    validatePlanAiPolicy(p.ai, `plans[${i}].ai`);
+    validatePlanAiPolicy(p.ai, `plans[${i}].ai`, p);
   });
 }
 
@@ -292,13 +292,24 @@ const SUPPORTED_AI_PROVIDERS = ['grouter'];
  *   present). Malformed/negative values are rejected — never coerced to
  *   unlimited.
  */
-function validatePlanAiPolicy(ai, label) {
+function validatePlanAiPolicy(ai, label, plan) {
   if (ai === undefined || ai === null) return; // legacy plan without policy
   if (!isPlainObject(ai)) throw fail(`${label} must be an object.`);
   if (ai.enabled !== undefined && typeof ai.enabled !== 'boolean') {
     throw fail(`${label}.enabled must be a boolean.`);
   }
   const enabled = ai.enabled !== false;
+  // A plan that charges money and grants a token quota is selling AI access.
+  // Allowing it to disable AI produced a live defect: both paid plans carried
+  // ai.enabled=false while advertising a token quota, so paying customers got
+  // AI_DISABLED from the gateway. Refuse the contradictory configuration at the
+  // write boundary instead of trusting operators to notice.
+  if (!enabled && plan && Number(plan.amount) > 0 && plan.quotaTokens != null) {
+    throw fail(
+      `${label}.enabled cannot be false: plan charges ${plan.amount} and grants quotaTokens, `
+      + 'so disabling AI would sell a package that cannot deliver what it is priced for.',
+    );
+  }
   validStr(ai.provider ?? 'grouter', `${label}.provider`);
   if (ai.provider !== undefined && !SUPPORTED_AI_PROVIDERS.includes(ai.provider)) {
     throw fail(`${label}.provider must be one of: ${SUPPORTED_AI_PROVIDERS.join(', ')}.`);

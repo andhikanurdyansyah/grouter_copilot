@@ -1,0 +1,93 @@
+# Publish @grouter/copilot ke npm lewat trusted publishing (OIDC).
+#
+# Kenapa bukan token: sejak changelog GitHub 2026-07-08, token granular dengan
+# bypass-2FA kehilangan kemampuan publish langsung, dan publish langsung dengan
+# token dihapus penuh sekitar Januari 2027. Rilis 0.1.0 sendiri harus lewat
+# staged publishing + approval 2FA manusia (lihat D-028 di decision log).
+#
+# Trusted publishing menghapus akar masalahnya: tidak ada token panjang umur
+# yang bisa bocor, dan tidak perlu approval manual setiap rilis. npm memverifikasi
+# identitas workflow lewat OIDC - GitHub menandatangani assertion per run.
+#
+# PRASYARAT SEKALI SAJA (di npmjs.com, tidak bisa dilakukan dari repo):
+#   Package @grouter/copilot -> Settings -> Trusted Publishing -> Add publisher
+#     Owner            andhikanurdyansyah
+#     Repository       grouter_copilot
+#     Workflow name    publish.yml
+#     Environment      npm-publish
+# Setelah itu workflow ini bisa menerbitkan tanpa token apa pun.
+#
+# Sengaja dipisah dari ci.yml: CI berjalan tanpa secret dan tanpa izin tulis.
+# Workflow ini hanya punya id-token write (untuk OIDC) + contents read.
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Pack dan verifikasi tanpa benar-benar menerbitkan'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # wajib untuk OIDC trusted publishing
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22.14+ diperlukan oleh npm CLI 11.15+ untuk staged/trusted publish.
+      # npm 12 dipakai karena itu versi yang membawa alur trusted publishing
+      # yang stabil.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm
+        run: npm install -g npm@12
+
+      # Gate: jangan pernah menerbitkan paket yang test-nya merah. Root suite
+      # zero-dependency dan tidak butuh server deps, jadi cepat.
+      - name: Root suite
+        run: npm test
+
+      - name: Verify package metadata
+        run: |
+          node -e "
+          const p = require('./package.json');
+          const fail = (m) => { console.error('FAIL ' + m); process.exit(1); };
+          if (!p.name.startsWith('@grouter/')) fail('unexpected package name ' + p.name);
+          if (p.private) fail('package.json is private');
+          if (!p.repository || !p.repository.url) fail('missing repository url');
+          if (Object.keys(p.dependencies || {}).length) fail('runtime dependencies are not allowed');
+          console.log('metadata ok ' + p.name + '@' + p.version);
+          "
+
+      - name: Pack and inspect
+        run: |
+          npm pack --silent
+          TARBALL=$(ls -t ./*.tgz | head -1)
+          echo "tarball $TARBALL"
+          # Tidak boleh ada kredensial yang ikut terpaket.
+          if tar -xzOf "$TARBALL" 2>/dev/null | grep -qiE 'xkeysib-|sk_live|BEGIN (RSA )?PRIVATE KEY|ADMIN_TOKEN='; then
+            echo "FAIL credential material found in tarball"; exit 1
+          fi
+          echo "secret scan clean"
+
+      # Trusted publishing: npm menukar OIDC token GitHub menjadi kredensial
+      # publish jangka pendek. Tidak ada NPM_TOKEN.
+      - name: Publish
+        if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
+        run: npm publish --access public --provenance
+
+      - name: Dry run summary
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run != false }}
+        run: echo "Dry run - paket lolos semua gate, tidak diterbitkan."

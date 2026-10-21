@@ -4,6 +4,9 @@
  * tidak ada mock untuk API produk (hanya dependensi eksternal yang dinyatakan).
  */
 import { chromium } from 'playwright'
+import { existsSync, readdirSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 export const BASE = process.env.E2E_BASE_URL || 'http://localhost:4601'
 
@@ -116,8 +119,43 @@ export function collectApiErrors(page, { allow = [401] } = {}) {
 }
 
 export async function launch() {
-  // Chromium 1248 sudah ter-install di /root/.cache/ms-playwright (dipakai QA
-  // sebelumnya); pin executablePath agar tidak minta download versi lain.
-  const exe = '/root/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux-arm64/chrome-headless-shell'
+  // Chromium di-resolve DINAMIS, jangan di-hardcode. Path lama
+  // (/root/.cache/ms-playwright/chromium_headless_shell-1248/...arm64) hanya
+  // ada di host dev ini; di runner CI (ubuntu-latest, x64, user `runner`) path
+  // itu tidak ada sehingga SETIAP spec gagal di launch — 4 failed, 18 did not
+  // run. Urutan: env override → binary yang Playwright unduh sendiri → rev
+  // headless-shell yang terpasang di mesin ini (glob, rev berubah tiap upgrade).
+  const candidates = []
+  const override = (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '').trim()
+  if (override) candidates.push(override)
+  const pw = chromium.executablePath()
+  if (pw) candidates.push(pw)
+  const roots = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    path.join(os.homedir(), '.cache', 'ms-playwright'),
+    '/root/.cache/ms-playwright',
+  ].filter(Boolean)
+  for (const root of roots) {
+    if (!existsSync(root)) continue
+    for (const entry of readdirSync(root).sort().reverse()) {
+      if (!entry.startsWith('chromium')) continue
+      for (const rel of [
+        ['chrome-linux', 'chrome'],
+        ['chrome-linux64', 'chrome'],
+        ['chrome-headless-shell-linux64', 'chrome-headless-shell'],
+        ['chrome-headless-shell-linux-arm64', 'chrome-headless-shell'],
+        ['chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'],
+      ]) {
+        candidates.push(path.join(root, entry, ...rel))
+      }
+    }
+  }
+  const exe = candidates.find((candidate) => candidate && existsSync(candidate))
+  if (!exe) {
+    throw new Error(
+      `no chromium binary found. Run 'npx playwright install chromium' (frontend/) or set `
+      + `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH. Tried:\n${candidates.join('\n')}`,
+    )
+  }
   return chromium.launch({ executablePath: exe, args: ['--no-sandbox', '--disable-dev-shm-usage'] })
 }

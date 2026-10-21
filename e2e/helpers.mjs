@@ -82,7 +82,40 @@ export async function registerViaUi(browser, account, { viewport } = {}) {
   await confirm.waitFor({ state: 'visible', timeout: 20_000 })
   await confirm.fill(account.password)
 
-  await page.locator('button[aria-label="Finish sign-up"], button[type=submit]').first().click()
+  // JANGAN klik tepat setelah fill. Mengisi konfirmasi memicu dua animasi:
+  // label "Confirm Password" muncul (0.3s) dan BlurFade menggeser seluruh blok
+  // field (0.4s). Playwright menghitung titik klik dari bounding box; kalau
+  // kotak itu diambil sebelum animasi selesai, titiknya mendarat di
+  // <div class="glass-input"> dan klik dilaporkan "intercepts pointer events".
+  // Itu penyebab kegagalan [desktop] di CI 8862a20 dan di run lokal berikutnya
+  // (1 failed, 21 passed) — sementara run lain lulus, jadi ini flake, bukan
+  // regresi deterministik.
+  //
+  // "Element is stable" TIDAK cukup: easing cubic-bezier bisa membuat dua frame
+  // berurutan hampir identik padahal elemen masih bergerak sub-piksel. Jadi
+  // tunggu kondisi yang sebenarnya dibutuhkan klik: hit-test di titik tengah
+  // tombol harus mengembalikan tombol itu sendiri.
+  const submit = page.locator('button[aria-label="Finish sign-up"], button[type=submit]').first()
+  await submit.waitFor({ state: 'visible', timeout: 20_000 })
+  // Pastikan tombol benar-benar berada di dalam viewport SEBELUM hit-test.
+  // elementFromPoint() mengembalikan null untuk koordinat di luar viewport, jadi
+  // kalau form lebih tinggi dari layar (mis. konteks 390x844 yang diminta dari
+  // project desktop) hit-test tidak akan pernah lolos walau tombolnya sehat.
+  await submit.scrollIntoViewIfNeeded()
+
+  await page.waitForFunction(
+    () => {
+      const btn = document.querySelector('button[aria-label="Finish sign-up"], button[type=submit]')
+      if (!btn || btn.disabled) return false
+      const r = btn.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) return false
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      return !!hit && (hit === btn || btn.contains(hit))
+    },
+    null,
+    { timeout: 20_000, polling: 100 },
+  )
+  await submit.click()
   // Sukses → redirect /user (SPA dashboard), delay ~1.6s.
   await page.waitForURL('**/user', { timeout: 25_000 })
   await page.waitForLoadState('networkidle')

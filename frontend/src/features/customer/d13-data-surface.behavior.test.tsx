@@ -28,12 +28,16 @@ import {
 } from '@/components/ui/data-surface'
 import { CustomerAccount } from './account'
 
+// Stable across re-renders: creating the client inside Harness would build a
+// new cache on every render (the exact anti-pattern @tanstack/query flags), so
+// a remount or state update would silently reset the query state under test.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false, gcTime: 0 } },
+})
+
 function Harness({ children }: { children: React.ReactNode }) {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  })
   return (
-    <QueryClientProvider client={qc}>
+    <QueryClientProvider client={queryClient}>
       <LanguageProvider>{children}</LanguageProvider>
     </QueryClientProvider>
   )

@@ -53,8 +53,23 @@ jobs:
           node-version: '22.22.2'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Upgrade npm
-        run: npm install -g npm@12
+      # JANGAN `npm install -g npm@12`: itu menimpa tree npm bawaan toolcache
+      # saat npm lama masih berjalan, dan pada runner hosted gagal dengan
+      # "MODULE_NOT_FOUND: Cannot find module 'promise-retry'" sebelum satu pun
+      # gate berjalan. Pasang ke prefix terpisah lalu taruh di depan PATH.
+      - name: Install npm 12 into an isolated prefix
+        run: |
+          npm install -g npm@12 --prefix "$RUNNER_TEMP/npm12"
+          echo "$RUNNER_TEMP/npm12/bin" >> "$GITHUB_PATH"
+
+      - name: Verify npm version
+        run: |
+          INSTALLED=$(npm --version)
+          echo "npm $INSTALLED"
+          case "$INSTALLED" in
+            12.*) ;;
+            *) echo "FAIL expected npm 12.x, got $INSTALLED"; exit 1 ;;
+          esac
 
       # Gate: jangan pernah menerbitkan paket yang test-nya merah. Root suite
       # zero-dependency dan tidak butuh server deps, jadi cepat.

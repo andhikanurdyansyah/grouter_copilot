@@ -55,7 +55,11 @@ run: npm publish --access public --provenance
 1. Bump versi di `package.json` dan commit.
 2. Buat GitHub Release (tag `v<versi>`). Workflow `publish.yml` berjalan otomatis.
 3. Workflow menjalankan root suite, memverifikasi metadata, memaket, memindai
-   kredensial di dalam tarball, lalu `npm publish --provenance`.
+   kredensial di dalam tarball, lalu `npm stage publish` — versi masuk antrean
+   staging, bukan langsung terbit.
+4. Setujui stage dengan 2FA (`npm stage list` → `npm stage approve <id>`, atau
+   tab **Staged Packages** di npmjs.com). Ini satu-satunya langkah manusia, dan
+   hanya hilang kalau **Allow npm publish** dicentang di form trusted publisher.
 
 Untuk mencoba tanpa menerbitkan, jalankan manual: **Actions → publish → Run
 workflow** dengan `dry_run: true`. Itu menjalankan semua gate tanpa publish.

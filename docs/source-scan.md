@@ -19,6 +19,11 @@ bundles, or parse JavaScript/TypeScript. Localhost URLs are allowed for the
 current isolated server configuration and are not a violation by themselves.
 
 Scope is deliberately narrow to keep findings reviewable and false positives low.
+Test files are excluded by FILENAME (`*.test.*`, `*.spec.*`) anywhere under a
+scanned root, because this repo keeps mounted behaviour tests next to the
+production code they cover (`frontend/src/features/**/*.behavior.test.tsx`) — a
+directory-level exclusion cannot reach them, and a mounted test mocks the API
+surface by design. Every production module in the same directory stays in scope.
 A finding requires human review; do not paste secret values into issue comments or
 logs. Use `npm run audit:source:test` for the contract tests. `--json` is available
 for machine consumers and remains secret-safe.

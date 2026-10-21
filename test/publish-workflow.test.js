@@ -41,6 +41,26 @@ test('publish: uses the npm version that supports trusted publishing', () => {
   assert.match(src, /npm@12/, 'npm 12 carries the stable trusted-publishing flow');
 });
 
+test('publish: installs npm 12 into an isolated prefix, never over the toolcache npm', () => {
+  // `npm install -g npm@12` menimpa tree npm bawaan toolcache SAAT npm lama
+  // masih berjalan. Di runner hosted ini gagal dengan
+  // "MODULE_NOT_FOUND: Cannot find module 'promise-retry'" sebelum gate apa pun
+  // berjalan - dry-run 2026-10-21 membuktikannya. Pasang ke prefix sendiri.
+  const executable = src
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n');
+  assert.doesNotMatch(
+    executable,
+    /^\s*npm install -g npm@12\s*$/m,
+    'global install over the toolcache npm breaks the runner',
+  );
+  assert.match(executable, /--prefix/, 'npm 12 must land in a separate prefix');
+  assert.match(executable, /GITHUB_PATH/, 'the isolated prefix must be put on PATH');
+  assert.match(executable, /npm --version/, 'the installed npm version must be verified');
+});
+
+
 test('publish: gates the publish behind the test suite', () => {
   const testIdx = src.indexOf('npm test');
   const pubIdx = src.indexOf('npm stage publish');

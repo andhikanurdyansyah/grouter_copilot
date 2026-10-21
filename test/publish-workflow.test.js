@@ -80,20 +80,29 @@ test('publish: gates the publish behind the test suite', () => {
   assert.ok(testIdx < pubIdx, 'tests must run BEFORE publish, not after');
 });
 
-test('publish: stages rather than direct-publishing', () => {
+test('publish: direct-publishes with provenance, matching the granted permission', () => {
   // Konfigurasi trusted publisher setelah 3 Sep 2026 hanya mengizinkan
-  // `npm stage publish` kecuali "Allow npm publish" dicentang eksplisit.
-  // Memakai `npm publish` di sini akan gagal 403 saat rilis pertama.
+  // `npm stage publish` KECUALI "Allow npm publish" dicentang eksplisit.
+  // Jie mengonfirmasi centang itu aktif (2026-10-21), jadi workflow boleh
+  // memakai publish langsung - dan memang harus, karena staged publish akan
+  // menggantung menunggu approval manual yang tidak lagi diperlukan.
+  //
+  // Kalau izinnya dicabut, satu-satunya perbaikan yang benar adalah kembali ke
+  // `npm stage publish` + approval 2FA. Menambahkan token panjang umur bukan
+  // jalan keluar: itu justru akar masalah yang trusted publishing hilangkan.
   const executable = src
     .split('\n')
     .filter((line) => !line.trim().startsWith('#'))
     .join('\n');
-  assert.match(executable, /npm stage publish/, 'must use staged publish');
-  assert.doesNotMatch(
-    executable,
-    /^\s*run:\s*npm publish\b/m,
-    'direct npm publish requires the Allow-publish permission; do not assume it',
-  );
+  assert.match(executable, /npm publish --access public --provenance/, 'must publish directly with provenance');
+  assert.doesNotMatch(executable, /npm stage publish/, 'staged publish would stall on a manual approval');
+});
+
+test('publish: names the registry permission the direct publish depends on', () => {
+  // Centang "Allow npm publish" hanya ada di npmjs.com dan tidak bisa diuji
+  // dari repo. Kalau baris ini hilang, orang berikutnya akan mengira 403 saat
+  // rilis adalah bug kode, bukan izin yang dicabut.
+  assert.match(src, /Allow npm publish/, 'the workflow must name its registry-side prerequisite');
 });
 
 test('publish: pins a node version npm 12 actually supports', () => {

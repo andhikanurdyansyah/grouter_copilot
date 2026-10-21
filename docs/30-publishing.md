@@ -38,28 +38,37 @@ hanya mengizinkan `npm stage publish`. `npm publish` langsung butuh centang
 **Allow npm dist-tag**. Ketiganya izin terpisah.
 
 Kalau kedua checkbox dibiarkan kosong, itu **tetap sah**: rilis akan di-stage
-otomatis, lalu Anda menyetujuinya dengan 2FA. Workflow di repo ini sudah
-menyesuaikan diri dengan keadaan itu (`npm stage publish`).
+otomatis, lalu Anda menyetujuinya dengan 2FA.
 
-Kalau Anda ingin rilis benar-benar tanpa sentuhan manual, centang
-**Allow npm publish**, lalu ubah satu baris di `.github/workflows/publish.yml`:
+**Keadaan sekarang (dikonfirmasi Jie, 2026-10-21): `Allow npm publish` TERCENTANG.**
+Karena itu `.github/workflows/publish.yml` memakai publish langsung, bukan staged:
+
+```yaml
+run: npm publish --access public --provenance
+```
+
+Rilis jadi tanpa sentuhan manual — tidak ada langkah approval 2FA.
+
+Kalau suatu saat centang itu dicabut, gejalanya **403 saat rilis**, dan
+satu-satunya perbaikan yang benar adalah kembali ke:
 
 ```yaml
 run: npm stage publish . --access public
-# menjadi
-run: npm publish --access public --provenance
 ```
+
+lalu setujui dengan 2FA. **Jangan** menambahkan token panjang umur sebagai
+jalan pintas: token itulah akar masalah yang trusted publishing hilangkan, dan
+publish langsung dengan token dihapus penuh sekitar Januari 2027.
 
 ### Merilis
 
 1. Bump versi di `package.json` dan commit.
 2. Buat GitHub Release (tag `v<versi>`). Workflow `publish.yml` berjalan otomatis.
 3. Workflow menjalankan root suite, memverifikasi metadata, memaket, memindai
-   kredensial di dalam tarball, lalu `npm stage publish` — versi masuk antrean
-   staging, bukan langsung terbit.
-4. Setujui stage dengan 2FA (`npm stage list` → `npm stage approve <id>`, atau
-   tab **Staged Packages** di npmjs.com). Ini satu-satunya langkah manusia, dan
-   hanya hilang kalau **Allow npm publish** dicentang di form trusted publisher.
+   kredensial di dalam tarball, lalu `npm publish --provenance` — versi langsung
+   terbit dengan attestation provenance.
+4. Langkah terakhir membaca ulang registry (`npm view @grouter/copilot@<versi>`)
+   supaya hasilnya terbukti, bukan diasumsikan dari exit code.
 
 Untuk mencoba tanpa menerbitkan, jalankan manual: **Actions → publish → Run
 workflow** dengan `dry_run: true`. Itu menjalankan semua gate tanpa publish.

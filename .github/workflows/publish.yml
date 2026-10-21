@@ -110,24 +110,24 @@ jobs:
       # Trusted publishing: npm menukar OIDC token GitHub menjadi kredensial
       # publish jangka pendek. Tidak ada NPM_TOKEN.
       #
-      # PENTING: konfigurasi trusted publisher yang dibuat setelah 3 Sep 2026
-      # otomatis HANYA mengizinkan `npm stage publish`; `npm publish` langsung
-      # butuh centang "Allow npm publish" secara eksplisit. Karena itu rilis ini
-      # memakai staged publish, yang selalu diizinkan, lalu approval manual.
-      # Kalau nanti "Allow npm publish" dicentang di npmjs.com, baris di bawah
-      # bisa diganti `npm publish --access public --provenance` dan approval
-      # manual tidak lagi diperlukan.
-      - name: Publish (staged)
+      # PRASYARAT di npmjs.com (sudah dikonfirmasi 2026-10-21): trusted publisher
+      # untuk paket ini punya "Allow npm publish" TERCENTANG. Tanpa centang itu
+      # konfigurasi pasca-3-Sep-2026 hanya mengizinkan `npm stage publish`, dan
+      # baris di bawah akan gagal 403. Dengan centang itu, rilis langsung terbit
+      # tanpa langkah approval manual.
+      #
+      # Kalau suatu saat centang itu dicabut, kembalikan ke `npm stage publish`
+      # plus approval 2FA - jangan menambahkan token.
+      - name: Publish
         if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
-        run: npm stage publish . --access public
+        run: npm publish --access public --provenance
 
-      - name: Next step
+      - name: Verify published version
         if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
         run: |
-          echo "Versi sudah di-stage. Setujui dengan 2FA:"
-          echo "  npm stage list"
-          echo "  npm stage approve <stage-id>"
-          echo "Atau lewat npmjs.com -> Staged Packages."
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Published $VERSION; registry says:"
+          npm view "@grouter/copilot@$VERSION" version dist.tarball
 
       - name: Dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run != false }}

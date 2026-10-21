@@ -98,6 +98,20 @@ test('publish: direct-publishes with provenance, matching the granted permission
   assert.doesNotMatch(executable, /npm stage publish/, 'staged publish would stall on a manual approval');
 });
 
+test('publish: the registry read-back retries before failing', () => {
+  // Registry consistency is not synchronous: npm answers "Your package is
+  // being processed and may take a few minutes", and `npm view` for the new
+  // version still 404s. Release 0.1.1 failed exactly here AFTER a successful
+  // publish, turning a green release red. The verification must poll with a
+  // bound - not fire once, and not loop forever.
+  const verifyIdx = src.indexOf('Verify published version');
+  assert.ok(verifyIdx > -1, 'a registry read-back step must exist');
+  const tail = src.slice(verifyIdx);
+  assert.match(tail, /seq 1 \d+/, 'the read-back must be a bounded retry loop');
+  assert.match(tail, /sleep \d+/, 'retries need a delay between attempts');
+  assert.match(tail, /exit 1/, 'an absent version must still fail the job');
+});
+
 test('publish: names the registry permission the direct publish depends on', () => {
   // Centang "Allow npm publish" hanya ada di npmjs.com dan tidak bisa diuji
   // dari repo. Kalau baris ini hilang, orang berikutnya akan mengira 403 saat

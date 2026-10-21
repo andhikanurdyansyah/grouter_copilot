@@ -122,12 +122,28 @@ jobs:
         if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
         run: npm publish --access public --provenance
 
+      # Registry tidak langsung konsisten setelah publish: npm menjawab
+      # "Your package is being processed and may take a few minutes to become
+      # available", dan `npm view` untuk versi itu masih 404. Rilis 0.1.1
+      # (2026-10-21) gagal di sini SETELAH publish sukses — build merah padahal
+      # paketnya sudah terbit. Jadi verifikasi harus menunggu, bukan langsung
+      # menuntut. Batasnya tetap: 12 percobaan x 15 detik = 3 menit, lalu gagal
+      # sungguhan supaya tidak menggantung selamanya.
       - name: Verify published version
         if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "Published $VERSION; registry says:"
-          npm view "@grouter/copilot@$VERSION" version dist.tarball
+          for attempt in $(seq 1 12); do
+            if OUT=$(npm view "@grouter/copilot@$VERSION" version dist.tarball 2>/dev/null); then
+              echo "Registry confirms @grouter/copilot@$VERSION"
+              echo "$OUT"
+              exit 0
+            fi
+            echo "attempt $attempt/12: @grouter/copilot@$VERSION not visible yet"
+            sleep 15
+          done
+          echo "FAIL @grouter/copilot@$VERSION still absent 3 minutes after a reported publish"
+          exit 1
 
       - name: Dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run != false }}

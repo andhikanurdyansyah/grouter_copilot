@@ -1,6 +1,6 @@
 {
   "name": "@grouter/copilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "License-based AI copilot plugin for Node.js apps with developer-defined data skills.",
   "repository": {
     "type": "git",

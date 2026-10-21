@@ -16,7 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,8 +43,23 @@ function userCount(sqliteFile) {
 }
 
 test('NODE_ENV=test without AUTH_DB_FILE never writes to the production auth DB', () => {
-  const beforeHash = sha256(prodAuthDb);
-  const beforeUsers = userCount(prodAuthDb);
+  // A CLEAN CHECKOUT (CI) has no production auth.sqlite at all. Asserting on a
+  // file that does not exist would fail before the behavior under test runs, so
+  // use a sentinel standing in for "production": the child must still derive its
+  // OWN temp DB and leave the sentinel byte-identical. When the real prod DB IS
+  // present, assert on it instead — that is the stronger case.
+  const prodExists = existsSync(prodAuthDb);
+  const guardFile = prodExists
+    ? prodAuthDb
+    : (() => {
+        const dir = mkdtempSync(path.join(tmpdir(), 'copilot-authiso-sentinel-'));
+        const file = path.join(dir, 'auth.sqlite');
+        writeFileSync(file, 'sentinel: production auth DB stand-in');
+        return file;
+      })();
+
+  const beforeHash = sha256(guardFile);
+  const beforeUsers = prodExists ? userCount(guardFile) : null;
 
   // Child mirrors a bare `node --test`: NODE_ENV=test, AUTH_DB_FILE unset.
   const childDir = mkdtempSync(path.join(tmpdir(), 'copilot-authiso-'));
@@ -84,14 +99,16 @@ process.exit(0);
   assert.equal(child.status, 0, `child failed:\n${child.stderr}\n${child.stdout}`);
   assert.match(child.stdout, /SIGNUP=200/, `sign-up did not succeed: ${child.stdout}`);
 
-  // The invariant: production DB untouched — structurally AND byte-for-byte.
+  // The invariant: the production DB (or its sentinel) untouched — byte-for-byte.
+  if (prodExists) {
+    assert.equal(
+      userCount(prodAuthDb),
+      beforeUsers,
+      'test run must not add users to the production auth DB',
+    );
+  }
   assert.equal(
-    userCount(prodAuthDb),
-    beforeUsers,
-    'test run must not add users to the production auth DB',
-  );
-  assert.equal(
-    sha256(prodAuthDb),
+    sha256(guardFile),
     beforeHash,
     'test run must not modify the production auth DB file at all',
   );

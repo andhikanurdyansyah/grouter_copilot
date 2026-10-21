@@ -34,7 +34,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, copyFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { prepareAuthDb } from './helpers/auth-db-fixture.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,7 +51,7 @@ process.env.KLIKQRIS_MERCHANT_ID ||= 'dummy-merchant';
 // (SchemaMismatchError), so start from the prod-schema DB with all rows cleared.
 const authDir = mkdtempSync(path.join(tmpdir(), 'copilot-ent-auth-'));
 process.env.AUTH_DB_FILE = path.join(authDir, 'auth.sqlite');
-copyFileSync(path.join(__dirname, '..', 'data', 'auth.sqlite'), process.env.AUTH_DB_FILE);
+prepareAuthDb(process.env.AUTH_DB_FILE);
 {
   const { default: Database } = await import('better-sqlite3');
   const db = new Database(process.env.AUTH_DB_FILE);

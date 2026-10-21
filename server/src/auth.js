@@ -24,7 +24,7 @@ import { betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
 import { dash, sentinel } from '@better-auth/infra';
 import Database from 'better-sqlite3';
-import { copyFileSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -75,12 +75,38 @@ function resolveAuthDbFile() {
     db.close();
     console.log(`[auth] NODE_ENV=test tanpa AUTH_DB_FILE → auth DB terisolasi: ${file}`);
   } catch (err) {
-    // Prod schema source missing (fresh checkout): still stay OFF production data.
+    // Prod schema source missing (a CLEAN CHECKOUT, e.g. CI). Staying off
+    // production data is right; the schema is created below by migration.
     console.log(
       `[auth] WARN: gagal menyemai auth DB test dari ${prodFile} (${err.message}); memakai ${file}`,
     );
   }
   return file;
+}
+
+/**
+ * Does this database already carry the Better Auth schema?
+ *
+ * Decided by INSPECTING the file, never by guessing from the code path: a test
+ * that passes its own empty AUTH_DB_FILE, and a CI checkout with no
+ * `server/data/auth.sqlite` to copy, both end up with a schema-less file, while
+ * production must never be migrated on boot. Better Auth has no auto-migration
+ * and throws SchemaMismatchError on the first query.
+ */
+function hasAuthSchema(file) {
+  if (!existsSync(file)) return false;
+  let db;
+  try {
+    db = new Database(file);
+    const row = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
+      .get();
+    return Boolean(row);
+  } catch {
+    return false;
+  } finally {
+    db?.close();
+  }
 }
 
 const dbFile = resolveAuthDbFile();
@@ -245,3 +271,15 @@ export const auth = betterAuth({
       : {}),
   },
 });
+
+// SCHEMA-LESS DB ONLY. Better Auth has no auto-migration, so an empty file (a
+// clean CI checkout, or a test that supplies its own empty AUTH_DB_FILE) throws
+// SchemaMismatchError on the first query — which is why the server suite could
+// never pass on CI. Inspecting the file (not the code path) means production and
+// every already-migrated database are untouched: no write on boot.
+if (!hasAuthSchema(dbFile)) {
+  const { getMigrations } = await import('better-auth/db/migration');
+  const migration = await getMigrations(auth.options);
+  await migration.runMigrations();
+  console.log('[auth] schema auth dibuat lewat migrasi (DB belum punya schema)');
+}

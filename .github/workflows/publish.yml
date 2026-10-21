@@ -71,8 +71,16 @@ jobs:
             *) echo "FAIL expected npm 12.x, got $INSTALLED"; exit 1 ;;
           esac
 
-      # Gate: jangan pernah menerbitkan paket yang test-nya merah. Root suite
-      # zero-dependency dan tidak butuh server deps, jadi cepat.
+      # Gate: jangan pernah menerbitkan paket yang test-nya merah.
+      #
+      # Root suite BUKAN zero-dependency: empat test isolasi E2E menyusun schema
+      # better-auth di child process dengan cwd server/, jadi `server/node_modules`
+      # harus ada. Dry-run 2026-10-21 gagal 4 test dengan
+      # "Cannot find package 'better-auth'" karena langkah ini belum ada.
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
       - name: Root suite
         run: npm test
 

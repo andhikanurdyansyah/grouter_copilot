@@ -60,6 +60,17 @@ test('publish: installs npm 12 into an isolated prefix, never over the toolcache
   assert.match(executable, /npm --version/, 'the installed npm version must be verified');
 });
 
+test('publish: installs server deps before the root suite', () => {
+  // Root suite BUKAN zero-dependency: test isolasi E2E menyusun schema
+  // better-auth di child process dengan cwd server/, jadi `server/node_modules`
+  // harus ada. Tanpa langkah ini 4 test gagal dengan
+  // "Cannot find package 'better-auth'" - terbukti pada dry-run 2026-10-21.
+  const depsIdx = src.indexOf('npm ci --no-audit --no-fund');
+  const testIdx = src.indexOf('npm test');
+  assert.ok(depsIdx > -1, 'server deps must be installed');
+  assert.ok(testIdx > -1, 'root suite must run');
+  assert.ok(depsIdx < testIdx, 'server deps must be installed BEFORE the root suite');
+});
 
 test('publish: gates the publish behind the test suite', () => {
   const testIdx = src.indexOf('npm test');

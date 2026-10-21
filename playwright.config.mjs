@@ -15,13 +15,18 @@
  *
  * Jalankan: npm run e2e  (dari root repo)
  */
-import { defineConfig, devices } from './frontend/node_modules/playwright/test.mjs'
 
 // ── FAIL-CLOSED: this config must NEVER drive production ─────────────────────
 // The mutating suite may only run against a disposable instance started by
 // `npm run e2e` (scripts/run-e2e.sh → e2e/isolated/run.mjs), which exports
 // E2E_ISOLATED=1 and E2E_BASE_URL. Without them, refuse to even load — a bare
 // `npx playwright test` must not point at localhost:4601 (production).
+//
+// The guards run BEFORE playwright is imported on purpose: a static import
+// resolves first, so a missing/half-installed playwright made the config fail
+// with MODULE_NOT_FOUND instead of the refusal — a caller could not tell a
+// blocked production run from a broken checkout, and the guard silently never
+// executed. Validate the target first, then load the framework.
 if (process.env.E2E_ISOLATED !== '1') {
   throw new Error(
     'playwright.config.mjs refused: E2E_ISOLATED!=1. Run the mutating E2E only via '
@@ -40,6 +45,8 @@ if (!BASE) {
     throw new Error(`playwright.config.mjs refused: E2E_BASE_URL host "${host}" is not loopback (${BASE}).`)
   }
 }
+
+const { defineConfig, devices } = await import('./frontend/node_modules/playwright/test.mjs')
 
 export default defineConfig({
   testDir: './e2e/specs',

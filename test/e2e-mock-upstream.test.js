@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMockUpstream } from '../e2e/isolated/mock-upstream.mjs';
@@ -81,4 +82,23 @@ test('playwright.config refuses to load without E2E_ISOLATED=1 (no bare prod run
 test('playwright.config refuses a non-loopback base URL', () => {
   const out = loadPlaywrightConfig({ E2E_ISOLATED: '1', E2E_BASE_URL: 'https://copilot.grouter.id' });
   assert.match(out, /REFUSED.*not loopback/, `config must refuse a public origin, got: ${out}`);
+});
+
+test('playwright.config runs its guards BEFORE importing playwright', () => {
+  // Di host dev playwright terpasang, jadi test perilaku di atas tetap lulus
+  // walau import berada di atas guard. Di checkout bersih (CI) import statis
+  // gagal lebih dulu dengan MODULE_NOT_FOUND dan guard-nya tidak pernah jalan —
+  // persis yang membuat dry-run publish 2026-10-21 merah. Kunci urutannya di
+  // sumber, karena hanya itu yang bisa membedakan kedua kondisi.
+  const src = readFileSync(path.join(repoRoot, 'playwright.config.mjs'), 'utf8');
+  const code = src.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n');
+  const guardIdx = code.indexOf('E2E_ISOLATED');
+  const loopbackIdx = code.indexOf('is not loopback');
+  assert.ok(guardIdx > -1, 'the isolation guard must exist');
+  assert.ok(loopbackIdx > -1, 'the loopback guard must exist');
+  assert.doesNotMatch(code, /^import\s.*playwright/m, 'no static playwright import: it resolves before the guards');
+  const dynamicIdx = code.indexOf('await import(');
+  assert.ok(dynamicIdx > -1, 'playwright must be loaded dynamically');
+  assert.ok(guardIdx < dynamicIdx, 'guards must execute before playwright is loaded');
+  assert.ok(loopbackIdx < dynamicIdx, 'the loopback guard must execute before playwright is loaded');
 });

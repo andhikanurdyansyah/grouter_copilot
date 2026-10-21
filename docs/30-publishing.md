@@ -84,7 +84,25 @@ publish langsung dengan token dihapus penuh sekitar Januari 2027.
    kredensial di dalam tarball, lalu `npm publish --provenance` — versi langsung
    terbit dengan attestation provenance.
 4. Langkah terakhir membaca ulang registry (`npm view @grouter/copilot@<versi>`)
-   supaya hasilnya terbukti, bukan diasumsikan dari exit code.
+   supaya hasilnya terbukti, bukan diasumsikan dari exit code. Langkah ini
+   **menunggu**, bukan sekali coba: npm menjawab "Your package is being
+   processed and may take a few minutes", dan `npm view` untuk versi baru masih
+   404 selama beberapa detik. Rilis `v0.1.1` (2026-10-21) sempat merah justru
+   karena itu — publish sukses, verifikasi tidak sabar. Sekarang 12 percobaan x
+   15 detik, lalu gagal sungguhan.
+
+### Bukti yang bisa diperiksa sendiri
+
+```bash
+npm view @grouter/copilot@<versi> version dist.tarball dist.attestations
+curl -s https://registry.npmjs.org/-/npm/v1/attestations/@grouter%2fcopilot@<versi> \
+  | jq -r '.attestations[] | select(.predicateType|test("slsa")) | .bundle.dsseEnvelope.payload' \
+  | base64 -d | jq '.predicate.buildDefinition.externalParameters'
+```
+
+Hasil untuk `0.1.1`: workflow `.github/workflows/publish.yml`, ref
+`refs/tags/v0.1.1`, repository `andhikanurdyansyah/grouter_copilot`. Itu ikatan
+antara tarball yang diunduh orang dan commit yang menghasilkannya.
 
 Untuk mencoba tanpa menerbitkan, jalankan manual: **Actions → publish → Run
 workflow** dengan `dry_run: true`. Itu menjalankan semua gate tanpa publish.

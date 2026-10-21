@@ -46,9 +46,11 @@ jobs:
       # Node 22.14+ diperlukan oleh npm CLI 11.15+ untuk staged/trusted publish.
       # npm 12 dipakai karena itu versi yang membawa alur trusted publishing
       # yang stabil.
+      # npm 12.2.0 butuh node ^22.22.2 || ^24.15.0 || >=26. Pin persis: '22.x'
+      # bisa memasang 22.14 (terlalu tua) dan `npm install -g npm@12` gagal.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '22.22.2'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Upgrade npm
@@ -84,9 +86,25 @@ jobs:
 
       # Trusted publishing: npm menukar OIDC token GitHub menjadi kredensial
       # publish jangka pendek. Tidak ada NPM_TOKEN.
-      - name: Publish
+      #
+      # PENTING: konfigurasi trusted publisher yang dibuat setelah 3 Sep 2026
+      # otomatis HANYA mengizinkan `npm stage publish`; `npm publish` langsung
+      # butuh centang "Allow npm publish" secara eksplisit. Karena itu rilis ini
+      # memakai staged publish, yang selalu diizinkan, lalu approval manual.
+      # Kalau nanti "Allow npm publish" dicentang di npmjs.com, baris di bawah
+      # bisa diganti `npm publish --access public --provenance` dan approval
+      # manual tidak lagi diperlukan.
+      - name: Publish (staged)
         if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
-        run: npm publish --access public --provenance
+        run: npm stage publish . --access public
+
+      - name: Next step
+        if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
+        run: |
+          echo "Versi sudah di-stage. Setujui dengan 2FA:"
+          echo "  npm stage list"
+          echo "  npm stage approve <stage-id>"
+          echo "Atau lewat npmjs.com -> Staged Packages."
 
       - name: Dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run != false }}

@@ -30,6 +30,26 @@ Publishing** → **Add publisher**, isi persis:
 Nilainya harus **persis** — npm memverifikasi klaim OIDC terhadap daftar ini. Satu
 karakter beda dan publish ditolak.
 
+### Soal checkbox "Allow npm publish"
+
+Konfigurasi trusted publisher yang dibuat **setelah 3 September 2026** otomatis
+hanya mengizinkan `npm stage publish`. `npm publish` langsung butuh centang
+**Allow npm publish** secara eksplisit, dan `npm dist-tag` butuh centang
+**Allow npm dist-tag**. Ketiganya izin terpisah.
+
+Kalau kedua checkbox dibiarkan kosong, itu **tetap sah**: rilis akan di-stage
+otomatis, lalu Anda menyetujuinya dengan 2FA. Workflow di repo ini sudah
+menyesuaikan diri dengan keadaan itu (`npm stage publish`).
+
+Kalau Anda ingin rilis benar-benar tanpa sentuhan manual, centang
+**Allow npm publish**, lalu ubah satu baris di `.github/workflows/publish.yml`:
+
+```yaml
+run: npm stage publish . --access public
+# menjadi
+run: npm publish --access public --provenance
+```
+
 ### Merilis
 
 1. Bump versi di `package.json` dan commit.

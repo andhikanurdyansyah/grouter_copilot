@@ -43,14 +43,33 @@ test('publish: uses the npm version that supports trusted publishing', () => {
 
 test('publish: gates the publish behind the test suite', () => {
   const testIdx = src.indexOf('npm test');
-  const pubIdx = src.indexOf('npm publish');
+  const pubIdx = src.indexOf('npm stage publish');
   assert.ok(testIdx > -1, 'root suite must run');
   assert.ok(pubIdx > -1, 'publish step must exist');
   assert.ok(testIdx < pubIdx, 'tests must run BEFORE publish, not after');
 });
 
-test('publish: publishes with provenance and public access', () => {
-  assert.match(src, /npm publish --access public --provenance/);
+test('publish: stages rather than direct-publishing', () => {
+  // Konfigurasi trusted publisher setelah 3 Sep 2026 hanya mengizinkan
+  // `npm stage publish` kecuali "Allow npm publish" dicentang eksplisit.
+  // Memakai `npm publish` di sini akan gagal 403 saat rilis pertama.
+  const executable = src
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n');
+  assert.match(executable, /npm stage publish/, 'must use staged publish');
+  assert.doesNotMatch(
+    executable,
+    /^\s*run:\s*npm publish\b/m,
+    'direct npm publish requires the Allow-publish permission; do not assume it',
+  );
+});
+
+test('publish: pins a node version npm 12 actually supports', () => {
+  // npm 12.2.0 requires node ^22.22.2 || ^24.15.0 || >=26. A floating '22.x'
+  // can resolve to 22.14, where `npm install -g npm@12` fails.
+  assert.doesNotMatch(src, /node-version:\s*'22\.x'/, 'floating 22.x is not guaranteed to satisfy npm 12');
+  assert.match(src, /node-version:\s*'22\.22\.2'/, 'pin a version npm 12 supports');
 });
 
 test('publish: does not publish on a dry run', () => {

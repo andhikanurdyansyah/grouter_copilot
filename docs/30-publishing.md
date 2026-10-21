@@ -41,6 +41,22 @@ Kalau kedua checkbox dibiarkan kosong, itu **tetap sah**: rilis akan di-stage
 otomatis, lalu Anda menyetujuinya dengan 2FA.
 
 **Keadaan sekarang (dikonfirmasi Jie, 2026-10-21): `Allow npm publish` TERCENTANG.**
+
+Izin itu sudah **dibuktikan dari sisi registry**, bukan diasumsikan. Dispatch
+`dry_run: false` pada `c0f1b34` menjalankan `npm publish --access public
+--provenance` sungguhan; npm menolak dengan:
+
+```
+npm error You cannot publish over the previously published versions: 0.1.0.
+```
+
+Itu jawaban yang diinginkan. Kalau `Allow npm publish` masih kosong, kegagalan
+akan berbentuk **403** dari registry pada tahap otorisasi, sebelum npm sempat
+memeriksa nomor versi. Karena npm sudah sampai ke pemeriksaan versi, OIDC
+tertukar menjadi kredensial publish dan izinnya berlaku. Tidak ada versi yang
+terbit (shasum `0.1.0` tetap `32c5527d…`), jadi percobaan ini tidak mengotori
+registry.
+
 Karena itu `.github/workflows/publish.yml` memakai publish langsung, bukan staged:
 
 ```yaml

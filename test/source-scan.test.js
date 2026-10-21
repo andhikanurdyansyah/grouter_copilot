@@ -133,3 +133,27 @@ test('source scan detects direct credential-shaped template literals', async () 
     { file: 'src/sample.js', line: 1, rule: 'hardcoded-secret' },
   ]);
 });
+
+test('source scan skips test files that live INSIDE a scanned source root', async () => {
+  // Mounted behavior tests sit next to production code (frontend/src/**), so a
+  // root-level exclusion never reaches them. They mock the API surface on
+  // purpose: flagging them made CI red while production code was clean.
+  const root = await mkdtemp(join(tmpdir(), 'source-scan-in-root-tests-'));
+  await mkdir(join(root, 'frontend', 'src', 'features'), { recursive: true });
+  await writeFile(
+    join(root, 'frontend', 'src', 'features', 'panel.behavior.test.tsx'),
+    ['const mocks = vi.hoisted(() => ({})),', "vi.mock('@/lib/api', () => ({ fetchMe: vi.fn() }))"].join('\n'),
+  );
+  await writeFile(
+    join(root, 'frontend', 'src', 'features', 'panel.spec.ts'),
+    'const mockOrder = { id: 1 };',
+  );
+  // A production module in the SAME directory must still be scanned.
+  await writeFile(
+    join(root, 'frontend', 'src', 'features', 'panel.tsx'),
+    'const mockData = [];',
+  );
+  assert.deepEqual(scanRoot(root), [
+    { file: 'frontend/src/features/panel.tsx', line: 1, rule: 'mock-data-in-production' },
+  ]);
+});

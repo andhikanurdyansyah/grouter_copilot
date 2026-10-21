@@ -15,6 +15,11 @@ const SCRIPT_ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '
 const DEFAULT_ROOTS = ['src', 'frontend/src', 'server/src', 'bin'];
 const SOURCE_EXTENSIONS = new Set(['.cjs', '.js', '.jsx', '.mjs', '.ts', '.tsx']);
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.next']);
+// Test files live INSIDE the scanned source roots (frontend/src/**/*.behavior.test.tsx,
+// src/**/*.test.js), so directory-level exclusions cannot reach them. They are out of
+// scope by design: a mounted test legitimately mocks its API surface, and flagging it
+// made CI red for eight consecutive pushes while production code was clean.
+const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$/i;
 
 /*
  * Keep executable code visible to the rules while hiding comments and template
@@ -134,7 +139,7 @@ function sourceFiles(root) {
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) visit(path);
-      else if (entry.isFile() && SOURCE_EXTENSIONS.has(extname(entry.name))) files.push(path);
+      else if (entry.isFile() && SOURCE_EXTENSIONS.has(extname(entry.name)) && !TEST_FILE_PATTERN.test(entry.name)) files.push(path);
     }
   }
   visit(root);

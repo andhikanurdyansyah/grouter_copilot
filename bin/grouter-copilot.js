@@ -652,6 +652,35 @@ function parseFlags(argv) {
   return opts;
 }
 
+async function runServe(opts = {}) {
+  const port = Number(opts.port || process.env.GROUTER_SIDECAR_PORT || 4700);
+  const gatewayUrl = opts.gatewayUrl || process.env.GROUTER_GATEWAY_URL || 'https://copilot.grouter.id/api/copilot/chat';
+  printSidecarBanner(`${gatewayUrl}`);
+  try {
+    const { startSidecar } = await import('../src/sidecar/server.js');
+    const server = await startSidecar({ port, gatewayUrl });
+    const addr = server.address();
+    console.log(`  chat   POST http://localhost:${addr.port}/api/copilot/chat`);
+    console.log(`  health GET  http://localhost:${addr.port}/api/copilot/health`);
+    console.log(`  widget GET  http://localhost:${addr.port}/copilot.js`);
+    console.log('');
+    console.log('  Embed tag for your app (any stack):');
+    const pub = process.env.GROUTER_SIDECAR_PUBLIC_URL || `http://localhost:${addr.port}`;
+    console.log(`    <link rel="stylesheet" href="${pub}/copilot.css">`);
+    console.log(`    <script src="${pub}/copilot.js" data-endpoint="${pub}/api/copilot/chat"></script>`);
+    console.log('');
+    console.log('  Ctrl+C to stop. Keep this process running (pm2/docker recommended).');
+  } catch (err) {
+    console.error(`sidecar failed: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function printSidecarBanner(gw) {
+  console.log('gRouter Copilot sidecar (zero-code embed, any stack)');
+  console.log(`  gateway: ${gw}`);
+}
+
 function main() {
   const cmd = process.argv[2];
   const argv = process.argv.slice(3);
@@ -662,6 +691,11 @@ function main() {
   }
   if (!cmd) {
     runInit();
+    return;
+  }
+  if (cmd === 'serve') {
+    const opts = parseFlags(argv);
+    runServe(opts);
     return;
   }
   if (cmd === 'install') {
@@ -681,13 +715,16 @@ function main() {
     console.log('Usage:');
     console.log('  grouter-copilot init');
     console.log('  grouter-copilot install --license <license-token> [--license-server <url>]');
+  console.log('  grouter-copilot serve [--port 4700]');
     console.log('');
     console.log('Commands:');
     console.log('  init      Scaffold config, skills, chat route, health route, and widget for the detected framework. No license needed.');
+  console.log('  serve     Run a standalone Copilot sidecar (chat+health+embed widget) — zero-code embed for ANY stack.');
     console.log('  install   Validate the license against the license server, scaffold the same files, and write the gateway configuration to .env.');
     console.log('');
     console.log('Options:');
     console.log('  --license <token>          Copilot license token issued for your account (required for install).');
+  console.log('  --port <n>                 Sidecar port (serve). Default 4700 (or GROUTER_SIDECAR_PORT).');
     console.log('  --license-server <url>     License server base URL. Default: https://copilot.grouter.id (or GROUTER_LICENSE_SERVER).');
     return;
   }

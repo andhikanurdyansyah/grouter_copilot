@@ -99,6 +99,29 @@ Next steps:
 
 After installation, edit the example skill to read only the application data you explicitly want to expose, mount `CopilotChat` in the application's UI, and wire the generated route. Provider credentials and chat requests belong on the application server, not the browser.
 
+## Sidecar mode — zero-code embed for ANY stack (0.2.0)
+
+For hosts that are not Node (Java, PHP, Python, Rails, Go, plain HTML) run the
+Copilot as a standalone sidecar and embed with two tags — no host code changes:
+
+```bash
+npx grouter-copilot serve --port 4700
+```
+
+The sidecar serves `POST /api/copilot/chat`, `GET /api/copilot/health`, and the
+prebuilt widget (`/copilot.js`, `/copilot.css`). Print its copy-paste snippet,
+then paste into any page:
+
+```html
+<link rel="stylesheet" href="http://your-host:4700/copilot.css">
+<script src="http://your-host:4700/copilot.js"></script>
+```
+
+- The license and the gRouter credential stay server-side (in the sidecar env) —
+  never in the browser.
+- CORS is closed by default; set `GROUTER_SIDECAR_ALLOWED_ORIGIN` to your app origin.
+- Data skills live in `copilot.config.cjs` next to the sidecar (read-only contract).
+
 ## First-run experience (end customer)
 
 After install + restart, the end customer sees a floating `✦` bubble (bottom-right, draggable) in the host app. First open with the scaffolded `<CopilotChat firstUseSetup />` shows a one-time setup card ("Siapkan Copilot") that asks the installer to confirm the license lives in the server environment and runs the host health check (`GET /api/copilot/health`); once the health check reports ready, the card is dismissed and remembered in `localStorage`. From then on the bubble opens the chat panel directly: the customer asks a question, the widget posts to the app's own `/api/copilot/chat` route, and the answer renders with its data sources listed. If the license or gateway is unavailable, the panel shows an explicit error (e.g. `LICENSE_INVALID`, `QUOTA_EXCEEDED`) instead of an invented answer.

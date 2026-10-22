@@ -1,6 +1,6 @@
 {
   "name": "@grouter/copilot",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "License-based AI copilot plugin for Node.js apps with developer-defined data skills.",
   "repository": {
     "type": "git",
@@ -20,7 +20,8 @@
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "dist-widget"
   ],
   "scripts": {
     "test": "NODE_ENV=test node --test \"test/**/*.test.js\"",
@@ -30,7 +31,9 @@
     "audit:dependencies": "node scripts/dependency-audit.mjs",
     "audit:dependencies:check": "node scripts/dependency-audit.mjs --check",
     "audit:source": "node scripts/source-scan.mjs",
-    "audit:source:test": "node --test test/source-scan.test.js"
+    "audit:source:test": "node --test test/source-scan.test.js",
+    "widget:build": "node scripts/build-widget.js",
+    "prepublishOnly": "npm run widget:build"
   },
   "keywords": [
     "grouter",

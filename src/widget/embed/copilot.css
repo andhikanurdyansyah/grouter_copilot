@@ -1,0 +1,77 @@
+/* gRouter Copilot embed — standalone styles (no framework deps).
+ * Design language mirrors the React widget: dark glass panel, metallic cyan
+ * #22d3ee accent, mobile-first, WCAG-friendly contrast. Scoped under .grx-*
+ * so it never collides with host app styles.
+ */
+:root { --grx-accent: #22d3ee; --grx-bg: #0b1220; --grx-panel: #101a2c; --grx-text: #e6f1ff; --grx-muted: #8aa0bf; }
+.grx-bubble {
+  position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
+  width: 54px; height: 54px; border-radius: 999px; border: 1px solid rgba(34,211,238,.45);
+  background: linear-gradient(145deg, #0e7490 0%, #083344 100%);
+  color: #fff; font-size: 22px; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(34,211,238,.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.grx-bubble:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(34,211,238,.45); }
+.grx-bubble.is-open { background: linear-gradient(145deg, #083344 0%, #0e7490 100%); }
+.grx-bubble:focus-visible { outline: 2px solid var(--grx-accent); outline-offset: 2px; }
+
+.grx-panel-host { position: fixed; right: 20px; bottom: 84px; z-index: 2147483000; }
+.grx-panel {
+  width: min(360px, calc(100vw - 32px)); height: min(520px, calc(100vh - 120px));
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--grx-panel); color: var(--grx-text);
+  border: 1px solid rgba(34,211,238,.25); border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(2,8,20,.55);
+}
+.grx-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(34,211,238,.10), rgba(34,211,238,0));
+}
+.grx-head-bar { display: flex; align-items: center; gap: 8px; }
+.grx-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--grx-accent); box-shadow: 0 0 8px var(--grx-accent); }
+.grx-close { background: none; border: none; color: var(--grx-muted); font-size: 20px; cursor: pointer; line-height: 1; }
+.grx-close:hover { color: var(--grx-text); }
+
+.grx-body { flex: 1; display: flex; flex-direction: column; padding: 14px; overflow-y: auto; }
+.grx-body h3 { margin: 4px 0 8px; font-size: 16px; }
+.grx-muted { color: var(--grx-muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+
+.grx-btn {
+  border-radius: 10px; padding: 10px 16px; font-size: 14px; cursor: pointer;
+  border: 1px solid rgba(34,211,238,.4); background: transparent; color: var(--grx-accent);
+}
+.grx-btn-primary { background: linear-gradient(145deg, #0e7490, #155e75); color: #fff; border-color: rgba(34,211,238,.6); }
+.grx-btn-primary:hover { filter: brightness(1.12); }
+.grx-btn:disabled { opacity: .6; cursor: wait; }
+
+.grx-err {
+  margin: 10px 0 0; padding: 8px 10px; font-size: 12.5px; border-radius: 8px;
+  color: #fecaca; background: rgba(127,29,29,.35); border: 1px solid rgba(248,113,113,.4);
+  word-break: break-word;
+}
+
+.grx-log { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; overflow-y: auto; }
+.grx-msg { max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.55; word-wrap: break-word; }
+.grx-msg-user { align-self: flex-end; background: rgba(34,211,238,.16); border: 1px solid rgba(34,211,238,.35); }
+.grx-msg-assistant { align-self: flex-start; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); }
+.grx-msg-label { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--grx-muted); margin-bottom: 3px; }
+.grx-src { margin-top: 6px; font-size: 11px; color: var(--grx-muted); }
+.grx-typing::after { content: '…'; animation: grx-blink 1.2s infinite; }
+@keyframes grx-blink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+
+.grx-inputbar { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.grx-input {
+  flex: 1; resize: none; border-radius: 10px; padding: 9px 11px; font-size: 13.5px;
+  color: var(--grx-text); background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.15); min-height: 38px; max-height: 110px;
+  font-family: inherit;
+}
+.grx-input:focus { outline: 2px solid rgba(34,211,238,.5); outline-offset: 0; border-color: rgba(34,211,238,.5); }
+
+@media (max-width: 480px) {
+  .grx-panel-host { right: 8px; left: 8px; bottom: 80px; }
+  .grx-panel { width: 100%; height: min(70vh, 520px); }
+  .grx-bubble { right: 12px; bottom: 12px; }
+}

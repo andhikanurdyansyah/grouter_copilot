@@ -30,7 +30,12 @@ test('first-use setup requires a fresh complete host-health response before pers
   assert.match(widget, /responseOk && data\?\.status === 'ok'/);
   assert.match(widget, /checks\?\.license === true && checks\?\.skills === true && checks\?\.provider === true/);
   assert.match(widget, /await fetch\(healthEndpoint/);
-  assert.match(widget, /if \(!isReadyHealth\(data, res\.ok\)\) \{ setHealth\(\{ status: 'unavailable'/);
+  // The blocked path must (a) still record the failing checks and bounce to
+  // step 2, and (b) now TELL the user which check failed instead of silently
+  // looking like a dead button.
+  assert.match(widget, /if \(!isReadyHealth\(data, res\.ok\)\) \{/);
+  assert.match(widget, /setSetupBlocked\(/);
+  assert.match(widget, /setSetupStep\(2\)/);
   assert.match(widget, /healthCheckRef\.current \|\| !event\.currentTarget\.parentElement\.querySelector\('input'\)\.checked/);
   assert.match(widget, /useState\(!firstUseSetup\)/);
 });

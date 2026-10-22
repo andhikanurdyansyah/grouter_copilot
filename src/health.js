@@ -13,7 +13,16 @@ export function getCopilotHealth(copilot, token = process.env.GROUTER_LICENSE, {
     skills: runtime.registry.list().length > 0,
     // D-021: the provider lives behind the Copilot backend gateway — reachable
     // gateway OR a directly configured adapter (legacy in-process mode) counts.
-    provider: runtime.adapter.configured === true || Boolean(gatewayUrl ?? process.env.GROUTER_LICENSE_SERVER),
+    //
+    // Read the SAME variables the chat route reads (GROUTER_GATEWAY_URL first,
+    // then GROUTER_LICENSE_SERVER). Health previously checked only
+    // GROUTER_LICENSE_SERVER while the route posted to GROUTER_GATEWAY_URL, so a
+    // host configured exactly as the installer writes it reported
+    // provider:false — the widget showed "Tidak tersedia" and the first-run
+    // wizard looped on step 2 forever.
+    provider: runtime.adapter.configured === true || Boolean(
+      gatewayUrl ?? process.env.GROUTER_GATEWAY_URL ?? process.env.GROUTER_LICENSE_SERVER,
+    ),
   };
   const licenseStatus = license ? 'active' : 'unavailable';
   return {

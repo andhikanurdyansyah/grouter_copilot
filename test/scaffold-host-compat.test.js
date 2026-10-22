@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { generateKeyPair, mintLicense } from '../src/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,10 +42,12 @@ function scaffold() {
  * and prints a RESULT line. cwd = the customer project (needed because the
  * scaffolded handler resolves `copilot.config.js` from process.cwd()).
  */
-function runWorker(cwd, handlerFile, exportName, { port, gatewayUrl, method, urlPath, body }) {
+function runWorker(cwd, handlerFile, exportName, { port, gatewayUrl, env = {}, method, urlPath, body }) {
+  const envLines = Object.entries(env).map(([k, v]) => `process.env[${JSON.stringify(k)}] = ${JSON.stringify(v)};`).join('\n');
   const worker = `
 import http from "node:http";
 ${gatewayUrl ? `process.env.GROUTER_GATEWAY_URL = ${JSON.stringify(gatewayUrl)};` : ''}
+${envLines}
 let crash = null;
 process.on("uncaughtException", (e) => { crash = e.code || e.message; });
 const mod = await import(${JSON.stringify('file://' + path.join(cwd, handlerFile))});
@@ -148,8 +151,15 @@ test('D5: unreachable gateway returns a 502 envelope instead of crashing the hos
     const route = readFileSync(path.join(dir, 'src/copilot-route.js'), 'utf8');
     assert.match(route, /try\s*{/, 'chat scaffold must wrap gatewayChat in try/catch');
     assert.match(route, /UPSTREAM_UNAVAILABLE/, 'chat scaffold must return an error envelope');
+    // A license verifier must be configured, otherwise the runtime refuses the
+    // request BEFORE reaching the network and the honest answer is
+    // NOT_CONFIGURED (500) — not UPSTREAM_UNAVAILABLE. The route now preserves
+    // the real error instead of flattening every failure into "unreachable",
+    // so this test has to get past the license gate to exercise the gateway.
+    const keys = generateKeyPair();
     const out = runWorker(dir, 'src/copilot-route.js', 'copilotHandler', {
       port: 14702, gatewayUrl: 'http://127.0.0.1:1/nope',
+      env: { GROUTER_LICENSE_PUBLIC_KEY: keys.publicKeyPem, GROUTER_LICENSE: mintLicense({ privateKeyPem: keys.privateKeyPem, payload: { aud: 'grouter-copilot' } }) },
       method: 'POST', urlPath: '/api/copilot/chat', body: { message: 'hi' },
     });
     assert.equal(out.status, 502, `expected 502 envelope, got ${out.status} (body=${out.body})`);

@@ -54,6 +54,19 @@ function removeStored(key) {
 /* Health                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Human-readable names of the checks that did not pass, so the wizard can say
+ * which one is blocking instead of bouncing the user back with no explanation. */
+function failedCheckLabels(checks, t) {
+  if (!checks) return [];
+  const map = [
+    ['server', t.server],
+    ['license', t.licenseLabel],
+    ['skills', t.skillsLabel],
+    ['provider', t.providerLabel],
+  ];
+  return map.filter(([key]) => checks[key] !== true).map(([, label]) => label);
+}
+
 function isReadyHealth(data, responseOk) {
   const checks = data?.checks;
   return responseOk && data?.status === 'ok' &&
@@ -359,6 +372,12 @@ const STR = {
     recheck: 'Periksa ulang',
     setupDoneTitle: 'Anda siap!',
     setupDoneText: 'Semua sistem siap. Mulai tanya apa saja tentang data Anda.',
+    // Step 3 is reachable with checks still failing; saying "all systems ready"
+    // there is a lie the user can see on the previous screen.
+    setupBlockedText: 'Belum bisa mulai — periksa:',
+    setupBlockedGeneric: 'Belum bisa mulai: pemeriksaan kesiapan belum lolos.',
+    setupPendingTitle: 'Sebagian belum siap',
+    setupPendingText: 'Ada pemeriksaan yang belum lolos. Anda tetap bisa membuka chat, tetapi jawaban bisa gagal sampai server aplikasi dan provider siap.',
     agree: 'Saya paham bahwa license dan kredensial provider tersimpan di server aplikasi, bukan di browser.',
     startAsking: 'Mulai bertanya',
     licenseHintAttention: 'Lisensi Copilot perlu perhatian',
@@ -416,6 +435,10 @@ const STR = {
     recheck: 'Recheck',
     setupDoneTitle: 'You are all set!',
     setupDoneText: 'All systems ready. Start asking anything about your data.',
+    setupBlockedText: 'Cannot start yet — check:',
+    setupBlockedGeneric: 'Cannot start yet: the readiness checks have not passed.',
+    setupPendingTitle: 'Some checks are not ready',
+    setupPendingText: 'Some checks have not passed. You can still open the chat, but answers may fail until the app server and provider are ready.',
     agree: 'I understand the license and provider credentials stay on the app server, not in the browser.',
     startAsking: 'Start asking',
     licenseHintAttention: 'Copilot license needs attention',
@@ -564,6 +587,7 @@ const CSS = `
 .grc-setup-count{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--grc-muted)}
 .grc-step-title{margin:0;font-size:16px;font-weight:700;color:var(--grc-fg)}
 .grc-step-text{margin:0;font-size:13px;color:var(--grc-fg2);line-height:1.55}
+.grc-blocked{margin:0;font-size:12.5px;line-height:1.5;color:var(--grc-warn,#fbbf24)}
 .grc-benefits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .grc-benefits li{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--grc-fg2);line-height:1.5}
 .grc-benefits svg{flex:0 0 auto;margin-top:3px;color:var(--grc-ok)}
@@ -634,6 +658,7 @@ export function CopilotChat({
   const [setupDone, setSetupDone] = useState(!firstUseSetup);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupStep, setSetupStep] = useState(1);
+  const [setupBlocked, setSetupBlocked] = useState('');
   const [health, setHealth] = useState(null);
   const [dismissedLicenseHint, setDismissedLicenseHint] = useState(() => readStored('grouter-copilot-license-hint-dismissed') || '');
   const [checkingHealth, setCheckingHealth] = useState(false);
@@ -1018,20 +1043,21 @@ export function CopilotChat({
               </div>
             ))}
           </div>
+          {setupBlocked ? <p className="grc-step-text grc-blocked" role="status">{setupBlocked}</p> : null}
           {!healthReady ? (
             <button type="button" className="grc-btn ghost" onClick={checkHealth} disabled={checkingHealth}>
               <RefreshIcon /> {checkingHealth ? t.checking : t.recheck}
             </button>
           ) : null}
-          <button type="button" className="grc-btn ghost" onClick={() => setSetupStep(1)}>{t.back}</button>
-          <button type="button" className="grc-btn primary" onClick={() => setSetupStep(3)}>{t.next}</button>
+          <button type="button" className="grc-btn ghost" onClick={() => { setSetupBlocked(''); setSetupStep(1); }}>{t.back}</button>
+          <button type="button" className="grc-btn primary" onClick={() => { setSetupBlocked(''); setSetupStep(3); }}>{t.next}</button>
         </>
       ) : null}
 
       {setupStep === 3 ? (
         <>
-          <h3 className="grc-step-title">{t.setupDoneTitle}</h3>
-          <p className="grc-step-text">{t.setupDoneText}</p>
+          <h3 className="grc-step-title">{healthReady ? t.setupDoneTitle : t.setupPendingTitle}</h3>
+          <p className="grc-step-text">{healthReady ? t.setupDoneText : t.setupPendingText}</p>
           <label className="grc-agree">
             <input type="checkbox" required />
             <span>{t.agree}</span>
@@ -1048,7 +1074,16 @@ export function CopilotChat({
               try {
                 const res = await fetch(healthEndpoint, { cache: 'no-store' });
                 const data = await res.json();
-                if (!isReadyHealth(data, res.ok)) { setHealth({ status: 'unavailable', checks: data?.checks, notificationHint: licenseNotificationHint(data) ?? undefined }); setSetupStep(2); return; }
+                // Re-checking on "start asking" is right, but silently bouncing
+                // the user back to step 2 looked like a broken button: nothing
+                // explained why. Say which check failed.
+                if (!isReadyHealth(data, res.ok)) {
+                  setHealth({ status: 'unavailable', checks: data?.checks, notificationHint: licenseNotificationHint(data) ?? undefined });
+                  const failing = failedCheckLabels(data?.checks, t);
+                  setSetupBlocked(failing.length ? `${t.setupBlockedText} ${failing.join(', ')}.` : t.setupBlockedGeneric);
+                  setSetupStep(2);
+                  return;
+                }
                 setHealth(data);
               } catch { setHealth({ status: 'unavailable' }); setSetupStep(2); return; }
               finally { healthCheckRef.current = false; setCheckingHealth(false); }

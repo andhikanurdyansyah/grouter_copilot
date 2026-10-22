@@ -135,10 +135,21 @@ export async function POST(request) {
   try {
     result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...body });
   } catch (err) {
-    // Never let an unreachable/failed gateway crash the host process.
-    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+    // Never let a failed gateway crash the host process — but do NOT flatten
+    // every failure into "unreachable". A missing license verifier, an invalid
+    // request or a missing message are local configuration/validation errors,
+    // and reporting them as UPSTREAM_UNAVAILABLE sent operators to debug the
+    // network while the real fault was in their own env.
+    result = {
+      status: "error",
+      code: err?.code || "UPSTREAM_UNAVAILABLE",
+      message: err?.message || "Unable to reach the Copilot gateway.",
+      retryable: err?.retryable ?? true,
+    };
   }
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
+  const status = result.status === "error"
+    ? (result.code === "INVALID_REQUEST" ? 400 : result.code === "NOT_CONFIGURED" ? 500 : 502)
+    : 200;
   return NextResponse.json(result, { status });
 }
 `;
@@ -163,10 +174,21 @@ export default async function handler(req, res) {
   try {
     result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
   } catch (err) {
-    // Never let an unreachable/failed gateway crash the host process.
-    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+    // Never let a failed gateway crash the host process — but do NOT flatten
+    // every failure into "unreachable". A missing license verifier, an invalid
+    // request or a missing message are local configuration/validation errors,
+    // and reporting them as UPSTREAM_UNAVAILABLE sent operators to debug the
+    // network while the real fault was in their own env.
+    result = {
+      status: "error",
+      code: err?.code || "UPSTREAM_UNAVAILABLE",
+      message: err?.message || "Unable to reach the Copilot gateway.",
+      retryable: err?.retryable ?? true,
+    };
   }
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
+  const status = result.status === "error"
+    ? (result.code === "INVALID_REQUEST" ? 400 : result.code === "NOT_CONFIGURED" ? 500 : 502)
+    : 200;
   return res.status(status).json(result);
 }
 `;
@@ -221,10 +243,21 @@ export async function copilotHandler(req, res) {
   try {
     result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
   } catch (err) {
-    // Never let an unreachable/failed gateway crash the host process.
-    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+    // Never let a failed gateway crash the host process — but do NOT flatten
+    // every failure into "unreachable". A missing license verifier, an invalid
+    // request or a missing message are local configuration/validation errors,
+    // and reporting them as UPSTREAM_UNAVAILABLE sent operators to debug the
+    // network while the real fault was in their own env.
+    result = {
+      status: "error",
+      code: err?.code || "UPSTREAM_UNAVAILABLE",
+      message: err?.message || "Unable to reach the Copilot gateway.",
+      retryable: err?.retryable ?? true,
+    };
   }
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
+  const status = result.status === "error"
+    ? (result.code === "INVALID_REQUEST" ? 400 : result.code === "NOT_CONFIGURED" ? 500 : 502)
+    : 200;
   res.status(status).json(result);
 }
 `;
@@ -386,10 +419,21 @@ async function copilotHandler(req, res) {
   try {
     result = await gatewayChat({ runtime, gatewayUrl: GATEWAY_URL, ...(req.body ?? {}) });
   } catch (err) {
-    // Never let an unreachable/failed gateway crash the host process.
-    result = { status: "error", code: "UPSTREAM_UNAVAILABLE", message: "Unable to reach the Copilot gateway.", retryable: true };
+    // Never let a failed gateway crash the host process — but do NOT flatten
+    // every failure into "unreachable". A missing license verifier, an invalid
+    // request or a missing message are local configuration/validation errors,
+    // and reporting them as UPSTREAM_UNAVAILABLE sent operators to debug the
+    // network while the real fault was in their own env.
+    result = {
+      status: "error",
+      code: err?.code || "UPSTREAM_UNAVAILABLE",
+      message: err?.message || "Unable to reach the Copilot gateway.",
+      retryable: err?.retryable ?? true,
+    };
   }
-  const status = result.status === "error" ? (result.code === "INVALID_REQUEST" ? 400 : 502) : 200;
+  const status = result.status === "error"
+    ? (result.code === "INVALID_REQUEST" ? 400 : result.code === "NOT_CONFIGURED" ? 500 : 502)
+    : 200;
   res.status(status).json(result);
 }
 

@@ -32,7 +32,11 @@ const healthRouteTemplate = readFileSync(path.join(root, 'bin/grouter-copilot.js
   assert.match(installer, /new URL\('\/api\/resolve', licenseServerUrl\)/);
   assert.match(installer, /licenseServerUrl.*GROUTER_LICENSE_SERVER.*https:\/\/copilot\.grouter\.id/);
   assert.match(installer, /licenseServerUrl,\n\s+licensePublicKey:/);
-  assert.match(healthSource, /provider:[\s\S]*Boolean\(gatewayUrl[\s\S]*GROUTER_LICENSE_SERVER/);
+  // Health must read the SAME env vars the chat route reads. The installer
+  // writes GROUTER_GATEWAY_URL, so a regex that only allows
+  // GROUTER_LICENSE_SERVER would re-lock the bug that made the first-run
+  // wizard un-completable for anyone who followed `init`.
+  assert.match(healthSource, /provider:[\s\S]*Boolean\([\s\S]*GROUTER_GATEWAY_URL[\s\S]*GROUTER_LICENSE_SERVER/);
   assert.match(healthSource, /configured|configuration/i);
   assert.doesNotMatch(healthSource, /fetch\(|https?:\/\//, 'health must not probe provider reachability');
   assert.match(healthRouteTemplate, /status: "unavailable"/);

@@ -4,6 +4,41 @@ Semua perubahan yang layak dicatat untuk paket `@grouter/copilot`.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/),
 versi mengikuti [SemVer](https://semver.org/lang/id/).
 
+## [0.1.2] — 2026-10-22
+
+Tiga cacat yang membuat pemasangan baru tidak bisa dipakai. Ketiganya ditemukan
+dengan memasang paket dari npm dan menjalankan widget-nya sungguhan, bukan lewat
+test unit.
+
+### Fixed
+
+- **First-run wizard tidak pernah bisa diselesaikan.** `getCopilotHealth()`
+  membaca `GROUTER_LICENSE_SERVER`, padahal installer menulis
+  `GROUTER_GATEWAY_URL` — variabel yang sama yang dipakai route chat. Akibatnya
+  `provider` selalu `false`, widget menampilkan "Tidak tersedia", dan tombol
+  "Mulai bertanya" memeriksa ulang health, gagal, lalu melempar pengguna kembali
+  ke langkah 2 tanpa penjelasan — berulang. Health kini membaca variabel yang
+  sama dengan route: `GROUTER_GATEWAY_URL`, lalu `GROUTER_LICENSE_SERVER`.
+
+- **Error asli ditelan.** Route chat yang di-scaffold mengubah **setiap**
+  kegagalan menjadi `UPSTREAM_UNAVAILABLE` / "Unable to reach the Copilot
+  gateway". Kegagalan konfigurasi lokal — verifier lisensi belum diset
+  (`NOT_CONFIGURED`), body tidak valid (`INVALID_REQUEST`) — dilaporkan seolah
+  jaringan yang bermasalah, sehingga operator mengejar penyebab yang salah.
+  Envelope kini mempertahankan `code`, `message`, dan `retryable` asli dari
+  `CopilotError`; `NOT_CONFIGURED` memetakan ke HTTP 500, bukan 502. Kegagalan
+  jaringan asli tetap 502.
+
+- **Wizard berbohong di langkah 3.** Langkah 2 menampilkan Server/Provider
+  "Belum", lalu langkah 3 menulis "Semua sistem siap". Langkah 3 kini mengikuti
+  hasil pemeriksaan yang sebenarnya.
+
+### Added
+
+- Ketika "Mulai bertanya" ditolak, wizard menyebutkan **pemeriksaan mana** yang
+  belum lolos (`Belum bisa mulai — periksa: Server, Provider.`) alih-alih diam
+  dan kembali ke langkah 2.
+
 ## [0.1.1] — 2026-10-21
 
 ### Changed

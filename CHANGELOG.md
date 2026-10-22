@@ -1,3 +1,10 @@
+## [0.2.1] - 2026-10-22
+
+### Fixed
+- `serve --port <n>` diabaikan diam-diam (parseFlags tidak mengenal `--port`,
+  `--gateway-url`, `--config`) → selalu memakai 4700 dan bentrok EADDRINUSE
+  saat dijalankan dua kali. Ditemukan lewat smoke test install dari registry.
+
 # Changelog
 
 Semua perubahan yang layak dicatat untuk paket `@grouter/copilot`.

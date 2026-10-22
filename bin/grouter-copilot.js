@@ -648,6 +648,9 @@ function parseFlags(argv) {
     const next = argv[i + 1];
     if (a === '--license') opts.license = next;
     else if (a === '--license-server' || a === '--licenseServer') opts.licenseServerUrl = next;
+    else if (a === '--port') opts.port = next;
+    else if (a === '--gateway-url' || a === '--gatewayUrl') opts.gatewayUrl = next;
+    else if (a === '--config') opts.configPath = next;
   }
   return opts;
 }
@@ -658,7 +661,7 @@ async function runServe(opts = {}) {
   printSidecarBanner(`${gatewayUrl}`);
   try {
     const { startSidecar } = await import('../src/sidecar/server.js');
-    const server = await startSidecar({ port, gatewayUrl });
+    const server = await startSidecar({ port, gatewayUrl, configPath: opts.configPath });
     const addr = server.address();
     console.log(`  chat   POST http://localhost:${addr.port}/api/copilot/chat`);
     console.log(`  health GET  http://localhost:${addr.port}/api/copilot/health`);

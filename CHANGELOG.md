@@ -1,3 +1,18 @@
+## [0.3.0] - 2026-10-22
+
+### Added — `embed`: preflight + consent, integration in ONE command
+- `npx grouter-copilot embed [--yes]` — preflight requirements for the host app,
+  then ASK before touching anything (Y/n per step; non-TTY without `--yes` fails
+  closed — never mutates without consent):
+  - detects the app's HTML entry (index.html / public/ / frontend/) and offers to
+    inject the 2 widget tags (one-time `.grx-backup`, idempotent — re-run safe);
+  - vendors the prebuilt widget (`copilot.js` + `copilot.css`) into the app's
+    public directory;
+  - no HTML found? offers to scaffold a `copilot-demo/` page instead.
+- Combined flow for ANY stack is now exactly two commands:
+  `npx grouter-copilot serve --license <token>` + `npx grouter-copilot embed`.
+- `test/cli-embed.test.js` — fail-closed consent, injection + idempotency, demo scaffold.
+
 ## [0.2.2] - 2026-10-22
 
 ### Added — true one-command sidecar provisioning

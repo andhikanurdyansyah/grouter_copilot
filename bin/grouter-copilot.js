@@ -651,6 +651,9 @@ function parseFlags(argv) {
     else if (a === '--port') opts.port = next;
     else if (a === '--gateway-url' || a === '--gatewayUrl') opts.gatewayUrl = next;
     else if (a === '--config') opts.configPath = next;
+    else if (a === '--html') opts.html = next;
+    else if (a === '--health-url' || a === '--healthUrl') opts.healthUrl = next;
+    else if (a === '--yes' || a === '-y') opts.yes = true;
   }
   return opts;
 }
@@ -751,6 +754,71 @@ async function runServe(opts = {}) {
   }
 }
 
+/** `embed` — preflight + consent + one-shot widget install into a host app. */
+async function runEmbed(opts = {}) {
+  const pf = await import('../src/cli/preflight.js');
+  const { findWidgetTargets, htmlHasWidget, injectWidgetTags, vendorWidgetFiles, packageRoot } = pf;
+  const targets = findWidgetTargets();
+  let ver = '?';
+  try { ver = JSON.parse(readFileSync(path.join(pf.packageRoot(), 'package.json'), 'utf8')).version; } catch {}
+  const checks = [];
+
+  checks.push({ status: 'ok', label: `paket @grouter/copilot ${ver} terpasang`, detail: 'sumber widget: dist-widget/' });
+  if (!targets.length) {
+    checks.push({
+      status: 'todo',
+      label: 'file HTML aplikasi tidak ditemukan (cari: index.html / public/ / frontend/)',
+      detail: 'berdiri di root proyek aplikasimu, atau pakai --html <path>',
+      question: 'Buat halaman demo minimal (copilot-demo/) + widget di folder ini?',
+      fix: async () => {
+        const dir = path.join(process.cwd(), 'copilot-demo');
+        mkdirSync(dir, { recursive: true });
+        const html = '<!doctype html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Copilot Demo</title>\n  <link rel="stylesheet" href="/copilot.css">\n</head>\n<body style="font-family:system-ui;max-width:640px;margin:48px auto;padding:0 16px">\n  <h1>Aplikasimu di sini</h1>\n  <p>Widget Copilot sudah terpasang — lihat bubble kanan bawah.</p>\n  <script src="/copilot.js"></script>\n</body>\n</html>';
+        writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
+        vendorWidgetFiles(dir);
+        return { detail: 'copilot-demo/index.html siap — serve foldernya (nginx / python -m http.server)' };
+      },
+    });
+  } else {
+    const t = targets[0];
+    const rel = path.relative(process.cwd(), t.html);
+    if (htmlHasWidget(t.html)) {
+      checks.push({ status: 'ok', label: `widget sudah tertanam di ${rel}` });
+    } else {
+      checks.push({
+        status: 'todo',
+        label: `widget BELUM tertanam di ${rel}`,
+        detail: 'menambah 2 tag (link di head + script sebelum /body) + backup otomatis',
+        question: `Tanam widget Copilot ke ${rel}?`,
+        fix: async () => {
+          const vendored = t.publicDir ? vendorWidgetFiles(t.publicDir) : [];
+          const r = injectWidgetTags(t.html, { base: '/' });
+          if (r.already) return { detail: 'sudah ada' };
+          return { detail: `backup: ${path.basename(r.backup)}` };
+        },
+      });
+    }
+  }
+
+  checks.push({
+    status: 'info',
+    label: 'endpoint widget: default same-origin /api/copilot/chat + /api/copilot/health',
+    detail: 'beda origin? tambah data-endpoint="http://host:port/api/copilot/chat" di tag script',
+  });
+
+  console.log('\ngRouter Copilot — preflight integrasi\n');
+  const results = await pf.preflight(checks, { autoYes: !!opts.yes });
+  const pending = results.filter(r => r.status === 'todo' && !r.applied);
+  console.log('');
+  if (pending.length === 0) {
+    console.log('✔ Selesai. Restart/refresh aplikasimu lalu cari bubble ✦ kanan bawah.');
+  } else {
+    console.log('◻ Ada langkah yang dilewati — jalankan ulang untuk menyelesaikannya.');
+  }
+}
+
+
+
 function printSidecarBanner(gw) {
   console.log('gRouter Copilot sidecar (zero-code embed, any stack)');
   console.log(`  gateway: ${gw}`);
@@ -773,6 +841,11 @@ function main() {
     runServe(opts);
     return;
   }
+  if (cmd === 'embed') {
+    const opts = parseFlags(argv);
+    runEmbed(opts);
+    return;
+  }
   if (cmd === 'install') {
     runInstall(parseFlags(argv));
     return;
@@ -791,6 +864,7 @@ function main() {
     console.log('  grouter-copilot init');
     console.log('  grouter-copilot install --license <license-token> [--license-server <url>]');
   console.log('  grouter-copilot serve [--port 4700]');
+  console.log('  grouter-copilot embed [--yes]              Preflight app + tanam widget (konfirmasi per langkah)');
     console.log('');
     console.log('Commands:');
     console.log('  init      Scaffold config, skills, chat route, health route, and widget for the detected framework. No license needed.');

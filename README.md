@@ -105,8 +105,14 @@ For hosts that are not Node (Java, PHP, Python, Rails, Go, plain HTML) run the
 Copilot as a standalone sidecar and embed with two tags — no host code changes:
 
 ```bash
-npx grouter-copilot serve --port 4700
+npx grouter-copilot serve --license <YOUR_LICENSE_TOKEN> --port 4700
+npx grouter-copilot embed          # preflight + tanya + tanam widget ke aplikasimu
 ```
+
+`serve --license` provisions everything once (validates → writes `.env` → scaffolds
+config + example skill). Later runs: `npx grouter-copilot serve`. `embed` checks
+requirements, asks Y/n per step, injects the 2 tags (with backup), and vendors the
+widget files — idempotent, re-run safe.
 
 The sidecar serves `POST /api/copilot/chat`, `GET /api/copilot/health`, and the
 prebuilt widget (`/copilot.js`, `/copilot.css`). Print its copy-paste snippet,

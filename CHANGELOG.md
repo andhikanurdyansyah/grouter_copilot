@@ -1,3 +1,18 @@
+## [0.2.2] - 2026-10-22
+
+### Added — true one-command sidecar provisioning
+- `grouter-copilot serve --license <token>` now provisions EVERYTHING in one command:
+  validates the license against the server, writes `.env` (license token + verifier
+  public key + gateway URL — server-side only, never browser code), scaffolds
+  `copilot.config.cjs` + read-only example skill when missing, then starts the sidecar.
+- `serve` now loads `.env` from the working directory automatically (zero-dep loader,
+  never overrides existing process.env) → second run needs no `--license`.
+- Offline/no-license start is honest: sidecar boots, `GET /api/copilot/health` → 503
+  `{license:false}` with the wizard guiding setup in the browser.
+- `test/cli-serve-flow.test.js` — offline regression: empty folder + `serve --port`
+  → scaffold exists, exact port respected, health 503 license:false, no license
+  material written.
+
 ## [0.2.1] - 2026-10-22
 
 ### Fixed

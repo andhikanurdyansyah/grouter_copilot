@@ -655,9 +655,81 @@ function parseFlags(argv) {
   return opts;
 }
 
+/** Minimal .env loader (zero-dep). Does NOT override existing process.env. */
+function loadEnvFile(file) {
+  try {
+    const src = readFileSync(file, 'utf8');
+    for (const line of src.split('\n')) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) continue;
+      let v = m[2].trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      v = v.replace(/\\n/g, '\n');
+      if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+    }
+  } catch { /* unreadable .env — proceed with current env */ }
+}
+
+/** POST /api/resolve to the license server; returns {baseUrl, gatewayUrl?, licensePublicKey}. */
+async function resolveLicenseToken(token, licenseServerUrl) {
+  const response = await fetch(new URL('/api/resolve', licenseServerUrl), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (typeof body.apiKey === 'string' && body.apiKey) {
+    throw Object.assign(new Error('Server tried to hand off a provider credential; refusing (D-021). Update the license server.'), { installNoFix: true });
+  }
+  if (!response.ok || typeof body.baseUrl !== 'string' || !body.baseUrl || typeof body.licensePublicKey !== 'string' || !body.licensePublicKey) {
+    throw Object.assign(new Error(), { installStatus: response.status, installServerError: typeof body.error === 'string' ? body.error : undefined });
+  }
+  return body;
+}
+
 async function runServe(opts = {}) {
+  loadEnvFile('.env');
   const port = Number(opts.port || process.env.GROUTER_SIDECAR_PORT || 4700);
-  const gatewayUrl = opts.gatewayUrl || process.env.GROUTER_GATEWAY_URL || 'https://copilot.grouter.id/api/copilot/chat';
+  let gatewayUrl = opts.gatewayUrl || process.env.GROUTER_GATEWAY_URL || 'https://copilot.grouter.id/api/copilot/chat';
+  const licenseServerUrl = opts.licenseServerUrl || process.env.GROUTER_LICENSE_SERVER || 'https://copilot.grouter.id';
+
+  // One-command provisioning: --license resolves once, writes .env (license +
+  // verifier public key + gateway URL are SERVER-SIDE ONLY, never shipped to
+  // the browser), and scaffolds copilot.config.cjs + example skill if missing.
+  if (opts.license && !process.env.GROUTER_LICENSE) {
+    console.log('gRouter Copilot sidecar — provisioning from --license…');
+    try {
+      const resolved = await resolveLicenseToken(opts.license, licenseServerUrl);
+      gatewayUrl = resolved.gatewayUrl || new URL('/api/copilot/chat', licenseServerUrl).href;
+      process.env.GROUTER_LICENSE = opts.license;
+      process.env.GROUTER_LICENSE_PUBLIC_KEY = resolved.licensePublicKey;
+      writeEnv({ gatewayUrl, license: opts.license, licenseServerUrl, licensePublicKey: resolved.licensePublicKey });
+      console.log('✔ License valid — .env written (license + verifier public key, server-side only)');
+    } catch (err) {
+      console.error(`✗ License validation failed — ${err.message}`);
+      console.error('  Fix: re-run with the FULL license token from your dashboard, or keep GROUTER_LICENSE in .env.');
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  // Scaffold a minimal config + example skill when none exists so first run
+  // never dead-ends on "config not found" (edit skills afterwards to expose
+  // only the data you approve — read-only).
+  if (!existsSync('copilot.config.cjs') && !existsSync('copilot.config.mjs') && !existsSync('copilot.config.js')) {
+    console.log('→ No copilot.config found — scaffolding starter config + example skill (edit skills/example.cjs later).');
+    const results = runInit({}, { silent: true });
+    const cfg = results.find(r => r.rel && r.rel.startsWith('copilot.config'));
+    if (!cfg || cfg.action === 'skipped') {
+      // runInit may target framework-specific files; for sidecar just copy minimal config
+    }
+  }
+  if (!existsSync('copilot.config.cjs') && !existsSync('copilot.config.mjs') && !existsSync('copilot.config.js')) {
+    writeIfMissing('copilot.config.cjs', CONFIG_TEMPLATE_CJS);
+    writeIfMissing('skills/example.cjs', SKILL_TEMPLATE_CJS('example'));
+    console.log('✔ Created copilot.config.cjs + skills/example.cjs (read-only starter — edit to expose your data)');
+  }
+
   printSidecarBanner(`${gatewayUrl}`);
   try {
     const { startSidecar } = await import('../src/sidecar/server.js');
@@ -670,7 +742,7 @@ async function runServe(opts = {}) {
     console.log('  Embed tag for your app (any stack):');
     const pub = process.env.GROUTER_SIDECAR_PUBLIC_URL || `http://localhost:${addr.port}`;
     console.log(`    <link rel="stylesheet" href="${pub}/copilot.css">`);
-    console.log(`    <script src="${pub}/copilot.js" data-endpoint="${pub}/api/copilot/chat"></script>`);
+    console.log(`    <script src="${pub}/copilot.js"></script>`);
     console.log('');
     console.log('  Ctrl+C to stop. Keep this process running (pm2/docker recommended).');
   } catch (err) {

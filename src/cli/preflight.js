@@ -60,11 +60,14 @@ export function htmlHasWidget(htmlPath) {
  * Inject the 2 tags (link in <head>, script before </body>), relative to base.
  * Writes a one-time .grx-backup next to the file. Idempotent.
  */
-export function injectWidgetTags(htmlPath, { base = '/' } = {}) {
+export function injectWidgetTags(htmlPath, { base = '/', endpoint = null } = {}) {
   let src = readFileSync(htmlPath, 'utf8');
   if (src.includes('copilot.js') || src.includes('copilot.css')) {
     return { changed: false, already: true };
   }
+  const scriptTag = endpoint
+    ? `<script src="${base}copilot.js" data-endpoint="${endpoint}/api/copilot/chat" data-health-endpoint="${endpoint}/api/copilot/health"></script>`
+    : `<script src="${base}copilot.js"></script>`;
   const backup = `${htmlPath}.grx-backup`;
   if (!existsSync(backup)) writeFileSync(backup, src, 'utf8');
   if (/<\/head>/i.test(src)) {
@@ -73,9 +76,9 @@ export function injectWidgetTags(htmlPath, { base = '/' } = {}) {
     src = `    <link rel="stylesheet" href="${base}copilot.css">\n${src}`;
   }
   if (/<\/body>/i.test(src)) {
-    src = src.replace(/<\/body>/i, `    <script src="${base}copilot.js"></script>\n  </body>`);
+    src = src.replace(/<\/body>/i, `    ${scriptTag}\n  </body>`);
   } else {
-    src = `${src}\n    <script src="${base}copilot.js"></script>\n`;
+    src = `${src}\n    ${scriptTag}\n`;
   }
   writeFileSync(htmlPath, src, 'utf8');
   return { changed: true, already: false, backup };

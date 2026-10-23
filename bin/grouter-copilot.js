@@ -654,6 +654,7 @@ function parseFlags(argv) {
     else if (a === '--html') opts.html = next;
     else if (a === '--health-url' || a === '--healthUrl') opts.healthUrl = next;
     else if (a === '--yes' || a === '-y') opts.yes = true;
+    else if (a === '--endpoint') opts.endpoint = next;
   }
   return opts;
 }
@@ -773,7 +774,10 @@ async function runEmbed(opts = {}) {
       fix: async () => {
         const dir = path.join(process.cwd(), 'copilot-demo');
         mkdirSync(dir, { recursive: true });
-        const html = '<!doctype html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Copilot Demo</title>\n  <link rel="stylesheet" href="/copilot.css">\n</head>\n<body style="font-family:system-ui;max-width:640px;margin:48px auto;padding:0 16px">\n  <h1>Aplikasimu di sini</h1>\n  <p>Widget Copilot sudah terpasang — lihat bubble kanan bawah.</p>\n  <script src="/copilot.js"></script>\n</body>\n</html>';
+        const endAttr = opts.endpoint
+          ? ` data-endpoint="${opts.endpoint}/api/copilot/chat" data-health-endpoint="${opts.endpoint}/api/copilot/health"`
+          : '';
+        const html = `<!doctype html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Copilot Demo</title>\n  <meta name="robots" content="noindex">\n  <link rel="stylesheet" href="/copilot.css">\n</head>\n<body style="font-family:system-ui;max-width:640px;margin:48px auto;padding:0 16px">\n  <h1>Aplikasimu di sini</h1>\n  <p>Widget Copilot sudah terpasang — lihat bubble ✦ kanan bawah. Server Copilot: <code>${opts.endpoint || 'same-origin /api/copilot/*'}</code></p>\n  <script src="/copilot.js"${endAttr}></script>\n</body>\n</html>`;
         writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
         vendorWidgetFiles(dir);
         return { detail: 'copilot-demo/index.html siap — serve foldernya (nginx / python -m http.server)' };
@@ -792,7 +796,7 @@ async function runEmbed(opts = {}) {
         question: `Tanam widget Copilot ke ${rel}?`,
         fix: async () => {
           if (t.publicDir) vendorWidgetFiles(t.publicDir);
-          const r = injectWidgetTags(t.html, { base: '/' });
+          const r = pf.injectWidgetTags(t.html, { base: '/', endpoint: opts.endpoint || null });
           if (r.already) return { detail: 'sudah ada' };
           return { detail: `backup: ${path.basename(r.backup)}` };
         },
@@ -827,7 +831,7 @@ async function runEmbed(opts = {}) {
 
   checks.push({
     status: 'info',
-    label: 'endpoint widget: default same-origin /api/copilot/chat + /api/copilot/health',
+    label: `endpoint widget: ${opts.endpoint ? opts.endpoint + '/api/copilot/*' : 'default same-origin /api/copilot/chat + /api/copilot/health'}`,
     detail: 'beda origin? tambah data-endpoint="http://host:port/api/copilot/chat" di tag script',
   });
 
@@ -889,7 +893,7 @@ function main() {
     console.log('  grouter-copilot init');
     console.log('  grouter-copilot install --license <license-token> [--license-server <url>]');
   console.log('  grouter-copilot serve [--port 4700]');
-  console.log('  grouter-copilot embed [--yes]              Preflight app + tanam widget (konfirmasi per langkah)');
+  console.log('  grouter-copilot embed [--yes] [--endpoint URL]  Preflight app + tanam widget (URL = base server Copilot bila bukan same-origin)');
     console.log('');
     console.log('Commands:');
     console.log('  init      Scaffold config, skills, chat route, health route, and widget for the detected framework. No license needed.');

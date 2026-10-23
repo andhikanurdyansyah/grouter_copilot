@@ -1,3 +1,12 @@
+## [0.3.2] - 2026-10-23
+
+### Added — `embed --endpoint <base-url>` untuk host yang API-nya di tempat lain
+- `npx grouter-copilot embed --endpoint http://host:4700` menanam tag dengan
+  `data-endpoint`/`data-health-endpoint` otomatis — untuk pola di mana widget
+  dilayani static server tapi API Copilot ada di origin/host lain (sidecar
+  terpisah, backend berbeda port). Tanpa flag = same-origin (perilaku lama).
+- Demo scaffold (`copilot-demo/`) ikut membawa endpoint + label server yang jujur.
+
 ## [0.3.1] - 2026-10-22
 
 ### Fixed — embed left the widget 404 on non-Vite static hosts (caught by full re-verification)

@@ -9,7 +9,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 const require = createRequire(import.meta.url);
-const { mkdirSync, writeFileSync, readFileSync, appendFileSync, existsSync } = require('node:fs');
+const { mkdirSync, writeFileSync, readFileSync, appendFileSync, existsSync, copyFileSync } = require('node:fs');
 const cwd = process.cwd();
 
 function readPkg() {
@@ -791,10 +791,35 @@ async function runEmbed(opts = {}) {
         detail: 'menambah 2 tag (link di head + script sebelum /body) + backup otomatis',
         question: `Tanam widget Copilot ke ${rel}?`,
         fix: async () => {
-          const vendored = t.publicDir ? vendorWidgetFiles(t.publicDir) : [];
+          if (t.publicDir) vendorWidgetFiles(t.publicDir);
           const r = injectWidgetTags(t.html, { base: '/' });
           if (r.already) return { detail: 'sudah ada' };
           return { detail: `backup: ${path.basename(r.backup)}` };
+        },
+      });
+    }
+    // Tag '/copilot.js' only resolves when the web root exposes the widget
+    // (Vite serves public/ at '/'; nginx usually does NOT). Mirror the widget
+    // next to index.html so the injected tag works on ANY static host —
+    // independent check, always evaluated, harmless where both resolve.
+    const htmlDir = path.dirname(t.html);
+    const vendoredNow = t.publicDir ? vendorWidgetFiles(t.publicDir) : [];
+    const needMirror = ['copilot.js', 'copilot.css'].filter(
+      (f) => existsSync(path.join(t.publicDir || htmlDir, f)) && !existsSync(path.join(htmlDir, f)),
+    );
+    if (needMirror.length) {
+      checks.push({
+        status: 'todo',
+        label: `tag '/copilot.*' tapi web root mungkin tidak menyajikan ${t.publicDir ? path.basename(t.publicDir) + '/' : ''} (host non-Vite akan 404)`,
+        detail: 'menyalin mirror widget ke samping index.html',
+        question: 'Buat mirror widget di root aplikasi?',
+        fix: async () => {
+          for (const f of ['copilot.js', 'copilot.css']) {
+            const mirror = path.join(htmlDir, f);
+            const source = path.join(t.publicDir || htmlDir, f);
+            if (!existsSync(mirror) && existsSync(source)) copyFileSync(source, mirror);
+          }
+          return { detail: 'mirror 2 file di root' };
         },
       });
     }

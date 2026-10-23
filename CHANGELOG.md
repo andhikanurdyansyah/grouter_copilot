@@ -1,3 +1,24 @@
+## [0.3.1] - 2026-10-22
+
+### Fixed — embed left the widget 404 on non-Vite static hosts (caught by full re-verification)
+- `embed` injected tags pointing at `/copilot.js` while vendoring the widget into
+  `public/` — hosts that serve the web root without exposing `public/` (plain
+  nginx/Apache, `python -m http.server`) 404'd on both files, leaving a dead widget.
+- New independent preflight check adds a **root mirror** (copilot.js/.css next to
+  index.html) so the injected tag resolves on ANY static host; harmless duplication
+  where both roots resolve. Tag/vendor/mirror now complete in a single `embed --yes`.
+- Regression: `test/cli-embed.test.js` "one run must serve /copilot.js from web
+  root" — proven RED against 0.3.0 (published) and GREEN here.
+
+### Validation pass (full, evidence-based)
+- Published tarball byte-identical to HEAD; annotated tag v0.3.0 → commit verified.
+- Unlicensed boot: health 503 {license:false}, chat NOT_CONFIGURED, widget 200.
+- Licensed sidecar from registry package: real gateway chat answered (license
+  ledger updated), restart without --license stays licensed (.env loader).
+- One-command embed on a fresh IDURAR-frontend copy: tags+vendor+mirror in one run;
+  headless Chromium drove the real widget through wizard → chat answered (visual
+  verified), zero console errors.
+
 ## [0.3.0] - 2026-10-22
 
 ### Added — `embed`: preflight + consent, integration in ONE command

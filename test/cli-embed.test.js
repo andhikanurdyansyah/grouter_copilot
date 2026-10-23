@@ -64,3 +64,20 @@ test('embed: no HTML anywhere → offers demo scaffold (with consent via --yes)'
   assert.ok(existsSync(path.join(dir, 'copilot-demo', 'copilot.js')), 'widget vendored into demo');
   rmSync(dir, { recursive: true, force: true });
 });
+test('embed: one run must serve /copilot.js from web root (404 regression — mirror check)', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'copilot-embed-mirror-'));
+  mkdirSync(path.join(dir, 'public'), { recursive: true });
+  writeFileSync(path.join(dir, 'index.html'),
+    '<!doctype html><html><head><title>t</title></head><body></body></html>', 'utf8');
+  const r = spawnSync(process.execPath, [bin, 'embed', '--yes'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  // mirror must exist NEXT TO index.html after a single run (web-root safety)
+  assert.ok(existsSync(path.join(dir, 'copilot.js')), 'root mirror copilot.js missing after one run');
+  assert.ok(existsSync(path.join(dir, 'copilot.css')), 'root mirror copilot.css missing after one run');
+  // and the exclusivity: tags never duplicated when re-run
+  const r2 = spawnSync(process.execPath, [bin, 'embed', '--yes'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(r2.status, 0);
+  const html = readFileSync(path.join(dir, 'index.html'), 'utf8');
+  assert.equal((html.match(/copilot\.js/g) || []).length, 1);
+  rmSync(dir, { recursive: true, force: true });
+});

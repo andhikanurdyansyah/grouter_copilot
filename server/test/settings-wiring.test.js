@@ -16,7 +16,7 @@ import { UsageResolver } from '../src/usageResolver.js';
 test('settings: provider.baseUrl has no /v1 suffix (adapter appends it)', () => {
   const eff = resolveSettings({});
   assert.ok(!eff.provider.baseUrl.endsWith('/v1'), `base must not include /v1: ${eff.provider.baseUrl}`);
-  assert.equal(eff.provider.baseUrl, 'https://prod.grouter.web.id');
+  assert.equal(eff.provider.baseUrl, 'https://api.grouter.ai.id');
   assert.equal(typeof eff.provider.timeoutMs, 'number');
 });
 
@@ -94,7 +94,7 @@ test('server wiring: KlikQris + UsageResolver are configured FROM resolved setti
     assert.equal(eff.payment.mode, 'production');
     // The live instances were built from the boot-time settings — prove the
     // wiring actually consumes settings by re-checking the values they got:
-    assert.equal(usage.checkUsageUrl, 'https://prod.grouter.web.id/api/check-usage'); // boot-time value (restart picks up store change)
+    assert.equal(usage.checkUsageUrl, 'https://api.grouter.ai.id/api/check-usage'); // boot-time value (restart picks up store change)
   } finally {
     server.close();
   }

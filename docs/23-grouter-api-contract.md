@@ -1,11 +1,11 @@
 # gRouter API Contract (read-only consumption)
 
-> Verified against production `https://prod.grouter.web.id` on 2026-09-30. This documents what Copilot consumes. Copilot NEVER writes to gRouter.
+> Verified against production `https://api.grouter.ai.id` on 2026-10-25 (migrasi dari `prod.grouter.web.id`, lihat D-029). This documents what Copilot consumes. Copilot NEVER writes to gRouter.
 
 ## Endpoint: Check Usage
 
 ```
-GET https://prod.grouter.web.id/api/check-usage?key=<gRouter-api-key>
+GET https://api.grouter.ai.id/api/check-usage?key=<gRouter-api-key>
 ```
 
 No auth header needed — the api key is passed as the `?key=` query param.
@@ -19,7 +19,7 @@ No auth header needed — the api key is passed as the `?key=` query param.
 | `status` | `"active"` / `"expired"` / disabled | key state |
 | `models` | string[] \| null | allowed catalog model names (buyer-facing only) |
 | `modelCatalog` | `{modelId, multiplier, contextWindowTokens}[]` | catalog metadata |
-| `integration.baseUrl` | string \| null | e.g. `https://prod.grouter.web.id/v1` |
+| `integration.baseUrl` | string \| null | e.g. `https://api.grouter.ai.id/v1` |
 | `integration.chatCompletionsUrl` | string \| null | `.../v1/chat/completions` |
 | `usage.tokens` | number | tokens used this month |
 | `usage.limit` | number \| null | monthly token limit |

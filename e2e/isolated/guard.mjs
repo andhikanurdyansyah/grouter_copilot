@@ -27,6 +27,7 @@ export const PROD_PORTS = [4600, 4601];
 // Hosts / suffixes that identify production or the provider. A base URL
 // resolving to any of these is refused outright.
 const FORBIDDEN_HOSTS = [
+  'grouter.ai.id',
   'grouter.id',
   'grouter.web.id',
   'klikqris.com',

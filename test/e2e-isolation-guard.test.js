@@ -66,6 +66,13 @@ test('guard REFUSES a non-loopback (public/production) base URL', () => {
   assert.ok(problems.some((p) => /not loopback|production host/.test(p)), problems.join('; '));
 });
 
+test('guard REFUSES the gRouter upstream hosts (incl. the new api.grouter.ai.id)', () => {
+  for (const host of ['https://api.grouter.ai.id', 'https://prod.grouter.web.id']) {
+    const problems = collectViolations(goodConfig({ baseUrl: host }));
+    assert.ok(problems.some((p) => /not loopback|production host/.test(p)), `${host}: ${problems.join('; ')}`);
+  }
+});
+
 test('guard REFUSES a missing mock upstream (real provider calls possible)', () => {
   const problems = collectViolations(goodConfig({ mockUpstream: false }));
   assert.ok(problems.some((p) => /mock upstream fetch is NOT injected/.test(p)), problems.join('; '));

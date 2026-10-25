@@ -9,7 +9,7 @@
 
 import { CopilotError, ErrorCode } from '../../src/adapter/errors.js';
 
-const DEFAULT_CHECK_USAGE_URL = 'https://prod.grouter.web.id/api/check-usage';
+const DEFAULT_CHECK_USAGE_URL = 'https://api.grouter.ai.id/api/check-usage';
 
 export class UsageResolver {
   constructor({ checkUsageUrl = DEFAULT_CHECK_USAGE_URL, fetchImpl = globalThis.fetch, ttlMs = 60_000 } = {}) {

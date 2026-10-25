@@ -31,7 +31,7 @@ Copilot Backend (license authority + AI gateway, TERPISAH)
 
         │  POST /v1/chat/completions + Bearer <SATU service credential>
         ▼
-gRouter (https://prod.grouter.web.id) ── AI infrastructure supplier
+gRouter (https://api.grouter.ai.id) ── AI infrastructure supplier
 ├── OpenAI / Anthropic / Gemini / provider lain
 ├── model routing, fallback, availability
 └── infrastructure usage accounting (per service credential)
@@ -45,11 +45,11 @@ melihat satu kredensial service + trafik model.
 
 | Sistem | Peran | Milik siapa | Disentuh? |
 |---|---|---|---|
-| **gRouter** (`https://prod.grouter.web.id`) | AI infrastructure/provider gateway: model, routing, fallback, provider credentials, infra usage | tim gRouter | YA — Copilot consume via API (read-only intent: Copilot tidak pernah mengelola/mengubah konfigurasi gRouter) |
+| **gRouter** (`https://api.grouter.ai.id`) | AI infrastructure/provider gateway: model, routing, fallback, provider credentials, infra usage | tim gRouter | YA — Copilot consume via API (read-only intent: Copilot tidak pernah mengelola/mengubah konfigurasi gRouter) |
 | **Copilot** (`copilot.grouter.id` + plugin) | customer-facing product/module: identitas, license, plan, entitlement, quota, usage, billing | produk Copilot | YA — ini produk kita |
 
 > Catatan historis: "gRouter (port 20128)" adalah gateway LAMA di mesin lama. Supplier
-> production yang dikonsumsi Copilot adalah `https://prod.grouter.web.id` (lihat
+> production yang dikonsumsi Copilot adalah `https://api.grouter.ai.id` (lihat
 > `docs/23-grouter-api-contract.md`). Port 20128 bukan bagian dari arsitektur ini.
 
 ## 3. Credential model (D-021)
@@ -179,7 +179,7 @@ UI admin/customer. Nilai konseptual konfigurasi:
 
 ```text
 GROUTER_API_KEY=<server-side-secret>          # tidak pernah diisi nilai real di repo
-GROUTER_BASE_URL=https://prod.grouter.web.id  # TANPA /v1 — adapter menambahkan /v1/chat/completions
+GROUTER_BASE_URL=https://api.grouter.ai.id    # TANPA /v1 — adapter menambahkan /v1/chat/completions
 ```
 
 Manajemen secret: rotasi = ganti env + restart backend (revoke key lama di sisi gRouter);

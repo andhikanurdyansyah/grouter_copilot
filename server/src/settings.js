@@ -66,12 +66,12 @@ export const DEFAULT_SETTINGS = {
     pollTimeoutMs: 900000,
   },
   usage: {
-    checkUsageUrl: 'https://prod.grouter.web.id/api/check-usage',
+    checkUsageUrl: 'https://api.grouter.ai.id/api/check-usage',
     cacheTtlMs: 60000,
   },
   provider: {
     // gRouter base WITHOUT the /v1 prefix — the adapter appends /v1/chat/completions.
-    baseUrl: 'https://prod.grouter.web.id',
+    baseUrl: 'https://api.grouter.ai.id',
     timeoutMs: 60000,
     // Default model when the request does not specify one. MUST be a model the
     // gRouter service credential can actually call — verified live 2026-10-09

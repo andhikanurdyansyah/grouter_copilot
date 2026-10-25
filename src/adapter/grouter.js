@@ -13,10 +13,10 @@
 import { CopilotError, ErrorCode } from './errors.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-// A4 fix: the gRouter contract base is https://prod.grouter.web.id — the
-// adapter appends `/v1/chat/completions` itself, so the base must NOT include
-// /v1. (The old default `https://api.grouter.io` was never the real contract.)
-const DEFAULT_BASE_URL = process.env.GROUTER_BASE_URL || 'https://prod.grouter.web.id';
+// gRouter contract base — the NEW upstream is https://api.grouter.ai.id (migrated
+// from prod.grouter.web.id, 2026-10-25). The adapter appends `/v1/chat/completions`
+// itself, so the base must NOT include /v1.
+const DEFAULT_BASE_URL = process.env.GROUTER_BASE_URL || 'https://api.grouter.ai.id';
 
 /**
  * Extract the first balanced JSON object/array from a string (string-aware

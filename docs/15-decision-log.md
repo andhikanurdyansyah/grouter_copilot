@@ -242,6 +242,34 @@ nyata (diverifikasi: 0 baris `sent` milik akun pelanggan).
 **Aturan diagnosis ke depan.** Untuk memastikan email jalan, buktikan lewat
 `mailer.send()` nyata atau status baris notifikasi — jangan lewat `/proc/environ`.
 
+## D-029 — Migrasi upstream gRouter: `prod.grouter.web.id` → `api.grouter.ai.id` (2026-10-25)
+
+**Konteks.** Domain supplier gRouter pindah ke `https://api.grouter.ai.id`. Kedua
+endpoint kontrak diverifikasi live dengan service credential Copilot:
+`GET /api/check-usage` → 200 (~0,09s) dan `POST /v1/chat/completions`
+(model `glm-5.3-flash`) → 200 (~0,8s).
+
+**Keputusan.** Semua lapisan konfigurasi mengacu domain baru:
+`DEFAULT_SETTINGS` (provider.baseUrl, usage.checkUsageUrl), default adapter
+plugin, seed `GROUTER_BASE_URL` di `server/.env` + `.env.example`, dan
+`store.settings.usage.checkUsageUrl` (layer store adalah yang aktif di prod).
+Guard E2E menambahkan `grouter.ai.id` ke FORBIDDEN_HOSTS agar E2E tidak pernah
+menembak upstream produksi.
+
+**Gotcha yang ditemukan saat migrasi (jangan diulang).** Seed lama
+`GROUTER_BASE_URL=https://prod.grouter.web.id/v1` memuat `/v1` padahal kontrak
+A4 mensyaratkan base TANPA `/v1` (adapter menambahkan sendiri). Di prod selama
+ini tidak meledak karena `store.settings.provider.baseUrl:''` menimpa env seed
+lalu masuk aturan empty-string-reset → kembali ke DEFAULT (tanpa `/v1`). Tapi
+install fresh (store kosong) akan menyusun `/v1/v1/chat/completions` → 404.
+Bentuk seed yang benar: `GROUTER_BASE_URL=https://api.grouter.ai.id`.
+
+**Aturan ke depan.** Base URL gRouter TANPA `/v1` di semua lapisan; kalau
+ganti domain lagi, migrasikan keenam lokasi sekaligus (_default kode ×3, seed
+.env ×1, .env.example ×1, store.settings ×1_) + guard E2E + docs kontrak.
+
+---
+
 ## D-028 — Publikasi npm lewat staged publishing + approval 2FA (2026-10-19)
 
 **Konteks.** `@grouter/copilot@0.1.0` diterbitkan 2026-10-19. Publish langsung

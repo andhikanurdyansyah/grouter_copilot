@@ -12,7 +12,7 @@ test('install exchanges the license for NON-SECRET gateway config (D-021: no cre
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-cli-'));
   const licenseServer = 'http://license.test';
   try {
-    const fetchMock = `globalThis.fetch = async (url, options) => {\n  const { strictEqual } = await import('node:assert');\n  strictEqual(String(url), '${licenseServer}/api/resolve');\n  strictEqual(JSON.stringify(JSON.parse(options.body)), JSON.stringify({ token: 'copilot-license-test' }));\n  return new Response(JSON.stringify({ baseUrl: 'https://prod.grouter.web.id', gatewayUrl: '${licenseServer}/api/copilot/chat', licensePublicKey: 'public-key-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n};\n`;
+    const fetchMock = `globalThis.fetch = async (url, options) => {\n  const { strictEqual } = await import('node:assert');\n  strictEqual(String(url), '${licenseServer}/api/resolve');\n  strictEqual(JSON.stringify(JSON.parse(options.body)), JSON.stringify({ token: 'copilot-license-test' }));\n  return new Response(JSON.stringify({ baseUrl: 'https://api.grouter.ai.id', gatewayUrl: '${licenseServer}/api/copilot/chat', licensePublicKey: 'public-key-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n};\n`;
     const preloadPath = path.join(dir, 'fetch-mock.mjs');
     const preload = pathToFileURL(preloadPath).href;
     writeFileSync(preloadPath, fetchMock);
@@ -37,7 +37,7 @@ test('install refuses a legacy server that still hands off an api key (defense i
   const dir = mkdtempSync(path.join(tmpdir(), 'copilot-cli-legacy-'));
   const licenseServer = 'http://license.test';
   try {
-    const fetchMock = `globalThis.fetch = async () => new Response(JSON.stringify({ apiKey: 'legacy-handoff-attempt', baseUrl: 'https://prod.grouter.web.id', licensePublicKey: 'public-key-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n`;
+    const fetchMock = `globalThis.fetch = async () => new Response(JSON.stringify({ apiKey: 'legacy-handoff-attempt', baseUrl: 'https://api.grouter.ai.id', licensePublicKey: 'public-key-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n`;
     const preloadPath = path.join(dir, 'fetch-mock.mjs');
     const preload = pathToFileURL(preloadPath).href;
     writeFileSync(preloadPath, fetchMock);
@@ -78,7 +78,7 @@ test('reinstall over an env that only has the public key still writes the licens
   const licenseServer = 'http://license.test';
   try {
     writeFileSync(path.join(dir, '.env'), 'GROUTER_LICENSE_PUBLIC_KEY=old-pem\n', 'utf8');
-    const fetchMock = `globalThis.fetch = async () => new Response(JSON.stringify({ baseUrl: 'https://prod.grouter.web.id', gatewayUrl: '${licenseServer}/api/copilot/chat', licensePublicKey: 'new-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n`;
+    const fetchMock = `globalThis.fetch = async () => new Response(JSON.stringify({ baseUrl: 'https://api.grouter.ai.id', gatewayUrl: '${licenseServer}/api/copilot/chat', licensePublicKey: 'new-pem' }), { status: 200, headers: { 'content-type': 'application/json' } });\n`;
     const preloadPath = path.join(dir, 'fetch-mock.mjs');
     const preload = pathToFileURL(preloadPath).href;
     writeFileSync(preloadPath, fetchMock);

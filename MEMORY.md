@@ -56,8 +56,9 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - Endpoint: publik `GET /api/plans`; admin `GET|PATCH /api/admin/settings` (secret di-mask `••••<last4>`).
 - **I3 wiring (`92cf9fb`):** klikqris mode/baseUrl (`payment.klikqrisBaseUrl`), usageResolver
   (url+TTL), auth (trustedOrigins/sentinel/minPasswordLength dari settings; `be.grouter.id`
-  DIHAPUS dari default), adapter default `https://prod.grouter.web.id` (A4; adapter append
-  `/v1/chat/completions` sendiri — base TANPA `/v1`).
+  DIHAPUS dari default), adapter default `https://api.grouter.ai.id` (A4; adapter append
+  `/v1/chat/completions` sendiri — base TANPA `/v1`; migrasi 2026-10-25 dari
+  `prod.grouter.web.id`, lihat D-029).
 - **I4 panel Settings (`61b8e67`):** tab Plans/Branding/Payment/Provider&Limits di `/admin`;
   plans HOT, auth+mode payment butuh restart.
 
@@ -76,11 +77,13 @@ Copilot backend  → license server (mint/revoke/resolve/handoff)
 - Order record punya `planName` + `quota`; `/success` + dashboard tampilkan dari situ.
 - Browser TIDAK menyimpan harga: dashboard fetch `GET /api/plans` (`loadPlans()`), checkout kirim `packageKey` saja.
 
-## Kontrak gRouter (read-only, verified live 2026-09-30)
+## Kontrak gRouter (read-only, verified live 2026-10-25 di api.grouter.ai.id — migrasi D-029)
 
-- `GET https://prod.grouter.web.id/api/check-usage?key=<gRouter-api-key>`
+- `GET https://api.grouter.ai.id/api/check-usage?key=<gRouter-api-key>`
 - Key format: `gRouter-...` (bukan `sk-`). Chat: `POST {baseUrl}/v1/chat/completions` (Bearer).
-- baseUrl dari `/check-usage` → `integration.baseUrl` (= `https://prod.grouter.web.id/v1`).
+- baseUrl dari `/check-usage` → `integration.baseUrl` (= `https://api.grouter.ai.id/v1`).
+- **Base URL TANPA `/v1` di SEMUA lapisan** (default kode ×3, seed .env, .env.example,
+  store.settings). Seed `/v1` bikin fresh-install menyusun `/v1/v1/...` → 404.
 
 ## Design system (docs/24-design-system.md)
 

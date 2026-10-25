@@ -60,7 +60,7 @@ function makeServer({ fetchImpl, apiKey = null, settingsPatch = null } = {}) {
 function okProvider({ answer = 'total is 42', usage = { prompt_tokens: 12, completion_tokens: 8 } } = {}) {
   return async (url, init) => {
     const body = JSON.parse(init.body);
-    assert.equal(url, 'https://prod.grouter.web.id/v1/chat/completions');
+    assert.equal(url, 'https://api.grouter.ai.id/v1/chat/completions');
     assert.ok(String(init.headers.authorization || '').startsWith('Bearer '), 'provider call must carry the service credential');
     assert.ok(!String(init.headers.authorization).includes('undefined'), 'credential must be resolved');
     assert.equal(body.model, DEFAULT_MODEL);
